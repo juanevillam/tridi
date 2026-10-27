@@ -2,6 +2,14 @@
 
 Official repo of team 26 at **Platanus Hack 26 Caracas** (October 23 to 25, 2026), track **🧊 Three-Dimensional**: Juan, Pastor, César and Ale. The product is **Tridi**, for Physical AI: it turns video into training data for humanoid robots. Video or camera → 3D skeleton of one person → the motion on a simulated Unitree G1 (MuJoCo) → the robot learns it by imitation, with pushes and varied worlds → it delivers a small trained policy (ONNX) and the physics-corrected motion data. Pitch, and what is true today versus planned: [`docs/pitch/pitch-producto.md`](docs/pitch/pitch-producto.md); how it is built, by area: [`docs/plan-producto.md`](docs/plan-producto.md). Origin of the idea: [`docs/decisiones/2026-10-23-idea-tridi.md`](docs/decisiones/2026-10-23-idea-tridi.md). The repo is public, it closes Sunday 08:30, and judges read it with AI agents: keep it clean, and write the reason next to every threshold or magic number.
 
+## This repo (read first)
+
+This is **`juanevillam/tridi`, the private company repo**, cloned from the hackathon repo's `main` with its full history on 2026-10-27. Tridi continues here, and everything about the **Y Combinator application** lives in [`yc/`](yc/README.md) (Spanish; answers for the form in English). What follows below was written for the public hackathon repo and still describes the code; where it disagrees with this section, this section wins:
+
+- `origin` is `juanevillam/tridi`; the hackathon repo is the remote `platanus-hack`. Never push this repo's branches there: it is public, and `yc/` is private.
+- `scripts/mirror.sh` is disabled: the live demo still deploys from `Torpass/tridi`, which mirrors the hackathon repo, not this one.
+- Never state a YC answer, metric or claim that [`yc/verdad-hoy.md`](yc/verdad-hoy.md) does not back.
+
 ## Start of every session
 
 1. Read [`docs/estado.md`](docs/estado.md) (where each part is now) and the latest files in [`docs/bitacora/`](docs/bitacora) (what happened while this person was away).
