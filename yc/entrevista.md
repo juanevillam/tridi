@@ -21,6 +21,9 @@ Si nos invitan: **10 minutos por video** con dos o tres partners, en noviembre o
 | What's yours, if it's all MuJoCo, MediaPipe and PyTorch? | The pieces are standard; the pipeline is ours: picking and tracking one person in a crowd, recovering where they walk (MediaPipe doesn't give that), retargeting to the G1, the imitation reward, and making the browser and Python give identical results. |
 | Why you? | We built the whole thing in 36 hours, from zero, and shipped it live. TODO: un hecho de cada fundador. |
 | Competitors? | Research pipelines like G1 Moves and VideoMimic, data vendors like Scale and Micro1, and NVIDIA's own models. Research projects aren't products; data vendors sell raw video; NVIDIA can be a customer of motion data. |
+| How are you different from Asimov? (YC W26) | They capture new egocentric video with a network of people and sell human motion. We take any existing video and output whole-body motion a specific humanoid can physically execute, plus the policy that does it. Their data could be our input. |
+| Why not GMR or GEM-X, which are free? | They retarget poses without physics: feet slide, legs go through the floor, the robot falls. TODO: our benchmark numbers (foot skating, % of clip tracked without falling, cost per clip). |
+| Video has no force. (Hemlock's thesis) | True: we don't measure force. The simulation infers contacts and torques consistent with the robot's body and discards motions it can't do. Measured force would make our data better, and we could take it as an input. |
 | Why won't NVIDIA or Figure do this themselves? | They will, for their own robots. The hundreds of teams that buy a G1 can't. We're their data team. |
 | How big can this be? | Robot companies already spend over $100M a year on real-world data, and it grows with every humanoid deployed. TODO: cuenta de abajo hacia arriba. |
 | What's the hardest part? | Sim-to-real, and getting long motions like walking to work by imitation. |

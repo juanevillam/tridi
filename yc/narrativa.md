@@ -35,6 +35,8 @@ Tridi toma un video de celular y entrega lo que una empresa de humanoides necesi
 
 ## Insight (débil: es lo que más hay que trabajar)
 
+**Posicionamiento recomendado tras estudiar YC 2026:** no "vendemos datos" (categoría llena: 8+ empresas YC con operación y capital), sino **la capa de conversión**: cualquier video humano → movimiento de **cuerpo entero** que un humanoide con piernas puede ejecutar + la política que lo hace. Los demás están en manos.
+
 Lo que creemos y otros no, en borrador:
 
 > Robot companies don't need more raw human video; they need motion a robot can physically perform. The value is not in capturing the pose (that is a commodity) but in the physics step that turns an impossible human motion into a feasible robot motion, plus a policy that already does it. Nobody sells that as a service per motion, per robot.
@@ -67,8 +69,15 @@ Tamaño, cuenta simple para la aplicación: si las empresas de robótica gastan 
 
 ## Competencia
 
+**Lo nuevo (27 oct):** YC 2026 aceptó una docena de startups de datos para robots. Fichas y lecciones en [`investigacion/startups/robotica-y-physical-ai.md`](investigacion/startups/robotica-y-physical-ai.md). Las que más importan van primero.
+
 | Quién | Qué hace | En qué somos distintos |
 | --- | --- | --- |
+| **Asimov (YC W26)** | "Real-world human movement data for humanoid robots": video egocéntrico + pose 3D, grabado por una red de personas | **El competidor más directo.** Ellos capturan video nuevo; nosotros convertimos cualquier video en movimiento que el robot puede ejecutar (física) + la política. También puede ser cliente |
+| **Intelligence Factory (YC Spring 26)** | Guantes → retargeting humano a robot → modelos de manipulación | Mismo concepto, en manos. Nosotros, cuerpo entero |
+| **Human Archive (YC W26)**, Hub, Datoric, Praxis, DeepReach (YC 2026) | Venden datos crudos multimodales para robots, con operación y hardware propios (Human Archive levantó USD 8,2 M) | Venden captura; nosotros conversión. Son clientes posibles del pipeline |
+| **Hemlock (YC F26)** | Pulsera EMG: dice que el video solo no basta porque le falta la fuerza | Nuestra física infiere contactos y torques consistentes (inferidos, no medidos). Tener la respuesta lista |
+| GMR, NVIDIA GEM-X (abiertos) | Video → G1 con un comando, gratis | Retargeting crudo sin física: hay que mostrar con números cuánto mejor queda lo nuestro |
 | G1 Moves (mar. 2026) | Pipeline abierto: video de una cámara → movimientos del G1 entrenados en MuJoCo | Es lo más parecido. Es un proyecto de investigación abierto, no un producto ni un servicio. **Hay que estudiarlo a fondo antes de la entrevista** |
 | VideoMimic (2025) | Paper: video → humanoide real | Investigación de laboratorio; nosotros, producto en el navegador |
 | Ultimate Bots Studio | Video a robot | Usa una política ya hecha de NVIDIA; nosotros entrenamos una por video y entregamos la política + los datos |

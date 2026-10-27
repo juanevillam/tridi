@@ -2,6 +2,16 @@
 
 Lo que YC pide: un minuto, **todos los fundadores en cuadro**, cámara simple. Lo usan para ver cómo hablan y cómo se relacionan entre ellos, no para ver producción. Nada de música, cortes ni slides.
 
+## Lo que hacen los que entraron
+
+Transcribimos los 65 videos de aplicación públicos de 2022 a 2026 ([`investigacion/startups/aplicaciones-publicas.md`](investigacion/startups/aplicaciones-publicas.md)):
+
+- Mediana de **62 s** y **~177 palabras por minuto**.
+- Todos juntos, una sola toma, sin edición.
+- Orden: nombre + credencial concreta → cómo se conocen → de dónde sale el problema → qué construyen → avance con números y fecha → cierre de una línea.
+- Los de robótica sin ingresos muestran algo físico funcionando detrás y dan la próxima fecha.
+- **Formato recomendado para Tridi:** como Polymath Robotics (S22), el producto corriendo en pantalla (el G1 aguantando empujones) y nosotros en una ventanita, o nosotros sentados con la laptop mostrando el robot detrás.
+
 ## Reglas
 
 - En inglés. Si el inglés de alguien es flojo, que hable menos, pero que hable: igual cuenta que esté.
