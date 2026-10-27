@@ -22,6 +22,7 @@ Tridi was born at Platanus Hack 26 Caracas (October 23 to 25, 2026). This repo w
 | Why things are the way they are | [`docs/decisiones/`](docs/decisiones) |
 | The pitch we presented, scripts, hard questions | [`docs/pitch/`](docs/pitch) (`tridi-pitch.pdf`), [`yc/contexto-tecnico.md`](yc/contexto-tecnico.md) |
 | The YC application | [`yc/README.md`](yc/README.md) |
+| Competitors and look-alikes, with direct links | [`yc/competidores.md`](yc/competidores.md) |
 | Startups YC accepted, by batch, and what we learn from them | [`yc/investigacion/startups/`](yc/investigacion/startups/README.md) |
 | Market research for robot data | [`yc/investigacion/mercado-robotica.md`](yc/investigacion/mercado-robotica.md) |
 

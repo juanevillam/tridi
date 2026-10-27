@@ -26,6 +26,7 @@ Antes de enviar, abrir el formulario real: YC cambia preguntas entre batches. La
 | [`aplicacion.md`](aplicacion.md) | Cada pregunta del formulario con el borrador en inglés, listo para pegar y editar |
 | [`fundadores.md`](fundadores.md) | Quién aplica, roles, dedicación, equity, y lo que falta de cada uno |
 | [`narrativa.md`](narrativa.md) | La historia: problema, insight, por qué ahora, mercado, modelo de negocio, competencia |
+| [`competidores.md`](competidores.md) | **Quién hace lo mismo o parecido**, con enlaces directos a su página de YC, y qué hace Tridi en simple |
 | [`verdad-hoy.md`](verdad-hoy.md) | Qué funciona, qué no, qué números podemos decir. **Nada se infla** |
 | [`video-fundadores.md`](video-fundadores.md) | Guion del video de 1 minuto con todos los fundadores |
 | [`demo.md`](demo.md) | Guion del video de demo del producto |
