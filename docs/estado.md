@@ -4,6 +4,8 @@ Dónde está cada parte **ahora**. Es lo primero que lee un agente al empezar. C
 
 **Track:** 🧊 Three-Dimensional · **Idea:** Tridi: de video humano a un robot simulado que aprende a moverse solo ([decisión](decisiones/2026-10-23-idea-tridi.md)) · **Cierre de repos:** domingo 25, 08:30
 
+> **27 de octubre de 2026: el hackathon terminó.** Lo de abajo es el estado al cierre de Platanus Hack 26 (25 de octubre) y cada uno lo actualiza cuando retome su parte. Tridi sigue como empresa en este repo privado y aplica a YC Winter 2027: el estado de la aplicación está en [`../yc/README.md`](../yc/README.md) y lo que funciona hoy, en [`../yc/verdad-hoy.md`](../yc/verdad-hoy.md). El espejo `juanevillam/tridi-data` se borró el 27 de octubre.
+
 ---
 
 ## Pastor: física, render y entrenamiento (`physics/`, `training/`)

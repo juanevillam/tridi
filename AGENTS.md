@@ -4,9 +4,26 @@ Private company repo of **Tridi** (`juanevillam/tridi`): Juan, Pastor, César an
 
 Tridi was born at Platanus Hack 26 Caracas (October 23 to 25, 2026). This repo was cloned from the hackathon repo's `main` with its full history on 2026-10-27, and the product continues here. Older docs (`docs/bitacora/`, `docs/decisiones/`, `docs/pitch/`) are the hackathon's record: keep them as history, don't rewrite them.
 
-## Y Combinator
+## Where the company stands (read this first)
 
-Everything about the **Y Combinator application** lives in [`yc/`](yc/README.md) (Spanish; answers for the form in English). Never state a YC answer, metric or claim that [`yc/verdad-hoy.md`](yc/verdad-hoy.md) does not back.
+- **Goal:** apply to **Y Combinator Winter 2027** (on-time deadline **2026-11-02, 8pm PT**; decisions by Dec 11; batch Jan-Mar 2027 in San Francisco), then to every YC batch in 2027 until we get in. This is our first YC application.
+- **Everything YC lives in [`yc/`](yc/README.md)** (Spanish; answers for the form in English): the form drafts, founders, narrative, what is true today, video scripts, interview prep, legal/equity, the day-by-day plan, and research on the startups YC accepted (`yc/investigacion/startups/`).
+- **Never state a YC answer, metric or claim that [`yc/verdad-hoy.md`](yc/verdad-hoy.md) does not back.** `TODO(name)` items are facts only that person knows: ask, never invent.
+- The team also runs other projects (Sálvalo, Tripealo); Tridi is the one we apply to YC with. See [`yc/otras-ideas.md`](yc/otras-ideas.md).
+- Quick catch-up for a teammate: the `tridi` skill (`/tridi estado`), in [`.claude/skills/tridi/SKILL.md`](.claude/skills/tridi/SKILL.md). Machine setup: `/tridi setup`.
+
+## Map
+
+| Need | Where |
+| --- | --- |
+| What each area does and how to run it | `data/README.md`, `physics/README.md`, `training/README.md`, `web/` |
+| Where each part is now | [`docs/estado.md`](docs/estado.md), newest [`docs/bitacora/`](docs/bitacora) |
+| Shared formats between areas | [`docs/contrato.md`](docs/contrato.md) |
+| Why things are the way they are | [`docs/decisiones/`](docs/decisiones) |
+| The pitch we presented, scripts, hard questions | [`docs/pitch/`](docs/pitch) (`tridi-pitch.pdf`), [`yc/contexto-tecnico.md`](yc/contexto-tecnico.md) |
+| The YC application | [`yc/README.md`](yc/README.md) |
+| Startups YC accepted, by batch, and what we learn from them | [`yc/investigacion/startups/`](yc/investigacion/startups/README.md) |
+| Market research for robot data | [`yc/investigacion/mercado-robotica.md`](yc/investigacion/mercado-robotica.md) |
 
 ## Remotes
 
@@ -17,7 +34,8 @@ Everything about the **Y Combinator application** lives in [`yc/`](yc/README.md)
 
 1. Read [`docs/estado.md`](docs/estado.md) (where each part is now) and the latest files in [`docs/bitacora/`](docs/bitacora) (what happened while this person was away).
    Before writing product copy or claims (web, README, pitch), check the "Qué es verdad hoy y qué es plan" table in [`docs/pitch/pitch-producto.md`](docs/pitch/pitch-producto.md): what is planned is never shown as done.
-2. Research, pitches, judges and the study guide live in the team's **private** sibling repo `../platanus-ideas` (start at `docs/preparacion/00-empieza-aqui.md`). Use it as context; it stays a separate repo.
+2. If the session touches the YC application, also read [`yc/README.md`](yc/README.md) (status and dates) and [`yc/verdad-hoy.md`](yc/verdad-hoy.md).
+3. Older research from before the hackathon lives in the private repo `juanevillam/platanus-ideas` (optional; if cloned next to this repo as `../platanus-ideas`, the sync hook keeps it updated).
 
 ## Git workflow (mandatory)
 
@@ -26,7 +44,7 @@ Full detail in [`CONTRIBUTING.md`](CONTRIBUTING.md). What an agent must do:
 - **Never commit on `main`.** A pre-push hook (`.githooks/pre-push`, enabled by `scripts/setup.sh`) rejects direct pushes to it. Work on the person's branch `<name>/<topic>`; if you are on `main`, create one first.
 - **A `sync-main:` message at the start of a prompt** comes from the hook that rebased this branch onto `origin/main`. Read the incoming commits: teammates may have changed code you depend on. If it reports a conflict, resolve it with `git rebase origin/main` before anything else, keeping both sides' intent; if the conflict is in another person's folder, ask before choosing.
 - **Commit small and often**, in English with conventional commits and the area as scope: `feat(physics): ...`, `fix(data): ...`, `docs(pitch): ...`. One logical change per commit.
-- **Ship when something works**: `scripts/ship.sh "<type(scope): title>"` squash-merges the branch into `main` and resets the branch to the new `main`. Only ship code that runs: `main` is what gets deployed. Ask the person before shipping if they have not asked you to.
+- **Ship when something works**: `scripts/ship.sh "<type(scope): title>"` squash-merges the branch into `main` and resets the branch to the new `main`. Only ship code that runs: `main` must always work. Ask the person before shipping if they have not asked you to.
 - **Stay in your owner's folder.** If you must touch another area, make it a separate small commit and tell the person so they can warn its owner.
 - **Shared contract** (message formats, types, data schema) lives in [`docs/contrato.md`](docs/contrato.md) and its types file. A contract change is its own commit, shipped before the code that uses it.
 
@@ -43,11 +61,12 @@ Rules and template in [`docs/bitacora/README.md`](docs/bitacora/README.md).
 
 | Person | GitHub | Area | Folder |
 | --- | --- | --- | --- |
-| Pastor | @torpass | Physics engine, robot, retargeting and 3D render | `physics/` |
-| Juan | @juanevillam | Data extraction: camera and video to a clean pose clip of one subject | `data/` |
-| César | @cisorm | User experience of the simulation (web app) | `web/` |
-| Ale | @alehernandezt | Strategy, pitch and script (does not code) | `docs/` |
-| Pastor, then Juan | @torpass | Policy training (Juan joins with the first `PoseClip`) | `training/` |
+| Juan | @juanevillam | Data (video and camera → `PoseClip`, video server), training, much of the web | `data/`, `training/` |
+| Pastor | @torpass | Physics engine, robot, retargeting, 3D render, training | `physics/`, `training/` |
+| César | @cisorm | The web app | `web/` |
+| Ale | @alehernandezt | Strategy, pitch, YC application, customer conversations (does not code) | `docs/`, `yc/` |
+
+Who are the founders on the YC application, and who is CEO, is still open: [`yc/fundadores.md`](yc/fundadores.md).
 
 ## Deploy
 

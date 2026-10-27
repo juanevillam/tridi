@@ -93,6 +93,11 @@ Reglas y plantilla en [`docs/bitacora/README.md`](docs/bitacora/README.md).
 
 ## Preparar tu máquina (una vez)
 
+La forma fácil: abre Claude Code en tu carpeta de código y pide `/tridi setup` (la skill vive en `.claude/skills/tridi/`; si todavía no clonaste, pídele a Claude que siga los pasos de abajo). Después, `/tridi estado` te pone al día.
+
+A mano:
+
+
 1. Instala `gh`, la terminal de GitHub. En macOS: `brew install gh`. En Windows o Linux: [cli.github.com](https://cli.github.com).
 2. Inicia sesión: `gh auth login` → GitHub.com → SSH → entrar con el navegador.
 3. Acepta la invitación a `juanevillam/tridi` en [github.com/notifications](https://github.com/notifications).
