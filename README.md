@@ -1,5 +1,7 @@
 # team-26 Platanus Hack 26: Caracas ft. Yummy Project
 
+> **Repo privado de la empresa.** Aquí sigue Tridi después de Platanus Hack 26, y aquí vive todo lo de la aplicación a Y Combinator: [`yc/`](yc/README.md). El repo público del hackathon ([platanus-hack/platanus-hack-26-ve-team-26](https://github.com/platanus-hack/platanus-hack-26-ve-team-26)) queda como está.
+
 **Current project logo:** project-logo.png
 
 <img src="./project-logo.png" alt="Project Logo" width="200" />
