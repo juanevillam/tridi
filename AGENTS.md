@@ -1,20 +1,23 @@
-# Team 26: context for agents
+# Tridi: context for agents
 
-Official repo of team 26 at **Platanus Hack 26 Caracas** (October 23 to 25, 2026), track **🧊 Three-Dimensional**: Juan, Pastor, César and Ale. The product is **Tridi**, for Physical AI: it turns video into training data for humanoid robots. Video or camera → 3D skeleton of one person → the motion on a simulated Unitree G1 (MuJoCo) → the robot learns it by imitation, with pushes and varied worlds → it delivers a small trained policy (ONNX) and the physics-corrected motion data. Pitch, and what is true today versus planned: [`docs/pitch/pitch-producto.md`](docs/pitch/pitch-producto.md); how it is built, by area: [`docs/plan-producto.md`](docs/plan-producto.md). Origin of the idea: [`docs/decisiones/2026-10-23-idea-tridi.md`](docs/decisiones/2026-10-23-idea-tridi.md). The repo is public, it closes Sunday 08:30, and judges read it with AI agents: keep it clean, and write the reason next to every threshold or magic number.
+Private company repo of **Tridi** (`juanevillam/tridi`): Juan, Pastor, César and Ale. Tridi is for Physical AI: it turns video into training data for humanoid robots. Video or camera → 3D skeleton of one person → the motion on a simulated Unitree G1 (MuJoCo) → the robot learns it by imitation, with pushes and varied worlds → it delivers a small trained policy (ONNX) and the physics-corrected motion data. Pitch, and what is true today versus planned: [`docs/pitch/pitch-producto.md`](docs/pitch/pitch-producto.md); how it is built, by area: [`docs/plan-producto.md`](docs/plan-producto.md). Origin of the idea: [`docs/decisiones/2026-10-23-idea-tridi.md`](docs/decisiones/2026-10-23-idea-tridi.md). Write the reason next to every threshold or magic number.
 
-## This repo (read first)
+Tridi was born at Platanus Hack 26 Caracas (October 23 to 25, 2026). This repo was cloned from the hackathon repo's `main` with its full history on 2026-10-27, and the product continues here. Older docs (`docs/bitacora/`, `docs/decisiones/`, `docs/pitch/`) are the hackathon's record: keep them as history, don't rewrite them.
 
-This is **`juanevillam/tridi`, the private company repo**, cloned from the hackathon repo's `main` with its full history on 2026-10-27. Tridi continues here, and everything about the **Y Combinator application** lives in [`yc/`](yc/README.md) (Spanish; answers for the form in English). What follows below was written for the public hackathon repo and still describes the code; where it disagrees with this section, this section wins:
+## Y Combinator
 
-- `origin` is `juanevillam/tridi`; the hackathon repo is the remote `platanus-hack`. Never push this repo's branches there: it is public, and `yc/` is private.
-- `scripts/mirror.sh` is disabled: the live demo still deploys from `Torpass/tridi`, which mirrors the hackathon repo, not this one.
-- Never state a YC answer, metric or claim that [`yc/verdad-hoy.md`](yc/verdad-hoy.md) does not back.
+Everything about the **Y Combinator application** lives in [`yc/`](yc/README.md) (Spanish; answers for the form in English). Never state a YC answer, metric or claim that [`yc/verdad-hoy.md`](yc/verdad-hoy.md) does not back.
+
+## Remotes
+
+- `origin` is `juanevillam/tridi` (private). The hackathon repo may exist as a remote `platanus-hack`: it is public and frozen, never push there.
+- No mirror: nothing in this repo deploys yet (see Deploy below).
 
 ## Start of every session
 
 1. Read [`docs/estado.md`](docs/estado.md) (where each part is now) and the latest files in [`docs/bitacora/`](docs/bitacora) (what happened while this person was away).
    Before writing product copy or claims (web, README, pitch), check the "Qué es verdad hoy y qué es plan" table in [`docs/pitch/pitch-producto.md`](docs/pitch/pitch-producto.md): what is planned is never shown as done.
-2. Research, pitches, judges and the study guide live in the team's **private** sibling repo `../platanus-ideas` (start at `docs/preparacion/00-empieza-aqui.md`). Use it as context; never copy private material (chats, personal notes) into this public repo.
+2. Research, pitches, judges and the study guide live in the team's **private** sibling repo `../platanus-ideas` (start at `docs/preparacion/00-empieza-aqui.md`). Use it as context; it stays a separate repo.
 
 ## Git workflow (mandatory)
 
@@ -46,17 +49,10 @@ Rules and template in [`docs/bitacora/README.md`](docs/bitacora/README.md).
 | Ale | @alehernandezt | Strategy, pitch and script (does not code) | `docs/` |
 | Pastor, then Juan | @torpass | Policy training (Juan joins with the first `PoseClip`) | `training/` |
 
-## Submission files (from the organizers)
-
-`platanus-hack-project.jsonc` (name, Spanish one-liner and description, deploy URL), `project-description.md`, `project-logo.png` (1000x1000, max 500 KB) and a concise `README.md`. Edit them only when the person asks.
-
-Platanus validates **every commit on `main`** and posts "Submission Invalid" in Discord if these files hold placeholders, or lose their filled values. `scripts/ship.sh` runs `scripts/check-submission.sh` and refuses to ship otherwise. `deploy-url` is https://tridi-alpha.vercel.app.
-
 ## Deploy
 
-Vercel and Render cannot connect to this organization repo, so they deploy from the public mirror [`Torpass/tridi`](https://github.com/Torpass/tridi), which `scripts/ship.sh` updates after every merge (`scripts/mirror.sh`). Never commit to the mirror. Detail in [`docs/decisiones/2026-10-23-deploy.md`](docs/decisiones/2026-10-23-deploy.md).
+The live demo, https://tridi-alpha.vercel.app (Vercel project `tridi`, Pastor's account), still deploys from the public mirror [`Torpass/tridi`](https://github.com/Torpass/tridi) of the frozen hackathon repo: it stays up as it is, and nothing in this repo changes it. Moving deploys to this repo is a pending decision ([`yc/legal-y-equity.md`](yc/legal-y-equity.md#deploy)).
 
-- **Web:** Vercel project `tridi` (Pastor's account), production https://tridi-alpha.vercel.app, built from `physics/` until `web/` exists.
 - **Video server:** `data/server.py` runs on Juan's Mac behind a Cloudflare tunnel (`data/serve.sh`); it writes the tunnel's changing URL to a gist that the web reads, so the web's address never changes (`?api=` still overrides it). It keeps only PoseClips, never videos. Detail in [`docs/decisiones/2026-10-24-servidor-de-video-en-la-mac.md`](docs/decisiones/2026-10-24-servidor-de-video-en-la-mac.md).
 
 ## Conventions
