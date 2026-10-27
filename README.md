@@ -8,7 +8,7 @@ Grabas a una persona moviéndose con el celular. Un humanoide aprende a hacerlo 
 
 Repo privado de la empresa. Todo lo de la aplicación a Y Combinator vive en [`yc/`](yc/README.md).
 
-👉 Demo en vivo: [tridi-alpha.vercel.app](https://tridi-alpha.vercel.app)
+👉 Demo en vivo: [tridi-alpha.vercel.app](https://tridi-alpha.vercel.app) · Pitch: [`docs/pitch/tridi-pitch.pdf`](docs/pitch/tridi-pitch.pdf)
 
 ## El problema
 
