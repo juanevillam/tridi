@@ -141,6 +141,8 @@ Video de 1-3 minutos: [`demo.md`](demo.md).
 
 ### Who are your competitors? What do you understand about your business that they don't?
 
+> TODO: reescribir con [`investigacion/startups/robotica-y-physical-ai.md`](investigacion/startups/robotica-y-physical-ai.md): nombrar a Asimov (YC W26) e Intelligence Factory (YC Spring 26) y posicionarnos como la capa de conversión de cuerpo entero.
+>
 > Closest: open research pipelines like G1 Moves and VideoMimic that turn single-camera video into humanoid motion; Ultimate Bots Studio, which maps video onto NVIDIA's pre-trained controller; data vendors like Scale AI and Micro1 that sell raw human video and teleoperation; and phone mocap tools (Move.ai, DeepMotion) that stop at the skeleton.
 >
 > What we understand: raw human video and pose capture are becoming a commodity; what's scarce is motion a specific robot can actually perform. The value is in the physics step that turns an impossible human motion into a feasible robot motion, plus a policy that already executes it. We sell that per motion and per robot, not a giant foundation model only NVIDIA or Figure can train. **(débil: validar con clientes.)**
