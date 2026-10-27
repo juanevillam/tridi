@@ -32,6 +32,7 @@ Antes de enviar, abrir el formulario real: YC cambia preguntas entre batches. La
 | [`entrevista.md`](entrevista.md) | Preparación de la entrevista de 10 minutos: preguntas probables y respuestas |
 | [`legal-y-equity.md`](legal-y-equity.md) | Empresa, reparto de acciones, propiedad del código del hackathon, preguntas abiertas |
 | [`otras-ideas.md`](otras-ideas.md) | Sálvalo, Tripealo y las ideas de Platanus: cómo contarlas sin que parezca falta de foco |
+| [`../docs/pitch/tridi-pitch.pdf`](../docs/pitch/tridi-pitch.pdf) | El pitch que presentamos (4 slides), base del video y la entrevista |
 | [`recursos.md`](recursos.md) | Lecturas obligatorias de YC y enlaces |
 | [`aplicaciones/`](aplicaciones) | Copia exacta de lo enviado en cada batch, con la fecha y el resultado |
 
