@@ -2,7 +2,15 @@
 
 Lo mismo que hicimos con los rivales de Platanus Hack, pero con YC: quién entra, qué hace, de dónde es, cómo se presentó. No es para copiar ideas (cada batch es distinto), sino para entender qué tipo de equipo y de historia entra, y contar la nuestra mejor.
 
-Cubre **los cuatro batches de 2026** (Winter, Spring, Summer, Fall), **los de 2022 a 2025** para ver la tendencia, y lo que ya se publicó de **2027**. Se actualiza con cada batch nuevo.
+Qué cubre (bajado el 27 de octubre de 2026):
+
+| Año | Batches | Startups | Para qué |
+| --- | --- | --- | --- |
+| **2026** | Winter, Spring, Summer, Fall | **801** | **El foco:** análisis, fichas de robótica, Latinoamérica |
+| 2027 | Winter, Summer (las primeras publicadas) | 7 | Se completa cuando YC publique cada batch |
+| 2022-2025 | Todos | 2.335 | Comparar y ver hacia dónde va YC |
+
+Se actualiza con cada batch nuevo.
 
 ## Archivos
 
