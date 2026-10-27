@@ -22,12 +22,6 @@ if [ -z "$(git log --oneline origin/main..HEAD)" ]; then
   exit 0
 fi
 
-# Platanus marks every commit on main that fails its submission check as invalid.
-if ! "$(dirname "$0")/check-submission.sh"; then
-  echo "ship: fix the submission files above before shipping to main."
-  exit 1
-fi
-
 # Default title: the oldest commit on the branch, which usually names the feature.
 title=${1:-$(git log --reverse --format=%s origin/main..HEAD | head -n 1)}
 
@@ -50,6 +44,3 @@ git fetch --quiet origin main
 git reset --quiet --hard origin/main
 git branch --quiet --unset-upstream 2>/dev/null || true
 echo "ship: '$title' is on main. '$branch' now matches main; keep working here."
-
-# Deploys run from the mirror; a failure here leaves main shipped and only delays the deploy.
-"$(dirname "$0")/mirror.sh" || true

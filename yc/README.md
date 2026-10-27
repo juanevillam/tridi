@@ -2,7 +2,7 @@
 
 Todo lo de la aplicación a YC, en un solo lugar. Primera vez que aplicamos. Plan acordado: **Winter 2027 ahora**, y en 2027 aplicar a todos los batches (Spring, Summer, Fall, Winter 2028) hasta entrar.
 
-> Repo privado. Nada de `yc/` va a un repo público ni al espejo de deploy (`scripts/mirror.sh` está desactivado aquí).
+> Repo privado. Nada de `yc/` va a un repo público ni al espejo de deploy (este repo no tiene espejo).
 
 ## Fechas que importan (Winter 2027)
 
@@ -57,4 +57,4 @@ Antes de enviar, abrir el formulario real: YC cambia preguntas entre batches. La
 
 ## Sobre el código
 
-El resto del repo es Tridi tal como quedó al cierre de Platanus Hack 26 (151 commits del equipo). El repo público del hackathon (`platanus-hack/platanus-hack-26-ve-team-26`) queda como está; este es donde sigue el producto. El demo vivo, [tridi-alpha.vercel.app](https://tridi-alpha.vercel.app), todavía sale del espejo `Torpass/tridi`, que copia el repo del hackathon: mover el deploy a este repo es una decisión aparte (ver [`legal-y-equity.md`](legal-y-equity.md#propiedad-del-código)).
+El resto del repo es Tridi tal como quedó al cierre de Platanus Hack 26 (151 commits del equipo). El repo público del hackathon (`platanus-hack/platanus-hack-26-ve-team-26`) queda como está; este es donde sigue el producto. El demo vivo, [tridi-alpha.vercel.app](https://tridi-alpha.vercel.app), todavía sale del espejo `Torpass/tridi`, que copia el repo del hackathon: mover el deploy a este repo es una decisión aparte (ver [`legal-y-equity.md`](legal-y-equity.md#deploy)).

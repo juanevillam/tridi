@@ -37,7 +37,7 @@ El demo vivo sale del espejo público `Torpass/tridi` (cuenta de Pastor), que co
 - **Dejarlo así** mientras dure la aplicación: el demo sigue funcionando y no tocamos nada.
 - **Mover el deploy a este repo privado** cuando el producto siga aquí: un proyecto de Vercel conectado a `juanevillam/tridi` (o a una organización de GitHub de Tridi), con dominio propio.
 
-`scripts/mirror.sh` está desactivado en este repo para que nada privado llegue al espejo público.
+Este repo no tiene espejo (se borró `scripts/mirror.sh`), así que nada privado llega al espejo público.
 
 ## Dónde vive el repo
 
