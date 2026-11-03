@@ -62,6 +62,46 @@
   color-scheme: dark;
 }
 
+/* Languages (src/i18n.js): every translated string is in the page once per language, and the
+   one <html data-lang> names shows. Switching flips that attribute: nothing reloads. */
+html[data-lang='es'] .t[lang='en'],
+html[data-lang='en'] .t[lang='es'] {
+  display: none !important;
+}
+
+/* ES · EN: a small segmented switch for the headers. */
+.lang-switch {
+  display: inline-flex;
+  flex: none;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font: 600 11px/1 var(--mono);
+  letter-spacing: 0.06em;
+}
+
+.lang-switch button {
+  min-width: 30px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.lang-switch button:hover {
+  color: var(--ink);
+}
+
+html[data-lang='es'] .lang-switch button[lang='es'],
+html[data-lang='en'] .lang-switch button[lang='en'] {
+  background: var(--signal);
+  color: var(--on-signal);
+}
+
 /* Short phone versions of some lines: .only-wide is the long copy, .only-narrow its phone
    version. Phones and small tablets (860 px, the landing's phone layout) read the short one. */
 .only-narrow {

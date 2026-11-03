@@ -332,10 +332,13 @@ html.is-landing.lenis body {
   height: 1.17em;
 }
 
+.topbar .lang-switch {
+  margin-left: auto;
+}
+
 .topnav {
   display: flex;
   gap: var(--s-6);
-  margin-left: auto;
   font: 500 12px/1 var(--mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -1233,7 +1236,7 @@ html.is-landing.lenis body {
     display: none;
   }
 
-  .topbar .btn {
+  .topbar .lang-switch {
     margin-left: auto;
   }
 }
