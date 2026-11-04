@@ -7,6 +7,7 @@ worker processes, each stepping its group with numpy arrays sent through a pipe.
 from __future__ import annotations
 
 import multiprocessing as mp
+import signal
 
 import numpy as np
 
@@ -36,6 +37,9 @@ def make_env(task: str, seed: int, push: bool, push_n: tuple[float, float], moti
 
 def _worker(conn, seeds: list[int], push: bool, push_n: tuple[float, float], task: str, motion: str | None,
             push_every: tuple[float, float], stance: Stance | None, worlds: tuple[str, ...], wind_max: float | None) -> None:
+    # Ctrl-C reaches every process of the terminal: the workers leave it to the main one, which saves
+    # latest.pt and closes them, instead of each dying with a traceback mid-step.
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
     envs = [make_env(task, s, push, push_n, motion, push_every, stance, worlds, wind_max) for s in seeds]
     while True:
         cmd, payload = conn.recv()

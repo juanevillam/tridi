@@ -48,6 +48,22 @@ uv run --project training python -m training.rollout <carpeta>/<clip_id>-step-<N
 
 `rollout.py` corre la política final (el ONNX) desde el inicio del clip en N episodios por mundo de `physics/worlds/`, con cada parámetro sorteado en su rango y aplicado como `applyWorld()` de `physics/src/sim.js`, y guarda `meta.json` + `rollouts.npz` con el formato del [contrato](../docs/contrato.md#datos-para-entrenar-robots-2026-10-24).
 
+## Entrenar horas o días en la Mac de trabajo (rama `juan/experimental`)
+
+`ppo.py` cuida la Mac y no gasta horas en algo que dejó de aprender ([plan v2](../docs/plan-v2.md), sección 3):
+
+- **Guardián** ([`guard.py`](guard.py)): a toda máquina si nadie usa la Mac; en prioridad de fondo si la estás usando (fresca y fluida, ~8× más lento: ~1.300 contra 11.400 pasos/s en la M2 Air), o `--shared nice` (todos los núcleos con nice 10: rápido, más tibia); en pausa si está a batería, caliente (estado térmico de macOS "serious" o más) o con la memoria al límite. Mantiene la Mac despierta solo mientras entrena enchufada. `--no-guard` lo apaga.
+- **Pausar a mano:** `uv run --project training python -m training.guard pause` (y `resume`, `status`).
+- **Reanudar:** `latest.pt` cada 5 min y al cortar con Ctrl-C; `--resume` sigue donde quedó (después de un reinicio también).
+- **Meseta** ([`plateau.py`](plateau.py)): cada checkpoint se evalúa (`evals.csv`); si 3 evaluaciones seguidas no mejoran 2 %, o 10× los pasos no dan +10 %, el run para solo y escribe `plateau.md` con el porqué. `--no-plateau-stop` lo deja seguir. Una corrida larga sin `--every` igual tiene ~20 evaluaciones.
+- **Registro:** cada run terminado suma una línea a [`experiments.csv`](experiments.csv) (versionado): commit, pasos, minutos, pausas, métrica final y mejor, por qué paró y `--note "qué cambia y por qué"`.
+
+```bash
+uv run --project training python -m training.ppo --task mimic --motion <clip> --steps 1000000000 --run walk-v5 \
+  --note "qué cambia respecto de walk-v4"            # días; para solo si se estanca
+uv run --project training python -m training.ppo ... --run walk-v5 --resume   # después de un corte
+```
+
 ## La entrega de un clip
 
 Lo que se lleva el cliente, en una carpeta: la política final (`.onnx` + `.json`), el dataset, el `RobotMotion`, el `PoseClip` y la escena del video, más `delivery.json` (resumen por mundo y por episodio, la escalera de checkpoints y los archivos con su peso) y `replay.json` (cada episodio a 25 Hz y siempre con su última fila, para verlo sin bajar el dataset). Formato en el [contrato](../docs/contrato.md#la-entrega-de-un-clip-propuesta-de-juan-2026-10-24); el servidor la arma sola después del dataset ([`data/`](../data/README.md)).
