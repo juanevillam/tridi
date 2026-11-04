@@ -85,6 +85,16 @@ Trabajar en una rama aparte (`juan/experimental`, local, sin push ni deploy: la 
   - **Rampa de empujones sin efecto:** semilla 0 en 75, 150, 225 y 300 N: en calma sigue 100 %, con empujones 5 % en todas las etapas. **Por qué:** 17 de 20 episodios empujados no terminaban por caída sino por quedar a más de 0,6 m del camino de la referencia (fijo en el mundo). Un robot empujado no puede volver al camino, y el corte escondía lo que pasaba después: con el camino siguiendo al robot, 19 de 20 sí se caen. El entrenamiento nunca practicó recuperarse lejos del camino.
   - **Arreglo (`11cf6e3`):** `--follow`: pasados 0,3 m, el camino de la referencia se desliza con el robot y el episodio termina solo por caída. `training.rung1` mide los empujones igual. La rampa vieja se cortó (semilla 1 en 75 N); relanzada con `--follow` en 150 y 300 N, 4 M pasos por etapa (`walk-follow{150,300}-seed{0,1}`).
   - **Primera etapa con `--follow`** (`walk-follow150-seed0`, 4 M pasos, 21,9 min): calma 100 %, con empujones **15 %** (antes 5 %): primera mejora con empujones. **Pausado a pedido de Juan** (la Mac la necesita para otros proyectos): `walk-follow300-seed0` cortado al empezar, semilla 1 sin empezar. Para seguir: correr la etapa de 300 N desde `walk-follow150-seed0/latest.pt`, y las dos etapas de la semilla 1 desde `walk-push75-seed1/latest.pt`.
+  - **Rampa con `--follow` terminada** (4 M pasos por etapa, 8-22 min cada una): calma sigue 100 % en las dos semillas. Con empujones aleatorios de 0 a F N cada 2-4 s, llegan al final:
+
+    | Política | 50 N | 100 N | 150 N | 200 N | 300 N |
+    | --- | --- | --- | --- | --- | --- |
+    | `walk-nudge-v2-seed0` (antes) | 100 % | 65 % | 35 % | 10 % | 5 % |
+    | `walk-follow300-seed0` | 100 % | 95 % | 75 % | 40 % | 10 % |
+    | `walk-follow300-seed1` | 100 % | 90 % | 45 % | 15 % | 10 % |
+
+  - **El empujón de la web (250 N, una vez, 0,1 s; `training/evaluate.py`) tumba la caminata siempre:** 0 de 20 (4 lados × 5 momentos) en las tres políticas. Hasta 100 N de frente la tumba 2,5 s después. Las políticas de pie lo aguantan; caminando, recuperarse pide salirse de la referencia (dar un paso de más) y la recompensa premia copiarla. 4 M pasos por etapa es poco: las de pie entrenaron 40 M+.
+  - Siguiente: una corrida larga con empujones (decenas de M pasos, ~1-2 h con la Mac libre) y, si no basta, una recompensa que tolere apartarse de la pose de referencia justo después de un empujón.
   - Error mío: un `git checkout` de `training/experiments.csv` borró las filas de `walk-nudge-v1`; reconstruidas desde sus `evals.csv` (marcadas en la nota).
   - La Mac se pasó a batería a mitad del entrenamiento: el guardián lo pausó y siguió solo al enchufarla.
 
