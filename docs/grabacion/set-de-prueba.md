@@ -100,7 +100,7 @@ Unos 5 por habilidad, a propósito variados: no los videos "perfectos", sino los
 | Manos | "waving hand", "counting fingers", "sign language" | Dedos: para las manos de 5 dedos |
 | Objetos | "lifting box", "carrying boxes" | Cuerpo entero + objeto |
 
-Hay 25 candidatos de Pexels en el manifiesto, revisados el 2026-11-03: 10 `ok`, 8 `difícil` (casos que hoy fallan y la captura 2.0 tiene que resolver), 1 `descartado` y 6 `sin-bajar`. Esos 6 Pexels los bloqueó con 403 (protección anti-bot) al bajarlos en ráfaga; se bajan a mano con su botón \"Free download\" y se suman con `add <archivo> --id <el mismo id>`. Faltan buenos de **caminar de perfil** y **correr con piernas** (cuerpo entero).
+Hay 25 candidatos de Pexels en el manifiesto, revisados el 2026-11-03: 10 `ok`, 8 `difícil` (casos que hoy fallan y la captura 2.0 tiene que resolver), 1 `descartado` y 6 `sin-bajar`. Esos 6 Pexels los bloqueó con 403 (protección anti-bot) al bajarlos en ráfaga; se bajan a mano con su botón "Free download" y se suman con `add <archivo> --id <el mismo id>`. Faltan buenos de **caminar de perfil** y **correr con piernas** (cuerpo entero).
 
 ### Lo difícil también entra
 
