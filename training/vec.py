@@ -17,7 +17,7 @@ from .env import PUSH_EVERY_S, PUSH_N, G1Env, Stance
 def make_env(task: str, seed: int, push: bool, push_n: tuple[float, float], motion: str | None = None,
              push_every: tuple[float, float] = PUSH_EVERY_S, stance: Stance | None = None,
              worlds: tuple[str, ...] = (), wind_max: float | None = None, follow: bool = False,
-             recover: bool = False) -> G1Env:
+             recover: bool | float = False) -> G1Env:
     if worlds:
         # Robot `seed` lives in world seed mod n: seeds are consecutive, so each world gets an
         # equal share of the robots, and every reset draws new values inside its ranges.
@@ -40,7 +40,7 @@ def make_env(task: str, seed: int, push: bool, push_n: tuple[float, float], moti
 
 def _worker(conn, seeds: list[int], push: bool, push_n: tuple[float, float], task: str, motion: str | None,
             push_every: tuple[float, float], stance: Stance | None, worlds: tuple[str, ...], wind_max: float | None,
-            follow: bool = False, recover: bool = False) -> None:
+            follow: bool = False, recover: bool | float = False) -> None:
     # Ctrl-C reaches every process of the terminal: the workers leave it to the main one, which saves
     # latest.pt and closes them, instead of each dying with a traceback mid-step.
     signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -67,7 +67,7 @@ class VecEnv:
     def __init__(self, num_envs: int, workers: int, seed: int = 0, push: bool = True,
                  push_n: tuple[float, float] = PUSH_N, task: str = "stand", motion: str | None = None,
                  push_every: tuple[float, float] = PUSH_EVERY_S, stance: Stance | None = None,
-                 worlds: tuple[str, ...] = (), wind_max: float | None = None, follow: bool = False, recover: bool = False):
+                 worlds: tuple[str, ...] = (), wind_max: float | None = None, follow: bool = False, recover: bool | float = False):
         self.num_envs = num_envs
         groups = np.array_split(np.arange(num_envs) + seed * 10_000, workers)
         ctx = mp.get_context("spawn")  # fork is unsafe on macOS once torch is loaded

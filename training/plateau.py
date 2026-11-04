@@ -99,7 +99,12 @@ def forecast(evals: list[tuple[int, float]], goal: float) -> Forecast | None:
     if b <= 0:
         return Forecast(float(b), float("inf"), noise, f"not rising ({b:+.3f} per 10x steps, noise {noise:.3f})")
     steps = float(10 ** ((goal - a) / b))
-    when = "already there by the fit" if steps <= now else f"at ~{steps:,.0f} steps ({steps / now:,.0f}x now)"
+    if steps <= now:
+        when = "already there by the fit"
+    elif steps > 1e4 * now:  # 4+ decades away: on this Mac, never
+        when = f"more than 10,000x the steps away (~10^{np.log10(steps):.0f})"
+    else:
+        when = f"at ~{steps:,.0f} steps ({steps / now:,.0f}x now)"
     return Forecast(float(b), steps, noise, f"{b:+.3f} per 10x steps (noise {noise:.3f}): goal {goal:.2f} {when}")
 
 

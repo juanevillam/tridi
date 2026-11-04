@@ -199,7 +199,7 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
           seed: int = 0, worlds: tuple[str, ...] = (), wind_max: float | None = None, resume: bool = False,
           guard_on: bool = True, plateau_stop: bool = True, note: str = "", argv: str = "", shared: str = "background",
           register_run: bool = True, robust: bool = False, adaptive_lr: bool = True, follow: bool = False,
-          metric: str = "follow", goal: float = 0.9, budget_steps: float = 100_000_000, recover: bool = False) -> None:
+          metric: str = "follow", goal: float = 0.9, budget_steps: float = 100_000_000, recover: bool | float = False) -> None:
     run_dir = RUNS / run
     run_dir.mkdir(parents=True, exist_ok=True)
     torch.manual_seed(seed)
@@ -581,8 +581,8 @@ def main() -> None:
     p.add_argument("--goal", type=float, default=0.9, help="pushwalk: the score that counts as done")
     p.add_argument("--budget-steps", type=float, default=100_000_000,
                    help="pushwalk: stop when the forecast reaches the goal only past this many steps")
-    p.add_argument("--recover", action="store_true",
-                   help="mimic: for RECOVER_S after a push, reward staying up over copying the pose (imitate.py)")
+    p.add_argument("--recover", nargs="?", const=True, default=False, type=float, metavar="SECONDS",
+                   help="mimic: for RECOVER_S (or SECONDS) after a push, reward staying up over copying the pose (imitate.py)")
     p.add_argument("--fixed-lr", action="store_true", help=f"keep the learning rate at {LR} (runs before the adaptive rate)")
     p.add_argument("--std", type=float, help="reset the action std to this (e.g. 0.3) when continuing with --init")
     p.add_argument("--seed", type=int, default=0, help="torch and environment seed (every run replays seed 0 otherwise)")
