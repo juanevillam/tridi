@@ -145,9 +145,16 @@ def motion_robot(motion: str) -> str:
 
 
 class MimicEnv(G1Env):
-    def __init__(self, seed: int = 0, clips: tuple[str, ...] = (DEFAULT_MOTION,), push: bool = False):
+    def __init__(self, seed: int = 0, clips: tuple[str, ...] = (DEFAULT_MOTION,), push: bool = False,
+                 push_n: tuple[float, float] | None = None, push_every: tuple[float, float] | None = None,
+                 nudge: bool = False):
+        """nudge: every reset starts off the reference pose as G1Env's resets do (each joint
+        N(0, INIT_JOINT_NOISE), each speed N(0, INIT_VEL_NOISE)). Without it the walk learned from
+        exact starts only: one seed reached the end from 90 % of nudged starts, the other 25 %."""
         robot = motion_robot(clips[0])
-        super().__init__(seed=seed, push=push, robot=robot)
+        extra = {k: v for k, v in (("push_n", push_n), ("push_every", push_every)) if v is not None}
+        super().__init__(seed=seed, push=push, robot=robot, **extra)
+        self.nudge = nudge
         if robot == "g1":
             feet, soles = None, None
         else:
@@ -207,7 +214,15 @@ class MimicEnv(G1Env):
 
     def reset(self) -> np.ndarray:
         self.motion = self.motions[self.rng.integers(len(self.motions))]
-        return self.reset_at(self.rng.uniform(0, max(0.0, self.motion.duration - MIN_REMAINING_S)))
+        obs = self.reset_at(self.rng.uniform(0, max(0.0, self.motion.duration - MIN_REMAINING_S)))
+        if self.nudge:
+            from .env import INIT_JOINT_NOISE, INIT_VEL_NOISE
+
+            self.data.qpos[7:] += self.rng.normal(0, INIT_JOINT_NOISE, self.nu)
+            self.data.qvel[:] += self.rng.normal(0, INIT_VEL_NOISE, self.model.nv)
+            mujoco.mj_forward(self.model, self.data)
+            obs = self.observe()
+        return obs
 
     def reset_at(self, t: float) -> np.ndarray:
         """Start the episode at second t of the current clip, in its reference pose."""

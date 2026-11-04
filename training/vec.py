@@ -31,7 +31,9 @@ def make_env(task: str, seed: int, push: bool, push_n: tuple[float, float], moti
     if task == "mimic":
         from .imitate import DEFAULT_MOTION, MimicEnv
 
-        return MimicEnv(seed=seed, clips=(motion or DEFAULT_MOTION,))
+        # push: the robust mimic training (ppo.py --robust): a nudged start and random pushes.
+        return MimicEnv(seed=seed, clips=(motion or DEFAULT_MOTION,), push=push and push_n[1] > 0, push_n=push_n,
+                        push_every=push_every, nudge=push)
     return G1Env(seed=seed, push=push, push_n=push_n, push_every=push_every, stance=stance)
 
 

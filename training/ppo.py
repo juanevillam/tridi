@@ -189,7 +189,7 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
           push_every: tuple[float, float] = PUSH_EVERY_S, stance: Stance | None = None, std: float | None = None,
           seed: int = 0, worlds: tuple[str, ...] = (), wind_max: float | None = None, resume: bool = False,
           guard_on: bool = True, plateau_stop: bool = True, note: str = "", argv: str = "", shared: str = "background",
-          register_run: bool = True) -> None:
+          register_run: bool = True, robust: bool = False) -> None:
     run_dir = RUNS / run
     run_dir.mkdir(parents=True, exist_ok=True)
     torch.manual_seed(seed)
@@ -204,8 +204,9 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
         # bonus it only narrows further: a changed reward needs the exploration opened again.
         model.log_std.data.fill_(np.log(std))
     opt = torch.optim.Adam(model.parameters(), lr=LR, eps=1e-5)
-    envs = VecEnv(NUM_ENVS, WORKERS, seed=seed, push_n=push_n, task=task, motion=motion, push_every=push_every, stance=stance,
-                  worlds=worlds, wind_max=wind_max)
+    # Mimic pushes and nudges only with --robust: older mimic runs trained without them.
+    envs = VecEnv(NUM_ENVS, WORKERS, seed=seed, push=robust if task == "mimic" else True, push_n=push_n, task=task,
+                  motion=motion, push_every=push_every, stance=stance, worlds=worlds, wind_max=wind_max)
     obs = envs.reset()
     meta = {"task": task, "motion": motion} if task == "mimic" else {"task": task}
     meta["worlds"] = list(worlds) or ["plano"]
@@ -553,6 +554,8 @@ def main() -> None:
     p.add_argument("--shared", choices=["background", "nice"], default="background",
                    help="while the Mac is in use: background (cool and quiet, ~8x slower) or nice (fast, warm)")
     p.add_argument("--no-plateau-stop", action="store_true", help="keep training even if plateau.py says it stopped learning")
+    p.add_argument("--robust", action="store_true",
+                   help="mimic: nudged starts and random pushes (--push-min/--push-max), so the motion survives both")
     p.add_argument("--note", default="", help="what this run changes and why (goes to training/experiments.csv)")
     args = p.parse_args()
     task = "mimic" if args.task == "walk" else args.task
@@ -562,7 +565,7 @@ def main() -> None:
     train(args.steps, args.run, args.device, args.init, (args.push_min, args.push_max), task, args.motion,
           args.every, export_dir, args.policy_prefix, push_every, stance, args.std, args.seed,
           tuple(w for w in args.worlds.split(",") if w), args.wind_max, args.resume, not args.no_guard,
-          not args.no_plateau_stop, args.note, " ".join(sys.argv[1:]), args.shared)
+          not args.no_plateau_stop, args.note, " ".join(sys.argv[1:]), args.shared, robust=args.robust)
 
 
 if __name__ == "__main__":
