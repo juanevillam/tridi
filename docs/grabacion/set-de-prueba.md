@@ -45,6 +45,32 @@ Como no hay captura de movimiento profesional para comparar, se mide lo que un c
 | Correr de perfil | 97 % | 93,9 | 3,18 m/s | 1,2 cm | 12,8 % | 1,56 m |
 | Jumping jacks | 100 % | 18,1 | 0,57 m/s | 0,3 cm | 6,8 % | 1,55 m |
 
+**Sobre el set de internet** (MediaPipe de hoy, 2026-11-03; 19 videos de Pexels bajados, 14 dieron clip):
+
+| Clip | Qué es | valid | jitter | slide | sink | bones | altura |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| bailar-01 | 1 persona, cuerpo entero, vertical | 100 % | 11,4 | 0,29 | 0,2 | 9,6 % | 1,56 |
+| bailar-02 | 2 personas, cámara en mano, cortes | 95 % | 26,2 | 0,66 | 1,7 | 13,1 % | 1,55 |
+| bailar-grupo-02 | 3 personas, cámara alta | 99 % | 39,9 | 0,89 | 1,3 | 14,5 % | 1,38 |
+| caminar-01 | de espaldas, lejos | 100 % | 11,5 | 0,35 | 0,2 | 4,6 % | 1,47 |
+| caminar-02 (saltar) | saltos, cuerpo entero | 100 % | 44,5 | 0,86 | 3,1 | 11,1 % | 1,57 |
+| correr-01 | piernas fuera de cuadro | 8 % | 37,8 | 0,24 | 3,6 | 11,3 % | 1,35 |
+| dedos-01 | cintura para arriba | 100 % | 47,8 | 0,40 | 0,2 | 3,1 % | 1,45 |
+| escalera-02 | solo piernas, cortes | 22 % | 27,0 | 0,02 | 0,8 | 21,0 % | 1,38 |
+| jacks-01 | 1 persona, vertical | 100 % | 13,4 | 0,28 | 0,3 | 5,7 % | 1,54 |
+| jacks-grupo-01 | 2 personas | 100 % | 10,9 | 0,34 | 0,4 | 6,4 % | 1,53 |
+| lavar-04 | de perfil, cintura para arriba, espejo | 30 % | 4,3 | 0,01 | 0,0 | 1,5 % | 1,45 |
+| saludar-02 | cintura para arriba | 90 % | 9,3 | 0,23 | 0,0 | 3,2 % | 1,38 |
+| sentarse-01 | cortes de edición | 100 % | 7,8 | 0,14 | 0,3 | 7,5 % | 1,38 |
+| sentarse-02 | se sienta, la cámara se acerca | 96 % | 15,1 | 0,23 | 0,6 | 16,1 % | 1,42 |
+
+**Lo que dice:**
+
+- **Sin cuerpo entero, la captura de hoy no da nada.** lavar-02, lavar-05 (manos y antebrazos de cerca), correr-02 (sin piernas) y dedos-02 (una mano sola) fallaron: "que se vea el cuerpo entero". Y lavar-04, de la cintura para arriba, solo 30 % válido. Justo los videos de la habilidad estrella (lavar platos) y de los dedos. Por eso la captura 2.0 necesita un modo de medio cuerpo y un modelo de manos aparte (HaMeR), no solo más puntos.
+- Con varias personas elige una sola y sigue bien (jacks-grupo-01, bailar-grupo-02); elegir a todas falta.
+- Cámara alta, cortes y acercamientos estiran los huesos (14-21 %): un cuerpo con medidas fijas (SMPL-X) lo corrige por construcción.
+- La altura sale 1,35-1,57 m en todos: MediaPipe achica a la gente.
+
 El pie apoyado que "patina" casi 1 m/s caminando y los huesos que se estiran 6-13 % son exactamente lo que después hace que la referencia del robot no esté en equilibrio (los controles C1 y C2 de [`training/checks.py`](../../training/checks.py)).
 
 ## 3. Qué videos buscar
@@ -74,7 +100,7 @@ Unos 5 por habilidad, a propósito variados: no los videos "perfectos", sino los
 | Manos | "waving hand", "counting fingers", "sign language" | Dedos: para las manos de 5 dedos |
 | Objetos | "lifting box", "carrying boxes" | Cuerpo entero + objeto |
 
-Ya hay 25 candidatos de Pexels en el manifiesto (estado `candidato`, sin revisar). Al revisarlos: ¿se ve el cuerpo que importa (entero, o de la cintura para arriba en manos y lavar)? ¿cuántas personas? Si sirve, `estado` → `ok`; si no, se borra la fila.
+Hay 25 candidatos de Pexels en el manifiesto, revisados el 2026-11-03: 10 `ok`, 8 `difícil` (casos que hoy fallan y la captura 2.0 tiene que resolver), 1 `descartado` y 6 `sin-bajar`. Esos 6 Pexels los bloqueó con 403 (protección anti-bot) al bajarlos en ráfaga; se bajan a mano con su botón \"Free download\" y se suman con `add <archivo> --id <el mismo id>`. Faltan buenos de **caminar de perfil** y **correr con piernas** (cuerpo entero).
 
 ### Lo difícil también entra
 

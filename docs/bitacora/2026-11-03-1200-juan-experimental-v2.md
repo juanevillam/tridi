@@ -52,10 +52,14 @@ Trabajar en una rama aparte (`juan/experimental`, local, sin push ni deploy: la 
 - **C4 de la caminata: pasa.** Episodio 0,72 → 0,92 s (+28 %), recompensa 0,459 → 0,562 en 1 M pasos. Juntos: la caminata se puede aprender (C3, C4) pero su referencia no está en equilibrio (C1, C2). El problema no es el aprendizaje sino lo que se le pide.
 - **Bug arreglado en `checks.py`:** correr `--only c3,c4` escribía un informe que decía "Listo para entrenar largo" sin los C1/C2 fallidos. Ahora los resultados de cada control se guardan en `results.json` del clip y el informe y el veredicto juntan todos (y dicen qué falta).
 
+- **Quinta vuelta (Juan: "sí, bájalos"):** bajados 19 de 25 de Pexels (218 MB en `~/Tridi/set-de-prueba/videos`). `curl` al link de descarga de Pexels da 403; `yt-dlp` (extractor genérico) sí, así que `testset download` usa yt-dlp para todo. Seis siguieron con 403 de Cloudflare aun espaciados 45 s: no se forzó (sería saltar protección anti-bot); quedan `sin-bajar` para bajarlos a mano. Revisados con 4 cuadros cada uno: 10 ok, 8 difíciles, 1 descartado (3 s solo de guantes); caminar-02 en realidad son saltos (→ `saltar`).
+- Extraídos 14 clips; fallaron los 4 sin cuerpo entero (lavar-02, lavar-05, correr-02, dedos-02) y lavar-04 de medio cuerpo salió 30 % válido. **Hallazgo:** la captura de hoy no sirve para lavar platos ni dedos tal como la gente los filma; la captura 2.0 necesita medio cuerpo + manos (HaMeR). Línea de partida guardada como `mediapipe-2026-11-03` en `quality.csv` y en la guía.
+
 ## Sigue
 
 - Idiomas en En vivo, Subir, Simulaciones, Entrega, Cámara y Red.
 - Medir la fluidez con el panel visible y fijar el presupuesto (ningún cuadro > 50 ms).
 - Normalizar los retornos del crítico (gradiente siempre recortado).
 - Bloque 3 cambia de orden: primero una referencia en equilibrio (contactos de pies reales, pelvis corregida para que el ZMP quede sobre el apoyo), comprobada con C1-C2 en verde, y recién después entrenar.
-- Con el OK de Juan: bajar los 25 candidatos de Pexels, revisarlos, extraer y guardar la línea de partida sobre ellos.
+- Buscar más videos de caminar de perfil y correr con piernas visibles; bajar a mano los 6 `sin-bajar` si Juan quiere.
+- Captura 2.0: modo medio cuerpo y manos, medida contra esta línea de partida.

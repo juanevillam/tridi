@@ -14,7 +14,7 @@ the repo, never uploaded).
 
 Licenses (the manifest's "licencia" column): Pexels, Mixkit and Pixabay allow free use, commercial
 included. A TikTok, YouTube or Instagram video belongs to whoever posted it: fine for testing on this
-Mac, not as data we sell. Downloading those goes through yt-dlp, the same tool as Juan's song skill.
+Mac, not as data we sell. Every download goes through yt-dlp, the same tool as Juan's song skill.
 """
 
 from __future__ import annotations
@@ -65,14 +65,9 @@ def download(row: dict) -> Path | None:
         dst = VIDEOS / f"{row['id']}{src.suffix.lower()}"
         dst.write_bytes(src.read_bytes())
         return dst
-    if "pexels.com/video/" in url:
-        # Pexels serves the file at /download/video/<id>/ (a redirect to the mp4, its own "Free download").
-        number = url.rstrip("/").rsplit("-", 1)[-1]
-        dst = VIDEOS / f"{row['id']}.mp4"
-        done = subprocess.run(["curl", "-fsSL", "-A", "Mozilla/5.0", "-o", str(dst),
-                               f"https://www.pexels.com/download/video/{number}/"])
-        return dst if done.returncode == 0 and dst.exists() and dst.stat().st_size > 10_000 else None
-    # TikTok, YouTube, Instagram, Mixkit... yt-dlp; 1080p at most, the capture does not use more.
+    # Everything through yt-dlp, 1080p at most (the capture does not use more). Pexels too: its
+    # /download/video/<id>/ link answers 403 to curl (bot protection, 2026-11-03), while yt-dlp's
+    # generic extractor finds the page's own mp4 on videos.pexels.com.
     template = str(VIDEOS / f"{row['id']}.%(ext)s")
     done = subprocess.run(["yt-dlp", "-q", "-f", "bv*[height<=1080]+ba/b[height<=1080]/b", "--merge-output-format", "mp4",
                            "-o", template, url])
