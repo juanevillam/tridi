@@ -44,6 +44,16 @@ START_SHARE = 0.25
 # upright in 18 of 20 pushed episodes and 17 of them were still cut for being 0.6 m off the path.
 # 0.3 m is half that cut: inside it the path still pulls the robot back.
 FOLLOW_M = 0.3
+# recover (ppo.py --recover): for RECOVER_S after a push starts, the reward stops asking for the
+# reference pose and asks to stay upright. To catch itself a pushed walker must step where the clip
+# does not; with the copy reward, that step costs reward even when it saves the robot. Walk-long-seed0
+# survived the web's 250 N push in 22 % of trials after 30 M steps, gaining 0.11 per 10x steps.
+# 1 s: a recovery step is ~0.4 s in the clip (its step length), two steps and settling fit in 1 s.
+RECOVER_S = 1.0
+# During recovery: the share of the reward for copying the pose (some, so the gait is not forgotten),
+# for staying upright, and for still being up at all. They add to 1, the copy reward's maximum, so
+# being pushed is never better or worse than walking undisturbed.
+RECOVER_POSE, RECOVER_UPRIGHT, RECOVER_ALIVE = 0.2, 0.4, 0.4
 
 FEET = ("left_ankle_roll_link", "right_ankle_roll_link")
 
@@ -158,7 +168,7 @@ def motion_robot(motion: str) -> str:
 class MimicEnv(G1Env):
     def __init__(self, seed: int = 0, clips: tuple[str, ...] = (DEFAULT_MOTION,), push: bool = False,
                  push_n: tuple[float, float] | None = None, push_every: tuple[float, float] | None = None,
-                 nudge: bool = False, follow: bool = False):
+                 nudge: bool = False, follow: bool = False, recover: bool = False):
         """nudge: every reset starts off the reference pose as G1Env's resets do (each joint
         N(0, INIT_JOINT_NOISE), each speed N(0, INIT_VEL_NOISE)). Without it the walk learned from
         exact starts only: one seed reached the end from 90 % of nudged starts, the other 25 %."""
@@ -167,6 +177,7 @@ class MimicEnv(G1Env):
         super().__init__(seed=seed, push=push, robot=robot, **extra)
         self.nudge = nudge
         self.follow = follow
+        self.recover = recover
         self.shift = np.zeros(2)  # how far the path has slid with the robot (follow)
         if robot == "g1":
             feet, soles = None, None
@@ -325,6 +336,10 @@ class MimicEnv(G1Env):
             "orientation": 0.1 * np.exp(-2.0 * np.sum(quat_err**2)),
             "pelvis_speed": 0.15 * np.exp(-5.0 * np.sum((qvel[:2] - root_vel_ref[:2]) ** 2)),
         }
+        if self.recover and self.steps - self.last_push < RECOVER_S / CONTROL_DT:
+            copy = sum(terms.values())  # 0..1
+            upright = terms["orientation"] / 0.1  # 0..1
+            return float(RECOVER_POSE * copy + RECOVER_UPRIGHT * upright + RECOVER_ALIVE), {**terms, "recovering": 1.0}
         return float(sum(terms.values())), terms
 
 

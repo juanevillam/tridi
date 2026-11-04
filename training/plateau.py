@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import numpy as np
+
 WINDOW = 3
 # 2 %: smaller changes are within what one deterministic evaluation varies between checkpoints
 # that learned the same thing (walk-v4 swung 3.68 -> 3.54 s, -4 %, with no real change).
@@ -68,6 +70,54 @@ def judge(evals: list[tuple[int, float]], ceiling: float | None = None) -> Verdi
     return Verdict(False, "", f"still learning: {value:.2f} at {step:,} steps")
 
 
+# The forecast (for noisy metrics such as pushwalk's share of 40 trials, where "best of the last 3"
+# is mostly luck): fit metric = a + b log10(steps) to every evaluation from FIT_FROM steps on, the
+# shape learning curves take on these runs, and ask how many steps reach the goal. On Juan's Mac
+# (docs: ~8k steps/s free, a few k shared) a decade past 30 M is hours to a day: a goal further than
+# the run's budget means change the method, not the step count.
+FIT_FROM = 1_000_000
+FIT_MIN_POINTS = 5
+
+
+@dataclass
+class Forecast:
+    per_decade: float  # metric gained per 10x steps
+    steps_to_goal: float  # inf when the curve does not rise
+    noise: float  # residual standard deviation around the fit
+    text: str
+
+
+def forecast(evals: list[tuple[int, float]], goal: float) -> Forecast | None:
+    pts = [(s, v) for s, v in evals if s >= FIT_FROM]
+    if len(pts) < FIT_MIN_POINTS:
+        return None
+    x = np.log10([s for s, _ in pts])
+    y = np.array([v for _, v in pts])
+    b, a = np.polyfit(x, y, 1)
+    noise = float(np.std(y - (a + b * x)))
+    now = pts[-1][0]
+    if b <= 0:
+        return Forecast(float(b), float("inf"), noise, f"not rising ({b:+.3f} per 10x steps, noise {noise:.3f})")
+    steps = float(10 ** ((goal - a) / b))
+    when = "already there by the fit" if steps <= now else f"at ~{steps:,.0f} steps ({steps / now:,.0f}x now)"
+    return Forecast(float(b), steps, noise, f"{b:+.3f} per 10x steps (noise {noise:.3f}): goal {goal:.2f} {when}")
+
+
+def judge_forecast(evals: list[tuple[int, float]], goal: float, budget_steps: float) -> Verdict:
+    """Stop when the forecast reaches the goal only past the budget, or reaches it now."""
+    if not evals:
+        return Verdict(False, "", "no evaluations yet")
+    step, value = evals[-1]
+    if value >= goal:
+        return Verdict(True, "done", f"{value:.2f} >= goal {goal:.2f}")
+    f = forecast(evals, goal)
+    if f is None or step < MIN_STEPS:
+        return Verdict(False, "", f"too early to forecast ({value:.2f} at {step:,} steps)")
+    if f.steps_to_goal > budget_steps:
+        return Verdict(True, "forecast", f"{f.text}; past the budget of {budget_steps:,.0f}: change the method, not the step count")
+    return Verdict(False, "", f"{f.text}; within the budget of {budget_steps:,.0f}")
+
+
 def selftest() -> None:
     # walk-v4 as it was evaluated every 2 M steps (the shape in docs/plan-producto.md): it learns
     # until ~10 M, then flat. The window rule has to call it well before 20 M.
@@ -85,6 +135,14 @@ def selftest() -> None:
     assert judge(slow).rule in ("decade", "window"), judge(slow)
     # Done: the whole 11.8 s clip followed.
     assert judge([(5_000_000, 11.7)], ceiling=11.8).rule == "done"
+    # walk-long-seed0 against the web push (training.pushwalk, 2026-11-04): ~0.08 until 14 M, ~0.2
+    # after. The forecast puts 0.9 far past 100 M steps: stop and change the method.
+    push = [(1, .12), (2, .05), (4, .02), (6, .10), (8, .08), (10, .10), (12, .08), (14, .02), (16, .20), (18, .12),
+            (20, .28), (22, .22), (24, .18), (26, .25), (28, .15), (30, .22)]
+    push = [(m * 1_000_000, v) for m, v in push]
+    v = judge_forecast(push, goal=0.9, budget_steps=100_000_000)
+    assert v.stop and v.rule == "forecast", v
+    print(v.text)
     print("plateau selftest ok")
 
 

@@ -35,7 +35,7 @@ from .env import EPISODE_STEPS, NU, OBS_DIM, PUSH_EVERY_S, PUSH_N, Stance
 from .guard import Guard
 from .netlive import NetLive
 from .failmap import failure_map, worst
-from .plateau import MIN_STEPS, judge
+from .plateau import MIN_STEPS, judge, judge_forecast
 from .vec import VecEnv
 
 RUNS = Path(__file__).parent / "runs"
@@ -198,7 +198,8 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
           push_every: tuple[float, float] = PUSH_EVERY_S, stance: Stance | None = None, std: float | None = None,
           seed: int = 0, worlds: tuple[str, ...] = (), wind_max: float | None = None, resume: bool = False,
           guard_on: bool = True, plateau_stop: bool = True, note: str = "", argv: str = "", shared: str = "background",
-          register_run: bool = True, robust: bool = False, adaptive_lr: bool = True, follow: bool = False) -> None:
+          register_run: bool = True, robust: bool = False, adaptive_lr: bool = True, follow: bool = False,
+          metric: str = "follow", goal: float = 0.9, budget_steps: float = 100_000_000, recover: bool = False) -> None:
     run_dir = RUNS / run
     run_dir.mkdir(parents=True, exist_ok=True)
     torch.manual_seed(seed)
@@ -216,7 +217,7 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
     # Mimic pushes and nudges only with --robust: older mimic runs trained without them.
     envs = VecEnv(NUM_ENVS, WORKERS, seed=seed, push=robust if task == "mimic" else True, push_n=push_n, task=task,
                   motion=motion, push_every=push_every, stance=stance, worlds=worlds, wind_max=wind_max,
-                  follow=follow)
+                  follow=follow, recover=recover)
     obs = envs.reset()
     meta = {"task": task, "motion": motion} if task == "mimic" else {"task": task}
     meta["worlds"] = list(worlds) or ["plano"]
@@ -255,7 +256,16 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
             csv.writer(f).writerow(["step", "metric", "verdict"])
     recent_eps: list[float] = []
 
+    if metric == "pushwalk":
+        from .pushwalk import score as pushwalk_score
+
+        ceiling = 1.0
+
     def evaluate(at: int) -> float:
+        if task == "mimic" and metric == "pushwalk":
+            value = pushwalk_score(model, motion or _default_motion())["score"]
+            model.train()
+            return value
         if task == "mimic":
             model.eval()
             value = follow(model, motion or _default_motion())[0]
@@ -402,7 +412,7 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
               save(model, run_dir, at, meta, *out)
               value = evaluate(at)
               evals.append((step, value))
-              verdict = judge(evals, ceiling)
+              verdict = judge_forecast(evals, goal, budget_steps) if metric == "pushwalk" else judge(evals, ceiling)
               with open(evals_path, "a", newline="") as f:
                   csv.writer(f).writerow([step, round(value, 3), verdict.text])
               print(f"\n[eval] {step:,} steps: {value:.2f} (ceiling {ceiling:.1f}) · {verdict.text}", flush=True)
@@ -565,6 +575,14 @@ def main() -> None:
                    help="--worlds: cap every world's wind at this many m/s (a curriculum: e.g. 6, then 10, then none)")
     p.add_argument("--follow", action="store_true",
                    help="mimic: the reference path slides with a pushed robot past 0.3 m instead of cutting the episode at 0.6 m")
+    p.add_argument("--metric", choices=["follow", "pushwalk"], default="follow",
+                   help="mimic: what decides when to stop: seconds of the clip followed, or the web push test (pushwalk.py), "
+                        "judged by its learning-curve forecast")
+    p.add_argument("--goal", type=float, default=0.9, help="pushwalk: the score that counts as done")
+    p.add_argument("--budget-steps", type=float, default=100_000_000,
+                   help="pushwalk: stop when the forecast reaches the goal only past this many steps")
+    p.add_argument("--recover", action="store_true",
+                   help="mimic: for RECOVER_S after a push, reward staying up over copying the pose (imitate.py)")
     p.add_argument("--fixed-lr", action="store_true", help=f"keep the learning rate at {LR} (runs before the adaptive rate)")
     p.add_argument("--std", type=float, help="reset the action std to this (e.g. 0.3) when continuing with --init")
     p.add_argument("--seed", type=int, default=0, help="torch and environment seed (every run replays seed 0 otherwise)")
@@ -587,7 +605,8 @@ def main() -> None:
     train(args.steps, args.run, args.device, args.init, (args.push_min, args.push_max), task, args.motion,
           args.every, export_dir, args.policy_prefix, push_every, stance, args.std, args.seed,
           tuple(w for w in args.worlds.split(",") if w), args.wind_max, args.resume, not args.no_guard,
-          not args.no_plateau_stop, args.note, " ".join(sys.argv[1:]), args.shared, robust=args.robust, adaptive_lr=not args.fixed_lr, follow=args.follow)
+          not args.no_plateau_stop, args.note, " ".join(sys.argv[1:]), args.shared, robust=args.robust, adaptive_lr=not args.fixed_lr, follow=args.follow,
+          metric=args.metric, goal=args.goal, budget_steps=args.budget_steps, recover=args.recover)
 
 
 if __name__ == "__main__":
