@@ -74,7 +74,10 @@ Trabajar en una rama aparte (`juan/experimental`, local, sin push ni deploy: la 
   - **Segunda semilla** (`walk-balanced-v1-seed1`): también sigue la caminata entera (11,86 s, 10 M pasos, 23,4 min), pero solo **25 %** de los arranques con empujoncito llegan al final. Escalón 1: 1 de 2 semillas, **no pasa**. Causa: ninguna entrenó con arranques perturbados.
   - **`--robust`** (`ea9b41b`): el mimic entrena con arranques con empujoncito y empujones de 0-300 N.
   - **No funcionó:** afinar las dos semillas 10 M pasos con empujones de 0-300 N desde el primer paso **las arruinó**: 5 % llega al final en calma (antes 90 % y 25 %), 0 % con empujones; la semilla 0 seguía el clip entero a 1 M pasos y lo perdió a 3 M. Empujones de esa fuerza en una caminata, sin rampa, borran lo aprendido.
-  - **Ahora:** afinar desde los checkpoints originales **solo con el empujoncito** (`--robust --push-max 0`, 5 M pasos por semilla), que es lo que mide el escalón 1. Los empujones vienen después, con una rampa de fuerza.
+  - **Solo con el empujoncito** (`--robust --push-max 0`, 5 M pasos por semilla, desde los checkpoints originales) **tampoco**: semilla 0 65 %, semilla 1 0 %. La evaluación saltaba entre el clip entero y 1 s de una medición a la siguiente.
+  - **Causa encontrada en la salud del entrenamiento:** la tasa de aprendizaje fija (3e-4) daba cambios de política cada vez más grandes a medida que la red se volvía precisa: KL por actualización 0,003 al principio de `walk-balanced-v1`, 0,087 a los 10 M pasos, 55 % del lote recortado. Lo descartado: el normalizador de observaciones (cambia la política en KL 0,0000006).
+  - **Arreglo (`2d7fe26`):** tasa adaptativa por KL (la regla de rsl_rl, el entrenador de legged_gym): sube o baja ×1,5 tras cada minilote para mantener KL ≈ 0,01, piso 1e-6 (con el piso de rsl_rl, 1e-5, el KL seguía en 0,02). `--fixed-lr` vuelve a lo anterior. Relanzado: `walk-nudge-v2-seed{0,1}`, y el escalón 1 medido en 1 M, 3 M y 5 M pasos.
+  - Error mío: un `git checkout` de `training/experiments.csv` borró las filas de `walk-nudge-v1`; reconstruidas desde sus `evals.csv` (marcadas en la nota).
   - La Mac se pasó a batería a mitad del entrenamiento: el guardián lo pausó y siguió solo al enchufarla.
 
 ## Sigue
