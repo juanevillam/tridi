@@ -1,9 +1,11 @@
 // Gallery of preloaded simulations (W2): one card per clip; a click shows it on the stage.
 import { fetchClip, preloaded, userClips } from './preloaded.js';
+import { T } from './strings-stage.js';
+import { clipName, spans } from './strings-names.js';
 
 function describe(clip) {
   const seconds = clip.frames.length / clip.fps;
-  return `${seconds.toFixed(0)} segundos · se ve el ${Math.round(100 * clip.quality.valid_ratio)} % del tiempo`;
+  return T('meta', { seconds: seconds.toFixed(0), pct: Math.round(100 * clip.quality.valid_ratio) });
 }
 
 /**
@@ -20,14 +22,15 @@ export function mountGallery(root, stage, initialClip, onSelect, { hide = [] } =
     const button = document.createElement('button');
     button.className = 'card';
     button.innerHTML = '<strong></strong><span class="meta">…</span><span class="credit"></span>';
-    button.querySelector('strong').textContent = item.title;
-    button.querySelector('.credit').textContent = item.credit;
+    const names = clipName(item);
+    button.querySelector('strong').innerHTML = spans(names.title);
+    button.querySelector('.credit').innerHTML = spans(names.credit);
     button.onclick = () => select(item, button);
     li.append(button);
     list.append(li);
     fetchClip(item).then(
-      (clip) => (button.querySelector('.meta').textContent = describe(clip)),
-      () => (button.querySelector('.meta').textContent = 'No se pudo descargar'),
+      (clip) => (button.querySelector('.meta').innerHTML = describe(clip)),
+      () => (button.querySelector('.meta').innerHTML = T('downloadFailed')),
     );
     return button;
   });
@@ -37,9 +40,9 @@ export function mountGallery(root, stage, initialClip, onSelect, { hide = [] } =
     button.setAttribute('aria-current', 'true');
     onSelect?.(item);
     try {
-      stage.showClip(await fetchClip(item), item.title);
+      stage.showClip(await fetchClip(item), spans(clipName(item).title));
     } catch (error) {
-      button.querySelector('.meta').textContent = 'No se pudo descargar; toca para reintentar';
+      button.querySelector('.meta').innerHTML = T('downloadRetry');
       console.error(error);
     }
   }

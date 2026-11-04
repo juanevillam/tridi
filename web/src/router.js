@@ -1,6 +1,12 @@
 // Hash routes (#/, #/en-vivo, #/subir, #/simulaciones, #/simulaciones/<clip id>, #/entrega, #/entrega/<clip id>, #/camara/<session id>, #/red/<train id>): they work on any static host, with no server rewrites. Every screen but home is a separate chunk loaded on first visit, so the menu
 // does not wait for MuJoCo, the robot or MediaPipe.
 import * as home from './screens/home.js';
+import { lang, onLang } from './i18n.js';
+
+const titleOf = (screen) => {
+  const title = typeof screen.title === 'object' ? (screen.title[lang()] ?? screen.title.es) : screen.title;
+  return title ? `${title} · Tridi` : 'Tridi';
+};
 
 const ROUTES = {
   '': async () => home,
@@ -50,6 +56,7 @@ export function prefetch(name) {
 export function startRouter(app, context) {
   let unmount = null;
   let navigation = 0;
+  let current = null;
 
   async function show() {
     const [name = '', ...params] = location.hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent);
@@ -71,11 +78,16 @@ export function startRouter(app, context) {
     unmount?.();
     app.replaceChildren();
     unmount = screen.mount(app, context, params);
-    document.title = screen.title ? `${screen.title} · Tridi` : 'Tridi';
+    current = screen;
+    document.title = titleOf(screen);
     window.scrollTo(0, 0);
     app.classList.remove('leaving', 'loading');
   }
 
+  // A screen's title is a string or { es, en }; the tab follows the language like the page does.
+  onLang(() => {
+    if (current) document.title = titleOf(current);
+  });
   window.addEventListener('hashchange', show);
   show();
 }

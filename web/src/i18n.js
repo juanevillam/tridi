@@ -27,6 +27,7 @@ export function setLang(next) {
     // private mode: the choice lasts this visit only
   }
   for (const element of document.querySelectorAll('[data-i18n-attr]')) applyAttrs(element);
+  for (const element of document.querySelectorAll('[data-i18n-text]')) applyText(element);
   listeners.forEach((listener) => listener(next));
 }
 
@@ -68,7 +69,18 @@ export function dict(strings) {
     const first = Object.entries(map).map(([attr, byLang]) => `${attr}="${escapeAttr(byLang[lang()])}"`).join(' ');
     return `${first} data-i18n-attr="${escapeAttr(JSON.stringify(map))}"`;
   };
-  return { T, t, A };
+  /** Plain text that follows the language, for elements that cannot hold spans (<option>):
+   * `<option ${X('key')}>${t('key')}</option>`. */
+  const X = (key, vars) => textAttr(Object.fromEntries(LANGS.map((l) => [l, fill(get(key, l), vars, l)])));
+  /** Plain text in a given language: for markup put together per language (several fragments). */
+  const L = (key, vars, language) => fill(get(key, language), vars, language);
+  /** Sets attributes that follow the language on an element already in the page: S(el, { title: 'key' }). */
+  const S = (element, attrs, vars) => {
+    const map = Object.fromEntries(Object.entries(attrs).map(([attr, key]) => [attr, Object.fromEntries(LANGS.map((l) => [l, fill(get(key, l), vars, l)]))]));
+    element.dataset.i18nAttr = JSON.stringify(map);
+    applyAttrs(element);
+  };
+  return { T, t, A, L, X, S };
 }
 
 const escapeAttr = (value) => String(value).replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;');
@@ -99,3 +111,23 @@ document.addEventListener('click', (event) => {
   const button = event.target.closest?.('[data-set-lang]');
   if (button) setLang(button.dataset.setLang);
 });
+
+/** Text from outside (a server error, a file name) made safe to put inside T()'s markup. */
+export const escapeHtml = (value) =>
+  String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+
+/** data-i18n-text for a { es, en } map: setLang rewrites the element's text (see dict's X). */
+export const textAttr = (byLang) => `data-i18n-text="${escapeAttr(JSON.stringify(byLang))}"`;
+
+/** <option> whose text follows the language. */
+export const option = (value, byLang, extra = '') =>
+  `<option value="${escapeAttr(value)}" ${textAttr(byLang)}${extra ? ` ${extra}` : ''}>${escapeHtml(byLang[lang()] ?? byLang.es)}</option>`;
+
+function applyText(element) {
+  try {
+    const byLang = JSON.parse(element.dataset.i18nText);
+    element.textContent = byLang[lang()] ?? byLang.es;
+  } catch {
+    // a malformed map leaves the text as it was
+  }
+}

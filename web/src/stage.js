@@ -15,12 +15,15 @@
 import { SCENES, WORLDS } from 'tridi-physics';
 
 import { savedMotion } from './motions.js';
-import { FINAL_LEVEL, IMITATIONS, imitationOf, levelLabel, policyUrls } from './policies.js';
+import { FINAL_LEVEL, IMITATIONS, imitationOf, policyUrls } from './policies.js';
 import { dressWorld } from './looks/index.js';
 import { dressPlace, setFloor } from './props.js';
 import { mountRobotPane } from './robot-pane.js';
 import { SkeletonView } from './skeleton.js';
 import { createVideoOverlay } from './video-overlay.js';
+import { fmt, LANGS } from './i18n.js';
+import { L, S, T } from './strings-stage.js';
+import { levelName, sceneName, worldName } from './strings-names.js';
 
 // Player icons (24 px, currentColor): the playback buttons carry only an icon and a tooltip.
 export const ICONS = {
@@ -95,16 +98,21 @@ export function mountStage(root) {
     look = robot.view ? dressWorld(robot.view) : null;
   }
 
-  function setRobotLabel(text) {
+  /** The robot pane's caption: `markup` (from T()) while something loads, else what the robot does. */
+  function setRobotLabel(markup) {
+    if (markup) return void (label.innerHTML = markup);
     const world = robot.view?.world();
     const place = robot.view?.scene();
-    const where = [world && world.id !== 'plano' ? world.title : null, place?.title].filter(Boolean).map((w) => ` · ${w.toLowerCase()}`).join('');
-    const doing = imitating()
-      ? 'imita el video con física (en entrenamiento)'
-      : copying
-        ? 'repite el movimiento, sin física'
-        : `se equilibra solo (${levelLabel(level).toLowerCase()})`;
-    label.textContent = text ?? `Robot · ${doing}${where}`;
+    const names = [world && world.id !== 'plano' ? worldName(world.id, world.title) : null, place ? sceneName(place.id, place.title) : null].filter(Boolean);
+    label.innerHTML = LANGS.map((l) => {
+      const where = names.map((name) => ` · ${name[l].toLowerCase()}`).join('');
+      const doing = imitating()
+        ? L('doingImitate', {}, l)
+        : copying
+          ? L('doingCopy', {}, l)
+          : L('doingBalance', { level: levelName(level)[l].toLowerCase() }, l);
+      return `<span class="t" lang="${l}">${L('robotLine', { doing, where }, l)}</span>`;
+    }).join('');
   }
 
   let last = performance.now();
@@ -132,9 +140,9 @@ export function mountStage(root) {
       const saved = await savedMotion(clip.id);
       if (saved) motions.set(clip.id, saved);
       else {
-        setRobotLabel('Calculando el movimiento del robot…');
+        setRobotLabel(T('computing'));
         const computed = await view.retarget(clip, {
-          onProgress: (done) => current?.clip === clip && setRobotLabel(`Calculando el movimiento del robot… ${Math.round(100 * done)} %`),
+          onProgress: (done) => current?.clip === clip && setRobotLabel(T('computingPct', { pct: Math.round(100 * done) })),
         });
         if (!computed) return; // the user left the screen
         motions.set(clip.id, computed.motion);
@@ -159,7 +167,7 @@ export function mountStage(root) {
     if (!view) return;
     $('policy').disabled = true;
     root.querySelector('.push').disabled = true;
-    setRobotLabel('Cargando lo que aprendió el robot…');
+    setRobotLabel(T('loadingPolicy'));
     try {
       const { onnx, json } = policyUrls(id);
       // An imitation policy also needs the RobotMotion of the clip it learned.
@@ -171,7 +179,7 @@ export function mountStage(root) {
     } catch (error) {
       console.error(error);
       $('policy').value = level;
-      setRobotLabel('No se pudo cargar lo que aprendió el robot.');
+      setRobotLabel(T('policyFailed'));
     } finally {
       $('policy').disabled = false;
       root.querySelector('.push').disabled = !robot.view; // never before the robot is there
@@ -191,14 +199,14 @@ export function mountStage(root) {
     if (!view) return;
     $('world').disabled = true;
     root.querySelector('.push').disabled = true;
-    setRobotLabel('Cambiando de mundo…');
+    setRobotLabel(T('changingWorld'));
     try {
       await view.setWorld(WORLDS.find((world) => world.id === id));
       await dressPlace(view); // a new world rebuilds the drawn geoms: dress the place again
       refreshLook();
     } catch (error) {
       console.error(error);
-      setRobotLabel('No se pudo cambiar de mundo.');
+      setRobotLabel(T('worldFailed'));
     } finally {
       $('world').disabled = false;
       root.querySelector('.push').disabled = !robot.view; // never before the robot is there
@@ -215,7 +223,7 @@ export function mountStage(root) {
     if (!view) return;
     $('place').disabled = true;
     root.querySelector('.push').disabled = true;
-    setRobotLabel('Armando el lugar…');
+    setRobotLabel(T('buildingPlace'));
     try {
       await view.setScene(SCENES.find((scene) => scene.id === id) ?? null);
       await dressPlace(view); // real models over the place's boxes and cylinders
@@ -223,7 +231,7 @@ export function mountStage(root) {
       refreshLook();
     } catch (error) {
       console.error(error);
-      setRobotLabel('No se pudo armar el lugar.');
+      setRobotLabel(T('placeFailed'));
     } finally {
       $('place').disabled = false;
       root.querySelector('.push').disabled = !robot.view; // never before the robot is there
@@ -248,13 +256,14 @@ export function mountStage(root) {
 
   // Conditions by hand: each slider sets one value at once (view.setConditions), over the world.
   const sliders = [...root.querySelectorAll('input[data-condition]')];
-  const decimal = (value, digits) => value.toFixed(digits).replace('.', ',');
+  // Each language with its own decimal mark: "0,85" / "0.85".
+  const decimal = (value, digits) => LANGS.map((l) => `<span class="t" lang="${l}">${fmt(value, digits)(l)}</span>`).join('');
   const showValue = (key, value) => {
     const out = root.querySelector(`output[data-condition="${key}"]`);
-    if (key === 'friction') out.textContent = decimal(value, 2);
+    if (key === 'friction') out.innerHTML = decimal(value, 2);
     // The force comes from physics/ (view.conditions), so the drag formula lives in one place.
-    else if (key === 'wind_mps') out.textContent = value ? `${decimal(value, 0)} m/s · ${decimal(robot.view?.conditions().wind_newtons ?? 0, 0)} N` : 'sin viento';
-    else out.textContent = `×${decimal(value, 2)}`;
+    else if (key === 'wind_mps') out.innerHTML = value ? `${decimal(value, 0)} m/s · ${decimal(robot.view?.conditions().wind_newtons ?? 0, 0)} N` : T('noWind');
+    else out.innerHTML = `×${decimal(value, 2)}`;
   };
   function syncSliders() {
     const view = robot.view;
@@ -279,13 +288,12 @@ export function mountStage(root) {
     playing = !playing;
     if (robot.view) playing ? robot.view.play() : robot.view.pause();
     $('play').innerHTML = playing ? ICONS.pause : ICONS.play;
-    $('play').setAttribute('aria-label', playing ? 'Pausa' : 'Reproducir');
-    $('play').title = playing ? 'Pausa' : 'Reproducir';
+    S($('play'), { 'aria-label': playing ? 'pause' : 'play', title: playing ? 'pause' : 'play' });
   };
   $('speed').onclick = () => {
     speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length];
     robot.view?.setSpeed(speed);
-    $('speed').textContent = `${String(speed).replace('.', ',')}×`;
+    $('speed').innerHTML = `${decimal(speed, speed === 1 ? 0 : speed === 0.5 ? 1 : 2)}×`;
   };
   // The physics switch only means something for a clip a policy learned: elsewhere it says so.
   function showMode(clip) {
@@ -293,8 +301,8 @@ export function mountStage(root) {
     root.querySelector('[data-physics="on"]').disabled = !learned;
     // Each note has a short phone version (.only-narrow, style.css).
     root.querySelector('.mode-note').innerHTML = learned
-      ? '<span class="only-wide">Con física el robot lo hace solo, con sus motores (todavía en entrenamiento: se cae a los pocos segundos). Sin física lo repite como un títere.</span><span class="only-narrow">Con física lo hace solo (aún se cae pronto). Sin física, lo copia como títere.</span>'
-      : '<span class="only-wide">Este movimiento todavía no tiene una política entrenada: el robot lo repite sin física, como referencia.</span><span class="only-narrow">Aún sin política entrenada: lo copia sin física.</span>';
+      ? `<span class="only-wide">${T('modeLearnedWide')}</span><span class="only-narrow">${T('modeLearnedNarrow')}</span>`
+      : `<span class="only-wide">${T('modeNoneWide')}</span><span class="only-narrow">${T('modeNoneNarrow')}</span>`;
     root.querySelectorAll('[data-physics]').forEach((b) => b.setAttribute('aria-pressed', String((b.dataset.physics === 'on') === (learned && physics))));
   }
 
@@ -336,7 +344,7 @@ export function mountStage(root) {
     /** @param {import('./contract.js').PoseClip} clip  @param {string} title */
     showClip(clip, title) {
       skeleton.setClip(clip);
-      $('human-label').textContent = `Persona · ${title}`;
+      $('human-label').innerHTML = T('person', { title }); // title: markup, one span per language
       current = { clip, title };
       offerImitations(clip);
       showMode(clip);
