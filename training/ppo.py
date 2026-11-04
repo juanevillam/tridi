@@ -63,6 +63,15 @@ MAX_GRAD_NORM = 1.0
 VALUE_COEF = 1.0
 ENTROPY_COEF = 0.0  # exploration comes from the learned std, which starts at 0.5 (0.12 rad)
 INIT_LOG_STD = np.log(0.5)
+# Adaptive learning rate (rsl_rl, the legged_gym trainer): after each minibatch, the step size moves
+# so the policy changes by about KL_TARGET per update. With a fixed 3e-4, the KL grew as the std
+# narrowed (0.003 at the start of walk-balanced-v1, 0.087 at 10 M steps; 55 % of the batch clipped),
+# and fine-tuning a learned walk swung between the whole clip and 1 s from one evaluation to the next.
+KL_TARGET = 0.01
+LR_STEP = 1.5  # how much the rate moves each time (rsl_rl's factor)
+# rsl_rl's floor is 1e-5; fine-tuning the learned walk still changed the policy by KL 0.02 per update
+# at 1e-5 (its std is 0.21-0.42 against 0.5 at the start), so the floor here is 10x lower.
+LR_RANGE = (1e-6, 1e-2)
 
 # Environment steps where a checkpoint is saved. 1k from the original plan is left out: it is less
 # than one update (4096), so it would be the same untrained policy as step 0.
@@ -189,7 +198,7 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
           push_every: tuple[float, float] = PUSH_EVERY_S, stance: Stance | None = None, std: float | None = None,
           seed: int = 0, worlds: tuple[str, ...] = (), wind_max: float | None = None, resume: bool = False,
           guard_on: bool = True, plateau_stop: bool = True, note: str = "", argv: str = "", shared: str = "background",
-          register_run: bool = True, robust: bool = False) -> None:
+          register_run: bool = True, robust: bool = False, adaptive_lr: bool = True) -> None:
     run_dir = RUNS / run
     run_dir.mkdir(parents=True, exist_ok=True)
     torch.manual_seed(seed)
@@ -356,12 +365,21 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
                   loss.backward()
                   norms.append(float(nn.utils.clip_grad_norm_(model.parameters(), MAX_GRAD_NORM)))
                   opt.step()
+                  if adaptive_lr:
+                      kl = kls[-1]
+                      lr = opt.param_groups[0]["lr"]
+                      if kl > 2 * KL_TARGET:
+                          lr = max(LR_RANGE[0], lr / LR_STEP)
+                      elif kl < KL_TARGET / 2:
+                          lr = min(LR_RANGE[1], lr * LR_STEP)
+                      for g in opt.param_groups:
+                          g["lr"] = lr
           model.to("cpu")
           # How well the critic predicts the returns (1 perfect, 0 no better than the mean).
           returns = ret.reshape(-1)
           explained = 1 - np.var(returns - buf_val[:ROLLOUT].reshape(-1)) / (np.var(returns) + 1e-8)
           health_now = {"kl": float(np.mean(kls)), "clip_frac": float(np.mean(clips)), "explained_var": float(explained),
-                        "std": float(model.log_std.detach().exp().mean()), "grad_norm": float(np.mean(norms))}
+                        "std": float(model.log_std.detach().exp().mean()), "grad_norm": float(np.mean(norms)), "lr": opt.param_groups[0]["lr"]}
 
           step += ROLLOUT * NUM_ENVS
           sps = ROLLOUT * NUM_ENVS / (time.time() - t0)
@@ -369,7 +387,7 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
           if finished:
               recent_eps.append(ep)
           writer.writerow([step, round(time.time() - start, 1), round(float(buf_rew.mean()), 4), round(ep, 2), falls, int(sps),
-                           guard.mode, *(round(health_now[c], 4) for c in HEALTH_COLUMNS)])
+                           guard.mode, *(float(f"{health_now[c]:.4g}") for c in HEALTH_COLUMNS)])
           for warning in health.check(step, health_now):
               print(f"\n[health] {warning}", flush=True)
           log.flush()
@@ -421,7 +439,7 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
 
 # Learning health, logged every update. Each range is where PPO is known to be working; outside it
 # for HEALTH_PATIENCE updates in a row, the run warns (once per HEALTH_EVERY_S) and health.txt keeps it.
-HEALTH_COLUMNS = ["kl", "clip_frac", "explained_var", "std", "grad_norm"]
+HEALTH_COLUMNS = ["kl", "clip_frac", "explained_var", "std", "grad_norm", "lr"]
 HEALTH_RULES = [
     # 0.05: PPO's usual target is ~0.01-0.02; at 0.05 one update moves the policy far enough to undo
     # what it had learned (the reason for CLIP in the first place).
@@ -544,6 +562,7 @@ def main() -> None:
                         "empty: the flat floor, as before. Pushes then come from each world, capped by --push-max")
     p.add_argument("--wind-max", type=float,
                    help="--worlds: cap every world's wind at this many m/s (a curriculum: e.g. 6, then 10, then none)")
+    p.add_argument("--fixed-lr", action="store_true", help=f"keep the learning rate at {LR} (runs before the adaptive rate)")
     p.add_argument("--std", type=float, help="reset the action std to this (e.g. 0.3) when continuing with --init")
     p.add_argument("--seed", type=int, default=0, help="torch and environment seed (every run replays seed 0 otherwise)")
     # CPU by default: measured on an M2, 11.2k steps/s on CPU vs 10.1k on MPS. This network is so small
@@ -565,7 +584,7 @@ def main() -> None:
     train(args.steps, args.run, args.device, args.init, (args.push_min, args.push_max), task, args.motion,
           args.every, export_dir, args.policy_prefix, push_every, stance, args.std, args.seed,
           tuple(w for w in args.worlds.split(",") if w), args.wind_max, args.resume, not args.no_guard,
-          not args.no_plateau_stop, args.note, " ".join(sys.argv[1:]), args.shared, robust=args.robust)
+          not args.no_plateau_stop, args.note, " ".join(sys.argv[1:]), args.shared, robust=args.robust, adaptive_lr=not args.fixed_lr)
 
 
 if __name__ == "__main__":
