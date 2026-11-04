@@ -63,11 +63,19 @@ Trabajar en una rama aparte (`juan/experimental`, local, sin push ni deploy: la 
   - **Gradiente siempre recortado, arreglado:** el crítico aprende retornos normalizados (media y desvío corridos). Norma del gradiente ~22 → 1-2,4; el crítico explica 95 % de los retornos.
   - **Entrenamiento largo lanzado:** `walk-balanced-v1`, hasta 100 M pasos con corte por meseta, `--shared nice`.
 
+- **Séptima vuelta (sigue sola, cuerpo completo):**
+  - **Idiomas en toda la web:** En vivo, Subir, Simulaciones, Teléfono, Red, Sin conexión y Entrega (la más larga: ~150 textos, con su propio selector ES · EN porque los clientes llegan por link). Lo que se dibuja en un idioma (tarjeta del episodio, gráfico de telemetría, HUD, escalera, guía) se redibuja al cambiar sin cortar la repetición; números con la coma o el punto de cada idioma; nombres de mundos y archivos traducidos por id. Recorridas todas las pantallas en inglés: ningún texto en español, sin errores.
+  - **`walk-balanced-v1` aprendió la caminata entera:** sigue **11,86 s de 11,85** en **10 M pasos y 21,6 min** (el hackathon: 3,54 s a 20 M y estancado). El detector de meseta lo cortó solo ("done"). Con `training.rung1` (20 episodios desde el principio, con el empujoncito inicial de los resets): **90 % llega al final** (18 de 20, justo en el umbral); con empujones aleatorios solo 5 % (no entrenó con empujones; la prueba de la entrega sí empuja).
+  - **Segundo humanoide:** paquetes de robot (`robots/<id>.json` + `training/robot.py`) con el **Unitree H1** de MuJoCo Menagerie (BSD-3; 1,66 m, 51 kg, 19 articulaciones, sin manos; motores de torque convertidos en servos PD con las ganancias de Unitree). `training.retarget` pasa un movimiento de un robot a otro (puntos escalados por la pierna, brazos por dirección de segmento, pies apoyados clavados): G1 → H1 con pies a 0,4 cm y pie apoyado que patina 0,011 m/s. `training.balance` ahora lee el paquete (en el G1 da el mismo archivo, byte a byte): ZMP del H1 fuera del apoyo 61 % → 2 %. `training.feasible` hace las preguntas físicas de C1/C2 a cualquier robot y coincide con `checks` en el G1. El entorno de entrenamiento también lee el paquete (G1: mismas observaciones y recompensas, diferencia 0,0).
+  - **No funcionó / falta:** el H1 equilibrado toca el piso cuando la referencia dice el 76 % del tiempo (C1 pide 80 %): ~24 % de los cuadros el pie queda 2-4 cm arriba con la pelvis sostenida, con cualquier adelanto de motores. Sin resolver. Bug mío en el camino: la salida del H1 pisó el archivo equilibrado del G1 (mismo `clip_id`); restaurado, y ahora el id lleva el robot.
+  - Decisión: el segundo robot copia el movimiento ya limpio del G1 en vez de rehacer el retargeting desde la persona; el retargeting directo persona → cualquier robot queda para la captura 2.0.
+
 ## Sigue
 
-- Idiomas en En vivo, Subir, Simulaciones, Entrega, Cámara y Red.
-- Medir la fluidez con el panel visible y fijar el presupuesto (ningún cuadro > 50 ms).
-- Ver el resultado de `walk-balanced-v1` (escalón 1: ≥ 90 % de episodios al final, 2 semillas).
+- Resultado de la segunda semilla de la caminata (`walk-balanced-v1-seed1`) para cerrar el escalón 1.
+- Entrenar la caminata con empujones (la entrega la prueba empujando; hoy 5 %).
+- Entrenar el H1 en su caminata equilibrada y resolver el 76 % de contacto.
+- Medir pasos/s y perfilar (bloque 2), con la Mac libre.
 - Pasar `training.balance` a correr y a jumping jacks (tienen vuelo: hace falta fase sin apoyo).
-- Buscar más videos de caminar de perfil y correr con piernas visibles; bajar a mano los 6 `sin-bajar` si Juan quiere.
-- Captura 2.0: modo medio cuerpo y manos, medida contra esta línea de partida.
+- Medir la fluidez de la web con el panel visible (ningún cuadro > 50 ms).
+- Captura 2.0: preguntar a Juan por la licencia de SMPL-X (no comercial) antes de usarla.
