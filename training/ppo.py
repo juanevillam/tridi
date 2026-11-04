@@ -110,6 +110,11 @@ class ActorCritic(nn.Module):
         self.actor = mlp(obs_dim, NU)
         self.critic = mlp(obs_dim, 1)
         self.log_std = nn.Parameter(torch.full((NU,), float(INIT_LOG_STD)))
+        # The critic learns returns in units of their running std (value-target normalization). Raw
+        # returns reach ~50 (0.5 per step over a 100-step horizon); their squared error dominated the
+        # loss and every minibatch's gradient was ~22 against MAX_GRAD_NORM = 1, so it was always
+        # clipped and the real step size was unknown (health warning on the walk, 2026-11-03).
+        self.ret_norm = RunningNorm(1)
         # Small last layer: the untrained policy starts near the standing pose instead of random.
         nn.init.orthogonal_(self.actor[-1].weight, 0.01)
         nn.init.zeros_(self.actor[-1].bias)
@@ -118,7 +123,21 @@ class ActorCritic(nn.Module):
         return torch.distributions.Normal(self.actor(self.norm(obs)), self.log_std.exp())
 
     def value(self, obs: torch.Tensor) -> torch.Tensor:
+        """Value in return units."""
+        return self.value_normalized(obs) * torch.sqrt(self.ret_norm.var + 1e-8) + self.ret_norm.mean
+
+    def value_normalized(self, obs: torch.Tensor) -> torch.Tensor:
         return self.critic(self.norm(obs)).squeeze(-1)
+
+    def normalize_returns(self, ret: torch.Tensor) -> torch.Tensor:
+        return (ret - self.ret_norm.mean) / torch.sqrt(self.ret_norm.var + 1e-8)
+
+    def load_state_dict(self, state, strict: bool = True):
+        # Checkpoints from before value normalization: identity stats, so their critic means the same.
+        state = dict(state)
+        for k, v in (("mean", torch.zeros(1)), ("var", torch.ones(1)), ("count", torch.tensor(1e-4))):
+            state.setdefault(f"ret_norm.{k}", v)
+        return super().load_state_dict(state, strict)
 
 
 def obs_size(task: str) -> int:
@@ -290,7 +309,8 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
           b_act = torch.as_tensor(buf_act.reshape(-1, NU), device=device)
           b_logp = torch.as_tensor(buf_logp.reshape(-1), device=device)
           b_adv = torch.as_tensor(adv.reshape(-1), device=device)
-          b_ret = torch.as_tensor(ret.reshape(-1), device=device)
+          model.ret_norm.update(torch.as_tensor(ret.reshape(-1, 1), dtype=torch.float32, device=device))
+          b_ret = model.normalize_returns(torch.as_tensor(ret.reshape(-1), dtype=torch.float32, device=device))
           b_adv = (b_adv - b_adv.mean()) / (b_adv.std() + 1e-8)
           n = b_obs.shape[0]
           mb = n // MINIBATCHES
@@ -307,7 +327,7 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
                       kls.append(float(((ratio - 1) - log_ratio).mean()))  # the low-variance KL estimate (Schulman)
                       clips.append(float(((ratio - 1).abs() > CLIP).float().mean()))
                   pg = -torch.min(ratio * b_adv[idx], ratio.clamp(1 - CLIP, 1 + CLIP) * b_adv[idx]).mean()
-                  v_loss = ((model.value(b_obs[idx]) - b_ret[idx]) ** 2).mean()
+                  v_loss = ((model.value_normalized(b_obs[idx]) - b_ret[idx]) ** 2).mean()
                   loss = pg + VALUE_COEF * v_loss - ENTROPY_COEF * d.entropy().sum(-1).mean()
                   opt.zero_grad()
                   loss.backward()
@@ -390,8 +410,10 @@ HEALTH_RULES = [
     # 0.05 rad x ACTION_SCALE: the robot no longer tries anything new; std collapsed (walk-v4 risk:
     # no entropy bonus, so std only narrows). Reopen with --std or add entropy.
     ("std", lambda v: v < 0.05, "action std {v:.3f} < 0.05: exploration collapsed; reopen with --std 0.3"),
-    # Every minibatch at the clip: the gradient is always being cut, the real step size is unknown.
-    ("grad_norm", lambda v: v >= MAX_GRAD_NORM * 0.999, "gradient always clipped at {v:.2f}: loss scale is off"),
+    # Gradient norm over 3x the clip on average: the loss scale is off and the real step size unknown.
+    # Clipping by up to ~3x is ordinary PPO (advantages are normalized, so the policy term alone sits
+    # around 1-2). Before value normalization the walk ran at ~22x; after it, 1-2.4x (2026-11-03).
+    ("grad_norm", lambda v: v > 3 * MAX_GRAD_NORM, "gradient norm {v:.2f} > 3x the clip: loss scale is off"),
 ]
 HEALTH_PATIENCE = 20  # updates (~80 k steps): one bad update is noise, twenty in a row is a trend
 HEALTH_FROM = 1_000_000  # the first million steps are allowed to be messy

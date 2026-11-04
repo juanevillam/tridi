@@ -1,1 +1,2 @@
 date,run,commit,task,motion,seed,steps,minutes,paused_min,init,final,best,stopped,note,command
+2026-11-03 21:22,gradtest,8683065,mimic,training/references/clip_2026-10-23_caminar-perfil_01-balanced.json,0,401408,1.2,0.0,,0.64,0.64,done,value-norm smoke,--task mimic --motion training/references/clip_2026-10-23_caminar-perfil_01-balanced.json --steps 400000 --run gradtest --shared nice --note value-norm smoke
