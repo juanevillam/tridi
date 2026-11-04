@@ -95,6 +95,8 @@ Trabajar en una rama aparte (`juan/experimental`, local, sin push ni deploy: la 
 
   - **El empujón de la web (250 N, una vez, 0,1 s; `training/evaluate.py`) tumba la caminata siempre:** 0 de 20 (4 lados × 5 momentos) en las tres políticas. Hasta 100 N de frente la tumba 2,5 s después. Las políticas de pie lo aguantan; caminando, recuperarse pide salirse de la referencia (dar un paso de más) y la recompensa premia copiarla. 4 M pasos por etapa es poco: las de pie entrenaron 40 M+.
   - Siguiente: una corrida larga con empujones (decenas de M pasos, ~1-2 h con la Mac libre) y, si no basta, una recompensa que tolere apartarse de la pose de referencia justo después de un empujón.
+  - **Corrida larga con empujones** (`walk-long-seed0`, 30 M pasos, 68 min, desde `walk-follow300-seed0`, `--follow`, hasta 300 N): calma 100 %. Empujones aleatorios 0-F N: 100 N **100 %**, 150 N **90 %**, 200 N 55 %, 300 N 15 % (antes 95/75/40/10). Empujón de la web (250 N una vez): **5 de 20** (a 10 M pasos 1 de 20; antes 0); izquierda 3/5, derecha 0/5. Mejora con más pasos, sin meseta todavía. Pruebas en el scratchpad (pendiente pasarlas a `training/`).
+  - Siguiente: seguir esta corrida (más pasos) o la recompensa que tolere apartarse tras un empujón; después el H1.
   - Error mío: un `git checkout` de `training/experiments.csv` borró las filas de `walk-nudge-v1`; reconstruidas desde sus `evals.csv` (marcadas en la nota).
   - La Mac se pasó a batería a mitad del entrenamiento: el guardián lo pausó y siguió solo al enchufarla.
 
