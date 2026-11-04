@@ -1,139 +1,90 @@
-# Set de prueba: los 20 videos que graba Juan, solo
+# Set de prueba: videos de cualquier lado
 
-Para qué: medir con números si la captura, el retargeting y el entrenamiento mejoran ([plan v2](../plan-v2.md), pilar B). Siempre se corren los mismos 20 videos, así un cambio se compara contra el anterior.
+**Cambio del 2026-11-03 (Juan):** Tridi tiene que funcionar con el video que la gente ya tiene: una persona bailando en TikTok, un grupo haciendo una coreografía, alguien lavando platos en YouTube, la cámara de la Mac o el teléfono en la mano. Nada de trípode, 60 fps ni foco bloqueado. Por eso el set de prueba ya no es una sesión de grabación de Juan: es una **lista de videos reales por habilidad**, y la tecnología se mide sobre ellos.
 
-Todo pensado para grabar **sin ayuda**: el teléfono queda fijo, tú entras al cuadro, haces el movimiento y sales. Se puede grabar en 2 o 3 tandas de ~40 min.
-
-**Privacidad:** los videos **nunca** van al repo ni a la nube. Quedan en la Mac, en `~/Tridi/set-de-prueba/` (fuera del repo). Al repo solo va lo que sale de ellos (movimiento, métricas) y la ficha de medidas de abajo.
+Juan puede sumar grabaciones propias cuando quiera (sección 4), pero no hace falta grabar nada para empezar.
 
 ---
 
-## 1. Lo que necesitas (una vez)
+## 1. Cómo funciona
 
-| Cosa | Para qué | Si no la tienes |
+| Qué | Dónde |
+| --- | --- |
+| La lista de videos (id, habilidad, fuente, link, licencia, estado) | [`data/set-de-prueba/manifest.csv`](../../data/set-de-prueba/manifest.csv), versionada |
+| Los videos y sus `PoseClip` | `~/Tridi/set-de-prueba/` en la Mac. **Nunca** en el repo ni en la nube |
+| Las notas de calidad de cada versión de la captura | [`data/set-de-prueba/quality.csv`](../../data/set-de-prueba/quality.csv), versionada |
+
+```bash
+uv run --project data python -m data.testset list                      # qué hay y qué está bajado (✓)
+uv run --project data python -m data.testset add "<link>" --id bailar-03 --categoria bailar
+uv run --project data python -m data.testset download                  # baja lo que falta
+uv run --project data python -m data.testset extract                   # PoseClip de cada video
+uv run --project data python -m data.testset quality --save <versión>  # nota de calidad, a quality.csv
+```
+
+`add` acepta un link de TikTok, YouTube, Instagram, Pexels o Mixkit, o un archivo de la Mac (un video grabado con el teléfono o la cámara de la Mac).
+
+## 2. La nota de calidad (sin verdad de terreno)
+
+Como no hay captura de movimiento profesional para comparar, se mide lo que un cuerpo humano real no puede hacer ([`data/quality.py`](../../data/quality.py)):
+
+| Medida | Qué es | Bien |
 | --- | --- | --- |
-| El iPhone | Grabar | — |
-| Un soporte que deje el teléfono quieto | Cámara fija: la mayoría de los videos la necesitan | Un trípode de teléfono barato, o el teléfono apoyado de pie contra libros en una mesa o repisa. Lo importante es que **no se mueva** |
-| Cinta adhesiva de color (de pintor) | Marcas en el piso | Cualquier cinta, o dos objetos chicos planos (no se tropiezan) |
-| Una cinta métrica | Medir distancias y tu cuerpo | — |
-| Una silla sin ruedas | Sentarse | — |
-| Un escalón firme (escalera de la casa, o un cajón muy firme de 15-20 cm) | Subir y bajar | Si no hay, se salta ese video |
-| Mesa, una taza, un plato, una cuchara, una caja chica | Objetos | — |
-| La cocina con fregadero | Lavar | — |
+| `valid` | Cuadros donde la persona se detectó de verdad | → 100 % |
+| `jitter` | Aceleración p95 de rodillas y tobillos (m/s²): temblor cuadro a cuadro | Bajo |
+| `slide` | Velocidad del pie apoyado (m/s): un pie apoyado no se mueve | → 0 |
+| `sink` | Cuánto se hunde el pie bajo el piso (cm) | → 0 |
+| `bones` | Cuánto cambia el largo de muslo, pierna, brazo y antebrazo (%): los huesos no se estiran | → 0 % |
+| `height` | Altura estimada (m) | La de la persona |
 
-## 2. Tu ficha de medidas (5 minutos, una vez)
+**Línea de partida** (captura del hackathon, MediaPipe, 2026-11-03):
 
-Mide y anota en `data/set-de-prueba/ficha.json` (te armo el archivo cuando tengas los números; o dímelos en el chat). Sirve de **verdad de terreno**: si la captura dice que mides 1,62 m y mides 1,78 m, está mal en un 9 %.
+| Clip | valid | jitter | slide | sink | bones | altura |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Caminar de perfil | 100 % | 43,2 | 0,87 m/s | 0,3 cm | 6,4 % | 1,52 m |
+| Correr de perfil | 97 % | 93,9 | 3,18 m/s | 1,2 cm | 12,8 % | 1,56 m |
+| Jumping jacks | 100 % | 18,1 | 0,57 m/s | 0,3 cm | 6,8 % | 1,55 m |
 
-- Altura, descalzo, en cm.
-- Envergadura: brazos abiertos en cruz, de punta de dedo medio a punta de dedo medio.
-- Largo del brazo: hombro (el hueso de arriba) a la muñeca.
-- Largo de la pierna: cadera (el hueso que se toca al costado) al tobillo.
-- Largo de la mano: muñeca a la punta del dedo medio.
-- La distancia entre las marcas A y B del piso (punto 3).
+El pie apoyado que "patina" casi 1 m/s caminando y los huesos que se estiran 6-13 % son exactamente lo que después hace que la referencia del robot no esté en equilibrio (los controles C1 y C2 de [`training/checks.py`](../../training/checks.py)).
 
-## 3. Preparar el lugar (cada tanda)
+## 3. Qué videos buscar
 
-1. **Luz:** de día, con luz que te dé de frente o de costado. **Nunca con una ventana detrás de ti** (sales oscuro y la captura falla). Prende las luces de la habitación también.
-2. **Fondo:** lo más despejado posible. Que no haya otra persona, ni un espejo, ni una tele con gente en el cuadro.
-3. **Marcas en el piso:** dos marcas, **A** y **B**, a **3,00 m** exactos una de otra, en línea recta. Mide con la cinta. Más una marca **C** en el medio (1,50 m).
-4. **Teléfono, para los videos "de perfil":** a la altura de tu cadera (~1 m del piso), mirando perpendicular a la línea A-B, a **unos 4 m** de la marca C. Comprueba antes: parado en A y parado en B, tienes que entrar entero, de la cabeza a los pies, con un poco de margen arriba y abajo.
-5. **Teléfono, para los videos "de frente":** en la línea de A-B, detrás de B, a ~1,5 m de B, a la altura de la cadera.
+### De dónde
 
-## 4. Cómo configurar el iPhone (cada tanda)
+| Fuente | Licencia | Para qué |
+| --- | --- | --- |
+| **Pexels** (pexels.com/videos), Mixkit, Pixabay | Uso libre, también comercial, sin atribución; no vender el video tal cual | Pruebas **y** datos del producto. **Empezar por acá** |
+| TikTok, YouTube, Instagram | El video es de quien lo publicó | Pruebas en esta Mac. No como datos que se venden: para eso hace falta permiso o licencia ([`yc/verdad-hoy.md`](../../yc/verdad-hoy.md), "Datos con licencia") |
+| Grabaciones propias | Nuestras | Todo, y la verdad de terreno (sección 4) |
 
-- App **Cámara**, modo **Video** (no Cinematográfico, no Cámara lenta).
-- **1080p a 60 fps** (Ajustes → Cámara → Grabar video). 60 cuadros por segundo ayudan con los movimientos rápidos y con las manos. 4K no hace falta: pesa 4× y la captura no lo aprovecha.
-- **Horizontal** para cuerpo entero. **Vertical** solo para los videos de manos (está indicado).
-- Lente **1×** (nada de 0,5× ni zoom: el gran angular deforma el cuerpo en los bordes).
-- **Bloquear exposición y foco:** con el cuadro armado, mantén apretado el dedo sobre el lugar donde vas a estar hasta que aparezca "Bloqueo AE/AF". Así la imagen no cambia de brillo cuando entras.
-- Modo **No molestar** (que no entre una llamada a mitad).
-- Para no tener que tocar el teléfono cada vez: graba **una toma larga por tanda** con varios videos dentro, y los separamos después; o usa el **Apple Watch** (app Cámara remota) o "Oye Siri, graba un video" si los tienes.
+### Qué habilidades, y cuántos
 
-## 5. Cómo vestirte
+Unos 5 por habilidad, a propósito variados: no los videos "perfectos", sino los que la gente de verdad sube.
 
-- Ropa **ajustada** o normal, no holgada (una sudadera grande esconde los codos y la cadera). Un color que contraste con el fondo (si la pared es blanca, no te vistas de blanco).
-- **Manga corta o arremangado:** las muñecas tienen que verse.
-- **Sin guantes, sin relojes grandes, sin anillos llamativos** en los videos de manos.
-- **Zapatos** en todos menos donde se diga; siempre los mismos en toda la tanda.
-- Pelo recogido si tapa la cara o el cuello.
+| Habilidad | Buscar (en inglés rinde más) | Lo que se quiere cubrir |
+| --- | --- | --- |
+| Lavar platos ⭐ | "washing dishes", "doing dishes kitchen sink" | De costado y de frente, una persona, manos visibles |
+| Bailar | "dancing", "hip hop dance", "tiktok dance" | Una persona, cuerpo entero, giros |
+| Bailar en grupo | "group dancing", "dance choreography" | **Varias personas**: elegir a una, o a todas |
+| Caminar | "man walking full body", "walking side view" | De perfil, de frente, cámara que sigue a la persona |
+| Correr | "jogging side view", "running" | Pies en el aire |
+| Jumping jacks | "jumping jacks" | Una persona y un grupo |
+| Sentarse | "sitting down on chair" | Contacto con un mueble |
+| Escaleras | "walking up stairs" | Pies a otra altura |
+| Manos | "waving hand", "counting fingers", "sign language" | Dedos: para las manos de 5 dedos |
+| Objetos | "lifting box", "carrying boxes" | Cuerpo entero + objeto |
 
-## 6. La rutina de cada video (siempre igual)
+Ya hay 25 candidatos de Pexels en el manifiesto (estado `candidato`, sin revisar). Al revisarlos: ¿se ve el cuerpo que importa (entero, o de la cintura para arriba en manos y lavar)? ¿cuántas personas? Si sirve, `estado` → `ok`; si no, se borra la fila.
 
-1. Dale a grabar.
-2. Entra al cuadro y párate en la marca de inicio.
-3. **Pose de arranque, 3 segundos:** quieto, de pie, brazos abiertos en cruz (pose T). Es la calibración: le dice a la captura cuánto miden tus brazos en ese video.
-4. Haz el movimiento.
-5. **Pose de cierre, 2 segundos:** quieto, brazos al costado.
-6. Sal del cuadro y corta. Si algo salió raro (tropezaste, alguien entró), repítelo: es gratis.
+### Lo difícil también entra
 
----
+El set tiene que tener los casos que hoy fallan, porque son los que la captura 2.0 tiene que resolver: cámara en la mano que se mueve, gente de frente caminando hacia la cámara, video vertical, poca luz, ropa holgada, una persona tapando a otra, cortes de edición (TikTok). Se marcan en `notas`.
 
-## 7. Los 20 videos
+## 4. Si Juan quiere grabar algo (opcional)
 
-Nombre del archivo = el código de la primera columna (por ejemplo `B01-caminar-perfil.mov`). Si es una toma larga con varios, dímelo y los corto yo.
+Sin reglas de estudio: el teléfono en la mano o apoyado, la cámara de la Mac, como salga. Solo dos grabaciones valen el esfuerzo, porque dan algo que los videos de internet no tienen, **la verdad de terreno**:
 
-### A. Calibración (1)
+1. **Distancia conocida:** dos marcas de cinta en el piso a 3,00 m medidos; caminar de una a la otra, ida y vuelta, de perfil y después de frente. La captura debería decir 3 m.
+2. **Tu cuerpo medido:** anota tu altura y tu envergadura (brazos en cruz, punta a punta). Después grábate de cualquier forma haciendo cualquier cosa: la altura estimada se compara con la real.
 
-| Código | Cámara | Qué haces | Dura | Para qué |
-| --- | --- | --- | --- | --- |
-| **A01-calibracion** | De perfil, en C | Pose T 3 s. Después gira **muy despacio** sobre ti mismo una vuelta entera (20 s), brazos en cruz. Después brazos abajo, otra vuelta despacio | ~50 s | La forma de tu cuerpo vista desde todos lados |
-
-### B. Moverse por el piso (6)
-
-| Código | Cámara | Qué haces | Dura | Para qué |
-| --- | --- | --- | --- | --- |
-| **B01-caminar-perfil** | De perfil | De A a B caminando normal, das la vuelta, de B a A. **3 veces** ida y vuelta | ~30 s | La caminata de siempre, con distancia conocida (3 m): ¿la captura dice 3 m? |
-| **B02-caminar-frente** | De frente | De A a B caminando hacia la cámara, vuelta, de B a A de espaldas a la cámara. 3 veces | ~30 s | Lo que hoy falla ("de frente el avance sale ≈ 0") |
-| **B03-caminar-circulo** | De perfil | Camina en un círculo de ~2 m alrededor de C, 2 vueltas | ~25 s | Giros mientras caminas |
-| **B04-trotar** | De perfil | Trota suave de A a B y de vuelta, 2 veces | ~15 s | Movimiento rápido, pies en el aire |
-| **B05-sentadillas-saltos** | De perfil, tú en C | 5 sentadillas lentas, pausa de 3 s, 5 saltos en el lugar con los dos pies | ~30 s | Pies que no se mueven + vuelo + aterrizaje |
-| **B06-jumping-jacks** | **De frente**, tú en C | 10 jumping jacks | ~15 s | El movimiento que ya entrenamos (comparar contra el clip de YouTube) |
-
-### C. Con el entorno (3)
-
-| Código | Cámara | Qué haces | Dura | Para qué |
-| --- | --- | --- | --- | --- |
-| **C01-silla** | De perfil, silla en C, de costado a la cámara | Siéntate y levántate 3 veces, despacio | ~25 s | Contacto con un mueble (escalón 3 del plan) |
-| **C02-escalon** | De perfil al escalón | Sube y baja el escalón 3 veces, primero con el pie derecho, después con el izquierdo | ~30 s | Pies a otra altura |
-| **C03-apoyarse** | De perfil, mesa en C | Camina hasta la mesa, apoya las dos manos en ella 3 s, inclínate, vuelve | ~20 s | Manos que cargan peso |
-
-### D. Manos y dedos (5) — teléfono **vertical**, a la altura del pecho, a **1,2 m**, que se vea de la cintura para arriba
-
-| Código | Qué haces | Dura | Para qué |
-| --- | --- | --- | --- |
-| **D01-saludar-senalar** | Saluda con la derecha, después con la izquierda. Señala arriba, abajo, a tu derecha, a tu izquierda, a la cámara | ~20 s | Brazos y dedo índice |
-| **D02-contar** | Cuenta del 1 al 5 con la mano derecha, de frente a la cámara, despacio (2 s por número). Después la izquierda. Después las dos a la vez | ~40 s | **Los 5 dedos**, uno por uno |
-| **D03-abrir-cerrar** | Abre y cierra el puño 5 veces despacio. Después rápido. Después palma hacia la cámara y hacia ti, girando la muñeca | ~30 s | Flexión de todos los dedos y giro de la muñeca |
-| **D04-agarres** | Sin objeto: haz como que agarras una taza por el asa, una pelota con toda la mano, un lápiz con la punta de los dedos. 3 veces cada uno | ~40 s | Formas de agarrar (para las manos del robot) |
-| **D05-manos-de-perfil** | Gira 90° (de perfil a la cámara) y repite D02 y D03 rápido | ~40 s | Dedos que se tapan entre sí: el caso difícil |
-
-### E. Objetos (4)
-
-| Código | Cámara | Qué haces | Dura | Para qué |
-| --- | --- | --- | --- | --- |
-| **E01-taza** | Horizontal, a 45° de la mesa, a la altura del pecho, a ~2 m; que se vea la mesa entera y tú de la cadera para arriba. Dos marcas de cinta en la mesa, a 40 cm | Toma la taza de la marca 1 y déjala en la marca 2. Vuelve. **5 veces**, una con cada mano alternando | ~45 s | Agarrar y dejar (escalón 4) |
-| **E02-plato** | Igual que E01 | Toma un plato de la pila y déjalo en otro lugar de la mesa, plano. 5 platos (o el mismo 5 veces) | ~45 s | Objeto plano y ancho |
-| **E03-caja** | De perfil, en el piso | Levanta una caja chica del piso en A, llévala caminando a B, déjala en el piso | ~20 s | Cuerpo entero + objeto |
-| **E04-lavar** ⭐ | En la cocina: teléfono horizontal en la mesada o en una repisa, a un costado (~45°), a 1,5-2 m, a la altura del pecho; que se vean el fregadero, la mesada y tú de la cintura para arriba. **Lejos del agua** | Lava **un plato, una taza, una cuchara y un vaso**, uno por uno: tomarlo, enjabonar con la esponja, enjuagar, dejarlo en el escurridor. Sin apuro, como lo harías normal | **2 a 3 min** | El video estrella del plan: lavar desde un solo video (escalón 6) |
-
-### F. Casos difíciles (1)
-
-| Código | Cámara | Qué haces | Dura | Para qué |
-| --- | --- | --- | --- | --- |
-| **F01-bailar** | De perfil, tú en C | Baila libre, con brazos, giros y pasos, 20 s | ~25 s | Movimientos rápidos, giros, brazos cruzando el cuerpo |
-
----
-
-## 8. Al terminar cada tanda
-
-1. Pasa los videos a la Mac por **AirDrop** (no por la nube, no por WhatsApp: comprime y les saca los datos de la cámara).
-2. Déjalos en `~/Tridi/set-de-prueba/` con su código como nombre.
-3. Dime en el chat qué grabaste y si algo salió raro. Yo los paso por la captura de hoy (la línea de partida) y anoto las métricas.
-
-## 9. Chequeo rápido antes de cortar cada video
-
-- ¿Se te ve entero (o de la cintura para arriba en D) **todo el tiempo**? Si saliste del cuadro, repite.
-- ¿Hiciste la pose T al principio?
-- ¿El teléfono no se movió?
-- ¿No apareció nadie más?
+Se suman con `add ~/ruta/al/video.mov --id propio-distancia-01 --categoria caminar`.

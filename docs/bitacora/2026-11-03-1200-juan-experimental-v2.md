@@ -47,6 +47,9 @@ Trabajar en una rama aparte (`juan/experimental`, local, sin push ni deploy: la 
 - **Lo que dijeron los controles:** la caminata, los jumping jacks y correr fallan C1 y C2. Caminata: pies en el piso cuando deberían 55 %, pie apoyado que patina 0,25 m/s, motores 100 ms tarde; centro de masa fuera del pie apoyado en 84 % de los cuadros aun quieto (~17 cm), ZMP fuera en 93 %. `g1-walk` aguanta 2 s desde 61 % de los inicios y cae sobre todo entre 4,5 y 8 s. **Por eso más pasos no ayudaron: la referencia no está en equilibrio.** El bloque 3 empieza arreglando la referencia.
 - Medido: en prioridad de fondo, con la Mac en uso, la imitación va a ~530 pasos/s; los controles usan `--shared nice` por defecto.
 
+- **Cuarta vuelta (Juan):** el set de prueba no lo graba Juan: videos que ya existen (TikTok, YouTube, Instagram, bancos de video), y Tridi tiene que funcionar con cualquier cámara y con varias personas, sin condiciones de estudio. Hecho: `data/testset.py` (`list`, `add`, `download` con curl para Pexels y yt-dlp para el resto, `extract`, `quality`), `data/set-de-prueba/manifest.csv` con 25 candidatos de Pexels (licencia libre, también comercial; revisada en pexels.com/license), `data/quality.py` (valid, jitter, slide, sink, bones, height) con la línea de partida en `quality.csv`, y la guía reescrita. Los videos no se bajaron todavía: falta el OK de Juan.
+- **C3 de la caminata: pasa.** Aprende el primer segundo en ~100 k pasos (sigue 1,02 s de 1,0). La salud avisó algo real: el gradiente se recorta siempre (norma ~22 contra el límite de 1): el tamaño real de cada paso de aprendizaje es desconocido. Candidato a arreglar (normalizar los retornos del crítico).
+
 ## Sigue
 
 - Idiomas en En vivo, Subir, Simulaciones, Entrega, Cámara y Red.

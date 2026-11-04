@@ -31,6 +31,7 @@ Tres ideas sostienen todo el plan:
 | **La Mac es de trabajo: que no se queme** | Guardián en cada entrenamiento ([`training/guard.py`](../training/guard.py)): fondo cuando Juan la usa, pausa a batería, caliente o con poca memoria, reanudar después de cualquier corte ✅ |
 | **Solo herramientas gratis y seguras** | Código abierto, corriendo local. Ningún video sale de la Mac. Licencia de cada modelo y dataset anotada antes de usarlo (sección 10) |
 | **Manos de 5 dedos** | El primer robot con manos: G1 + manos de 5 dedos tipo Inspire (6 motores por mano). Las Dex3 (3 dedos) que ya están en `physics/models/dex3` quedan como segunda mano, para probar que el retargeting de manos no está atado a una sola |
+| **Cualquier video, cualquier cámara** | Funciona con lo que la gente ya tiene: TikTok, YouTube, Instagram, stock, la cámara de la Mac o del teléfono en la mano; una persona o un grupo bailando. Nada de trípode ni condiciones de estudio. El set de prueba son videos reales de internet, no grabaciones de Juan |
 | **Cualquier humanoide** | Desde el primer bloque hay un **segundo robot** en las pruebas, para que nada se ate al G1 sin darnos cuenta |
 | **Que no vuelva a pasar lo de la caminata** | Ningún entrenamiento largo sin pasar los controles de la sección 3 |
 
@@ -124,7 +125,7 @@ Todo local en la Mac (PyTorch con MPS, o CPU si un modelo no corre en MPS: en of
 
 **`PoseClip` v2** (contrato primero, en commit aparte): parámetros SMPL-X por cuadro, contactos de pies y manos, confianza por articulación, cámara. Los 33 puntos siguen saliendo, derivados, para que nada de hoy se rompa.
 
-**Medida (set de prueba propio, bloque 1):** 20 videos que Juan graba solo, con la guía paso a paso de [`grabacion/set-de-prueba.md`](grabacion/set-de-prueba.md) (sirven además como datos con licencia propia): caminar de perfil y de frente, girar, agacharse, sentarse, gestos, contar con los dedos, agarrar y dejar objetos, dos personas. Métricas sin verdad de terreno: patinazo del pie (cm/s), pies bajo el piso, temblor, largo de huesos constante, cuadros válidos. Con verdad de terreno: cinta métrica en el piso para la distancia recorrida.
+**Medida (set de prueba, bloque 1):** videos reales de internet por habilidad (Pexels primero: licencia libre, también comercial; TikTok, YouTube e Instagram para probar en la Mac), con `data.testset` y la nota de calidad `data.quality`; guía en [`grabacion/set-de-prueba.md`](grabacion/set-de-prueba.md). Lo que la captura 2.0 tiene que aguantar: cámara en la mano, de frente, vertical, poca luz, varias personas (elegir a una o entregar a todas), cortes de edición (sirven además como datos con licencia propia): caminar de perfil y de frente, girar, agacharse, sentarse, gestos, contar con los dedos, agarrar y dejar objetos, dos personas. Métricas sin verdad de terreno: patinazo del pie, pies bajo el piso, temblor, largo de huesos constante, cuadros válidos, altura. Línea de partida (MediaPipe, caminata): el pie apoyado patina 0,87 m/s y los huesos cambian 6,4 % de largo. Con verdad de terreno (opcional): dos grabaciones de Juan, distancia de 3 m y su altura medida.
 **Meta:** patinazo < 2 cm/s; distancia con < 5 % de error de frente y de perfil; dedos legibles en ≥ 90 % de los cuadros con la mano visible.
 
 ### C. Escena y objetos: la cocina del video, en la simulación
@@ -196,7 +197,7 @@ Cada escalón usa todo lo anterior y prueba algo nuevo. No se sube sin la medida
 | Bloque | Qué | Se muestra |
 | --- | --- | --- |
 | **0 ✅** | Rama, idiomas en la landing, congelón de Capture, este plan | Landing ES/EN |
-| **1** | **Controles de la sección 3** en `training/`. ✅ Guardián de la Mac, reanudar, detector de meseta, registro, C1-C4 (`training.checks`), mapa de caídas (`training.failmap`) y salud del aprendizaje. ⏳ Juan graba el set de prueba. Idiomas en el resto de la web | ✅ El informe de controles sobre la caminata, que explica por qué se estancó (abajo) |
+| **1** | **Controles de la sección 3** en `training/`. ✅ Guardián de la Mac, reanudar, detector de meseta, registro, C1-C4 (`training.checks`), mapa de caídas (`training.failmap`) y salud del aprendizaje. ✅ Set de prueba de videos de internet (`data.testset`, 25 candidatos de Pexels) y nota de calidad (`data.quality`, línea de partida guardada). Idiomas en el resto de la web | ✅ El informe de controles sobre la caminata, que explica por qué se estancó (abajo) |
 | **2** | Pasos/s en la Mac (`mujoco.rollout`, perfilado). Segundo humanoide cargado. Set de 20 videos | "Antes X pasos/s, ahora Y" |
 | **3** | **Escalón 1:** la caminata completa, con los controles | La caminata entera con física |
 | **4** | Captura 2.0 (GVHMR + HaMeR → SMPL-X), `PoseClip` v2 | Antes/después en el set de prueba, con dedos |
