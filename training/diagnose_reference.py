@@ -24,8 +24,9 @@ import argparse
 import mujoco
 import numpy as np
 
-from .env import DECIMATION
+from .env import ACTION_SCALE, DECIMATION
 from .imitate import CONTROL_DT, FEET, FOOT_SPHERES, MimicEnv
+from .imitate import LOOKAHEAD_S as _LOOKAHEAD
 
 DEFAULT_CLIPS = ("clip_2026-10-23_caminar-perfil_01", "clip_2026-10-23_correr-perfil_01")
 
@@ -51,11 +52,12 @@ RANGE_SHARE = 0.01  # a motor asked past its range in more than 1 frame in 100
 TRACK_RAD = 0.10  # legs 0.1 rad off on average: 40% of one action unit (0.25 rad) spent catching up
 CONTACT_AGREE = 0.80  # feet touching the floor when the reference says so, 4 times out of 5
 
-# The observation shows the reference one decision (20 ms) ahead. A motor that lags more than 2
-# decisions behind needs the policy to aim at a future it does not see.
+# A motor that lags more than the policy sees ahead needs it to aim at a future it does not see.
 MAX_DELAY_S = 0.2
-LOOKAHEAD_S = CONTROL_DT
-DELAY_S = 2 * CONTROL_DT
+# What the policy sees ahead is imitate.LOOKAHEAD_S (up to 250 ms since the hackathon's last fix);
+# this check said "20 ms" until 2026-11-03, flagging a lag the observation already covers.
+LOOKAHEAD_S = max(_LOOKAHEAD)
+DELAY_S = LOOKAHEAD_S
 
 
 def foot_clearance(model: mujoco.MjModel, data: mujoco.MjData, floor: int, geoms: dict) -> dict:
@@ -115,12 +117,17 @@ def kinematic_checks(env: MimicEnv, geoms: dict, floor: int) -> dict:
     }
 
 
-def held_pelvis(env: MimicEnv, geoms: dict, floor: int, contact_ref: list, static: bool = False) -> dict:
+def held_pelvis(env: MimicEnv, geoms: dict, floor: int, contact_ref: list, static: bool = False,
+                lead: np.ndarray | None = None) -> dict:
     """Part 4: motors aim at the reference (zero action, as MimicEnv.apply does) while the pelvis is
     set to the reference path before every physics step, with its velocity, so it cannot fall.
 
     With static=True the reference is frozen at its first pose: the error left is what gravity bends
-    position motors by, which the policy has to add on top of the reference anyway."""
+    position motors by, which the policy has to add on top of the reference anyway.
+
+    With lead (seconds per motor), each motor aims at the reference that far ahead instead: the
+    simplest thing a policy that sees LOOKAHEAD_S ahead can learn. What error is left then is what
+    no policy can remove by timing alone."""
     model, data, motion = env.model, env.data, env.motion
     env.reset_at(0.0)  # reference pose, feet on the floor (the height offset _touch_ground found)
     offset = data.qpos[2] - motion.sample(0.0)[0][2]
@@ -132,7 +139,11 @@ def held_pelvis(env: MimicEnv, geoms: dict, floor: int, contact_ref: list, stati
     t = 0.0
     zero = np.zeros(model.nu)
     for k in range(len(contact_ref) - 1):
-        env.apply(zero)  # targets = reference pose for the next 20 ms (ref_next, set by observe())
+        if lead is None:
+            env.apply(zero)  # targets = reference pose for the next 20 ms (ref_next, set by observe())
+        else:
+            ahead = np.array([motion.sample(clock(t + CONTROL_DT + lead[j]))[0][7 + j] for j in range(model.nu)])
+            env.apply((ahead - env.ref_next) / ACTION_SCALE)
         for i in range(DECIMATION):
             ts = clock(t + i * dt)
             q, root_vel, _, _ = motion.sample(ts)
@@ -152,13 +163,10 @@ def held_pelvis(env: MimicEnv, geoms: dict, floor: int, contact_ref: list, stati
         actual.append(data.qpos[7:].copy())
         wanted.append(motion.sample(clock(t))[0][7:])
         errors.append(actual[-1] - wanted[-1])
-        touching = {s: False for s in geoms}
-        for i in range(data.ncon):
-            pair = data.contact[i].geom
-            if floor in pair:
-                for s, ids in geoms.items():
-                    if pair[0] in ids or pair[1] in ids:
-                        touching[s] = True
+        # "On the floor" with the same 1.5 cm tolerance the reference gets (CONTACT_M). Requiring a
+        # real contact made a held-up foot that hovers 2 mm read as "not touching": with the pelvis
+        # carried, the feet never bear weight, so they never settle onto the floor.
+        touching = {s: c < CONTACT_M for s, c in foot_clearance(model, data, floor, geoms).items()}
         agree.extend(touching[s] == contact_ref[k + 1][s] for s in geoms)  # both at time t
     rms = np.sqrt(np.mean(np.array(errors) ** 2, axis=0))
     return {"offset": float(offset), "rms": rms, "contact_agree": float(np.mean(agree)),
@@ -185,6 +193,9 @@ def analyze(clip: str) -> dict:
     k = kinematic_checks(env, geoms, floor)
     h = held_pelvis(env, geoms, floor, k["contact_ref"])
     still = held_pelvis(env, geoms, floor, k["contact_ref"], static=True)
+    # Motors aiming ahead by their own measured lag (up to what the policy sees): the verdict on
+    # tracking and contacts uses this, since a lag the observation covers is the policy's job.
+    led = held_pelvis(env, geoms, floor, k["contact_ref"], lead=np.minimum(h["delay_s"], LOOKAHEAD_S))
     names = [model.actuator(i).name.removesuffix("_joint") for i in range(model.nu)]
     legs = [i for i, n in enumerate(names) if any(p in n for p in ("hip", "knee", "ankle"))]
     # A clip id or a RobotMotion path: only a walk forbids both feet in the air.
@@ -200,14 +211,14 @@ def analyze(clip: str) -> dict:
         problems.append("la recompensa de los pies apunta a otro lugar que la pose de referencia")
     if any(share > RANGE_SHARE for _, share, _ in bad):
         problems.append("la referencia pide ángulos fuera del rango de los motores")
-    if h["rms"][legs].mean() > TRACK_RAD:
+    if led["rms"][legs].mean() > TRACK_RAD:
         problems.append("los motores de las piernas quedan lejos de la referencia aunque no tengan que equilibrarse")
     if np.median(h["delay_s"][legs]) > DELAY_S or h["delay_s"][worst].max() > DELAY_S:
         problems.append(f"los motores van hasta {1000 * h['delay_s'][worst].max():.0f} ms detrás de la referencia y "
                         f"la red solo ve {1000 * LOOKAHEAD_S:.0f} ms adelante: no puede anticiparse")
-    if h["contact_agree"] < CONTACT_AGREE:
+    if led["contact_agree"] < CONTACT_AGREE:
         problems.append("los pies no tocan el piso cuando la referencia dice que deberían (o al revés)")
-    return {"env": env, "k": k, "h": h, "still": still, "names": names, "legs": legs, "bad": bad, "worst": worst,
+    return {"env": env, "k": k, "h": h, "still": still, "led": led, "names": names, "legs": legs, "bad": bad, "worst": worst,
             "problems": problems}
 
 
@@ -240,6 +251,9 @@ def report(clip: str) -> None:
     print("   retraso de los motores: " + ", ".join(f"{names[i]} {1000 * h['delay_s'][i]:.0f} ms" for i in worst)
           + f" (la observación muestra la referencia {1000 * LOOKAHEAD_S:.0f} ms adelante)")
     print(f"   pies en el piso cuando la referencia lo dice: {100 * h['contact_agree']:.0f} %")
+    led = a["led"]
+    print(f"   apuntando adelante lo que atrasa cada motor (lo que una política aprende): error de las piernas "
+          f"{led['rms'][legs].mean():.3f} rad, pies en el piso cuando corresponde {100 * led['contact_agree']:.0f} %")
 
     problems = a["problems"]
     print("Veredicto: " + ("la referencia parece viable." if not problems else ""))

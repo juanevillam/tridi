@@ -54,9 +54,12 @@ def c1(clip: str) -> dict:
 
     a = analyze(clip)
     h = a["h"]
+    led = a["led"]
     return {"ok": not a["problems"], "problems": a["problems"],
-            "facts": [f"error de piernas con la pelvis sostenida {h['rms'][a['legs']].mean():.3f} rad",
-                      f"pies en el piso cuando la referencia lo dice {100 * h['contact_agree']:.0f} %",
+            "facts": [f"error de piernas con la pelvis sostenida {h['rms'][a['legs']].mean():.3f} rad "
+                      f"({led['rms'][a['legs']].mean():.3f} apuntando adelante lo que atrasa cada motor)",
+                      f"pies en el piso cuando la referencia lo dice {100 * h['contact_agree']:.0f} % "
+                      f"({100 * led['contact_agree']:.0f} % apuntando adelante)",
                       f"pie apoyado que patina {a['k']['slip_speed']:.2f} m/s",
                       f"retraso máximo de un motor {1000 * h['delay_s'].max():.0f} ms"]}
 
@@ -92,7 +95,11 @@ def c2(clip: str) -> dict:
         mujoco.mj_comPos(model, data)
         com.append(data.subtree_com[0].copy())
         clearance = foot_clearance(model, data, floor, geoms)
-        pts = [data.geom_xpos[g][:2].copy() for s, ids in geoms.items() if clearance[s] < CONTACT_M for g in ids]
+        # Support: the capsule ends of the feet on the floor that are themselves within CONTACT_M of it
+        # (a heel lifted at toe-off does not hold anything). Until 2026-11-03 this took the capsules'
+        # centers, a 4 x 5 cm triangle at the front of the foot that left out the heel.
+        pts = [p[:2].copy() for s in geoms if clearance[s] < CONTACT_M
+               for p, r, _ in sole_points(model, data, s) if p[2] - r < CONTACT_M]
         support.append(np.array(pts))
     com = np.array(com)
     # Center of mass acceleration from a 30 fps video is noisy: smoothed over ZMP_SMOOTH_S first.
@@ -107,8 +114,13 @@ def c2(clip: str) -> dict:
     outside = np.array(outside)
     off = float(np.mean(outside > ZMP_TOL_M))
     problems = []
-    if sat.max() > TORQUE_SHARE:
-        j = int(np.argmax(sat))
+    # Only motors that carry the body fail the check: legs and waist. On the walk the right wrist
+    # pitch saturated 4-5 % with a reference that is 0 the whole clip: the held pelvis is dragged along
+    # its path and shakes the hand, and its 5 N m motor gives out. A wrist cannot topple the robot.
+    # Arms are listed in the facts; with manipulation (ladder step 4) they will carry loads and count.
+    body = np.array([any(p in n for p in ("hip", "knee", "ankle", "waist")) for n in names])
+    if (sat * body).max() > TORQUE_SHARE:
+        j = int(np.argmax(sat * body))
         problems.append(f"{names[j]} está al límite de torque en {100 * sat[j]:.0f} % de las decisiones, aun con la pelvis sostenida")
     if off > ZMP_SHARE:
         problems.append(f"el ZMP queda fuera de los pies apoyados en {100 * off:.0f} % de las decisiones: "
@@ -120,6 +132,22 @@ def c2(clip: str) -> dict:
                       f"ZMP fuera del apoyo (> {100 * ZMP_TOL_M:.0f} cm): {off:.0%} de las decisiones; "
                       f"sin ningún pie apoyado: {np.mean(~np.isfinite(outside)):.0%}; "
                       f"distancia p95 {100 * (np.percentile(finite, 95) if len(finite) else 0):.0f} cm"]}
+
+
+def sole_points(model: mujoco.MjModel, data: mujoco.MjData, side: str) -> list[tuple[np.ndarray, float, int]]:
+    """The ends of a foot's collision capsules: (world position of the end's center, radius, geom id).
+    The G1's sole is three capsules along the foot (the middle one from heel to toe); their ends, not
+    their centers, bound where the foot can push on the floor. Needs kinematics."""
+    from .imitate import FOOT_SPHERES
+
+    out = []
+    for n in FOOT_SPHERES[side]:
+        g = model.geom(n)
+        axis = data.geom_xmat[g.id].reshape(3, 3)[:, 2]
+        half = g.size[1] if model.geom_type[g.id] == mujoco.mjtGeom.mjGEOM_CAPSULE else 0.0
+        for sign in (-1, 1):
+            out.append((data.geom_xpos[g.id] + sign * half * axis, float(g.size[0]), g.id))
+    return out
 
 
 def distance_outside(p: np.ndarray, pts: np.ndarray) -> float:

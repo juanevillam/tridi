@@ -79,8 +79,12 @@ class Motion:
         #    floor (the retargeting grounded it with the mesh feet of the display model);
         # 4. feet targets taken from that final pose. They used to come from the pose before
         #    smoothing, 2 cm (up to 13 cm) away from it, so feet and pelvis rewards disagreed.
-        self.qpos[:, 7:] = smooth(self.qpos[:, 7:], max(1, int(round(JOINT_SMOOTH_S * self.fps))))
-        self.qpos[:, :2] = smooth(self.qpos[:, :2], window)
+        # A reference already made plausible by training.balance skips 1 and 2: its feet are planted
+        # by inverse kinematics, and smoothing the pelvis alone would slide them again.
+        self.balanced = "balanced_by" in m
+        if not self.balanced:
+            self.qpos[:, 7:] = smooth(self.qpos[:, 7:], max(1, int(round(JOINT_SMOOTH_S * self.fps))))
+            self.qpos[:, :2] = smooth(self.qpos[:, :2], window)
         d = mujoco.MjData(model)
         feet_ids = [model.body(n).id for n in FEET]
         spheres = [model.geom(n).id for side in FOOT_SPHERES.values() for n in side]
