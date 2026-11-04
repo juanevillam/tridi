@@ -1,0 +1,4 @@
+date,capture,clip,valid,jitter,slide,sink,bones,height
+2026-11-03,mediapipe-hackathon,clip_2026-10-23_caminar-perfil_01,1.0,43.1993,0.8682,0.3325,6.4483,1.5168
+2026-11-03,mediapipe-hackathon,clip_2026-10-23_correr-perfil_01,0.967,93.8681,3.1823,1.1995,12.798,1.5629
+2026-11-03,mediapipe-hackathon,clip_2026-10-24_jumping-jacks-nasm_01,1.0,18.1248,0.5653,0.25,6.7521,1.5542
