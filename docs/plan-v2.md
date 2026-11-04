@@ -27,7 +27,8 @@ Tres ideas sostienen todo el plan:
 
 | Regla | Qué implica |
 | --- | --- |
-| **Cómputo: la Mac de Juan (M2, 16 GB).** Sin alquilar GPU | Física de MuJoCo en CPU con todos los núcleos; entrenar un video 24 h está bien. La eficiencia por paso importa tanto como la cantidad de pasos |
+| **Cómputo: solo la Mac de Juan (MacBook Air M2, 16 GB, sin ventilador).** Nada en la nube, ni gratis | Física de MuJoCo en CPU con todos los núcleos; entrenar un video 24 h está bien (20 videos = un mes, aceptado). La GPU del M2 (MPS) hoy es más lenta que la CPU para esta red chica (10,1 k contra 11,2 k pasos/s, medido): se usa cuando la red crezca. La eficiencia por paso importa tanto como la cantidad |
+| **La Mac es de trabajo: que no se queme** | Guardián en cada entrenamiento ([`training/guard.py`](../training/guard.py)): fondo cuando Juan la usa, pausa a batería, caliente o con poca memoria, reanudar después de cualquier corte ✅ |
 | **Solo herramientas gratis y seguras** | Código abierto, corriendo local. Ningún video sale de la Mac. Licencia de cada modelo y dataset anotada antes de usarlo (sección 10) |
 | **Manos de 5 dedos** | El primer robot con manos: G1 + manos de 5 dedos tipo Inspire (6 motores por mano). Las Dex3 (3 dedos) que ya están en `physics/models/dex3` quedan como segunda mano, para probar que el retargeting de manos no está atado a una sola |
 | **Cualquier humanoide** | Desde el primer bloque hay un **segundo robot** en las pruebas, para que nada se ate al G1 sin darnos cuenta |
@@ -123,7 +124,7 @@ Todo local en la Mac (PyTorch con MPS, o CPU si un modelo no corre en MPS: en of
 
 **`PoseClip` v2** (contrato primero, en commit aparte): parámetros SMPL-X por cuadro, contactos de pies y manos, confianza por articulación, cámara. Los 33 puntos siguen saliendo, derivados, para que nada de hoy se rompa.
 
-**Medida (set de prueba propio, bloque 1):** 20 videos grabados por Juan (sirven además como datos con licencia propia): caminar de perfil y de frente, girar, agacharse, sentarse, gestos, contar con los dedos, agarrar y dejar objetos, dos personas. Métricas sin verdad de terreno: patinazo del pie (cm/s), pies bajo el piso, temblor, largo de huesos constante, cuadros válidos. Con verdad de terreno: cinta métrica en el piso para la distancia recorrida.
+**Medida (set de prueba propio, bloque 1):** 20 videos que Juan graba solo, con la guía paso a paso de [`grabacion/set-de-prueba.md`](grabacion/set-de-prueba.md) (sirven además como datos con licencia propia): caminar de perfil y de frente, girar, agacharse, sentarse, gestos, contar con los dedos, agarrar y dejar objetos, dos personas. Métricas sin verdad de terreno: patinazo del pie (cm/s), pies bajo el piso, temblor, largo de huesos constante, cuadros válidos. Con verdad de terreno: cinta métrica en el piso para la distancia recorrida.
 **Meta:** patinazo < 2 cm/s; distancia con < 5 % de error de frente y de perfil; dedos legibles en ≥ 90 % de los cuadros con la mano visible.
 
 ### C. Escena y objetos: la cocina del video, en la simulación
@@ -195,7 +196,7 @@ Cada escalón usa todo lo anterior y prueba algo nuevo. No se sube sin la medida
 | Bloque | Qué | Se muestra |
 | --- | --- | --- |
 | **0 ✅** | Rama, idiomas en la landing, congelón de Capture, este plan | Landing ES/EN |
-| **1** | **Controles de la sección 3** en `training/` (C1-C4, evaluación fija, mapa de caídas, salud, detector de meseta, registro). Idiomas en el resto de la web | El informe de controles sobre `walk-v4`, que explica por qué se estancó |
+| **1** | **Controles de la sección 3** en `training/`. ✅ Guardián de la Mac, reanudar, detector de meseta y registro. ⏳ C1-C4, mapa de caídas, salud del aprendizaje. Juan graba el set de prueba. Idiomas en el resto de la web | El informe de controles sobre `walk-v4`, que explica por qué se estancó |
 | **2** | Pasos/s en la Mac (`mujoco.rollout`, perfilado). Segundo humanoide cargado. Set de 20 videos | "Antes X pasos/s, ahora Y" |
 | **3** | **Escalón 1:** la caminata completa, con los controles | La caminata entera con física |
 | **4** | Captura 2.0 (GVHMR + HaMeR → SMPL-X), `PoseClip` v2 | Antes/después en el set de prueba, con dedos |
@@ -223,7 +224,8 @@ Cada escalón usa todo lo anterior y prueba algo nuevo. No se sube sin la medida
 
 | Riesgo | Qué hacemos |
 | --- | --- |
-| La Mac sola es lenta para manipulación con manos | Eficiencia por paso + controles que cortan lo que no aprende + entrenar de noche. Si algún día hay presupuesto, el mismo código corre en GPU (se mantiene MuJoCo) |
+| La Mac sola es lenta para manipulación con manos | Eficiencia por paso + controles que cortan lo que no aprende + entrenar de noche y mientras no se usa. Sin nube, por decisión de Juan |
+| La Air M2 no tiene ventilador: bajo carga sostenida macOS baja la velocidad | El guardián pausa en estado térmico "serious"; medir en la primera corrida de 24 h cuántas horas reales entrena por día |
 | 16 GB de RAM para modelos de visión grandes | Correr cada modelo por separado sobre el video (no todos a la vez), en offline |
 | Escalar demasiado a la vez | La escalera de la sección 6: un escalón por vez, cada uno con su medida |
 | La rama se aleja de `main` | Rebase semanal |
@@ -245,4 +247,4 @@ Para investigar y mostrar, se usan. Antes del primer cliente, cada pieza ❌ tie
 
 Respondidas por Juan el 2026-11-03: todo es de Juan; rama `juan/experimental` en su repo privado; manos de 5 dedos; cómputo en su Mac con herramientas gratis; no se muestra a Pastor antes.
 
-Siguen abiertas: ver la sesión del 2026-11-03 en [`bitacora/2026-11-03-1200-juan-experimental-v2.md`](bitacora/2026-11-03-1200-juan-experimental-v2.md).
+También: nada de GPU en la nube, ni gratis (ningún dato sale de la Mac); Juan graba solo el set de prueba con la guía de [`grabacion/set-de-prueba.md`](grabacion/set-de-prueba.md); la Mac es de trabajo y no se puede quemar.

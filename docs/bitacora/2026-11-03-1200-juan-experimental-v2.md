@@ -36,13 +36,15 @@ Trabajar en una rama aparte (`juan/experimental`, local, sin push ni deploy: la 
 - **Respuestas de Juan (segunda vuelta):** todo es de Juan; la rama vive en su repo privado `juanevillam/tridi` (subida; nunca `main` ni `Torpass/tridi`); manos de 5 dedos; cómputo solo en su Mac M2 con herramientas gratis y locales (24 h por video está bien); no se muestra a Pastor antes. Visión: un video (p. ej. 3 min lavando platos) → física fiel → RL con millones de variaciones → habilidades que corren debajo de un modelo grande, para cualquier humanoide. Comparable en YC: Asimov (junta muchos datos reales; nosotros multiplicamos uno con física).
 - `docs/plan-v2.md` reescrito con eso: controles contra el estancamiento (C1-C4, evaluación fija, mapa de caídas, salud, detector de meseta, regla de la década, registro), escena y objetos, paquete de robot para cualquier humanoide, entrenamiento eficiente en CPU, escalera de 8 habilidades hasta lavar, licencias.
 
-## Preguntas abiertas para Juan
-
-- GPU gratis en la nube (Kaggle da ~30 h/semana): es gratis, pero los videos salen de la Mac. ¿Se permite para entrenar, o solo la Mac?
-- El set de prueba (20 videos) lo graba Juan: ¿tiene dónde grabar una cocina para los escalones 4-6?
+- **Tercera vuelta:** nada de GPU en la nube, ni gratis: todo en la Mac. Juan graba solo el set de prueba. La Mac es de trabajo: que no se queme.
+- `docs/grabacion/set-de-prueba.md`: guía para grabar solo los 20 videos (equipo, ficha de medidas, marcas a 3 m, iPhone 1080p60 con AE/AF bloqueado, ropa, rutina con pose T, cada video con cámara, qué hacer, duración y para qué; los videos quedan en `~/Tridi/set-de-prueba/`, nunca en el repo).
+- **Bloque 1, primera parte (`training/`):** `guard.py` (full / shared / paused según uso, batería, estado térmico de macOS por `ProcessInfo.thermalState` y memoria; `taskpolicy` para prioridad de fondo; `caffeinate` solo enchufada; `pause`/`resume`/`status`), `plateau.py` (ventana de 3 evaluaciones con +2 %, regla de la década +10 %, "done" al 98 % del techo; autotest con la forma de `walk-v4`), y en `ppo.py`: `latest.pt` cada 5 min y al cortar, `--resume`, evaluación en cada checkpoint (`evals.csv`), parada y `plateau.md`, registro `training/experiments.csv`, `--note`, `--shared`.
+- Probado: autotest de meseta ok; corrida de 100 k pasos cortada con SIGTERM y reanudada con `--resume` hasta el final (progress y registro bien); medido 11.400 pasos/s a toda máquina, ~1.100-1.500 en prioridad de fondo, ~11.000 con `--shared nice` mientras se usa la Mac. La Mac es una MacBook Air M2 (`Mac14,2`), sin ventilador.
+- Encontrado y arreglado: un run lanzado en segundo plano heredaba SIGINT ignorado y Ctrl-C no hacía nada; ahora `ppo.py` maneja SIGINT/SIGTERM y los workers ignoran SIGINT.
 
 ## Sigue
 
 - Idiomas en En vivo, Subir, Simulaciones, Entrega, Cámara y Red.
 - Medir la fluidez con el panel visible y fijar el presupuesto (ningún cuadro > 50 ms).
-- Bloque 1 del plan: los controles contra el estancamiento en `training/`, probados sobre `walk-v4`.
+- Bloque 1, segunda parte: C1-C4 (referencia y física factibles, sobreajuste de 1 s, humo), mapa de caídas por tramo y salud del aprendizaje; correrlos sobre `walk-v4` (sus checkpoints `.pt` están en la Mac de Pastor: hace falta la referencia y reentrenar acá).
+- Juan graba el set de prueba; después, línea de partida de la captura de hoy sobre esos videos.
