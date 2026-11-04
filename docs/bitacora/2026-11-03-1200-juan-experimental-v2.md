@@ -103,6 +103,15 @@ Trabajar en una rama aparte (`juan/experimental`, local, sin push ni deploy: la 
     - `plateau.py`: pronóstico (ajuste en log10 de pasos) y `judge_forecast`: corta cuando la meta queda pasado el presupuesto de pasos. `ppo.py --metric pushwalk --goal --budget-steps` entrena contra el empujón de la web.
     - `--recover`: durante 1 s tras un empujón, la recompensa paga quedar derecho (0,4) y seguir vivo (0,4) más que copiar la pose (0,2).
     - **Sondas (4 M pasos, ~10 min cada una, desde `walk-long-seed0`):** B empujones 150-300 N (cerca de los 250 N de la web) y C `--recover`. El control no se corre: el pronóstico ya lo da (0,22 ± 0,06). Regla fijada antes: gana la que llegue a ≥ 0,35.
+  - **Resultado de las sondas** (empujón de la web, 40 pruebas; control pronosticado 0,22):
+
+    | Sonda | 1 M | 2 M | 3 M | 4 M | Calma |
+    | --- | --- | --- | --- | --- | --- |
+    | B, empujones 150-300 N | 0,33 | 0,40 | 0,30 | **0,40** | 100 % |
+    | C, `--recover` | 0,20 | 0,28 | 0,30 | **0,38** | 100 % |
+
+    Las dos pasan la regla (≥ 0,35) en ~10 min cada una, lo que la corrida larga ganó en 30 M pasos (68 min). C sube más parejo; B sube rápido y oscila. Lo más débil: empujón desde la derecha (10-20 %).
+  - **Corrida de la noche** (`walk-night-seed0`): las dos juntas, desde la sonda B; hasta 60 M pasos, evaluando el empujón de la web cada 1 M y cortando sola si el pronóstico deja 0,9 más allá de 60 M. Modo `background` (lenta y fresca mientras Juan usa la Mac, rápida cuando la deja).
   - Error mío: un `git checkout` de `training/experiments.csv` borró las filas de `walk-nudge-v1`; reconstruidas desde sus `evals.csv` (marcadas en la nota).
   - La Mac se pasó a batería a mitad del entrenamiento: el guardián lo pausó y siguió solo al enchufarla.
 
