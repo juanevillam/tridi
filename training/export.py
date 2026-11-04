@@ -57,10 +57,10 @@ def export(checkpoint: Path, policy_id: str, out: Path, task: str | None = None,
     model.eval()
     obs_dim = model.norm.mean.shape[0]
     if walk:
-        from .imitate import DEFAULT_MOTION, MimicEnv
+        from .imitate import DEFAULT_MOTION, MimicEnv, senses
 
         motion = state.get("motion") or motion or DEFAULT_MOTION
-        env = MimicEnv(seed=0, clips=(motion,))
+        env = MimicEnv(seed=0, clips=(motion,), **senses(model))
     else:
         env = G1Env(seed=0, push=False)
     deployed = Deployed(model, env, walk).eval()

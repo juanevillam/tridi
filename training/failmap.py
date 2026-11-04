@@ -44,7 +44,9 @@ def failure_map(model, motion: str = DEFAULT_MOTION, bin_s: float = BIN_S, horiz
 
     Returns starts (s), survived (bool per start), fell_at (s in the clip, or nan), falls_per_bin
     (how many runs ended by falling inside each bin) and the clip's duration."""
-    env = MimicEnv(seed=0, clips=(motion,))
+    from .imitate import senses
+
+    env = MimicEnv(seed=0, clips=(motion,), **senses(model))
     env.reset()
     duration = env.motion.duration
     starts = np.arange(0.0, max(bin_s, duration - bin_s), bin_s)

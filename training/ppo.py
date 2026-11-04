@@ -141,6 +141,19 @@ class ActorCritic(nn.Module):
     def normalize_returns(self, ret: torch.Tensor) -> torch.Tensor:
         return (ret - self.ret_norm.mean) / torch.sqrt(self.ret_norm.var + 1e-8)
 
+    @staticmethod
+    def widen(state: dict, extra: int) -> dict:
+        """A checkpoint's weights with `extra` new inputs at the end of the observation, wired with
+        zero weights: the widened network acts exactly as the old one until training uses them. New
+        inputs are normalized as N(0, 1) (pelvis velocity, the one use, is ~0-1 m/s)."""
+        state = dict(state)
+        state["norm.mean"] = torch.cat([state["norm.mean"], torch.zeros(extra)])
+        state["norm.var"] = torch.cat([state["norm.var"], torch.ones(extra)])
+        for net in ("actor", "critic"):
+            w = state[f"{net}.0.weight"]
+            state[f"{net}.0.weight"] = torch.cat([w, torch.zeros(w.shape[0], extra)], dim=1)
+        return state
+
     @classmethod
     def from_state(cls, state: dict) -> "ActorCritic":
         """A network sized as a checkpoint's weights say (any robot), with them loaded."""
@@ -164,18 +177,19 @@ def obs_size(task: str) -> int:
     return OBS_DIM
 
 
-def dims(task: str, motion: str | None) -> tuple[int, int]:
+def dims(task: str, motion: str | None, sense_velocity: bool = False) -> tuple[int, int]:
     """Observation and action sizes for this task's robot: the G1's, or the package a mimic motion
     names (training.retarget writes "robot_package")."""
     if task == "mimic" and motion:
         from .imitate import mimic_obs_dim, motion_robot
 
         robot = motion_robot(motion)
+        nu = NU
         if robot != "g1":
             from .robot import load
 
             nu = load(robot).nu
-            return mimic_obs_dim(nu), nu
+        return mimic_obs_dim(nu, sense_velocity), nu
     return obs_size(task), NU
 
 
@@ -199,16 +213,21 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
           seed: int = 0, worlds: tuple[str, ...] = (), wind_max: float | None = None, resume: bool = False,
           guard_on: bool = True, plateau_stop: bool = True, note: str = "", argv: str = "", shared: str = "background",
           register_run: bool = True, robust: bool = False, adaptive_lr: bool = True, follow: bool = False,
-          metric: str = "follow", goal: float = 0.9, budget_steps: float = 100_000_000, recover: bool | float = False) -> None:
+          metric: str = "follow", goal: float = 0.9, budget_steps: float = 100_000_000, recover: bool | float = False,
+          sense_velocity: bool = False) -> None:
     run_dir = RUNS / run
     run_dir.mkdir(parents=True, exist_ok=True)
     torch.manual_seed(seed)
     if every <= 0 and total_steps >= 10 * MIN_STEPS:
         every = max(1_000_000, total_steps // AUTO_EVALS // 1_000_000 * 1_000_000)
-    obs_dim, nu = dims(task, motion)
+    obs_dim, nu = dims(task, motion, sense_velocity)
     model = ActorCritic(obs_dim, nu)
     if init:  # continue from an earlier run (its steps are not counted again)
-        model.load_state_dict(torch.load(init)["model"])
+        state = torch.load(init)["model"]
+        extra = obs_dim - state["norm.mean"].shape[0]
+        if extra > 0:  # an earlier run without the new inputs (--sense-velocity)
+            state = ActorCritic.widen(state, extra)
+        model.load_state_dict(state)
     if std is not None:
         # A continued run inherits a narrowed std (0.5 -> 0.2 after 40 M steps), and with no entropy
         # bonus it only narrows further: a changed reward needs the exploration opened again.
@@ -217,7 +236,7 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
     # Mimic pushes and nudges only with --robust: older mimic runs trained without them.
     envs = VecEnv(NUM_ENVS, WORKERS, seed=seed, push=robust if task == "mimic" else True, push_n=push_n, task=task,
                   motion=motion, push_every=push_every, stance=stance, worlds=worlds, wind_max=wind_max,
-                  follow=follow, recover=recover)
+                  follow=follow, recover=recover, sense_velocity=sense_velocity)
     obs = envs.reset()
     meta = {"task": task, "motion": motion} if task == "mimic" else {"task": task}
     meta["worlds"] = list(worlds) or ["plano"]
@@ -583,6 +602,8 @@ def main() -> None:
                    help="pushwalk: stop when the forecast reaches the goal only past this many steps")
     p.add_argument("--recover", nargs="?", const=True, default=False, type=float, metavar="SECONDS",
                    help="mimic: for RECOVER_S (or SECONDS) after a push, reward staying up over copying the pose (imitate.py)")
+    p.add_argument("--sense-velocity", action="store_true",
+                   help="mimic: the policy also observes its pelvis velocity (3 more inputs; imitate.py)")
     p.add_argument("--fixed-lr", action="store_true", help=f"keep the learning rate at {LR} (runs before the adaptive rate)")
     p.add_argument("--std", type=float, help="reset the action std to this (e.g. 0.3) when continuing with --init")
     p.add_argument("--seed", type=int, default=0, help="torch and environment seed (every run replays seed 0 otherwise)")
@@ -606,7 +627,8 @@ def main() -> None:
           args.every, export_dir, args.policy_prefix, push_every, stance, args.std, args.seed,
           tuple(w for w in args.worlds.split(",") if w), args.wind_max, args.resume, not args.no_guard,
           not args.no_plateau_stop, args.note, " ".join(sys.argv[1:]), args.shared, robust=args.robust, adaptive_lr=not args.fixed_lr, follow=args.follow,
-          metric=args.metric, goal=args.goal, budget_steps=args.budget_steps, recover=args.recover)
+          metric=args.metric, goal=args.goal, budget_steps=args.budget_steps, recover=args.recover,
+          sense_velocity=args.sense_velocity)
 
 
 if __name__ == "__main__":

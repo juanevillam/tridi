@@ -26,7 +26,7 @@ import numpy as np
 import torch
 
 from .env import INIT_JOINT_NOISE, INIT_VEL_NOISE
-from .imitate import MIMIC_OBS_DIM, MimicEnv
+from .imitate import MIMIC_OBS_DIM, MimicEnv, senses
 from .ppo import ActorCritic
 
 # 20 episodes per condition and checkpoint: a 90 % pass is then 18 of 20, and one unlucky start
@@ -37,7 +37,7 @@ PASS_SHARE = 0.9
 
 def episode(model: ActorCritic, motion: str, seed: int, push: bool) -> float:
     """Seconds of the clip followed, from its start, with a nudged first pose."""
-    env = MimicEnv(seed=seed, clips=(motion,), push=push, follow=push)
+    env = MimicEnv(seed=seed, clips=(motion,), push=push, follow=push, **senses(model))
     env.reset()
     obs = env.reset_at(0.0)
     rng = np.random.default_rng(seed)

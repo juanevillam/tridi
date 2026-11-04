@@ -16,12 +16,12 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from .imitate import DEFAULT_MOTION, MIMIC_OBS_DIM, MimicEnv
+from .imitate import DEFAULT_MOTION, MIMIC_OBS_DIM, MimicEnv, senses
 from .ppo import ActorCritic
 
 
 def run(model: ActorCritic | None, motion: str = DEFAULT_MOTION) -> tuple[float, float, float, float]:
-    env = MimicEnv(seed=0, clips=(motion,))
+    env = MimicEnv(seed=0, clips=(motion,), **senses(model))
     env.reset()
     obs = env.reset_at(0.0)  # from the start of the clip, not a random instant
     errors = []

@@ -23,7 +23,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from .imitate import MimicEnv
+from .imitate import MimicEnv, senses
 from .ppo import ActorCritic
 
 PUSH_N = 250.0  # physics/src/sim.js, as training/evaluate.py
@@ -41,7 +41,7 @@ def _act(model: ActorCritic, obs: np.ndarray) -> np.ndarray:
 
 
 def trial(model: ActorCritic, motion: str, side: int, at: float, seed: int = 0) -> bool:
-    env = MimicEnv(seed=seed, clips=(motion,), push=False, follow=True)
+    env = MimicEnv(seed=seed, clips=(motion,), push=False, follow=True, **senses(model))
     env.reset()
     obs = env.reset_at(0.0)
     pushed = False
@@ -70,7 +70,7 @@ def sweep(model: ActorCritic, motion: str) -> dict[int, float]:
     for f in SWEEP_N:
         ok = 0
         for k in range(SWEEP_EPISODES):
-            env = MimicEnv(seed=1000 + k, clips=(motion,), push=True, push_n=(0.0, float(f)), follow=True)
+            env = MimicEnv(seed=1000 + k, clips=(motion,), push=True, push_n=(0.0, float(f)), follow=True, **senses(model))
             env.reset()
             obs = env.reset_at(0.0)
             while True:

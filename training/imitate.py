@@ -80,8 +80,17 @@ JOINT_SMOOTH_S = 0.1
 # 20 ms leaves the policy no way to step in time. 0.1 s covers that lag; 0.25 s is half a step.
 LOOKAHEAD_S = (0.1, 0.25)
 
-def mimic_obs_dim(nu: int) -> int:
-    return 6 + 3 * nu + nu + 3 + 1 + len(LOOKAHEAD_S) * (nu + 3)
+def mimic_obs_dim(nu: int, sense_velocity: bool = False) -> int:
+    return 6 + 3 * nu + nu + 3 + 1 + len(LOOKAHEAD_S) * (nu + 3) + (3 if sense_velocity else 0)
+
+
+def senses(model) -> dict:
+    """The MimicEnv options a trained model's input needs: {"sense_velocity": True} when it was
+    trained with the pelvis velocity (3 more inputs than mimic_obs_dim), else {}. None (no policy): {}."""
+    if model is None or not hasattr(model, "norm"):
+        return {}
+    nu = model.log_std.shape[0]
+    return {"sense_velocity": True} if model.norm.mean.shape[0] == mimic_obs_dim(nu, True) else {}
 
 
 MIMIC_OBS_DIM = mimic_obs_dim(NU)  # the G1's
@@ -170,7 +179,8 @@ def motion_robot(motion: str) -> str:
 class MimicEnv(G1Env):
     def __init__(self, seed: int = 0, clips: tuple[str, ...] = (DEFAULT_MOTION,), push: bool = False,
                  push_n: tuple[float, float] | None = None, push_every: tuple[float, float] | None = None,
-                 nudge: bool = False, follow: bool = False, recover: bool | float = False):
+                 nudge: bool = False, follow: bool = False, recover: bool | float = False,
+                 sense_velocity: bool = False):
         """nudge: every reset starts off the reference pose as G1Env's resets do (each joint
         N(0, INIT_JOINT_NOISE), each speed N(0, INIT_VEL_NOISE)). Without it the walk learned from
         exact starts only: one seed reached the end from 90 % of nudged starts, the other 25 %."""
@@ -190,7 +200,13 @@ class MimicEnv(G1Env):
             package = load(robot)
             feet = tuple(self.model.body(i).name for i in self.feet)
             soles = [g for side in ("left", "right") for g in package.feet[side]]
-        self.obs_dim = mimic_obs_dim(self.nu)
+        # sense_velocity (ppo.py --sense-velocity): the observation ends with the pelvis's own velocity
+        # in its frame (3, m/s). Without it the policy cannot feel a push until it tilts: the web's
+        # 250 N push (~0.76 m/s on the G1) knocked walks down ~1 s later, and no reward change took
+        # walk-night-seed0 past ~0.45 on training.pushwalk. legged_gym's policies observe it too
+        # (on a real robot it is estimated).
+        self.sense_velocity = sense_velocity
+        self.obs_dim = mimic_obs_dim(self.nu, sense_velocity)
         self.motions = load_motions(self.model, list(clips), feet, soles)
         self.feet_ids = list(self.feet)
         self.floor = self.model.geom("floor").id
@@ -228,6 +244,7 @@ class MimicEnv(G1Env):
             to_body @ root_vel,
             [q[2] - self.data.qpos[2]],
             *ahead,
+            *([to_body @ self.data.qvel[:3]] if self.sense_velocity else []),
         ]).astype(np.float32)
 
     def apply(self, action: np.ndarray) -> np.ndarray:
