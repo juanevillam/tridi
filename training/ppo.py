@@ -198,7 +198,7 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
           push_every: tuple[float, float] = PUSH_EVERY_S, stance: Stance | None = None, std: float | None = None,
           seed: int = 0, worlds: tuple[str, ...] = (), wind_max: float | None = None, resume: bool = False,
           guard_on: bool = True, plateau_stop: bool = True, note: str = "", argv: str = "", shared: str = "background",
-          register_run: bool = True, robust: bool = False, adaptive_lr: bool = True) -> None:
+          register_run: bool = True, robust: bool = False, adaptive_lr: bool = True, follow: bool = False) -> None:
     run_dir = RUNS / run
     run_dir.mkdir(parents=True, exist_ok=True)
     torch.manual_seed(seed)
@@ -215,7 +215,8 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
     opt = torch.optim.Adam(model.parameters(), lr=LR, eps=1e-5)
     # Mimic pushes and nudges only with --robust: older mimic runs trained without them.
     envs = VecEnv(NUM_ENVS, WORKERS, seed=seed, push=robust if task == "mimic" else True, push_n=push_n, task=task,
-                  motion=motion, push_every=push_every, stance=stance, worlds=worlds, wind_max=wind_max)
+                  motion=motion, push_every=push_every, stance=stance, worlds=worlds, wind_max=wind_max,
+                  follow=follow)
     obs = envs.reset()
     meta = {"task": task, "motion": motion} if task == "mimic" else {"task": task}
     meta["worlds"] = list(worlds) or ["plano"]
@@ -562,6 +563,8 @@ def main() -> None:
                         "empty: the flat floor, as before. Pushes then come from each world, capped by --push-max")
     p.add_argument("--wind-max", type=float,
                    help="--worlds: cap every world's wind at this many m/s (a curriculum: e.g. 6, then 10, then none)")
+    p.add_argument("--follow", action="store_true",
+                   help="mimic: the reference path slides with a pushed robot past 0.3 m instead of cutting the episode at 0.6 m")
     p.add_argument("--fixed-lr", action="store_true", help=f"keep the learning rate at {LR} (runs before the adaptive rate)")
     p.add_argument("--std", type=float, help="reset the action std to this (e.g. 0.3) when continuing with --init")
     p.add_argument("--seed", type=int, default=0, help="torch and environment seed (every run replays seed 0 otherwise)")
@@ -584,7 +587,7 @@ def main() -> None:
     train(args.steps, args.run, args.device, args.init, (args.push_min, args.push_max), task, args.motion,
           args.every, export_dir, args.policy_prefix, push_every, stance, args.std, args.seed,
           tuple(w for w in args.worlds.split(",") if w), args.wind_max, args.resume, not args.no_guard,
-          not args.no_plateau_stop, args.note, " ".join(sys.argv[1:]), args.shared, robust=args.robust, adaptive_lr=not args.fixed_lr)
+          not args.no_plateau_stop, args.note, " ".join(sys.argv[1:]), args.shared, robust=args.robust, adaptive_lr=not args.fixed_lr, follow=args.follow)
 
 
 if __name__ == "__main__":

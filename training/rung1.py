@@ -11,8 +11,10 @@ INIT_JOINT_NOISE, every speed by up to INIT_VEL_NOISE), the policy without explo
 Two conditions:
 - calm: the nudge only, on the flat floor. This is the step's measure.
 - pushed: plus the random pushes the stand policies trained with (env.py: 0-300 N for 0.1 s on the
-  torso every 2-4 s). The walk did not train with pushes, so this says how far it is from the
-  delivery's test (which pushes), not whether step 1 passes.
+  torso every 2-4 s), with the path sliding along with the pushed robot (imitate.FOLLOW_M): here an
+  episode ends only on a real fall. With the path fixed, 17 of 20 pushed episodes of
+  walk-push300-seed0 were cut for being 0.6 m off the path with the robot still upright. This says how
+  far it is from the delivery's test (which pushes), not whether step 1 passes.
 """
 
 from __future__ import annotations
@@ -35,7 +37,7 @@ PASS_SHARE = 0.9
 
 def episode(model: ActorCritic, motion: str, seed: int, push: bool) -> float:
     """Seconds of the clip followed, from its start, with a nudged first pose."""
-    env = MimicEnv(seed=seed, clips=(motion,), push=push)
+    env = MimicEnv(seed=seed, clips=(motion,), push=push, follow=push)
     env.reset()
     obs = env.reset_at(0.0)
     rng = np.random.default_rng(seed)
