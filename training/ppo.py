@@ -34,6 +34,7 @@ from torch import nn
 from .env import EPISODE_STEPS, NU, OBS_DIM, PUSH_EVERY_S, PUSH_N, Stance
 from .guard import Guard
 from .netlive import NetLive
+from .failmap import failure_map, worst
 from .plateau import MIN_STEPS, judge
 from .vec import VecEnv
 
@@ -146,7 +147,8 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
           motion: str | None = None, every: int = 0, export_dir: Path | None = None, prefix: str | None = None,
           push_every: tuple[float, float] = PUSH_EVERY_S, stance: Stance | None = None, std: float | None = None,
           seed: int = 0, worlds: tuple[str, ...] = (), wind_max: float | None = None, resume: bool = False,
-          guard_on: bool = True, plateau_stop: bool = True, note: str = "", argv: str = "", shared: str = "background") -> None:
+          guard_on: bool = True, plateau_stop: bool = True, note: str = "", argv: str = "", shared: str = "background",
+          register_run: bool = True) -> None:
     run_dir = RUNS / run
     run_dir.mkdir(parents=True, exist_ok=True)
     torch.manual_seed(seed)
@@ -213,7 +215,8 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
     log = open(run_dir / "progress.csv", "a" if appending else "w", newline="")
     writer = csv.writer(log)
     if not appending:
-        writer.writerow(["step", "seconds", "reward_per_step", "episode_s", "falls", "steps_per_s", "mode"])
+        writer.writerow(["step", "seconds", "reward_per_step", "episode_s", "falls", "steps_per_s", "mode",
+                         *HEALTH_COLUMNS])
     ep_len = np.zeros(NUM_ENVS)
     start = time.time() - elapsed
     net = NetLive(run_dir, task, total_steps)  # what the web draws while this trains (netlive.py)
@@ -234,6 +237,7 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
     signal.signal(signal.SIGTERM, on_signal)
     signal.signal(signal.SIGINT, on_signal)
     verdict = None
+    health = Health(run_dir)
 
     try:
       while step < total_steps:
@@ -290,6 +294,7 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
           b_adv = (b_adv - b_adv.mean()) / (b_adv.std() + 1e-8)
           n = b_obs.shape[0]
           mb = n // MINIBATCHES
+          kls, clips, norms = [], [], []
           for _ in range(EPOCHS):
               perm = torch.randperm(n, device=device)
               for k in range(MINIBATCHES):
@@ -297,14 +302,23 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
                   d = model.dist(b_obs[idx])
                   logp = d.log_prob(b_act[idx]).sum(-1)
                   ratio = (logp - b_logp[idx]).exp()
+                  with torch.no_grad():
+                      log_ratio = logp - b_logp[idx]
+                      kls.append(float(((ratio - 1) - log_ratio).mean()))  # the low-variance KL estimate (Schulman)
+                      clips.append(float(((ratio - 1).abs() > CLIP).float().mean()))
                   pg = -torch.min(ratio * b_adv[idx], ratio.clamp(1 - CLIP, 1 + CLIP) * b_adv[idx]).mean()
                   v_loss = ((model.value(b_obs[idx]) - b_ret[idx]) ** 2).mean()
                   loss = pg + VALUE_COEF * v_loss - ENTROPY_COEF * d.entropy().sum(-1).mean()
                   opt.zero_grad()
                   loss.backward()
-                  nn.utils.clip_grad_norm_(model.parameters(), MAX_GRAD_NORM)
+                  norms.append(float(nn.utils.clip_grad_norm_(model.parameters(), MAX_GRAD_NORM)))
                   opt.step()
           model.to("cpu")
+          # How well the critic predicts the returns (1 perfect, 0 no better than the mean).
+          returns = ret.reshape(-1)
+          explained = 1 - np.var(returns - buf_val[:ROLLOUT].reshape(-1)) / (np.var(returns) + 1e-8)
+          health_now = {"kl": float(np.mean(kls)), "clip_frac": float(np.mean(clips)), "explained_var": float(explained),
+                        "std": float(model.log_std.exp().mean()), "grad_norm": float(np.mean(norms))}
 
           step += ROLLOUT * NUM_ENVS
           sps = ROLLOUT * NUM_ENVS / (time.time() - t0)
@@ -312,7 +326,9 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
           if finished:
               recent_eps.append(ep)
           writer.writerow([step, round(time.time() - start, 1), round(float(buf_rew.mean()), 4), round(ep, 2), falls, int(sps),
-                           guard.mode])
+                           guard.mode, *(round(health_now[c], 4) for c in HEALTH_COLUMNS)])
+          for warning in health.check(step, health_now):
+              print(f"\n[health] {warning}", flush=True)
           log.flush()
           net.record(step, float(buf_rew.mean()), ep)
           if net.due():
@@ -328,6 +344,14 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
               with open(evals_path, "a", newline="") as f:
                   csv.writer(f).writerow([step, round(value, 3), verdict.text])
               print(f"\n[eval] {step:,} steps: {value:.2f} (ceiling {ceiling:.1f}) · {verdict.text}", flush=True)
+              if task == "mimic":
+                  model.eval()
+                  fmap = failure_map(model, motion or _default_motion())
+                  model.train()
+                  write_failmap(run_dir, step, fmap)
+                  falls = ", ".join(f"{b:.1f} s ({n})" for b, n in worst(fmap))
+                  print(f"[eval] holds 2 s from {100 * fmap['survived'].mean():.0f} % of starts; falls most at {falls or 'nowhere'}",
+                        flush=True)
               if verdict.stop and plateau_stop:
                   stopped["why"] = verdict.rule
                   write_report(run_dir, evals, verdict, ceiling)
@@ -348,8 +372,64 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
     minutes = (time.time() - start) / 60
     print(f"\n{stopped['why'] or 'done'}: {step:,} steps in {minutes:.1f} min -> {run_dir}")
     envs.close()
-    if stopped["why"] != "interrupted":
+    if stopped["why"] != "interrupted" and register_run:
         register(run, task, motion, step, minutes, init, evals, stopped["why"] or "done", note, argv, seed, guard.paused_s)
+
+
+# Learning health, logged every update. Each range is where PPO is known to be working; outside it
+# for HEALTH_PATIENCE updates in a row, the run warns (once per HEALTH_EVERY_S) and health.txt keeps it.
+HEALTH_COLUMNS = ["kl", "clip_frac", "explained_var", "std", "grad_norm"]
+HEALTH_RULES = [
+    # 0.05: PPO's usual target is ~0.01-0.02; at 0.05 one update moves the policy far enough to undo
+    # what it had learned (the reason for CLIP in the first place).
+    ("kl", lambda v: v > 0.05, "KL {v:.3f} > 0.05: updates too big; lower LR or EPOCHS"),
+    ("clip_frac", lambda v: v > 0.3, "clip fraction {v:.2f} > 0.3: most of the batch is clipped, the update is fighting itself"),
+    # After the first 1 M steps the critic should explain at least a fifth of the returns; below
+    # that the advantages are noise and the policy learns nothing from them.
+    ("explained_var", lambda v: v < 0.2, "critic explains {v:.2f} of the returns (< 0.2): advantages are noise"),
+    # 0.05 rad x ACTION_SCALE: the robot no longer tries anything new; std collapsed (walk-v4 risk:
+    # no entropy bonus, so std only narrows). Reopen with --std or add entropy.
+    ("std", lambda v: v < 0.05, "action std {v:.3f} < 0.05: exploration collapsed; reopen with --std 0.3"),
+    # Every minibatch at the clip: the gradient is always being cut, the real step size is unknown.
+    ("grad_norm", lambda v: v >= MAX_GRAD_NORM * 0.999, "gradient always clipped at {v:.2f}: loss scale is off"),
+]
+HEALTH_PATIENCE = 20  # updates (~80 k steps): one bad update is noise, twenty in a row is a trend
+HEALTH_FROM = 1_000_000  # the first million steps are allowed to be messy
+HEALTH_EVERY_S = 600
+
+
+class Health:
+    def __init__(self, run_dir: Path):
+        self.path = run_dir / "health.txt"
+        self.streak = {name: 0 for name, _, _ in HEALTH_RULES}
+        self.said = {name: 0.0 for name, _, _ in HEALTH_RULES}
+
+    def check(self, step: int, values: dict) -> list[str]:
+        out = []
+        for name, bad, message in HEALTH_RULES:
+            self.streak[name] = self.streak[name] + 1 if step >= HEALTH_FROM and bad(values[name]) else 0
+            if self.streak[name] >= HEALTH_PATIENCE and time.time() - self.said[name] > HEALTH_EVERY_S:
+                self.said[name] = time.time()
+                line = f"{step:,} steps: " + message.format(v=values[name])
+                with open(self.path, "a") as f:
+                    f.write(f"- {line}\n")
+                out.append(line)
+        return out
+
+
+def write_failmap(run_dir: Path, step: int, fmap: dict) -> None:
+    """failmap.csv: falls per stretch at every evaluation (one row per evaluation), and failmap.txt:
+    the last one, readable."""
+    from .failmap import text
+
+    path = run_dir / "failmap.csv"
+    new = not path.exists()
+    with open(path, "a", newline="") as f:
+        w = csv.writer(f)
+        if new:
+            w.writerow(["step", "held_share", *(f"{b:.1f}" for b in fmap["bins"])])
+        w.writerow([step, round(float(fmap["survived"].mean()), 3), *fmap["falls_per_bin"].tolist()])
+    (run_dir / "failmap.txt").write_text(f"{step:,} steps\n" + text(fmap) + "\n")
 
 
 def _default_motion() -> str:
@@ -368,6 +448,10 @@ def write_report(run_dir: Path, evals: list[tuple[int, float]], verdict, ceiling
                   "- Where does it fall? The failure map per stretch of the clip (control in docs/plan-v2.md, section 3).",
                   "- Is it still exploring? The action std in the checkpoints: a collapsed std learns nothing new.",
                   "- Change one thing (reward, observation, curriculum, network) and compare against this run."]
+    if (run_dir / "failmap.txt").exists():
+        lines += ["", "## Where it falls (last evaluation)", "", "```", (run_dir / "failmap.txt").read_text().rstrip(), "```"]
+    if (run_dir / "health.txt").exists():
+        lines += ["", "## Learning health warnings", "", (run_dir / "health.txt").read_text().rstrip()]
     if ceiling:
         lines.insert(3, f"Ceiling: {ceiling:.2f}")
     (run_dir / "plateau.md").write_text("\n".join(lines) + "\n")

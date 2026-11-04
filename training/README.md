@@ -64,6 +64,17 @@ uv run --project training python -m training.ppo --task mimic --motion <clip> --
 uv run --project training python -m training.ppo ... --run walk-v5 --resume   # después de un corte
 ```
 
+### Antes de entrenar largo: ¿se puede aprender este clip?
+
+```bash
+uv run --project training python -m training.checks <clip> --only c1,c2   # segundos
+uv run --project training python -m training.checks <clip>                # + C3 y C4, minutos
+uv run --project training python -m training.failmap <step_N.pt | policy.onnx>  # dónde se cae
+```
+
+- **C1** referencia factible (`diagnose_reference.py`); **C2** física factible: motores al límite con la pelvis sostenida y el ZMP de la referencia contra los pies apoyados (¿el movimiento está en equilibrio?); **C3** aprende el primer segundo en 2 M pasos; **C4** 1 M pasos de humo: episodio y recompensa suben. Informe en `training/runs/checks-<clip>/report.md`.
+- Durante el entrenamiento, cada evaluación de imitación escribe el **mapa de caídas** (`failmap.csv`, `failmap.txt`: caídas por tramo de 0,5 s, arrancando en cada tramo con 2 s de horizonte) y cada actualización la **salud** (KL, fracción recortada, varianza explicada del crítico, desvío de la exploración, norma del gradiente) en `progress.csv`; fuera de rango 20 actualizaciones seguidas → aviso en `health.txt`. `plateau.md` los incluye.
+
 ## La entrega de un clip
 
 Lo que se lleva el cliente, en una carpeta: la política final (`.onnx` + `.json`), el dataset, el `RobotMotion`, el `PoseClip` y la escena del video, más `delivery.json` (resumen por mundo y por episodio, la escalera de checkpoints y los archivos con su peso) y `replay.json` (cada episodio a 25 Hz y siempre con su última fila, para verlo sin bajar el dataset). Formato en el [contrato](../docs/contrato.md#la-entrega-de-un-clip-propuesta-de-juan-2026-10-24); el servidor la arma sola después del dataset ([`data/`](../data/README.md)).

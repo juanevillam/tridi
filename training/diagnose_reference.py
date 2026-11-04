@@ -126,7 +126,9 @@ def held_pelvis(env: MimicEnv, geoms: dict, floor: int, contact_ref: list, stati
     offset = data.qpos[2] - motion.sample(0.0)[0][2]
     dt = model.opt.timestep
     clock = (lambda s: 0.0) if static else (lambda s: s)  # noqa: E731
-    errors, actual, wanted, agree = [], [], [], []
+    errors, actual, wanted, agree, saturated = [], [], [], [], []
+    joint_ids = model.actuator_trnid[:, 0]
+    dofs, limits = model.jnt_dofadr[joint_ids], model.jnt_actfrcrange[joint_ids, 1]
     t = 0.0
     zero = np.zeros(model.nu)
     for k in range(len(contact_ref) - 1):
@@ -145,6 +147,8 @@ def held_pelvis(env: MimicEnv, geoms: dict, floor: int, contact_ref: list, stati
         t += CONTROL_DT
         env.t = clock(t)
         env.observe()  # refreshes ref_next for the next decision
+        # A motor at its torque limit (the joint's actfrcrange clamps qfrc_actuator) is giving all it has.
+        saturated.append(np.abs(data.qfrc_actuator[dofs]) >= 0.99 * limits)
         actual.append(data.qpos[7:].copy())
         wanted.append(motion.sample(clock(t))[0][7:])
         errors.append(actual[-1] - wanted[-1])
@@ -158,7 +162,7 @@ def held_pelvis(env: MimicEnv, geoms: dict, floor: int, contact_ref: list, stati
         agree.extend(touching[s] == contact_ref[k + 1][s] for s in geoms)  # both at time t
     rms = np.sqrt(np.mean(np.array(errors) ** 2, axis=0))
     return {"offset": float(offset), "rms": rms, "contact_agree": float(np.mean(agree)),
-            "delay_s": delays(np.array(actual), np.array(wanted))}
+            "delay_s": delays(np.array(actual), np.array(wanted)), "saturated": np.mean(saturated, axis=0)}
 
 
 def delays(actual: np.ndarray, wanted: np.ndarray) -> np.ndarray:
@@ -172,7 +176,8 @@ def delays(actual: np.ndarray, wanted: np.ndarray) -> np.ndarray:
     return out
 
 
-def report(clip: str) -> None:
+def analyze(clip: str) -> dict:
+    """Parts 1 to 4 and the verdict, as data: training/checks.py uses it as control C1."""
     env = MimicEnv(seed=0, clips=(clip,), push=False)
     model = env.model
     floor = model.geom("floor").id
@@ -182,35 +187,10 @@ def report(clip: str) -> None:
     still = held_pelvis(env, geoms, floor, k["contact_ref"], static=True)
     names = [model.actuator(i).name.removesuffix("_joint") for i in range(model.nu)]
     legs = [i for i, n in enumerate(names) if any(p in n for p in ("hip", "knee", "ankle"))]
-    walking = "caminar" in clip
-
-    print(f"\n=== {clip} ({env.motion.duration:.1f} s, {len(k['times'])} decisiones de 20 ms)")
-    print("1. Pies y piso (referencia sobre el modelo de entrenamiento)")
-    print(f"   pie más bajo sobre el piso: mediana {100 * k['lowest_median']:+.1f} cm "
-          f"(p5 {100 * k['lowest_p5']:+.1f}, p95 {100 * k['lowest_p95']:+.1f}); negativo = hundido")
-    print(f"   cuadros con un pie hundido más de {100 * SUNK_M:.0f} cm: {100 * k['sunk_share']:.0f} %")
-    print(f"   cuadros con los dos pies a más de {100 * FLOAT_M:.0f} cm (en el aire): {100 * k['float_share']:.0f} %")
-    print(f"   pie apoyado: se desliza a {k['slip_speed']:.2f} m/s en ventanas de {SLIP_WINDOW_S} s; "
-          f"la pelvis avanza a {k['net_speed']:.2f} m/s")
-    print(f"   altura que _touch_ground corrige al arrancar: {100 * h['offset']:+.1f} cm")
-    print("2. Objetivos de los pies en la recompensa contra los pies de la pose de referencia")
-    print(f"   distancia: mediana {100 * k['feet_target_median']:.1f} cm, máxima {100 * k['feet_target_max']:.1f} cm")
-    print(f"3. Rangos de los motores (pasarse más de {RANGE_TOL_RAD} rad)")
+    # A clip id or a RobotMotion path: only a walk forbids both feet in the air.
+    walking = "caminar" in clip or "walk" in clip
     bad = [(names[i], k["range_share"][i], k["range_excess"][i]) for i in range(model.nu) if k["range_share"][i] > 0]
-    for n, share, ex in sorted(bad, key=lambda b: -b[1]):
-        print(f"   {n:24s} fuera de rango en {100 * share:4.1f} % de los cuadros, hasta {ex:.2f} rad")
-    if not bad:
-        print("   ningún ángulo fuera de rango")
-    print("4. Pelvis sostenida: los motores siguen la referencia")
-    print(f"   error medio de las piernas: {h['rms'][legs].mean():.3f} rad en movimiento, "
-          f"{still['rms'][legs].mean():.3f} rad con la pose quieta (lo que la gravedad dobla); "
-          f"todo el cuerpo: {h['rms'].mean():.3f} rad")
     worst = np.argsort(-h["rms"])[:5]
-    print("   peores en movimiento: " + ", ".join(f"{names[i]} {h['rms'][i]:.3f}" for i in worst))
-    print("   retraso de los motores: " + ", ".join(f"{names[i]} {1000 * h['delay_s'][i]:.0f} ms" for i in worst)
-          + f" (la observación muestra la referencia {1000 * LOOKAHEAD_S:.0f} ms adelante)")
-    print(f"   pies en el piso cuando la referencia lo dice: {100 * h['contact_agree']:.0f} %")
-
     problems = []
     if k["sunk_share"] > SUNK_SHARE:
         problems.append("pies hundidos en muchos cuadros: la altura de la pelvis no deja un pie justo sobre el piso")
@@ -227,6 +207,41 @@ def report(clip: str) -> None:
                         f"la red solo ve {1000 * LOOKAHEAD_S:.0f} ms adelante: no puede anticiparse")
     if h["contact_agree"] < CONTACT_AGREE:
         problems.append("los pies no tocan el piso cuando la referencia dice que deberían (o al revés)")
+    return {"env": env, "k": k, "h": h, "still": still, "names": names, "legs": legs, "bad": bad, "worst": worst,
+            "problems": problems}
+
+
+def report(clip: str) -> None:
+    a = analyze(clip)
+    env, k, h, still, names, legs, bad, worst = (a[x] for x in ("env", "k", "h", "still", "names", "legs", "bad", "worst"))
+    model = env.model
+
+    print(f"\n=== {clip} ({env.motion.duration:.1f} s, {len(k['times'])} decisiones de 20 ms)")
+    print("1. Pies y piso (referencia sobre el modelo de entrenamiento)")
+    print(f"   pie más bajo sobre el piso: mediana {100 * k['lowest_median']:+.1f} cm "
+          f"(p5 {100 * k['lowest_p5']:+.1f}, p95 {100 * k['lowest_p95']:+.1f}); negativo = hundido")
+    print(f"   cuadros con un pie hundido más de {100 * SUNK_M:.0f} cm: {100 * k['sunk_share']:.0f} %")
+    print(f"   cuadros con los dos pies a más de {100 * FLOAT_M:.0f} cm (en el aire): {100 * k['float_share']:.0f} %")
+    print(f"   pie apoyado: se desliza a {k['slip_speed']:.2f} m/s en ventanas de {SLIP_WINDOW_S} s; "
+          f"la pelvis avanza a {k['net_speed']:.2f} m/s")
+    print(f"   altura que _touch_ground corrige al arrancar: {100 * h['offset']:+.1f} cm")
+    print("2. Objetivos de los pies en la recompensa contra los pies de la pose de referencia")
+    print(f"   distancia: mediana {100 * k['feet_target_median']:.1f} cm, máxima {100 * k['feet_target_max']:.1f} cm")
+    print(f"3. Rangos de los motores (pasarse más de {RANGE_TOL_RAD} rad)")
+    for n, share, ex in sorted(bad, key=lambda b: -b[1]):
+        print(f"   {n:24s} fuera de rango en {100 * share:4.1f} % de los cuadros, hasta {ex:.2f} rad")
+    if not bad:
+        print("   ningún ángulo fuera de rango")
+    print("4. Pelvis sostenida: los motores siguen la referencia")
+    print(f"   error medio de las piernas: {h['rms'][legs].mean():.3f} rad en movimiento, "
+          f"{still['rms'][legs].mean():.3f} rad con la pose quieta (lo que la gravedad dobla); "
+          f"todo el cuerpo: {h['rms'].mean():.3f} rad")
+    print("   peores en movimiento: " + ", ".join(f"{names[i]} {h['rms'][i]:.3f}" for i in worst))
+    print("   retraso de los motores: " + ", ".join(f"{names[i]} {1000 * h['delay_s'][i]:.0f} ms" for i in worst)
+          + f" (la observación muestra la referencia {1000 * LOOKAHEAD_S:.0f} ms adelante)")
+    print(f"   pies en el piso cuando la referencia lo dice: {100 * h['contact_agree']:.0f} %")
+
+    problems = a["problems"]
     print("Veredicto: " + ("la referencia parece viable." if not problems else ""))
     for p in problems:
         print(f"   - {p}")

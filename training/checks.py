@@ -1,0 +1,261 @@
+"""Can this clip be learned? The four controls before any long training (docs/plan-v2.md, section 3).
+
+    uv run --project training python -m training.checks <clip id or RobotMotion.json> [--only c1,c2] [--steps-c3 2000000]
+
+C1  reference feasible: diagnose_reference.py's four parts and verdict (feet, ranges, motors with
+    the pelvis held). Seconds.
+C2  physics feasible: motors at their torque limit with the pelvis held, and the reference's zero
+    moment point against the feet on the floor (is the motion balanced at all?). Seconds.
+C3  small overfit: train on the first second of the clip only. If it cannot learn 1 s, it will not
+    learn 12: the problem is the reward or the observation, not the step count. Minutes.
+C4  smoke: 1 M steps of the full clip: reward and episode length must go up. Minutes.
+
+Writes training/runs/checks-<clip>/report.md and prints the verdict. C3 and C4 train with the guard
+on, like any other run; they are not added to experiments.csv.
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import json
+import tempfile
+from pathlib import Path
+
+import mujoco
+import numpy as np
+import torch
+
+from .imitate import CONTROL_DT, MIMIC_OBS_DIM, MimicEnv, motion_path
+
+RUNS = Path(__file__).parent / "runs"
+
+# C2. A motor at its torque limit in more than 2 % of the decisions (one in 50: ~0.25 s of a 12 s
+# clip) with the pelvis held cannot follow that stretch once it also carries the body.
+TORQUE_SHARE = 0.02
+# ZMP outside the feet by more than 3 cm (the foot spheres' radius is about that: closer is within
+# what the sole's real edge would still hold) in more than 10 % of the decisions.
+ZMP_TOL_M = 0.03
+ZMP_SHARE = 0.10
+# The center of mass is smoothed over 0.2 s before its second derivative: a 30 fps video's jitter,
+# differentiated twice, swamps the real accelerations of a walk (~1 m/s^2).
+ZMP_SMOOTH_S = 0.2
+# C3. Followed 90 % of the 1 s slice from its start.
+C3_SECONDS = 1.0
+C3_STEPS = 2_000_000
+C3_PASS = 0.9
+# C4. Mean episode length in the last fifth of the smoke run at least 10 % longer than in the first.
+C4_STEPS = 1_000_000
+C4_GAIN = 0.10
+
+
+def c1(clip: str) -> dict:
+    from .diagnose_reference import analyze
+
+    a = analyze(clip)
+    h = a["h"]
+    return {"ok": not a["problems"], "problems": a["problems"],
+            "facts": [f"error de piernas con la pelvis sostenida {h['rms'][a['legs']].mean():.3f} rad",
+                      f"pies en el piso cuando la referencia lo dice {100 * h['contact_agree']:.0f} %",
+                      f"pie apoyado que patina {a['k']['slip_speed']:.2f} m/s",
+                      f"retraso máximo de un motor {1000 * h['delay_s'].max():.0f} ms"]}
+
+
+def c2(clip: str) -> dict:
+    """Two physical tests of the reference itself.
+
+    Torque: the reference played with the pelvis held (diagnose_reference's part 4): which motors sit
+    at their torque limit. Held up, they only carry the limbs; a motor saturated even then cannot
+    follow that joint with the body's weight on it.
+
+    Balance: the zero moment point (ZMP) of the reference's center of mass, against the support
+    polygon of the feet the reference has on the floor. A ZMP outside it means the motion only
+    stays up by a force that does not exist: the policy has to change the motion to balance, and
+    imitation rewards fight it. (Inverse dynamics with mj_inverse was tried first: with soft
+    contacts it cannot infer the floor's forces from a kinematic reference, and asked for the whole
+    weight from outside even standing still.)"""
+    from .diagnose_reference import CONTACT_M, analyze, foot_clearance
+    from .imitate import FOOT_SPHERES
+
+    a = analyze(clip)
+    env, names = a["env"], a["names"]
+    model, motion = env.model, env.motion
+    sat = a["h"]["saturated"]
+    data = mujoco.MjData(model)
+    floor = model.geom("floor").id
+    geoms = {s: [model.geom(n).id for n in ns] for s, ns in FOOT_SPHERES.items()}
+    times = np.arange(0.0, motion.duration, CONTROL_DT)
+    com, support = [], []
+    for t in times:
+        data.qpos[:] = motion.sample(t)[0]
+        mujoco.mj_kinematics(model, data)
+        mujoco.mj_comPos(model, data)
+        com.append(data.subtree_com[0].copy())
+        clearance = foot_clearance(model, data, floor, geoms)
+        pts = [data.geom_xpos[g][:2].copy() for s, ids in geoms.items() if clearance[s] < CONTACT_M for g in ids]
+        support.append(np.array(pts))
+    com = np.array(com)
+    # Center of mass acceleration from a 30 fps video is noisy: smoothed over ZMP_SMOOTH_S first.
+    from .imitate import smooth
+
+    acc = np.gradient(np.gradient(smooth(com, max(1, int(round(ZMP_SMOOTH_S / CONTROL_DT)))), CONTROL_DT, axis=0),
+                      CONTROL_DT, axis=0)
+    zmp = com[:, :2] - com[:, 2:3] / 9.81 * acc[:, :2]
+    outside = []
+    for p, pts in zip(zmp, support):
+        outside.append(np.inf if len(pts) == 0 else distance_outside(p, pts))
+    outside = np.array(outside)
+    off = float(np.mean(outside > ZMP_TOL_M))
+    problems = []
+    if sat.max() > TORQUE_SHARE:
+        j = int(np.argmax(sat))
+        problems.append(f"{names[j]} está al límite de torque en {100 * sat[j]:.0f} % de las decisiones, aun con la pelvis sostenida")
+    if off > ZMP_SHARE:
+        problems.append(f"el ZMP queda fuera de los pies apoyados en {100 * off:.0f} % de las decisiones: "
+                        "la referencia no está en equilibrio y la política tiene que cambiarla para no caerse")
+    worst = np.argsort(-sat)[:3]
+    finite = outside[np.isfinite(outside)]
+    return {"ok": not problems, "problems": problems,
+            "facts": ["motores al límite (pelvis sostenida): " + ", ".join(f"{names[j]} {sat[j]:.0%}" for j in worst),
+                      f"ZMP fuera del apoyo (> {100 * ZMP_TOL_M:.0f} cm): {off:.0%} de las decisiones; "
+                      f"sin ningún pie apoyado: {np.mean(~np.isfinite(outside)):.0%}; "
+                      f"distancia p95 {100 * (np.percentile(finite, 95) if len(finite) else 0):.0f} cm"]}
+
+
+def distance_outside(p: np.ndarray, pts: np.ndarray) -> float:
+    """How far point p is outside the convex hull of pts (0 inside), in the floor plane."""
+    if len(pts) < 3:
+        # One foot sphere or two: the support is a point or a segment.
+        if len(pts) == 1:
+            return float(np.linalg.norm(p - pts[0]))
+        a, b = pts[0], pts[1]
+        t = np.clip(np.dot(p - a, b - a) / max(np.dot(b - a, b - a), 1e-12), 0, 1)
+        return float(np.linalg.norm(p - (a + t * (b - a))))
+    hull = convex_hull(pts)
+    inside = all(cross2(hull[(i + 1) % len(hull)] - hull[i], p - hull[i]) >= 0 for i in range(len(hull)))
+    if inside:
+        return 0.0
+    best = np.inf
+    for i in range(len(hull)):
+        a, b = hull[i], hull[(i + 1) % len(hull)]
+        t = np.clip(np.dot(p - a, b - a) / max(np.dot(b - a, b - a), 1e-12), 0, 1)
+        best = min(best, float(np.linalg.norm(p - (a + t * (b - a)))))
+    return best
+
+
+def cross2(a: np.ndarray, b: np.ndarray) -> float:
+    """z of the cross product of two floor-plane vectors (numpy 2 no longer takes 2D in np.cross)."""
+    return float(a[0] * b[1] - a[1] * b[0])
+
+
+def convex_hull(pts: np.ndarray) -> np.ndarray:
+    """Monotone chain, counter-clockwise."""
+    pts = np.unique(pts.round(6), axis=0)
+    pts = pts[np.lexsort((pts[:, 1], pts[:, 0]))]
+    if len(pts) < 3:
+        return pts
+    def half(points):
+        out = []
+        for q in points:
+            while len(out) >= 2 and cross2(out[-1] - out[-2], q - out[-2]) <= 0:
+                out.pop()
+            out.append(q)
+        return out
+    lower, upper = half(pts), half(pts[::-1])
+    return np.array(lower[:-1] + upper[:-1])
+
+
+def slice_motion(clip: str, seconds: float, out: Path) -> Path:
+    """The first `seconds` of a RobotMotion, as a new RobotMotion file."""
+    m = json.loads(motion_path(clip).read_text())
+    frames = int(round(seconds * float(m["fps"]))) + 1
+    m = {**m, "clip_id": f"{m['clip_id']}-first-{seconds:g}s", "qpos": m["qpos"][:frames]}
+    out.write_text(json.dumps(m))
+    return out
+
+
+SHARED = "nice"  # set by --shared
+
+
+def _train(run: str, motion: str, steps: int) -> Path:
+    from .ppo import train
+
+    train(steps, run, "cpu", None, (0.0, 0.0), "mimic", motion, export_dir=None, prefix=run, plateau_stop=False,
+          register_run=False, note="training.checks", shared=SHARED)
+    return RUNS / run
+
+
+def c3(clip: str, steps: int) -> dict:
+    from .evaluate_walk import run as follow
+    from .ppo import ActorCritic
+
+    tmp = slice_motion(clip, C3_SECONDS, Path(tempfile.mkdtemp()) / "slice.json")
+    run_dir = _train(f"checks-c3-{Path(clip).stem}", str(tmp), steps)
+    last = max(run_dir.glob("step_*.pt"), key=lambda p: int(p.stem.split("_")[1]))
+    model = ActorCritic(MIMIC_OBS_DIM)
+    model.load_state_dict(torch.load(last)["model"])
+    model.eval()
+    followed, duration, _, _ = follow(model, str(tmp))
+    ok = followed >= C3_PASS * duration
+    return {"ok": ok, "problems": [] if ok else [f"en {steps:,} pasos no aprende ni el primer segundo ({followed:.2f} de {duration:.2f} s): "
+                                                 "revisar recompensa y observación antes de entrenar más"],
+            "facts": [f"sigue {followed:.2f} s de {duration:.2f} s"]}
+
+
+def c4(clip: str) -> dict:
+    run_dir = _train(f"checks-c4-{Path(clip).stem}", clip, C4_STEPS)
+    with open(run_dir / "progress.csv") as f:
+        rows = [r for r in csv.DictReader(f) if r["episode_s"] not in ("nan", "")]
+    fifth = max(1, len(rows) // 5)
+    ep = lambda part: float(np.mean([float(r["episode_s"]) for r in part]))  # noqa: E731
+    rew = lambda part: float(np.mean([float(r["reward_per_step"]) for r in part]))  # noqa: E731
+    first, last = rows[:fifth], rows[-fifth:]
+    gain = ep(last) / ep(first) - 1
+    ok = gain >= C4_GAIN and rew(last) > rew(first)
+    return {"ok": ok, "problems": [] if ok else [f"en {C4_STEPS:,} pasos el episodio crece {gain:+.0%} y la recompensa "
+                                                 f"{rew(first):.3f} → {rew(last):.3f}: no está aprendiendo"],
+            "facts": [f"episodio {ep(first):.2f} → {ep(last):.2f} s ({gain:+.0%}), recompensa {rew(first):.3f} → {rew(last):.3f}"]}
+
+
+def main() -> None:
+    p = argparse.ArgumentParser(prog="python -m training.checks", description=__doc__.split("\n")[0])
+    p.add_argument("clip", help="clip id in physics/motions/ or a RobotMotion .json")
+    p.add_argument("--only", default="c1,c2,c3,c4", help="which controls, e.g. c1,c2 (the fast ones)")
+    p.add_argument("--steps-c3", type=int, default=C3_STEPS)
+    # nice by default: the checks take minutes, and in background priority (~500 steps/s with the
+    # Mac in use) C3 alone took over an hour. Apps still come first at nice 10.
+    p.add_argument("--shared", choices=["background", "nice"], default="nice")
+    args = p.parse_args()
+    global SHARED
+    SHARED = args.shared
+    wanted = args.only.split(",")
+    names = {"c1": "C1 referencia factible", "c2": "C2 física factible", "c3": f"C3 sobreajuste de {C3_SECONDS:g} s",
+             "c4": f"C4 humo de {C4_STEPS / 1e6:g} M pasos"}
+    runs = {"c1": lambda: c1(args.clip), "c2": lambda: c2(args.clip), "c3": lambda: c3(args.clip, args.steps_c3),
+            "c4": lambda: c4(args.clip)}
+    lines = [f"# Controles de {args.clip}", ""]
+    passed = True
+    for key in wanted:
+        r = runs[key]()
+        passed &= r["ok"]
+        head = f"## {'✅' if r['ok'] else '❌'} {names[key]}"
+        print(f"\n{head[3:]}")
+        lines += [head, ""]
+        for fact in r["facts"]:
+            print(f"   {fact}")
+            lines.append(f"- {fact}")
+        for problem in r["problems"]:
+            print(f"   ✗ {problem}")
+            lines.append(f"- **{problem}**")
+        lines.append("")
+    verdict = "Listo para entrenar largo." if passed else "No entrenar largo todavía: arreglar lo marcado ❌ primero."
+    print(f"\n{verdict}")
+    lines.append(f"**{verdict}**")
+    out = RUNS / f"checks-{Path(args.clip).stem}"
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "report.md").write_text("\n".join(lines) + "\n")
+    print(f"-> {out / 'report.md'}")
+
+
+if __name__ == "__main__":
+    main()
