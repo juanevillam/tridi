@@ -97,6 +97,12 @@ Trabajar en una rama aparte (`juan/experimental`, local, sin push ni deploy: la 
   - Siguiente: una corrida larga con empujones (decenas de M pasos, ~1-2 h con la Mac libre) y, si no basta, una recompensa que tolere apartarse de la pose de referencia justo después de un empujón.
   - **Corrida larga con empujones** (`walk-long-seed0`, 30 M pasos, 68 min, desde `walk-follow300-seed0`, `--follow`, hasta 300 N): calma 100 %. Empujones aleatorios 0-F N: 100 N **100 %**, 150 N **90 %**, 200 N 55 %, 300 N 15 % (antes 95/75/40/10). Empujón de la web (250 N una vez): **5 de 20** (a 10 M pasos 1 de 20; antes 0); izquierda 3/5, derecha 0/5. Mejora con más pasos, sin meseta todavía. Pruebas en el scratchpad (pendiente pasarlas a `training/`).
   - Siguiente: seguir esta corrida (más pasos) o la recompensa que tolere apartarse tras un empujón; después el H1.
+  - **Entrenar de manera inteligente (pedido de Juan: la Mac es poca y casi siempre está ocupada):** no más corridas largas a ciegas. Se mide la métrica que importa durante el entrenamiento, se pronostica con la curva si seguir paga, y las ideas nuevas se prueban con sondas cortas antes de darles horas.
+    - `training/pushwalk.py`: el empujón de la web (250 N, una vez) desde 4 lados en 10 momentos de la caminata, 40 pruebas, determinista, ~8 s por checkpoint.
+    - **La curva ya existía gratis:** `walk-long-seed0` guardó un checkpoint por millón. Medida: ~8 % hasta 14 M, ~20 % de 16 M a 30 M; ajuste en log de pasos: +0,11 por cada 10× pasos (ruido 0,06). Llegar a 90 % así pide ~3 millones de veces los pasos: **más de lo mismo no paga, hay que cambiar el método.**
+    - `plateau.py`: pronóstico (ajuste en log10 de pasos) y `judge_forecast`: corta cuando la meta queda pasado el presupuesto de pasos. `ppo.py --metric pushwalk --goal --budget-steps` entrena contra el empujón de la web.
+    - `--recover`: durante 1 s tras un empujón, la recompensa paga quedar derecho (0,4) y seguir vivo (0,4) más que copiar la pose (0,2).
+    - **Sondas (4 M pasos, ~10 min cada una, desde `walk-long-seed0`):** B empujones 150-300 N (cerca de los 250 N de la web) y C `--recover`. El control no se corre: el pronóstico ya lo da (0,22 ± 0,06). Regla fijada antes: gana la que llegue a ≥ 0,35.
   - Error mío: un `git checkout` de `training/experiments.csv` borró las filas de `walk-nudge-v1`; reconstruidas desde sus `evals.csv` (marcadas en la nota).
   - La Mac se pasó a batería a mitad del entrenamiento: el guardián lo pausó y siguió solo al enchufarla.
 
