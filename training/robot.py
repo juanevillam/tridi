@@ -30,7 +30,8 @@ ROOT = Path(__file__).resolve().parent.parent
 ROBOTS = ROOT / "robots"
 MODELS = ROOT / "physics" / "models"
 
-POINTS = ("pelvis", "torso", "head", "left_foot", "right_foot", "left_hand", "right_hand")
+POINTS = ("pelvis", "torso", "head", "left_foot", "right_foot", "left_hand", "right_hand",
+          "left_knee", "right_knee", "left_shoulder", "right_shoulder", "left_elbow", "right_elbow")
 
 # The servo check: the pelvis held at the keyframe (as C1 holds it, training/checks.py) and the
 # servos asked to keep the standing pose for HOLD_S. No robot here stands without a policy (the
@@ -139,6 +140,21 @@ def load(robot_id: str) -> Robot:
         if not geoms:
             raise ValueError(f"{robot_id}: no sole geoms for the {side} foot")
     return Robot(robot_id, package["name"], package["mjcf"], model, home_qpos, home_ctrl, points, feet, package)
+
+
+def sole_ends(robot: Robot, data: mujoco.MjData, side: str) -> list[tuple[np.ndarray, float]]:
+    """Where a foot can push on the floor: the ends of its sole capsules (a sphere is its own end),
+    as (world center, radius). Needs kinematics. The generic form of checks.sole_points."""
+    out = []
+    for g in robot.feet[side]:
+        center = data.geom_xpos[g]
+        if robot.model.geom_type[g] == mujoco.mjtGeom.mjGEOM_CAPSULE:
+            axis = data.geom_xmat[g].reshape(3, 3)[:, 2]
+            half = robot.model.geom_size[g][1]
+            out += [(center + half * axis, float(robot.model.geom_size[g][0])), (center - half * axis, float(robot.model.geom_size[g][0]))]
+        else:
+            out.append((center.copy(), float(robot.model.geom_size[g][0])))
+    return out
 
 
 def measure(robot: Robot) -> dict:

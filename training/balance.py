@@ -24,6 +24,11 @@ What it does, all kinematic, on the training model:
 Writes training/references/<clip_id>-balanced.json, a RobotMotion with "balanced_by": "training.balance";
 imitate.Motion skips its own smoothing for those (it would slide the feet again). Then run
 `python -m training.checks training/references/<clip_id>-balanced.json`.
+
+Any humanoid: the robot is a package (robots/<id>.json, training/robot.py), named by the motion's
+"robot_package" (training.retarget writes it) or --robot; the G1 when neither says. Feet, soles and
+legs come from the package. A G1 motion is first smoothed and grounded as training sees it
+(imitate.Motion); another robot's comes from training.retarget, already clean.
 """
 
 from __future__ import annotations
@@ -35,8 +40,8 @@ from pathlib import Path
 import mujoco
 import numpy as np
 
-from .checks import sole_points
-from .imitate import FEET, FOOT_SPHERES, Motion, motion_path, smooth
+from .imitate import Motion, motion_path, smooth
+from .robot import Robot, load, sole_ends
 
 OUT = Path(__file__).parent / "references"
 G = 9.81
@@ -102,33 +107,39 @@ def leg_dofs(model: mujoco.MjModel) -> tuple[np.ndarray, np.ndarray]:
     return model.jnt_dofadr[ids], model.jnt_qposadr[ids]
 
 
-def sole_local(model: mujoco.MjModel) -> dict[str, list[np.ndarray]]:
-    """Capsule ends of each foot in its ankle body's frame (checks.sole_points, at the default pose)."""
-    from .checks import sole_points
+SIDES = ("left", "right")
 
-    data = mujoco.MjData(model)
-    mujoco.mj_kinematics(model, data)
+
+def foot_bodies(robot: Robot) -> list[int]:
+    return [robot.points[f"{side}_foot"].body for side in SIDES]
+
+
+def sole_points(robot: Robot, data: mujoco.MjData, side: str) -> list[tuple[np.ndarray, float]]:
+    return sole_ends(robot, data, side)
+
+
+def sole_local(robot: Robot) -> dict[str, list[np.ndarray]]:
+    """Capsule ends of each foot in its ankle body's frame (at the model's default pose)."""
+    data = mujoco.MjData(robot.model)
+    mujoco.mj_kinematics(robot.model, data)
     out = {}
-    for side, body in zip(("left", "right"), FEET):
-        b = model.body(body).id
+    for side, b in zip(SIDES, foot_bodies(robot)):
         R, x = data.xmat[b].reshape(3, 3), data.xpos[b]
-        out[side] = [R.T @ (p - x) for p, _, _ in sole_points(model, data, side)]
+        out[side] = [R.T @ (p - x) for p, _ in sole_points(robot, data, side)]
     return out
 
 
-def toe_ends(model: mujoco.MjModel) -> list[int]:
-    x = [e[0] for e in sole_local(model)["left"]]
+def toe_ends(robot: Robot) -> list[int]:
+    x = [e[0] for e in sole_local(robot)["left"]]
     return [j for j, v in enumerate(x) if v >= max(x) - TOE_BAND_M]
 
 
-def sole_height(model: mujoco.MjModel) -> float:
+def sole_height(robot: Robot) -> float:
     """Height of the ankle body when its sole rests flat on the floor."""
-    from .checks import sole_points
-
-    data = mujoco.MjData(model)
-    mujoco.mj_kinematics(model, data)
-    b = model.body(FEET[0]).id
-    return max(r - (p[2] - data.xpos[b][2]) for p, r, _ in sole_points(model, data, "left"))
+    data = mujoco.MjData(robot.model)
+    mujoco.mj_kinematics(robot.model, data)
+    b = foot_bodies(robot)[0]
+    return max(r - (p[2] - data.xpos[b][2]) for p, r in sole_points(robot, data, "left"))
 
 
 def runs(mask: np.ndarray) -> list[tuple[int, int]]:
@@ -159,11 +170,12 @@ def yaw_of(R: np.ndarray) -> float:
     return float(np.arctan2(R[1, 0], R[0, 0]))
 
 
-def contacts(model, data, q: np.ndarray, fps: float, walking: bool) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def contacts(robot: Robot, data, q: np.ndarray, fps: float, walking: bool) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Per frame and foot: on the floor (bool), ankle position, ankle yaw."""
-    feet = [model.body(n).id for n in FEET]
+    model = robot.model
+    feet = foot_bodies(robot)
     floor = model.geom("floor").id
-    spheres = [[model.geom(n).id for n in FOOT_SPHERES[s]] for s in ("left", "right")]
+    spheres = [robot.feet[s] for s in SIDES]
     pos = np.zeros((len(q), 2, 3))
     yaw = np.zeros((len(q), 2))
     clear = np.zeros((len(q), 2))
@@ -215,12 +227,13 @@ def feet_targets(on: np.ndarray, pos: np.ndarray, yaw: np.ndarray, sole: float, 
     return tgt, tyaw
 
 
-def ik_frame(model, data, q: np.ndarray, q_ref: np.ndarray, feet_pos, feet_yaw, planted, com_xy, dofs, qadr,
-             w_posture: float = W_POSTURE) -> np.ndarray:
+def ik_frame(robot: Robot, data, q: np.ndarray, q_ref: np.ndarray, feet_pos, feet_yaw, planted, com_xy, dofs, qadr,
+             w_posture: float = W_POSTURE, local_ends=None, front=None) -> np.ndarray:
     """Pelvis position + leg joints so the feet and the CoM reach their targets (damped least squares)."""
-    feet = [model.body(n).id for n in FEET]
-    local_ends = sole_local(model)
-    front = toe_ends(model)
+    model = robot.model
+    feet = foot_bodies(robot)
+    local_ends = local_ends if local_ends is not None else sole_local(robot)
+    front = front if front is not None else toe_ends(robot)
     cols = np.concatenate([[0, 1, 2], dofs])  # pelvis translation + legs, in qvel space
     lo, hi = model.jnt_range[[model.dof_jntid[d] for d in dofs]].T
     jp, jr = np.zeros((3, model.nv)), np.zeros((3, model.nv))
@@ -230,14 +243,14 @@ def ik_frame(model, data, q: np.ndarray, q_ref: np.ndarray, feet_pos, feet_yaw, 
         mujoco.mj_comPos(model, data)
         rows, errs, ws = [], [], []
         for k, side in enumerate(("left", "right")):
-            ends = sole_points(model, data, side)
+            ends = sole_points(robot, data, side)
             if planted[k]:
                 # Planted flat (1): every capsule end on the floor, where the foot landed, facing its
                 # yaw. Toe-off (2, the trailing foot in double support): only the two front ends stay;
                 # the heel may rise. Flat all the way left the trailing foot 5-6 cm up: a human stride
                 # is too long for the G1 to reach flat-footed.
                 R = np.array([[np.cos(feet_yaw[k]), -np.sin(feet_yaw[k]), 0], [np.sin(feet_yaw[k]), np.cos(feet_yaw[k]), 0], [0, 0, 1]])
-                for j, (p, r, gid) in enumerate(ends):
+                for j, (p, r) in enumerate(ends):
                     if planted[k] == 2 and j not in front:
                         continue
                     want = feet_pos[k] + R @ local_ends[side][j]
@@ -253,7 +266,7 @@ def ik_frame(model, data, q: np.ndarray, q_ref: np.ndarray, feet_pos, feet_yaw, 
                 ws += [W_FOOT] * 3
             # No capsule end of either foot below the floor (a swinging toe dipping in lifted the whole
             # body when imitate.Motion grounded it); a swinging foot clears it by SWING_CLEAR_M.
-            for p, r, gid in ends:
+            for p, r in ends:
                 low = r + (0.0 if planted[k] else SWING_CLEAR_M)
                 if p[2] < low:
                     mujoco.mj_jac(model, data, jp, jr, p, feet[k])
@@ -285,12 +298,12 @@ def ik_frame(model, data, q: np.ndarray, q_ref: np.ndarray, feet_pos, feet_yaw, 
     return q
 
 
-def support_points(model, data, q: np.ndarray, planted) -> np.ndarray:
+def support_points(robot: Robot, data, q: np.ndarray, planted) -> np.ndarray:
     """Capsule ends of the planted feet that are on the floor (as checks.C2 counts them)."""
     data.qpos[:] = q
-    mujoco.mj_kinematics(model, data)
-    return np.array([p[:2].copy() for k, s in enumerate(("left", "right")) if planted[k]
-                     for p, r, _ in sole_points(model, data, s) if p[2] - r < CONTACT_CLEAR_M / 2])
+    mujoco.mj_kinematics(robot.model, data)
+    return np.array([p[:2].copy() for k, s in enumerate(SIDES) if planted[k]
+                     for p, r in sole_points(robot, data, s) if p[2] - r < CONTACT_CLEAR_M / 2])
 
 
 def com_of(model, data, qs: np.ndarray) -> np.ndarray:
@@ -338,18 +351,18 @@ def foot_modes(on: np.ndarray) -> np.ndarray:
     return mode
 
 
-def desired_zmp(model, data, qs: np.ndarray, on: np.ndarray, fps: float) -> np.ndarray:
+def desired_zmp(robot: Robot, data, qs: np.ndarray, on: np.ndarray, fps: float) -> np.ndarray:
     """Center of the planted foot; in double support, moving from the foot that lifts next to the
     one that stays."""
     centers = np.zeros((len(qs), 2, 2))
     toes = np.zeros((len(qs), 2, 2))
-    front = toe_ends(model)
+    front = toe_ends(robot)
     for i, q in enumerate(qs):
         data.qpos[:] = q
-        mujoco.mj_kinematics(model, data)
-        for k, s in enumerate(("left", "right")):
-            ends = sole_points(model, data, s)
-            centers[i, k] = np.mean([p[:2] for p, _, _ in ends], axis=0)
+        mujoco.mj_kinematics(robot.model, data)
+        for k, s in enumerate(SIDES):
+            ends = sole_points(robot, data, s)
+            centers[i, k] = np.mean([p[:2] for p, _ in ends], axis=0)
             toes[i, k] = np.mean([ends[j][0][:2] for j in front], axis=0)
     p = np.zeros((len(qs), 2))
     both = on.all(axis=1)
@@ -380,37 +393,40 @@ def com_for_zmp(p: np.ndarray, height: float, fps: float, near: np.ndarray) -> n
     return np.linalg.solve(lhs, A.T @ p + STAY_NEAR_REF * near)
 
 
-def solve_ik(model, data, q_ref, tgt, tyaw, on, com_xy, dofs, qadr, w_posture: float = W_POSTURE) -> np.ndarray:
+def solve_ik(robot: Robot, data, q_ref, tgt, tyaw, on, com_xy, dofs, qadr, w_posture: float = W_POSTURE) -> np.ndarray:
     qs = q_ref.copy()
+    local_ends, front = sole_local(robot), toe_ends(robot)
     for i in range(len(q_ref)):
         # Warm start from the previous frame's solution, with this frame's arms, waist and pelvis turn.
         start = q_ref[i].copy()
         if i:
             start[:3] = qs[i - 1][:3] + (q_ref[i][:3] - q_ref[i - 1][:3])
             start[qadr] = qs[i - 1][qadr]
-        qs[i] = ik_frame(model, data, start, q_ref[i], tgt[i], tyaw[i], on[i], com_xy[i], dofs, qadr, w_posture)
+        qs[i] = ik_frame(robot, data, start, q_ref[i], tgt[i], tyaw[i], on[i], com_xy[i], dofs, qadr, w_posture, local_ends, front)
     return qs
 
 
-def zmp_outside(model, data, qs, on, zmp) -> np.ndarray:
+def zmp_outside(robot: Robot, data, qs, on, zmp) -> np.ndarray:
     from .checks import distance_outside
 
-    return np.array([distance_outside(zmp[i], support_points(model, data, qs[i], on[i])) for i in range(len(qs))])
+    return np.array([distance_outside(zmp[i], support_points(robot, data, qs[i], on[i])) for i in range(len(qs))])
 
 
-def balance(clip: str, rounds: int = ROUNDS, log=print) -> tuple[dict, dict]:
-    from .imitate import MimicEnv
-
-    model = MimicEnv(seed=0, clips=(clip,), push=False).model
-    data = mujoco.MjData(model)
+def balance(clip: str, rounds: int = ROUNDS, log=print, robot_id: str | None = None) -> tuple[dict, dict]:
     raw = json.loads(motion_path(clip).read_text())
-    motion = Motion(motion_path(clip), model)  # smoothed and grounded, as training would see it
-    q_ref, fps = motion.qpos.copy(), motion.fps
+    robot = load(robot_id or raw.get("robot_package", "g1"))
+    model = robot.model
+    data = mujoco.MjData(model)
+    if robot.id == "g1":
+        motion = Motion(motion_path(clip), model)  # smoothed and grounded, as training would see it
+        q_ref, fps = motion.qpos.copy(), motion.fps
+    else:
+        q_ref, fps = np.array(raw["qpos"], dtype=float), float(raw["fps"])
     walking = "caminar" in clip or "walk" in clip
     dofs, qadr = leg_dofs(model)
-    on, pos, yaw = contacts(model, data, q_ref, fps, walking)
+    on, pos, yaw = contacts(robot, data, q_ref, fps, walking)
     on = double_support(on, fps)
-    tgt, tyaw = feet_targets(on, pos, yaw, sole_height(model), fps)
+    tgt, tyaw = feet_targets(on, pos, yaw, sole_height(robot), fps)
     mode = foot_modes(on)
     com_ref = com_of(model, data, q_ref)
     height = float(np.mean(com_ref[:, 2]))
@@ -418,19 +434,20 @@ def balance(clip: str, rounds: int = ROUNDS, log=print) -> tuple[dict, dict]:
     # by frame left a 3 m/s^2 median pelvis acceleration in a 0.6 m/s walk (~1 is a real walk's).
     q_ref[:, 2] = smooth(q_ref[:, 2:3], max(1, round(HEIGHT_SMOOTH_S * fps)))[:, 0]
     wrists = [model.jnt_qposadr[j] for j in range(model.njnt) if "wrist" in model.joint(j).name]
-    q_ref[:, wrists] = smooth(q_ref[:, wrists], max(1, round(WRIST_SMOOTH_S * fps)))
+    if wrists:
+        q_ref[:, wrists] = smooth(q_ref[:, wrists], max(1, round(WRIST_SMOOTH_S * fps)))
     # First pass: feet planted, CoM where the reference has it; it gives the feet's real spots.
-    qs = solve_ik(model, data, q_ref, tgt, tyaw, mode, com_ref[:, :2], dofs, qadr)
-    p = desired_zmp(model, data, qs, on, fps)
+    qs = solve_ik(robot, data, q_ref, tgt, tyaw, mode, com_ref[:, :2], dofs, qadr)
+    p = desired_zmp(robot, data, qs, on, fps)
     aim = p.copy()
     history = []
     for r in range(rounds + 1):
         target = np.column_stack([com_for_zmp(aim[:, j], height, fps, com_ref[:, j]) for j in range(2)])
-        qs = solve_ik(model, data, q_ref, tgt, tyaw, mode, target, dofs, qadr)
+        qs = solve_ik(robot, data, q_ref, tgt, tyaw, mode, target, dofs, qadr)
         com = com_of(model, data, qs)
         zmp = zmp_of(com, fps)
-        out = zmp_outside(model, data, qs, on, zmp)
-        feet_err = max(np.linalg.norm(foot_positions(model, data, qs[i]) - tgt[i], axis=1).max() for i in range(len(qs)))
+        out = zmp_outside(robot, data, qs, on, zmp)
+        feet_err = max(np.linalg.norm(foot_positions(robot, data, qs[i]) - tgt[i], axis=1).max() for i in range(len(qs)))
         history.append({"round": r, "zmp_out_share": float(np.mean(out > 0.03)), "zmp_out_p95_cm": float(100 * np.percentile(out, 95)),
                         "com_err_cm": float(100 * np.percentile(np.linalg.norm(com[:, :2] - target, axis=1), 95)),
                         "feet_err_cm": float(100 * feet_err)})
@@ -446,10 +463,10 @@ def balance(clip: str, rounds: int = ROUNDS, log=print) -> tuple[dict, dict]:
     smoothed = qs.copy()
     smoothed[:, :3] = smooth(qs[:, :3], max(1, round(POLISH_SMOOTH_S * fps)))
     smoothed[:, qadr] = smooth(qs[:, qadr], max(1, round(POLISH_SMOOTH_S * fps)))
-    qs = solve_ik(model, data, smoothed, tgt, tyaw, mode, target, dofs, qadr, W_POLISH)
+    qs = solve_ik(robot, data, smoothed, tgt, tyaw, mode, target, dofs, qadr, W_POLISH)
     com = com_of(model, data, qs)
     zmp = zmp_of(com, fps)
-    out = zmp_outside(model, data, qs, on, zmp)
+    out = zmp_outside(robot, data, qs, on, zmp)
     log(f"polished: ZMP > 3 cm outside the feet in {100 * np.mean(out > 0.03):.0f} % of frames (p95 {100 * np.percentile(out, 95):.1f} cm)")
     out_motion = {**raw, "clip_id": f"{raw['clip_id']}-balanced", "qpos": qs.round(5).tolist(),
                   "balanced_by": "training.balance", "contacts": on.astype(int).tolist()}
@@ -458,18 +475,19 @@ def balance(clip: str, rounds: int = ROUNDS, log=print) -> tuple[dict, dict]:
                         "com_shift_cm_p95": float(100 * np.percentile(np.linalg.norm(shift, axis=1), 95))}
 
 
-def foot_positions(model, data, q) -> np.ndarray:
+def foot_positions(robot: Robot, data, q) -> np.ndarray:
     data.qpos[:] = q
-    mujoco.mj_kinematics(model, data)
-    return data.xpos[[model.body(n).id for n in FEET]].copy()
+    mujoco.mj_kinematics(robot.model, data)
+    return data.xpos[foot_bodies(robot)].copy()
 
 
 def main() -> None:
     p = argparse.ArgumentParser(prog="python -m training.balance", description=__doc__.split("\n")[0])
     p.add_argument("clip", help="clip id in physics/motions/ or a RobotMotion .json")
     p.add_argument("--rounds", type=int, default=ROUNDS)
+    p.add_argument("--robot", help="robot package (robots/<id>.json); default: the motion's robot_package, else g1")
     args = p.parse_args()
-    motion, info = balance(args.clip, args.rounds)
+    motion, info = balance(args.clip, args.rounds, robot_id=args.robot)
     OUT.mkdir(exist_ok=True)
     path = OUT / f"{motion['clip_id']}.json"
     path.write_text(json.dumps(motion))
