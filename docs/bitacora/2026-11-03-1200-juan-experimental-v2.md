@@ -49,11 +49,13 @@ Trabajar en una rama aparte (`juan/experimental`, local, sin push ni deploy: la 
 
 - **Cuarta vuelta (Juan):** el set de prueba no lo graba Juan: videos que ya existen (TikTok, YouTube, Instagram, bancos de video), y Tridi tiene que funcionar con cualquier cámara y con varias personas, sin condiciones de estudio. Hecho: `data/testset.py` (`list`, `add`, `download` con curl para Pexels y yt-dlp para el resto, `extract`, `quality`), `data/set-de-prueba/manifest.csv` con 25 candidatos de Pexels (licencia libre, también comercial; revisada en pexels.com/license), `data/quality.py` (valid, jitter, slide, sink, bones, height) con la línea de partida en `quality.csv`, y la guía reescrita. Los videos no se bajaron todavía: falta el OK de Juan.
 - **C3 de la caminata: pasa.** Aprende el primer segundo en ~100 k pasos (sigue 1,02 s de 1,0). La salud avisó algo real: el gradiente se recorta siempre (norma ~22 contra el límite de 1): el tamaño real de cada paso de aprendizaje es desconocido. Candidato a arreglar (normalizar los retornos del crítico).
+- **C4 de la caminata: pasa.** Episodio 0,72 → 0,92 s (+28 %), recompensa 0,459 → 0,562 en 1 M pasos. Juntos: la caminata se puede aprender (C3, C4) pero su referencia no está en equilibrio (C1, C2). El problema no es el aprendizaje sino lo que se le pide.
+- **Bug arreglado en `checks.py`:** correr `--only c3,c4` escribía un informe que decía "Listo para entrenar largo" sin los C1/C2 fallidos. Ahora los resultados de cada control se guardan en `results.json` del clip y el informe y el veredicto juntan todos (y dicen qué falta).
 
 ## Sigue
 
 - Idiomas en En vivo, Subir, Simulaciones, Entrega, Cámara y Red.
 - Medir la fluidez con el panel visible y fijar el presupuesto (ningún cuadro > 50 ms).
-- Resultado de C3 y C4 sobre la caminata.
+- Normalizar los retornos del crítico (gradiente siempre recortado).
 - Bloque 3 cambia de orden: primero una referencia en equilibrio (contactos de pies reales, pelvis corregida para que el ZMP quede sobre el apoyo), comprobada con C1-C2 en verde, y recién después entrenar.
-- Juan graba el set de prueba; después, línea de partida de la captura de hoy sobre esos videos.
+- Con el OK de Juan: bajar los 25 candidatos de Pexels, revisarlos, extraer y guardar la línea de partida sobre ellos.

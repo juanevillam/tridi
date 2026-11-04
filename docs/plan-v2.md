@@ -197,7 +197,7 @@ Cada escalón usa todo lo anterior y prueba algo nuevo. No se sube sin la medida
 | Bloque | Qué | Se muestra |
 | --- | --- | --- |
 | **0 ✅** | Rama, idiomas en la landing, congelón de Capture, este plan | Landing ES/EN |
-| **1** | **Controles de la sección 3** en `training/`. ✅ Guardián de la Mac, reanudar, detector de meseta, registro, C1-C4 (`training.checks`), mapa de caídas (`training.failmap`) y salud del aprendizaje. ✅ Set de prueba de videos de internet (`data.testset`, 25 candidatos de Pexels) y nota de calidad (`data.quality`, línea de partida guardada). Idiomas en el resto de la web | ✅ El informe de controles sobre la caminata, que explica por qué se estancó (abajo) |
+| **1** | **Controles de la sección 3** en `training/`. ✅ Guardián de la Mac, reanudar, detector de meseta, registro, C1-C4 (`training.checks`), mapa de caídas (`training.failmap`) y salud del aprendizaje. ✅ Set de prueba de videos de internet (`data.testset`, 25 candidatos de Pexels) y nota de calidad (`data.quality`, línea de partida guardada). Idiomas en el resto de la web | ✅ El informe de controles sobre la caminata, que explica por qué se estancó (abajo): C1 y C2 ❌, C3 y C4 ✅ (se puede aprender; lo que se le pide no está en equilibrio) |
 | **2** | Pasos/s en la Mac (`mujoco.rollout`, perfilado). Segundo humanoide cargado. Set de 20 videos | "Antes X pasos/s, ahora Y" |
 | **3** | **Escalón 1:** la caminata completa, con los controles | La caminata entera con física |
 | **4** | Captura 2.0 (GVHMR + HaMeR → SMPL-X), `PoseClip` v2 | Antes/después en el set de prueba, con dedos |

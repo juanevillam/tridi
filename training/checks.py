@@ -234,26 +234,33 @@ def main() -> None:
              "c4": f"C4 humo de {C4_STEPS / 1e6:g} M pasos"}
     runs = {"c1": lambda: c1(args.clip), "c2": lambda: c2(args.clip), "c3": lambda: c3(args.clip, args.steps_c3),
             "c4": lambda: c4(args.clip)}
-    lines = [f"# Controles de {args.clip}", ""]
-    passed = True
-    for key in wanted:
-        r = runs[key]()
-        passed &= r["ok"]
-        head = f"## {'✅' if r['ok'] else '❌'} {names[key]}"
-        print(f"\n{head[3:]}")
-        lines += [head, ""]
-        for fact in r["facts"]:
-            print(f"   {fact}")
-            lines.append(f"- {fact}")
-        for problem in r["problems"]:
-            print(f"   ✗ {problem}")
-            lines.append(f"- **{problem}**")
-        lines.append("")
-    verdict = "Listo para entrenar largo." if passed else "No entrenar largo todavía: arreglar lo marcado ❌ primero."
-    print(f"\n{verdict}")
-    lines.append(f"**{verdict}**")
     out = RUNS / f"checks-{Path(args.clip).stem}"
     out.mkdir(parents=True, exist_ok=True)
+    # Results of every control ever run on this clip: --only c3,c4 must not erase a failed C1 from
+    # the verdict (it did once, and the report said "ready" with C1 and C2 failing).
+    store = out / "results.json"
+    results = json.loads(store.read_text()) if store.exists() else {}
+    for key in wanted:
+        r = runs[key]()
+        results[key] = {k: r[k] for k in ("ok", "facts", "problems")}
+        print(f"\n{'✅' if r['ok'] else '❌'} {names[key]}")
+        for fact in r["facts"]:
+            print(f"   {fact}")
+        for problem in r["problems"]:
+            print(f"   ✗ {problem}")
+    store.write_text(json.dumps(results, ensure_ascii=False, indent=1))
+    lines = [f"# Controles de {args.clip}", ""]
+    for key in sorted(results):
+        r = results[key]
+        lines += [f"## {'✅' if r['ok'] else '❌'} {names[key]}", ""]
+        lines += [f"- {fact}" for fact in r["facts"]] + [f"- **{p}**" for p in r["problems"]] + [""]
+    missing = [names[k] for k in names if k not in results]
+    passed = all(r["ok"] for r in results.values()) and not missing
+    verdict = ("Listo para entrenar largo." if passed else
+               "No entrenar largo todavía: " + ("arreglar lo marcado ❌ primero." if not all(r["ok"] for r in results.values())
+                                               else "faltan " + ", ".join(missing) + "."))
+    print(f"\n{verdict}")
+    lines.append(f"**{verdict}**")
     (out / "report.md").write_text("\n".join(lines) + "\n")
     print(f"-> {out / 'report.md'}")
 
