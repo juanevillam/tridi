@@ -42,9 +42,15 @@ Trabajar en una rama aparte (`juan/experimental`, local, sin push ni deploy: la 
 - Probado: autotest de meseta ok; corrida de 100 k pasos cortada con SIGTERM y reanudada con `--resume` hasta el final (progress y registro bien); medido 11.400 pasos/s a toda máquina, ~1.100-1.500 en prioridad de fondo, ~11.000 con `--shared nice` mientras se usa la Mac. La Mac es una MacBook Air M2 (`Mac14,2`), sin ventilador.
 - Encontrado y arreglado: un run lanzado en segundo plano heredaba SIGINT ignorado y Ctrl-C no hacía nada; ahora `ppo.py` maneja SIGINT/SIGTERM y los workers ignoran SIGINT.
 
+- **Bloque 1, segunda parte:** `training/checks.py` (C1 referencia factible, reutiliza `diagnose_reference.analyze`; C2 física factible: motores al límite con la pelvis sostenida + ZMP de la referencia contra los pies apoyados; C3 sobreajuste del primer segundo en 2 M pasos; C4 humo de 1 M pasos), `training/failmap.py` (caídas por tramo de 0,5 s con 2 s de horizonte, acepta `.pt` u `.onnx`) y en `ppo.py` la salud del aprendizaje por actualización (KL, fracción recortada, varianza explicada, desvío, norma del gradiente; aviso tras 20 actualizaciones fuera de rango en `health.txt`) y el mapa de caídas en cada evaluación de imitación.
+- **No funcionó y se cambió:** C2 con dinámica inversa (`mj_inverse`): con contactos blandos no deduce la fuerza del piso de una referencia cinemática y pedía todo el peso "de afuera" aun de pie quieto. Reemplazado por saturación de motores + ZMP.
+- **Lo que dijeron los controles:** la caminata, los jumping jacks y correr fallan C1 y C2. Caminata: pies en el piso cuando deberían 55 %, pie apoyado que patina 0,25 m/s, motores 100 ms tarde; centro de masa fuera del pie apoyado en 84 % de los cuadros aun quieto (~17 cm), ZMP fuera en 93 %. `g1-walk` aguanta 2 s desde 61 % de los inicios y cae sobre todo entre 4,5 y 8 s. **Por eso más pasos no ayudaron: la referencia no está en equilibrio.** El bloque 3 empieza arreglando la referencia.
+- Medido: en prioridad de fondo, con la Mac en uso, la imitación va a ~530 pasos/s; los controles usan `--shared nice` por defecto.
+
 ## Sigue
 
 - Idiomas en En vivo, Subir, Simulaciones, Entrega, Cámara y Red.
 - Medir la fluidez con el panel visible y fijar el presupuesto (ningún cuadro > 50 ms).
-- Bloque 1, segunda parte: C1-C4 (referencia y física factibles, sobreajuste de 1 s, humo), mapa de caídas por tramo y salud del aprendizaje; correrlos sobre `walk-v4` (sus checkpoints `.pt` están en la Mac de Pastor: hace falta la referencia y reentrenar acá).
+- Resultado de C3 y C4 sobre la caminata.
+- Bloque 3 cambia de orden: primero una referencia en equilibrio (contactos de pies reales, pelvis corregida para que el ZMP quede sobre el apoyo), comprobada con C1-C2 en verde, y recién después entrenar.
 - Juan graba el set de prueba; después, línea de partida de la captura de hoy sobre esos videos.

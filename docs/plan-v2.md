@@ -196,7 +196,7 @@ Cada escalón usa todo lo anterior y prueba algo nuevo. No se sube sin la medida
 | Bloque | Qué | Se muestra |
 | --- | --- | --- |
 | **0 ✅** | Rama, idiomas en la landing, congelón de Capture, este plan | Landing ES/EN |
-| **1** | **Controles de la sección 3** en `training/`. ✅ Guardián de la Mac, reanudar, detector de meseta y registro. ⏳ C1-C4, mapa de caídas, salud del aprendizaje. Juan graba el set de prueba. Idiomas en el resto de la web | El informe de controles sobre `walk-v4`, que explica por qué se estancó |
+| **1** | **Controles de la sección 3** en `training/`. ✅ Guardián de la Mac, reanudar, detector de meseta, registro, C1-C4 (`training.checks`), mapa de caídas (`training.failmap`) y salud del aprendizaje. ⏳ Juan graba el set de prueba. Idiomas en el resto de la web | ✅ El informe de controles sobre la caminata, que explica por qué se estancó (abajo) |
 | **2** | Pasos/s en la Mac (`mujoco.rollout`, perfilado). Segundo humanoide cargado. Set de 20 videos | "Antes X pasos/s, ahora Y" |
 | **3** | **Escalón 1:** la caminata completa, con los controles | La caminata entera con física |
 | **4** | Captura 2.0 (GVHMR + HaMeR → SMPL-X), `PoseClip` v2 | Antes/después en el set de prueba, con dedos |
@@ -204,6 +204,15 @@ Cada escalón usa todo lo anterior y prueba algo nuevo. No se sube sin la medida
 | **6** | Escalones 2 y 3 | Gestos y sentarse |
 | **7-9** | Escena y objetos (pilar C); escalones 4 y 5 | Agarra un plato y no lo tira aunque resbale |
 | **10+** | Escalones 6-8 | Lavar de un video de 3 minutos |
+
+**Lo que dijeron los controles sobre la caminata (2026-11-03):** la referencia **no es factible**, así que más pasos nunca la iban a arreglar.
+
+- C1: con la pelvis sostenida, los pies tocan el piso cuando la referencia lo dice solo el 55 % del tiempo; el pie apoyado patina 0,25 m/s; caderas y tobillos van 100 ms tarde y la red ve 20 ms adelante.
+- C2: el centro de masa de la referencia, aun quieto, cae ~17 cm fuera del pie apoyado en el 84 % de los cuadros; con la aceleración (ZMP), fuera en el 93 %. El movimiento no está en equilibrio.
+- Mapa de caídas de `g1-walk`: aguanta 2 s desde el 61 % de los inicios; las caídas se juntan entre 4,5 y 8 s.
+- Lo mismo (o peor) en jumping jacks y correr: ZMP fuera del apoyo en 95-98 %.
+
+Conclusión: el bloque 3 empieza por **arreglar la referencia** (captura que apoye los pies de verdad, retargeting con contactos y un paso de equilibrio que mueva la pelvis hasta que el ZMP quede sobre los pies), y recién después entrena. Es el punto de decisión de abajo, ya resuelto.
 
 **Puntos de decisión:**
 
