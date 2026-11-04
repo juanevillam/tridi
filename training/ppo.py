@@ -318,7 +318,7 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
           returns = ret.reshape(-1)
           explained = 1 - np.var(returns - buf_val[:ROLLOUT].reshape(-1)) / (np.var(returns) + 1e-8)
           health_now = {"kl": float(np.mean(kls)), "clip_frac": float(np.mean(clips)), "explained_var": float(explained),
-                        "std": float(model.log_std.exp().mean()), "grad_norm": float(np.mean(norms))}
+                        "std": float(model.log_std.detach().exp().mean()), "grad_norm": float(np.mean(norms))}
 
           step += ROLLOUT * NUM_ENVS
           sps = ROLLOUT * NUM_ENVS / (time.time() - t0)

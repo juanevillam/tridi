@@ -177,10 +177,11 @@ def slice_motion(clip: str, seconds: float, out: Path) -> Path:
 SHARED = "nice"  # set by --shared
 
 
-def _train(run: str, motion: str, steps: int) -> Path:
+def _train(run: str, motion: str, steps: int, stop_when_done: bool = False) -> Path:
     from .ppo import train
 
-    train(steps, run, "cpu", None, (0.0, 0.0), "mimic", motion, export_dir=None, prefix=run, plateau_stop=False,
+    # C3 stops as soon as the slice is learned (plateau.py's "done"); C4 always runs its full million.
+    train(steps, run, "cpu", None, (0.0, 0.0), "mimic", motion, export_dir=None, prefix=run, plateau_stop=stop_when_done,
           register_run=False, note="training.checks", shared=SHARED)
     return RUNS / run
 
@@ -190,7 +191,7 @@ def c3(clip: str, steps: int) -> dict:
     from .ppo import ActorCritic
 
     tmp = slice_motion(clip, C3_SECONDS, Path(tempfile.mkdtemp()) / "slice.json")
-    run_dir = _train(f"checks-c3-{Path(clip).stem}", str(tmp), steps)
+    run_dir = _train(f"checks-c3-{Path(clip).stem}", str(tmp), steps, stop_when_done=True)
     last = max(run_dir.glob("step_*.pt"), key=lambda p: int(p.stem.split("_")[1]))
     model = ActorCritic(MIMIC_OBS_DIM)
     model.load_state_dict(torch.load(last)["model"])
