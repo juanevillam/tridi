@@ -1,230 +1,248 @@
-# Plan Tridi v2: de demo de 36 horas a producto de verdad
+# Plan Tridi v2: un video, millones de prácticas, cualquier humanoide
 
-- **Fecha:** 2026-11-03 · **Quién:** Juan (con Claude) · **Rama:** `juan/experimental`, local, sin push ni deploy.
-- **Estado:** propuesta de Juan para mostrar a Pastor, César y Ale cuando esté avanzada. Nada de esto está en `main` ni en la demo (https://tridi-alpha.vercel.app queda como se mandó a YC).
-- **Base:** lo que funciona y lo que no al 27 de octubre está en [`../yc/verdad-hoy.md`](../yc/verdad-hoy.md); el plan del hackathon, en [`plan-producto.md`](plan-producto.md). Este plan no reescribe esos documentos: los continúa.
-
-> Regla de este plan: cada paso tiene una **medida** antes de empezar y una **meta** al terminar. "Mejorar el tracking" no es una tarea; "bajar el error de las muñecas de X a Y cm en nuestro set de prueba" sí.
+- **Fecha:** 2026-11-03 (v2 del plan, reescrita el mismo día con la visión de Juan) · **Quién:** Juan, con Claude.
+- **Rama:** `juan/experimental` en `juanevillam/tridi` (privado). Nunca en `main` sin hablarlo con el equipo; nunca en `Torpass/tridi`. Nada de esta rama despliega: la demo (https://tridi-alpha.vercel.app) queda como se mandó a YC.
+- **Dueño:** Juan, de punta a punta. Se muestra a Pastor, César y Ale cuando esté avanzado.
+- **Base:** lo que funciona y lo que no al 27 de octubre, en [`../yc/verdad-hoy.md`](../yc/verdad-hoy.md); el plan del hackathon, en [`plan-producto.md`](plan-producto.md).
 
 ---
 
-## 1. Dónde estamos (la línea de partida, con números)
+## 0. La visión, en palabras de Juan
+
+> En vez de grabarme un millón de veces lavando platos, grabo **un** video de 3 minutos lavando muchos tipos de cosas. Metemos al robot simulado en una física tan fiel a la realidad como sea posible, y por reinforcement learning le enseñamos a lavar: repite ese video millones o miles de millones de veces, con platos resbalosos, un plato demasiado cerca del borde que se cae, otra cocina, otro robot. Lo que hace falta es cómputo, no más videos.
+
+Tres ideas sostienen todo el plan:
+
+1. **Un video → miles de variaciones.** El video da la *intención* y la *forma* del movimiento; la simulación da la *variedad* (fricción, masas, posiciones, empujones, objetos, cocinas) y la *física* (lo que se cae, lo que resbala, lo que pesa). El robot no copia un video: aprende la habilidad que el video muestra.
+2. **Cualquier humanoide.** Va a haber muchos fabricantes (Unitree, Tesla Optimus, Figure, 1X, Apptronik, Fourier, Booster…), con tamaños, articulaciones y manos distintas. El software recibe el modelo del robot y se adapta: nunca algo atado al G1.
+3. **Debajo del modelo grande.** Los robots van a tener un modelo de lenguaje o visión-lenguaje-acción que decide *qué* hacer ("lava ese plato"). Tridi entrega el *cómo* con el cuerpo: las políticas de bajo nivel, rápidas y físicamente robustas, que ejecutan esa orden sin tirar el plato.
+
+### Frente a Asimov (YC, el más parecido)
+
+[Asimov](https://tryasimov.ai/) junta datos humanos reales a escala: personas con el teléfono en la cabeza haciendo tareas en cocinas, oficinas y hoteles de tres continentes, con anotaciones de pose 3D, profundidad y actividad. Su apuesta: **más datos reales**. La nuestra es la otra mitad: **multiplicar cada video con física y RL**. No compiten de frente: un dataset de Asimov (o del cliente) podría ser la entrada de Tridi. Esta diferencia va al pitch cuando sea verdad y esté medida.
+
+---
+
+## 1. Las reglas del juego (decididas por Juan el 2026-11-03)
+
+| Regla | Qué implica |
+| --- | --- |
+| **Cómputo: la Mac de Juan (M2, 16 GB).** Sin alquilar GPU | Física de MuJoCo en CPU con todos los núcleos; entrenar un video 24 h está bien. La eficiencia por paso importa tanto como la cantidad de pasos |
+| **Solo herramientas gratis y seguras** | Código abierto, corriendo local. Ningún video sale de la Mac. Licencia de cada modelo y dataset anotada antes de usarlo (sección 10) |
+| **Manos de 5 dedos** | El primer robot con manos: G1 + manos de 5 dedos tipo Inspire (6 motores por mano). Las Dex3 (3 dedos) que ya están en `physics/models/dex3` quedan como segunda mano, para probar que el retargeting de manos no está atado a una sola |
+| **Cualquier humanoide** | Desde el primer bloque hay un **segundo robot** en las pruebas, para que nada se ate al G1 sin darnos cuenta |
+| **Que no vuelva a pasar lo de la caminata** | Ningún entrenamiento largo sin pasar los controles de la sección 3 |
+
+---
+
+## 2. Dónde estamos (con números)
 
 | Pieza | Hoy | El límite real |
 | --- | --- | --- |
-| Captura offline | YOLO11-pose + ByteTrack + MediaPipe Pose (heavy), **33 puntos**, Savitzky-Golay | MediaPipe estima cada cuadro solo, no ve profundidad de frente, no hay dedos, la escala sale 10-20 % baja, la trayectoria se reconstruye con heurísticas (pie de apoyo + ajuste a la imagen) |
-| Captura en vivo | MediaPipe en el navegador, 33 puntos + palmas (opcional), One Euro | Igual que arriba, y en tiempo real |
-| Retargeting | 29 articulaciones del G1, 3,2 cm de error mediano en la caminata | Sin manos (el G1 de la escena no tiene Dex3), sin restricciones de contacto explícitas |
-| Entrenamiento | PPO propio en CPU, M2: **~11.400 pasos/s** (64 robots, 8 procesos). De pie: 60 M pasos. Caminata: `walk-v4` sigue **3,5 s de 11,8** y no mejora desde los 10 M pasos | La CPU limita a decenas de millones de pasos. Y **más pasos del mismo método ya no ayudaron a la caminata**: el problema es también el método, no solo la cantidad |
-| Producto | En vivo (marioneta, sin física), Subir (cola en la Mac de Juan), Entrega (ONNX + rollouts en 4 mundos) | Todo corre en una Mac detrás de un túnel; un video tarda 30-70 min |
-| Web | Landing fluida a 60 fps casi siempre; un congelón de ~1 s al llegar a Capture. Solo en español | — |
+| Captura | YOLO11 + ByteTrack + MediaPipe, **33 puntos**, sin dedos, cada cuadro por separado, trayectoria por heurísticas | De frente el avance sale ≈ 0; escala 10-20 % baja; sin objetos |
+| Escena | `data/scene.py`: cajas de muebles del primer cuadro (YOLO) | Sin geometría real, sin objetos que se mueven |
+| Retargeting | Ángulos de 33 puntos → 29 articulaciones del G1, 3,2 cm de error mediano | Sin manos, sin objetos, solo el G1 |
+| Entrenamiento | PPO propio, CPU, **~11.400 pasos/s** (64 robots, 8 procesos). De pie 60 M pasos. Caminata `walk-v4`: **3,5 s de 11,8**, y de 10 M a 20 M pasos no mejoró (3,68 → 3,54 s) | El método se estancó, no solo la cantidad |
+| Web | Landing en ES/EN sin recargar (esta rama), el resto en español | — |
 
-**El diagnóstico en una frase:** la cadena entera existe, pero cada eslabón es de hackathon. Las dos palancas que más mueven todo son (1) **pasar el entrenamiento a GPU**, que convierte "60 M pasos en una hora" en "miles de millones de pasos en una hora", y (2) **cambiar MediaPipe por una reconstrucción de cuerpo entero con manos y anclada al mundo**.
-
----
-
-## 2. Pilar A · La web (lo primero que se ve)
-
-### A1. Idiomas sin recargar ✅ (landing) / ⏳ (resto)
-
-- **Hecho en esta rama:** `web/src/i18n.js`. Cada texto está en la página una vez por idioma y el CSS muestra el de `<html data-lang>`, igual que el portafolio de Juan: cambiar de idioma es cambiar un atributo, sin recarga, sin parpadeo, y el texto que la página escribe después (el HUD, los estados del Gym) también cambia. El idioma se decide antes del primer cuadro: `?lang=`, la elección guardada, el idioma del navegador, si no inglés. Selector ES · EN en la barra de arriba. Los números usan la coma o el punto de cada idioma.
-- **Hecho:** la landing completa (`web/src/landing/strings.js`).
-- **Sigue:** En vivo, Subir, Simulaciones, Entrega, Cámara del teléfono y Red, cada pantalla con su diccionario junto a su código. Errores del servidor con código + texto en los dos idiomas (hoy el contrato dice "en español si failed"): cambio de contrato, commit aparte.
-- **Meta:** cero textos en un solo idioma (un chequeo que recorra el DOM de cada pantalla en los dos idiomas y falle si encuentra un texto sin `.t`).
-
-### A2. Fluidez medida, no a ojo
-
-- **Medida de hoy:** scroll de punta a punta, mediana 16,7 ms por cuadro, p95 17,6 ms; **un cuadro de ~1.030 ms al entrar a Capture**.
-- **Hecho:** el esqueleto de Capture (un segundo renderer WebGL que compilaba shaders al llegar) se arma cuando la página está ociosa después de cargar el robot, y los checkpoints del Gym se bajan a la caché antes de que se lleguen a pedir.
-- **Sigue:** volver a medir con el panel visible; presupuesto: **ningún cuadro > 50 ms** en scroll en una MacBook Air M2 y en un iPhone 13. Mover la física de MuJoCo a un Web Worker (hoy comparte el hilo con el scroll): con `OffscreenCanvas` el render también. Cargar el robot (30 MB) en paralelo por prioridad: primero lo que se ve en el hero.
-- **Meta:** Lighthouse ≥ 90 en rendimiento en escritorio; primer cuadro con el robot < 4 s en una conexión de 50 Mbps.
-
-### A3. Copy de nivel YC
-
-- El inglés no es traducción: está escrito para un equipo de robótica en EE. UU. Lo revisa Ale antes de mostrarlo.
-- Nunca mostrar como hecho lo que es plan (regla de [`pitch/pitch-producto.md`](pitch/pitch-producto.md)): la línea "Dónde estamos" de la landing se actualiza sola con los números del entrenamiento.
+**Qué pasó con la caminata, honestamente:** los diagnósticos de `plan-producto.md` ya lo decían. La red aprendió a no caerse, pero el robot se quedaba 0,5 m atrás de la referencia, caderas y tobillos iban 60-100 ms tarde, y los episodios se cortaban por alejarse del recorrido. Más pasos no arreglan una referencia que el robot no puede seguir, ni una recompensa que castiga quedarse atrás en vez de enseñar a alcanzarla. Eso se detecta en horas, no en días: es lo que hacen los controles de abajo.
 
 ---
 
-## 3. Pilar B · Captura 2.0: el cuerpo entero, con dedos, anclado al mundo
+## 3. Controles contra el estancamiento (antes, durante y después de entrenar)
 
-El objetivo no es "más puntos" por sí mismo: es un **movimiento humano físicamente creíble**, que es lo que después el robot puede imitar. Más puntos sin coherencia temporal y sin anclaje al piso dan más ruido, no más señal.
+Esta sección es obligatoria para todo entrenamiento de más de 1 hora. Se implementa en el **bloque 1**, antes de cualquier cosa nueva.
 
-### B1. Cambiar el modelo de cuerpo: de 33 puntos a SMPL-X
+### Antes de entrenar: ¿se puede aprender esto?
 
-SMPL-X es el formato estándar de cuerpo humano en investigación: 55 articulaciones (cuerpo, 15 por mano, mandíbula y ojos) + la forma del cuerpo + la malla. Casi todo lo que se publica de retargeting a humanoides (y los datasets como AMASS) habla SMPL / SMPL-X. Pasar a SMPL-X nos deja usar ese ecosistema en vez de pelear con 33 puntos.
-
-Candidatos a evaluar, en este orden (todos con código abierto; **revisar licencias antes de cualquier uso comercial**, varias son solo para investigación):
-
-| Qué resuelve | Candidatos | Por qué |
+| Control | Qué mide | Pasa si |
 | --- | --- | --- |
-| Cuerpo anclado al mundo, con cámara que se mueve | **GVHMR**, WHAM, TRAM, PromptHMR | Dan la trayectoria global y la gravedad: reemplazan las heurísticas de `lift.py` (pie de apoyo, ajuste a la imagen) y el problema "de frente el avance sale ≈ 0" |
-| Cuerpo entero con manos y cara en una pasada | SMPLer-X, Multi-HMR, SAM 3D Body (Meta) | Una sola red para todo; Multi-HMR maneja varias personas |
-| Manos de calidad | **HaMeR**, WiLoR | Los dedos de verdad salen de un modelo de manos dedicado sobre un recorte de la mano, no del modelo de cuerpo |
-| Puntos 2D densos (detector y validación) | RTMW / DWPose (133 puntos: cuerpo, pies, manos, cara), Sapiens (308) | Más puntos 2D para el ajuste final y para validar; los pies con talón y punta mejoran el contacto |
+| **C1. Referencia factible** | La referencia jugada por los motores con la pelvis sostenida (`diagnose_reference.py`, ampliado): error por articulación, retraso de cada motor, pies que se hunden o flotan, articulaciones en el límite | Error medio < 5 cm, ningún motor > 40 ms tarde, < 2 % de cuadros en el límite |
+| **C2. Física factible** | Fuerzas y torques que la referencia pediría (dinámica inversa) contra los límites de los motores del robot | Ningún tramo pide > 100 % del torque máximo |
+| **C3. Sobreajuste chico** | Entrenar solo 1 s del clip, 2 M pasos | Lo sigue entero. Si no puede con 1 s, no va a poder con 12 s: el problema está en la recompensa o la observación |
+| **C4. Humo** | 1 M pasos de la configuración completa | La recompensa sube y la duración de los episodios crece |
 
-**Pipeline propuesto:** detectar y seguir a las personas (como hoy) → cuerpo anclado al mundo por persona (GVHMR o equivalente) → manos con HaMeR sobre recortes → fusionar en SMPL-X → **refinamiento con física**: pies que no patinan cuando apoyan, que no atraviesan el piso, aceleraciones posibles para un cuerpo humano. Ese último paso es nuestro y es parte del foso.
+### Durante: ¿sigue aprendiendo?
 
-**El `PoseClip` v2** (cambio de contrato, commit aparte y antes del código): guarda los parámetros SMPL-X por cuadro (`global_orient`, `transl`, `body_pose`, `left/right_hand_pose`, `betas`), los contactos de cada pie, la confianza por articulación y la cámara. Los 33 puntos siguen saliendo derivados del SMPL-X, para que la web y el retargeting de hoy sigan funcionando mientras migran.
+- **Evaluación fija cada escalón** (0, 1 M, 3 M, 10 M, 30 M, 100 M…; ya existe en `ppo.py`): `followed_s`, error de seguimiento, éxito en N episodios, y robustez en los 4 mundos. Siempre con las mismas semillas, para que dos puntos se puedan comparar.
+- **Mapa de dónde se cae:** el clip partido en tramos de 0,5 s y, por tramo, qué porcentaje de episodios se cae ahí. Dice *dónde* está el problema (en la caminata habría mostrado el tramo de la primera zancada) y alimenta el **muestreo adaptativo**: se practica más donde más se cae.
+- **Salud del aprendizaje:** entropía y desvío de la exploración, KL entre actualizaciones, varianza explicada del crítico, norma de los gradientes. Cada uno con su rango sano escrito al lado; fuera de rango → aviso.
+- **Detector de meseta:** si en las últimas 3 evaluaciones `followed_s` y el éxito no mejoran más de 2 % cada una, el entrenamiento **para solo** y escribe un informe: curva, mapa de caídas, salud, y la sospecha (referencia, recompensa, exploración, capacidad de la red). Así nunca se gastan 24 h de la Mac en algo que dejó de mejorar a las 3.
+- **Regla de la década:** cada 10× de pasos tiene que dar al menos +10 % en la métrica principal. Si una década no lo da, se cambia el método, no se suma otra década.
 
-### B2. En vivo: la misma calidad, en tiempo real
+### Después: ¿de verdad mejoró?
 
-- Hoy: MediaPipe Pose en el navegador. Sigue: **MediaPipe Holistic** (33 del cuerpo + 21 por mano) como base inmediata y barata, con la profundidad del codo y la mano ya resuelta por `bones.js`.
-- Después: un modelo de cuerpo + manos en el servidor con GPU para el modo "Muévete y el robot te copia" en calidad alta, con el navegador como respaldo cuando no hay red.
-
-### B3. Medirlo: nuestro set de prueba
-
-Sin un set de prueba propio, "mejoró el tracking" es opinión. Se arma una vez y se corre en cada cambio:
-
-- **20 videos propios** grabados por el equipo (con permiso, sirven además como datos con licencia): caminar de perfil y de frente, correr, saltar, girar, agacharse, gestos con las manos, contar con los dedos, dos personas en cuadro, cámara en mano.
-- **Medidas automáticas** (sin verdad de terreno): patinazo del pie de apoyo (cm/s), pies bajo el piso (cm), temblor (aceleración del tercer derivado), largo de huesos constante (%), y `valid_ratio`.
-- **Con verdad de terreno:** un subconjunto en un benchmark público (EMDB o 3DPW) para el error en milímetros (W-MPJPE), y unos clips grabados con la cinta métrica en el piso para comprobar la distancia recorrida.
-- **Meta de B:** patinazo del pie de apoyo < 2 cm/s, distancia recorrida con < 5 % de error de frente y de perfil, dedos legibles (abrir, cerrar, señalar, contar) en ≥ 90 % de los cuadros con la mano visible.
+- **Registro de experimentos** (`training/experiments/registro.csv` o similar): cada corrida con su commit, configuración, semilla, pasos, tiempo, métricas finales y una línea de "qué se cambió y por qué". Un cambio a la vez contra una base conocida.
+- **Dos semillas** para cualquier decisión que cambie el método (no para cada corrida): una sola semilla puede mentir.
+- **Clips que no vio:** toda política general se mide en clips que nunca vio al entrenar.
 
 ---
 
-## 4. Pilar C · Retargeting 2.0: del humano al G1, con manos
+## 4. La cadena v2, de punta a punta
 
-- **Cuerpo:** reemplazar el retargeting por ángulos por uno de **cinemática inversa con restricciones** (como GMR, General Motion Retargeting, que ya soporta el G1 desde SMPL-X): emparejar posiciones y orientaciones de pies, manos, pelvis y cabeza, con escala por el largo de los huesos, límites de las articulaciones, sin que el pie atraviese el piso ni patine cuando el humano tiene el pie apoyado.
-- **Manos:** el G1 viene con manos Dex3-1 (3 dedos, 7 articulaciones por mano) o Inspire (5 dedos). MuJoCo Menagerie trae el G1 con manos. Decisión a tomar con Pastor: qué mano modelar primero. Retargeting de dedos por la dirección de cada dedo (no por ángulos), porque la mano humana y la del robot no tienen los mismos dedos.
-- **Medida:** error de las posiciones clave (manos, pies) en cm, patinazo en el robot, articulaciones en el límite (% de cuadros), y `diagnose_reference.py` en verde antes de entrenar.
+```mermaid
+flowchart LR
+  V["Un video<br/>(teléfono, 3 min)"] --> H["Humano 4D<br/>SMPL-X con dedos, anclado al mundo"]
+  V --> S["Escena<br/>piso, muebles, objetos con forma y pose"]
+  H --> T["Tareas<br/>tramos: agarrar, fregar, enjuagar, dejar"]
+  S --> T
+  H --> R["Retargeting<br/>a cualquier humanoide (paquete del robot)"]
+  T --> R
+  R --> SIM["Simulación MuJoCo<br/>variaciones: fricción, masas, posiciones, objetos, empujones"]
+  SIM --> RL["RL con controles<br/>(sección 3)"]
+  RL --> P["Política por habilidad<br/>ONNX, con informe"]
+  RL --> D["Datos<br/>miles de trayectorias corregidas por la física"]
+  P --> G["Tracker general<br/>una política, muchas habilidades"]
+  G --> LLM["Debajo de un modelo grande<br/>que decide qué hacer"]
+```
 
 ---
 
-## 5. Pilar D · Entrenamiento 2.0: miles de millones de pasos, y un método que los aproveche
+## 5. Pilares
 
-### D1. Por qué "más pasos" necesita dos cosas a la vez
+### A. Web (lo primero que se ve)
 
-Juan quiere la mayor cantidad de pasos posible, y tiene razón: los trabajos de imitación de cuerpo entero en el G1 entrenan con **miles de millones** de pasos, no decenas de millones. Pero hay dos datos nuestros que importan:
+- ✅ **Idiomas sin recargar en la landing** (`web/src/i18n.js`, `web/src/landing/strings.js`), con el patrón del portafolio de Juan.
+- ✅ **Congelón de ~1 s al llegar a Capture**: el esqueleto se arma con la página ociosa. Falta medirlo de nuevo con el panel visible.
+- ⏳ Idiomas en En vivo, Subir, Simulaciones, Entrega, Cámara y Red. Chequeo que falle si queda un texto en un solo idioma.
+- ⏳ Presupuesto de fluidez: ningún cuadro > 50 ms al hacer scroll. Física en un Web Worker.
+- ⏳ Más adelante: selector de robot y de mano en Simulaciones (pilar D se ve en la web).
 
-1. **En CPU no se llega.** A 11.400 pasos/s, 1.000 M de pasos son **~24 horas** de la M2 por cada video. Y la M2 es la laptop de Juan.
-2. **Más pasos del mismo método ya no ayudó:** `walk-v4` sigue 3,68 s a los 10 M y 3,54 s a los 20 M. El techo es del método.
+### B. Captura 2.0: el humano en 4D, con dedos
 
-Así que el plan va en dos partes que se hacen juntas: **física en GPU** (cantidad) y **un método de seguimiento de movimiento moderno** (calidad de cada paso).
+Todo local en la Mac (PyTorch con MPS, o CPU si un modelo no corre en MPS: en offline la velocidad importa poco).
 
-### D2. Física en GPU
-
-| Opción | Qué es | Por qué |
+| Qué | Candidatos (código abierto, licencia por revisar) | Por qué |
 | --- | --- | --- |
-| **MuJoCo Warp + mjlab** | MuJoCo en GPU (NVIDIA Warp) con una API de entrenamiento al estilo Isaac Lab | Misma física que la web (MuJoCo), así lo que se ve es lo que se entrenó. mjlab trae tareas de seguimiento de movimiento para el G1 |
-| MuJoCo Playground (MJX, JAX) | MuJoCo en GPU sobre JAX; Menagerie trae `g1_mjx.xml` | Más maduro, con ejemplos de locomoción del G1 |
-| Isaac Lab | El simulador de NVIDIA | Es el estándar en muchos laboratorios, pero cambia la física respecto de la web |
+| Cuerpo anclado al mundo, cámara que se mueve | **GVHMR**, WHAM, TRAM | Trayectoria global y gravedad: reemplaza las heurísticas de `lift.py` y arregla "de frente el avance sale ≈ 0" |
+| Manos con dedos | **HaMeR**, WiLoR | Modelo de manos dedicado sobre el recorte de cada mano: 15 articulaciones por mano |
+| Puntos 2D densos | RTMW / DWPose (133 puntos), Sapiens | Pies con talón y punta (contacto) y validación |
+| Persona + escena juntas | VideoMimic (Berkeley, 2025) como referencia de método | Reconstruye humano y entorno de un video de teléfono para entrenar al G1: es lo más cercano a Tridi publicado; leer y medir contra él |
 
-**Recomendación:** MuJoCo Warp / mjlab, porque mantiene MuJoCo de punta a punta (entrenamiento, web y datos). Primera tarea: reproducir nuestra política de pie con 4.096 robots en paralelo y comparar contra la de hoy.
+**Pipeline:** seguir personas (como hoy) → cuerpo en el mundo → manos → fusión en **SMPL-X** → **refinamiento con física**: pies que no patinan ni atraviesan el piso, manos que no atraviesan objetos, aceleraciones humanas posibles.
 
-**Dónde corre y cuánto cuesta** (estimaciones a medir en la primera semana; precios de alquiler aproximados):
+**`PoseClip` v2** (contrato primero, en commit aparte): parámetros SMPL-X por cuadro, contactos de pies y manos, confianza por articulación, cámara. Los 33 puntos siguen saliendo, derivados, para que nada de hoy se rompa.
 
-| Máquina | Pasos/s esperados | 1.000 M de pasos | Costo aprox. |
+**Medida (set de prueba propio, bloque 1):** 20 videos grabados por Juan (sirven además como datos con licencia propia): caminar de perfil y de frente, girar, agacharse, sentarse, gestos, contar con los dedos, agarrar y dejar objetos, dos personas. Métricas sin verdad de terreno: patinazo del pie (cm/s), pies bajo el piso, temblor, largo de huesos constante, cuadros válidos. Con verdad de terreno: cinta métrica en el piso para la distancia recorrida.
+**Meta:** patinazo < 2 cm/s; distancia con < 5 % de error de frente y de perfil; dedos legibles en ≥ 90 % de los cuadros con la mano visible.
+
+### C. Escena y objetos: la cocina del video, en la simulación
+
+El salto que separa "un robot que imita un baile" de "un robot que lava platos".
+
+1. **Geometría estática:** el piso, la mesada, el fregadero, como cajas y planos ubicados en metros (profundidad monocular + el piso que ya estimamos). Empieza con primitivas simples: para el contacto importa la superficie, no el detalle.
+2. **Objetos que se mueven:** detectar y seguir cada objeto (plato, vaso, cubierto) cuadro a cuadro, su pose 6D y una forma aproximada (primitiva, o una malla generada si el modelo es abierto y corre local).
+3. **Física de los objetos:** masa, fricción y, sobre todo, **rangos**: el plato mojado tiene fricción baja y al azar en cada episodio. Así aparece solo "el plato demasiado cerca del borde se cae": nadie lo programa, la física lo hace y el robot aprende a evitarlo.
+4. **Tareas:** partir el video en tramos (agarrar, fregar, enjuagar, dejar) por los contactos mano-objeto. Cada tramo es una habilidad con su recompensa: seguir la mano humana *y* llevar el objeto a donde lo llevó el humano (lo segundo pesa más: importa el plato, no copiar cada dedo).
+
+MuJoCo tiene cuerpos rígidos excelentes y deformables (flex) para tela simple; agua no. Agua y espuma no se simulan: el "lavado" se aproxima con contacto y movimiento de la esponja sobre el plato. Lo escribimos así para no prometer lo que no hay.
+
+### D. Cualquier humanoide: el paquete del robot
+
+Un robot entra a Tridi como un **paquete**: su modelo MuJoCo (MJCF; o URDF convertido), un archivo de correspondencias (qué cuerpo del robot es la pelvis, las manos, los pies, la cabeza; qué dedos tiene), sus límites y motores, y su mano.
+
+- **Retargeting por cinemática inversa con restricciones** (al estilo GMR, que ya soporta varios humanoides desde SMPL-X): empareja posiciones y orientaciones de pies, manos, pelvis y cabeza con **escala por el largo de los huesos** del robot (Optimus no mide lo que mide un Figure), con límites, sin atravesar el piso, sin patinar cuando el humano apoya, y conservando el contacto con los objetos (como OmniRetarget).
+- **Manos:** retargeting de dedos por la dirección de cada dedo y los puntos de contacto con el objeto, no por ángulos: así sirve para 5 dedos (Inspire), 3 dedos (Dex3) o una pinza.
+- **Robots de prueba:** G1 (+ Inspire, + Dex3) y un segundo humanoide de otro tamaño de MuJoCo Menagerie (Unitree H1 u otro), desde el bloque 2. Si algo funciona en uno y no en el otro, se arregla antes de seguir.
+- **Meta:** sumar un humanoide nuevo = escribir su paquete (< 1 día), sin tocar código.
+
+### E. Entrenamiento 2.0 en la Mac
+
+La M2 tiene 8 núcleos y 16 GB. El plan saca todo lo posible de ahí, porque "24 h por video" está bien, pero 24 h desperdiciadas no.
+
+1. **Más pasos por segundo en CPU**, medido antes y después: `mujoco.rollout` (pasos en C con varios hilos, sin pasar por Python en cada paso), menos trabajo de Python por paso, red en el proceso principal con lotes grandes, contactos solo donde importan. Meta: ≥ 2× los 11.400 pasos/s de hoy en el robot sin manos.
+2. **Aprender más por paso** (eficiencia de muestras): crítico asimétrico, inicio en estados al azar del clip, terminación temprana, muestreo adaptativo (sección 3), currículum (primero el clip lento, después a velocidad real; primero objetos que no se resbalan, después sí), y comparar PPO con un método fuera de política moderno (como FastTD3/SAC con muchos robots en paralelo), que suele necesitar menos pasos.
+3. **Recompensa en dos capas:** imitar al humano (estilo) + lograr la tarea (el plato llega al escurridor). Para manipulación, controladores virtuales que al principio "ayudan" a mover el objeto y se van retirando (como DexMachina) para que el robot no tenga que descubrir todo solo.
+4. **Del tracker por clip al tracker general:** primero una política por habilidad; después una sola política que sigue cualquier movimiento (destilando las de cada clip). Con ella, "Muévete y el robot te copia" pasa a tener física real en tiempo real.
+5. **Política estudiante:** solo con lo que el robot real tiene (sin la altura exacta de la pelvis, con ruido y retardo), destilada de la maestra. Es la que se entrega para un robot de verdad.
+
+**Cuánto entra en la Mac** (a medir en el bloque 2): a ~11.400 pasos/s, 24 h ≈ 1.000 M de pasos para el cuerpo sin manos. Con manos y objetos la física es más cara (más contactos): esperar 2-5× menos pasos/s, o sea 200-500 M por día. Por eso los puntos 1 y 2 importan tanto como el tiempo.
+
+**Cuántos pasos:** los que la métrica justifique. Se entrena hasta que el detector de meseta diga que paró de mejorar, con la regla de la década (sección 3). Ni un número fijo ni infinito.
+
+### F. Producto
+
+- **"Muévete y el robot te copia":** con el tracker general, física real y manos.
+- **"Sube un video":** de la cola de la Mac a un informe por pasos: reconstrucción, controles C1-C4, entrenamiento con su curva y su mapa de caídas, entrega.
+- **"La entrega":** política (ONNX + PyTorch + configuración de observación/acción + un script corto para correrla), movimiento humano en SMPL-X y BVH, movimiento del robot en formato LeRobot además del nuestro, datos de miles de variaciones, e **informe de calidad** legible en 2 minutos. Por robot: la misma entrega para cada paquete de robot.
+- **Interfaz para el modelo grande:** cada habilidad expone un nombre y sus parámetros ("agarrar(objeto)", "dejar(lugar)"), para que un modelo de lenguaje o VLA la llame. Se diseña cuando haya al menos 3 habilidades.
+
+### G. Robot real (general, no atado a un fabricante)
+
+Modelo de actuadores por robot en su paquete (retardo, torque, fricción), aleatorizado; solo sensores reales en la estudiante; y una prueba en un humanoide real cuando un laboratorio o empresa nos preste uno. Nada se afirma sobre robots reales hasta entonces.
+
+---
+
+## 6. La escalera de habilidades
+
+Cada escalón usa todo lo anterior y prueba algo nuevo. No se sube sin la medida del escalón anterior en verde.
+
+| Escalón | Habilidad | Prueba que… | Medida de "listo" |
 | --- | --- | --- | --- |
-| M2 (hoy, CPU) | 11.400 (medido) | ~24 h | gratis, pero bloquea la laptop |
-| 1 × RTX 4090 alquilada | 100 k - 300 k (a medir) | ~1 - 3 h | ~USD 0,4-0,7 por hora |
-| 1 × H100 alquilada | 300 k - 1 M (a medir) | ~20 min - 1 h | ~USD 2-3 por hora |
-
-Eso convierte "60 M pasos" en "**2.000 a 5.000 M pasos**" por el mismo tiempo de espera. Ese es el salto de nivel.
-
-### D3. El método: seguir cualquier movimiento, no uno por clip
-
-1. **Un buen tracker por clip** (lo que hacemos hoy, bien hecho), al estilo BeyondMimic / DeepMimic moderno: inicio en estados al azar del clip, terminación temprana por desvío, **muestreo adaptativo** (practicar más los tramos donde se cae), crítico asimétrico (el crítico ve la verdad del simulador, el actor solo lo que tendría el robot real), red más grande, y aleatorización de fricción, masas, retardo de motores y empujones.
-2. **Un tracker general** (al estilo GMT / OmniH2O / TWIST): **una sola política que sigue cualquier movimiento** de una gran colección (AMASS + nuestros clips), entrenada miles de millones de pasos. Cambia el producto entero:
-   - Subir un video ya no exige entrenar 30-70 min: el tracker general lo sigue en segundos, y el ajuste fino por clip (opcional) arranca desde ahí.
-   - **"Muévete y el robot te copia" pasa a ser con física real**, en tiempo real: la cámara da la referencia y la política la sigue. Hoy es una marioneta.
-3. **Del estudiante al robot real:** la política "maestra" con información privilegiada se destila en una "estudiante" que solo usa los sensores del G1 (sin altura de la pelvis, con ruido y retardo), que es la que se puede llevar a un robot.
-
-**Medidas:** `followed_s` (cuánto del clip sigue sin caerse), error medio de posición del cuerpo (cm), tasa de éxito en N clips nunca vistos, robustez en los 4 mundos y bajo empujones. **Meta de D:** la caminata de 11,8 s completa en ≥ 90 % de los episodios; el tracker general sigue ≥ 80 % de un set de 50 clips que no vio.
-
-### D4. Cuántos pasos: la regla
-
-Ni "infinitos" ni un número fijo: **se entrena hasta que la curva de `followed_s` y del éxito en clips no vistos se aplana**, con un checkpoint (y su ONNX) en cada escalón logarítmico, como hoy. Se para cuando 3 evaluaciones seguidas no mejoran más de 1 %. El presupuesto inicial del tracker general: 5.000 M de pasos; el de un ajuste fino por clip: 200-500 M.
+| **1** | Caminar el clip entero (11,8 s) | Los controles de la sección 3 arreglan lo que nos pasó | ≥ 90 % de episodios llegan al final, en 2 semillas |
+| **2** | Gestos de brazos y manos (saludar, señalar, contar con 5 dedos) | Captura de dedos y manos de 5 dedos | Error de punta de dedos < 2 cm en el robot |
+| **3** | Movimientos con el entorno: sentarse, subir un escalón, apoyarse | Escena estática del video | ≥ 80 % de éxito en 4 variaciones de la escena |
+| **4** | Agarrar y dejar un objeto rígido (taza, plato seco) | Objetos con pose y física | El objeto llega a ±5 cm del destino en ≥ 80 % |
+| **5** | Plato resbaloso, mesada mojada, borde cerca | Rangos de fricción: la física enseña sola | No se cae el plato en ≥ 90 % con fricción al azar |
+| **6** | Lavar: secuencia agarrar-fregar-enjuagar-dejar, varios objetos, de un video de 3 min | Tareas encadenadas | Secuencia completa en ≥ 70 % |
+| **7** | Lo mismo en un segundo humanoide | Paquete del robot | Misma medida que en el G1, ± 10 % |
+| **8** | Tracker general + órdenes por nombre | Debajo de un modelo grande | 5 habilidades, llamadas por texto, en clips que no vio |
 
 ---
 
-## 6. Pilar E · El producto: las tres puertas de la landing, de verdad
-
-### E1. "Muévete y el robot te copia"
-
-- **Hoy:** marioneta (cinemática), en el navegador.
-- **v2:** el tracker general corre en el navegador (onnxruntime-web, como la política de pie hoy) y sigue la referencia de la cámara con física: si te tiras al piso, el robot se cae de verdad. Retardo objetivo < 150 ms de la persona al robot.
-- **Con dedos:** las manos del robot abren y cierran con las tuyas.
-
-### E2. "Sube un video de una persona"
-
-- **Hoy:** cola en la Mac de Juan, 30-70 min, un trabajo a la vez.
-- **v2:** reconstrucción en GPU (B1) en < 1 min por 30 s de video; vista previa inmediata con el tracker general; ajuste fino opcional en GPU en la nube (minutos). Progreso por etapas, siempre visible (regla de la casa: nunca una pantalla de carga vacía).
-- Varias personas en cuadro: elegir a una o entregar a todas.
-
-### E3. "La política y los datos que entregamos"
-
-Lo que compra un equipo de humanoides tiene que entrar directo en su stack:
-
-- **Política:** ONNX (hoy) + checkpoint de PyTorch + la configuración exacta de observación y acción, con un script de 20 líneas para correrla en MuJoCo.
-- **Movimiento humano:** SMPL-X `.npz` (estándar AMASS) y BVH para animación.
-- **Movimiento del robot:** `qpos`/`qvel` a 50 Hz corregidos por la física, en el formato de **LeRobot** (Hugging Face) además del nuestro.
-- **Informe de calidad:** por clip, cuánto sigue, robustez por mundo, contactos de los pies, y en qué tramos falla. Un PDF/HTML que un ingeniero pueda leer en 2 minutos.
-
----
-
-## 7. Pilar F · Infraestructura: salir de la Mac
-
-- Trabajadores de GPU bajo demanda (Modal, RunPod o similar) para reconstrucción y entrenamiento; almacenamiento de objetos (Cloudflare R2 o S3) para clips, políticas y entregas; una API pequeña con colas.
-- Cuentas y proyectos por cliente, con borrado de videos por defecto (hoy ya guardamos solo el movimiento, nunca el video: mantenerlo).
-- Costos por video medidos y mostrados internamente desde el primer día.
-- **Deploy:** sigue pendiente la decisión de mover el deploy a este repo ([`../yc/legal-y-equity.md`](../yc/legal-y-equity.md#deploy)). Esta rama no despliega nada.
-
----
-
-## 8. Pilar G · Robot real (sim2real), cuando lo anterior funcione
-
-- Modelo de los actuadores del G1 (retardo, límite de torque, fricción) y aleatorización de esos parámetros.
-- Solo los sensores del robot real en la política estudiante.
-- Conseguir un G1 para probar: un laboratorio universitario o una empresa que ya tenga uno (es también una conversación de clientes, ver [`../yc/plan-hasta-el-deadline.md`](../yc/plan-hasta-el-deadline.md)).
-
----
-
-## 9. Calidad de ingeniería
-
-- `npm run check` y las pruebas de Python en CI (GitHub Actions) en cada push de la rama, cuando se decida subirla.
-- Un tablero de métricas (tracking, retargeting, entrenamiento, web) que se actualiza solo: así se le muestra el progreso a los cofundadores con números, no con videos sueltos.
-- Cada umbral y número mágico con su porqué al lado (regla de la casa).
-
----
-
-## 10. Orden de trabajo (tiempo libre de Juan)
-
-Pensado por bloques de ~1 semana de tiempo libre. Cada bloque termina en algo que se puede mostrar.
+## 7. Orden de trabajo (bloques de ~1 semana de tiempo libre)
 
 | Bloque | Qué | Se muestra |
 | --- | --- | --- |
-| **0 · ya** | Rama `juan/experimental`. Idiomas en la landing. Congelón de Capture. Este plan | La landing en ES/EN sin recargar |
-| **1** | Idiomas en todas las pantallas. Medir fluidez con presupuesto. Set de prueba de captura (20 videos) y sus medidas sobre la cadena de hoy | La línea de partida en números |
-| **2** | **GPU:** cuenta de GPU en la nube, MuJoCo Warp/mjlab con el G1, reproducir la política de pie y medir pasos/s reales | "60 M pasos en X minutos" |
-| **3** | Tracker por clip moderno (D3.1) en GPU: la caminata completa | La caminata de 11,8 s entera, con física |
-| **4** | Captura 2.0: GVHMR + HaMeR → SMPL-X, `PoseClip` v2 (contrato primero), refinamiento con física | Antes/después en el set de prueba, con dedos |
-| **5** | Retargeting con IK (GMR) y G1 con manos | El robot con las manos del video |
-| **6-8** | Tracker general sobre AMASS + nuestros clips, miles de millones de pasos; "Muévete y te copia" con física | Moverse frente a la cámara y que el robot te siga sin marioneta |
-| **9+** | Entrega en formatos estándar, infraestructura en la nube, sim2real | Una entrega que un laboratorio pueda usar |
+| **0 ✅** | Rama, idiomas en la landing, congelón de Capture, este plan | Landing ES/EN |
+| **1** | **Controles de la sección 3** en `training/` (C1-C4, evaluación fija, mapa de caídas, salud, detector de meseta, registro). Idiomas en el resto de la web | El informe de controles sobre `walk-v4`, que explica por qué se estancó |
+| **2** | Pasos/s en la Mac (`mujoco.rollout`, perfilado). Segundo humanoide cargado. Set de 20 videos | "Antes X pasos/s, ahora Y" |
+| **3** | **Escalón 1:** la caminata completa, con los controles | La caminata entera con física |
+| **4** | Captura 2.0 (GVHMR + HaMeR → SMPL-X), `PoseClip` v2 | Antes/después en el set de prueba, con dedos |
+| **5** | Retargeting por IK con paquete de robot; G1 + Inspire | El robot con 5 dedos copiando una mano |
+| **6** | Escalones 2 y 3 | Gestos y sentarse |
+| **7-9** | Escena y objetos (pilar C); escalones 4 y 5 | Agarra un plato y no lo tira aunque resbale |
+| **10+** | Escalones 6-8 | Lavar de un video de 3 minutos |
 
 **Puntos de decisión:**
 
-- **Fin del bloque 2:** si MuJoCo Warp/mjlab no da ≥ 100 k pasos/s en una GPU de consumo, probar MJX/Playground antes de pensar en Isaac Lab.
-- **Fin del bloque 3:** si el tracker por clip no completa la caminata con 1.000 M pasos, revisar la referencia (captura y retargeting) antes de sumar más pasos: el problema estaría aguas arriba.
-- **Licencias:** antes de cualquier cliente, revisar las licencias de cada modelo y dataset (SMPL-X, AMASS y varios modelos de pose son solo para investigación). Puede obligar a entrenar modelos propios con datos propios: es trabajo, pero también foso.
+- **Fin del bloque 1:** si los controles muestran que la referencia de la caminata no es factible (C1/C2), el bloque 3 empieza por la captura y el retargeting, no por el entrenamiento.
+- **Fin del bloque 2:** si la Mac no pasa de ~15 k pasos/s, priorizar eficiencia por paso (método fuera de política, currículum) sobre cantidad.
+- **Fin del bloque 5:** si un segundo robot necesita código especial, rediseñar el paquete antes de seguir.
 
 ---
 
-## 11. Riesgos
+## 8. Calidad de ingeniería
+
+- `npm run check` y pruebas de Python antes de cada commit que toque `physics/` o `training/`.
+- Tablero de métricas que se actualiza solo (captura, retargeting, entrenamiento, web): el progreso se muestra a los cofundadores con números.
+- Cada umbral con su porqué al lado (regla de la casa).
+- Rebasar `juan/experimental` sobre `main` cada semana, para que juntarla después no sea imposible. Contratos nuevos versionados (v2 junto a v1).
+
+## 9. Riesgos
 
 | Riesgo | Qué hacemos |
 | --- | --- |
-| Costo de GPU con tiempo libre y sin ingresos | Presupuesto mensual fijo; GPU de consumo alquilada por hora; apagar todo al terminar cada corrida |
-| Licencias no comerciales (SMPL-X, AMASS, modelos de pose) | Usarlas para investigar; anotar cada una; plan B con datos y modelos propios antes de vender |
-| La rama se aleja de `main` y luego no se puede juntar | Rebasar sobre `main` cada semana; contratos nuevos versionados (v2 junto a v1) |
-| Hacer demasiado a la vez | Un bloque a la vez, cada uno con su medida y su "se muestra" |
+| La Mac sola es lenta para manipulación con manos | Eficiencia por paso + controles que cortan lo que no aprende + entrenar de noche. Si algún día hay presupuesto, el mismo código corre en GPU (se mantiene MuJoCo) |
+| 16 GB de RAM para modelos de visión grandes | Correr cada modelo por separado sobre el video (no todos a la vez), en offline |
+| Escalar demasiado a la vez | La escalera de la sección 6: un escalón por vez, cada uno con su medida |
+| La rama se aleja de `main` | Rebase semanal |
 
----
+## 10. Licencias (herramientas gratis y seguras)
 
-## 12. Preguntas abiertas (para Juan primero, después para el equipo)
+Todo corre local; ningún video sale de la Mac. Pero "gratis para usar" no siempre es "gratis para vender":
 
-1. **Presupuesto de GPU:** ¿cuánto por mes se puede gastar en GPU en la nube (por ejemplo USD 50, 200, 500)? Define qué tan rápido llegamos a los miles de millones de pasos.
-2. **¿Subir la rama a `origin`?** Empujar `juan/experimental` al repo privado no despliega nada (la demo sale del espejo `Torpass/tridi`) y sirve de respaldo. Hoy queda solo local, como pidió Juan.
-3. **Mano del G1:** ¿Dex3-1 (la de Unitree, 3 dedos) o Inspire (5 dedos)? Con Pastor.
-4. **¿Mostrar el plan a Pastor antes?** El pilar D es su área (entrenamiento y física): conviene que lo vea temprano, aunque sea en borrador.
+| Pieza | Licencia (a confirmar al usarla) | Para vender |
+| --- | --- | --- |
+| MuJoCo, MuJoCo Menagerie | Apache 2.0 (cada modelo de Menagerie tiene la suya) | ✅ |
+| SMPL-X, AMASS | Solo investigación | ❌ sin licencia comercial: plan B con un modelo de cuerpo propio o abierto |
+| GVHMR, HaMeR, WiLoR, etc. | Varía (varias solo investigación, y heredan la de SMPL/MANO) | Revisar una por una |
+| MediaPipe, YOLO11 | Apache 2.0 / AGPL-3.0 (Ultralytics) | AGPL obliga a abrir el código del servicio: revisar antes de vender |
+
+Para investigar y mostrar, se usan. Antes del primer cliente, cada pieza ❌ tiene un reemplazo propio o con licencia.
+
+## 11. Preguntas abiertas
+
+Respondidas por Juan el 2026-11-03: todo es de Juan; rama `juan/experimental` en su repo privado; manos de 5 dedos; cómputo en su Mac con herramientas gratis; no se muestra a Pastor antes.
+
+Siguen abiertas: ver la sesión del 2026-11-03 en [`bitacora/2026-11-03-1200-juan-experimental-v2.md`](bitacora/2026-11-03-1200-juan-experimental-v2.md).

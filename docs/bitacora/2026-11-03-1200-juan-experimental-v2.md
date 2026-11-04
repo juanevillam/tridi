@@ -33,9 +33,16 @@ Trabajar en una rama aparte (`juan/experimental`, local, sin push ni deploy: la 
 - Idioma por defecto cuando el navegador no es ni español ni inglés: inglés (la empresa apunta a EE. UU.).
 - Cada pantalla guarda su copy junto a su código (un diccionario por pantalla), no un archivo gigante de traducciones.
 - La rama no se sube a `origin` hasta que Juan lo diga.
+- **Respuestas de Juan (segunda vuelta):** todo es de Juan; la rama vive en su repo privado `juanevillam/tridi` (subida; nunca `main` ni `Torpass/tridi`); manos de 5 dedos; cómputo solo en su Mac M2 con herramientas gratis y locales (24 h por video está bien); no se muestra a Pastor antes. Visión: un video (p. ej. 3 min lavando platos) → física fiel → RL con millones de variaciones → habilidades que corren debajo de un modelo grande, para cualquier humanoide. Comparable en YC: Asimov (junta muchos datos reales; nosotros multiplicamos uno con física).
+- `docs/plan-v2.md` reescrito con eso: controles contra el estancamiento (C1-C4, evaluación fija, mapa de caídas, salud, detector de meseta, regla de la década, registro), escena y objetos, paquete de robot para cualquier humanoide, entrenamiento eficiente en CPU, escalera de 8 habilidades hasta lavar, licencias.
+
+## Preguntas abiertas para Juan
+
+- GPU gratis en la nube (Kaggle da ~30 h/semana): es gratis, pero los videos salen de la Mac. ¿Se permite para entrenar, o solo la Mac?
+- El set de prueba (20 videos) lo graba Juan: ¿tiene dónde grabar una cocina para los escalones 4-6?
 
 ## Sigue
 
 - Idiomas en En vivo, Subir, Simulaciones, Entrega, Cámara y Red.
 - Medir la fluidez con el panel visible y fijar el presupuesto (ningún cuadro > 50 ms).
-- Bloque 1 y 2 del plan: set de prueba de captura y física en GPU.
+- Bloque 1 del plan: los controles contra el estancamiento en `training/`, probados sobre `walk-v4`.
