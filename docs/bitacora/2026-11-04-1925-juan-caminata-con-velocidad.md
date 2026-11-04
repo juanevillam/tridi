@@ -19,6 +19,8 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
 - La corrida de la noche de la sesión anterior (`walk-vel-seed0`) murió a los 3,1 M pasos (sigue 2,46 s del clip, todavía aprendiendo) al cerrarse esa sesión de Claude Code: el entrenamiento era hijo de la sesión (`BrokenPipeError`).
 - Relanzada con `nohup` desde `training/runs/night-vel.sh` (salida en `training/runs/night-vel.out`), con `--resume`: sobrevive a que se cierre Claude. Fase 1: caminata desde cero con velocidad, sin empujones, hasta 20 M pasos (se corta sola al seguir el clip entero). Fase 2 (`walk-vel-push-seed0`): empujones de 150-300 N + `--recover`, contra el empujón de la web, cortada por el pronóstico. Al final: escalón 1, empujón de la web y barrido de fuerzas.
 
+- Pausado a pedido de Juan (película en 4K, que la Mac no se caliente) a los 3,21 M pasos, con Ctrl-C: guardó `latest.pt`. Para seguir: `nohup sh training/runs/night-vel.sh > training/runs/night-vel.out 2>&1 &` (la fase 1 ya usa `--resume`).
+
 ## Qué funcionó
 
 - 
