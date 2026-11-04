@@ -70,10 +70,17 @@ Trabajar en una rama aparte (`juan/experimental`, local, sin push ni deploy: la 
   - **No funcionó / falta:** el H1 equilibrado toca el piso cuando la referencia dice el 76 % del tiempo (C1 pide 80 %): ~24 % de los cuadros el pie queda 2-4 cm arriba con la pelvis sostenida, con cualquier adelanto de motores. Sin resolver. Bug mío en el camino: la salida del H1 pisó el archivo equilibrado del G1 (mismo `clip_id`); restaurado, y ahora el id lleva el robot.
   - Decisión: el segundo robot copia el movimiento ya limpio del G1 en vez de rehacer el retargeting desde la persona; el retargeting directo persona → cualquier robot queda para la captura 2.0.
 
+- **Octava vuelta (escalón 1 de la caminata):**
+  - **Segunda semilla** (`walk-balanced-v1-seed1`): también sigue la caminata entera (11,86 s, 10 M pasos, 23,4 min), pero solo **25 %** de los arranques con empujoncito llegan al final. Escalón 1: 1 de 2 semillas, **no pasa**. Causa: ninguna entrenó con arranques perturbados.
+  - **`--robust`** (`ea9b41b`): el mimic entrena con arranques con empujoncito y empujones de 0-300 N.
+  - **No funcionó:** afinar las dos semillas 10 M pasos con empujones de 0-300 N desde el primer paso **las arruinó**: 5 % llega al final en calma (antes 90 % y 25 %), 0 % con empujones; la semilla 0 seguía el clip entero a 1 M pasos y lo perdió a 3 M. Empujones de esa fuerza en una caminata, sin rampa, borran lo aprendido.
+  - **Ahora:** afinar desde los checkpoints originales **solo con el empujoncito** (`--robust --push-max 0`, 5 M pasos por semilla), que es lo que mide el escalón 1. Los empujones vienen después, con una rampa de fuerza.
+  - La Mac se pasó a batería a mitad del entrenamiento: el guardián lo pausó y siguió solo al enchufarla.
+
 ## Sigue
 
-- Resultado de la segunda semilla de la caminata (`walk-balanced-v1-seed1`) para cerrar el escalón 1.
-- Entrenar la caminata con empujones (la entrega la prueba empujando; hoy 5 %).
+- Resultado de `walk-nudge-v1-seed{0,1}` para cerrar el escalón 1.
+- Entrenar la caminata con empujones, subiendo la fuerza de a poco (curriculum); la entrega la prueba empujando.
 - Entrenar el H1 en su caminata equilibrada y resolver el 76 % de contacto.
 - Medir pasos/s y perfilar (bloque 2), con la Mac libre.
 - Pasar `training.balance` a correr y a jumping jacks (tienen vuelo: hace falta fase sin apoyo).
