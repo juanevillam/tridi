@@ -70,17 +70,18 @@ def main() -> None:
     p.add_argument("checkpoints", nargs="+", type=Path)
     p.add_argument("--episodes", type=int, default=EPISODES)
     args = p.parse_args()
-    passed = []
+    passed = {}  # per run (one seed each): its last checkpoint on the command line counts
     for path in args.checkpoints:
         r = evaluate(path, args.episodes)
         c, pu = r["calm"], r["pushed"]
         ok = c["reached"] >= PASS_SHARE
-        passed.append(ok)
+        passed[path.parent.name] = ok
         print(f"{path.parent.name}/{path.name}: calm {100 * c['reached']:.0f} % reach the end "
               f"(shortest {min(c['seconds']):.1f} of {c['duration']:.1f} s) · pushed {100 * pu['reached']:.0f} % "
               f"(median {np.median(pu['seconds']):.1f} s) -> {'pass' if ok else 'not yet'}")
     if len(passed) >= 2:
-        print("step 1: " + ("PASSED" if all(passed) else "not passed") + f" ({sum(passed)} of {len(passed)} seeds at >= {100 * PASS_SHARE:.0f} %)")
+        print("step 1: " + ("PASSED" if all(passed.values()) else "not passed")
+              + f" ({sum(passed.values())} of {len(passed)} runs at >= {100 * PASS_SHARE:.0f} %, each judged by its last checkpoint listed)")
 
 
 if __name__ == "__main__":

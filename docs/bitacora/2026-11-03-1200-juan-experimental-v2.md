@@ -80,12 +80,12 @@ Trabajar en una rama aparte (`juan/experimental`, local, sin push ni deploy: la 
   - **Con la tasa adaptativa, la semilla 0 pasa firme:** `walk-nudge-v2-seed0` llega al final desde **100 %** de los arranques con empujoncito en 1 M, 3 M y 5 M pasos (antes 90 %, y oscilando). Con empujones sigue en 5 %.
   - **La semilla 1 no:** 45 % a 1 M, 25 % a 3 M, 5 % a 5 M; el KL estaba en orden (0,012-0,016). Desde la mitad del clip aguanta el 96 % de los arranques; desde el primer cuadro se cae a 1,2 s casi siempre. Los resets se reparten parejo en el clip (~1 de cada 10 cae en el primer segundo), y el escalón 1 y la entrega siempre arrancan en el primer cuadro.
   - **Arreglo:** con `--robust`, 25 % de los resets arrancan en el primer cuadro (`START_SHARE`). Relanzado `walk-nudge-v3-seed1` desde el checkpoint original.
+  - **Escalón 1 PASADO:** `walk-nudge-v3-seed1` llega al final desde **100 %** de los arranques en 3 M y 5 M pasos (85 % en 1 M). Con `walk-nudge-v2-seed0` (100 %): **2 de 2 semillas**. Con empujones, las dos en 5 %: eso es lo siguiente. `training.rung1` ahora juzga por corrida (antes contaba checkpoints como semillas).
   - Error mío: un `git checkout` de `training/experiments.csv` borró las filas de `walk-nudge-v1`; reconstruidas desde sus `evals.csv` (marcadas en la nota).
   - La Mac se pasó a batería a mitad del entrenamiento: el guardián lo pausó y siguió solo al enchufarla.
 
 ## Sigue
 
-- Resultado de `walk-nudge-v1-seed{0,1}` para cerrar el escalón 1.
 - Entrenar la caminata con empujones, subiendo la fuerza de a poco (curriculum); la entrega la prueba empujando.
 - Entrenar el H1 en su caminata equilibrada y resolver el 76 % de contacto.
 - Medir pasos/s y perfilar (bloque 2), con la Mac libre.
