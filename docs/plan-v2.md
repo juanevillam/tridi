@@ -213,6 +213,8 @@ Cada escalón usa todo lo anterior y prueba algo nuevo. No se sube sin la medida
 - Mapa de caídas de `g1-walk`: aguanta 2 s desde el 61 % de los inicios; las caídas se juntan entre 4,5 y 8 s.
 - Lo mismo (o peor) en jumping jacks y correr: ZMP fuera del apoyo en 95-98 %.
 
+**Hecho (2026-11-03):** `training.balance` pone la referencia en equilibrio (pies fijos, ZMP sobre el pie apoyado por el modelo carro-mesa, IK). Caminata: ZMP fuera 87 % → 2 %, pie que patina 0,25 → 0,01 m/s, C1-C4 en verde. Con eso arrancó el entrenamiento largo del escalón 1 (`walk-balanced-v1`).
+
 Conclusión: el bloque 3 empieza por **arreglar la referencia** (captura que apoye los pies de verdad, retargeting con contactos y un paso de equilibrio que mueva la pelvis hasta que el ZMP quede sobre los pies), y recién después entrena. Es el punto de decisión de abajo, ya resuelto.
 
 **Puntos de decisión:**

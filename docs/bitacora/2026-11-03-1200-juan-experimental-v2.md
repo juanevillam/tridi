@@ -55,11 +55,19 @@ Trabajar en una rama aparte (`juan/experimental`, local, sin push ni deploy: la 
 - **Quinta vuelta (Juan: "sí, bájalos"):** bajados 19 de 25 de Pexels (218 MB en `~/Tridi/set-de-prueba/videos`). `curl` al link de descarga de Pexels da 403; `yt-dlp` (extractor genérico) sí, así que `testset download` usa yt-dlp para todo. Seis siguieron con 403 de Cloudflare aun espaciados 45 s: no se forzó (sería saltar protección anti-bot); quedan `sin-bajar` para bajarlos a mano. Revisados con 4 cuadros cada uno: 10 ok, 8 difíciles, 1 descartado (3 s solo de guantes); caminar-02 en realidad son saltos (→ `saltar`).
 - Extraídos 14 clips; fallaron los 4 sin cuerpo entero (lavar-02, lavar-05, correr-02, dedos-02) y lavar-04 de medio cuerpo salió 30 % válido. **Hallazgo:** la captura de hoy no sirve para lavar platos ni dedos tal como la gente los filma; la captura 2.0 necesita medio cuerpo + manos (HaMeR). Línea de partida guardada como `mediapipe-2026-11-03` en `quality.csv` y en la guía.
 
+- **Sexta vuelta (Juan: "continúa, cuerpo completo por ahora, no te detengas"):**
+  - **`training/balance.py`** (nuevo): pone la referencia en equilibrio antes de entrenar. Detecta los apoyos (pie bajo y lento, sin parpadeos), fija el pie apoyado donde aterrizó (puede levantar el talón al despegar), levanta el pie en el aire 5 cm a mitad del paso, y resuelve el camino del centro de masa cuyo ZMP queda sobre el pie apoyado (modelo carro-mesa, como los generadores de marcha), con IK de pelvis y piernas. 5 s por clip.
+  - **Hallazgo:** el centro de masa de la caminata original iba a 21 cm (mediana) de los pies: el cuerpo avanzaba más rápido que los pasos (el pie "patinaba" para seguirlo). El primer intento (corregir el CoM de a poco) divergía; el método de los generadores de marcha converge en 4 vueltas.
+  - **Tres controles estaban mal y se arreglaron:** C2 armaba el polígono de apoyo con los centros de las cápsulas del pie (un triángulo de 4×5 cm sin talón); ahora usa sus extremos. C1 decía que la red ve 20 ms adelante (ve 250 ms desde el hackathon) y exigía contacto exacto a un pie sostenido en el aire; ahora mide con la misma tolerancia de 1,5 cm que la referencia y con los motores apuntando adelante su propio retraso (lo que cualquier política aprende). C2 de torque solo falla por motores que cargan el cuerpo (la muñeca saturaba por el sacudón de la pelvis arrastrada, con referencia 0 todo el clip).
+  - **Resultado en la caminata:** ZMP fuera del apoyo 87 % → 2 %; pie apoyado que patina 0,25 → 0,01 m/s; C1, C2, C3 y C4 en verde (C4: episodio +60 %, la original +28 %). La original sigue en rojo con los controles arreglados.
+  - **Gradiente siempre recortado, arreglado:** el crítico aprende retornos normalizados (media y desvío corridos). Norma del gradiente ~22 → 1-2,4; el crítico explica 95 % de los retornos.
+  - **Entrenamiento largo lanzado:** `walk-balanced-v1`, hasta 100 M pasos con corte por meseta, `--shared nice`.
+
 ## Sigue
 
 - Idiomas en En vivo, Subir, Simulaciones, Entrega, Cámara y Red.
 - Medir la fluidez con el panel visible y fijar el presupuesto (ningún cuadro > 50 ms).
-- Normalizar los retornos del crítico (gradiente siempre recortado).
-- Bloque 3 cambia de orden: primero una referencia en equilibrio (contactos de pies reales, pelvis corregida para que el ZMP quede sobre el apoyo), comprobada con C1-C2 en verde, y recién después entrenar.
+- Ver el resultado de `walk-balanced-v1` (escalón 1: ≥ 90 % de episodios al final, 2 semillas).
+- Pasar `training.balance` a correr y a jumping jacks (tienen vuelo: hace falta fase sin apoyo).
 - Buscar más videos de caminar de perfil y correr con piernas visibles; bajar a mano los 6 `sin-bajar` si Juan quiere.
 - Captura 2.0: modo medio cuerpo y manos, medida contra esta línea de partida.
