@@ -112,6 +112,9 @@ Trabajar en una rama aparte (`juan/experimental`, local, sin push ni deploy: la 
 
     Las dos pasan la regla (≥ 0,35) en ~10 min cada una, lo que la corrida larga ganó en 30 M pasos (68 min). C sube más parejo; B sube rápido y oscila. Lo más débil: empujón desde la derecha (10-20 %).
   - **Corrida de la noche** (`walk-night-seed0`): las dos juntas, desde la sonda B; hasta 60 M pasos, evaluando el empujón de la web cada 1 M y cortando sola si el pronóstico deja 0,9 más allá de 60 M. Modo `background` (lenta y fresca mientras Juan usa la Mac, rápida cuando la deja).
+  - **La corrida de la noche se cortó sola a los 5 M pasos (13 min):** empujón de la web 0,38 → 0,47 → 0,28 → 0,50 → 0,43 → 0,43; pronóstico plano (+0,003 por 10×). Juntar las dos ideas no sumó: ~0,42, lo mismo que cada sonda. El pronóstico ahorró las horas que quedaban. Aleatorios: 100 N 95 %, 150 N 85 %, 200 N 60 %, 300 N 25 %; calma 100 %.
+  - **Cómo se cae:** 23 de 40, una mediana de 1,1 s después del empujón; 61 % se cae después de que cierra la ventana de recuperación de 1 s (vuelve a pedir pose y velocidad del clip demasiado pronto).
+  - **Sonda:** ventana de 2 s (`--recover 2`), 4 M pasos desde la corrida de la noche. Gana si llega a ≥ 0,55.
   - Error mío: un `git checkout` de `training/experiments.csv` borró las filas de `walk-nudge-v1`; reconstruidas desde sus `evals.csv` (marcadas en la nota).
   - La Mac se pasó a batería a mitad del entrenamiento: el guardián lo pausó y siguió solo al enchufarla.
 
