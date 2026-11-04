@@ -81,6 +81,7 @@ Trabajar en una rama aparte (`juan/experimental`, local, sin push ni deploy: la 
   - **La semilla 1 no:** 45 % a 1 M, 25 % a 3 M, 5 % a 5 M; el KL estaba en orden (0,012-0,016). Desde la mitad del clip aguanta el 96 % de los arranques; desde el primer cuadro se cae a 1,2 s casi siempre. Los resets se reparten parejo en el clip (~1 de cada 10 cae en el primer segundo), y el escalón 1 y la entrega siempre arrancan en el primer cuadro.
   - **Arreglo:** con `--robust`, 25 % de los resets arrancan en el primer cuadro (`START_SHARE`). Relanzado `walk-nudge-v3-seed1` desde el checkpoint original.
   - **Escalón 1 PASADO:** `walk-nudge-v3-seed1` llega al final desde **100 %** de los arranques en 3 M y 5 M pasos (85 % en 1 M). Con `walk-nudge-v2-seed0` (100 %): **2 de 2 semillas**. Con empujones, las dos en 5 %: eso es lo siguiente. `training.rung1` ahora juzga por corrida (antes contaba checkpoints como semillas).
+  - **Empujones con rampa (lanzado):** cada semilla sigue desde su checkpoint que pasó el escalón 1, en 4 etapas de 3 M pasos con el empujón más fuerte en 75, 150, 225 y 300 N (`walk-push{75,150,225,300}-seed{0,1}`), midiendo calma y empujones al final de cada una. ~1 h 40 min las dos.
   - Error mío: un `git checkout` de `training/experiments.csv` borró las filas de `walk-nudge-v1`; reconstruidas desde sus `evals.csv` (marcadas en la nota).
   - La Mac se pasó a batería a mitad del entrenamiento: el guardián lo pausó y siguió solo al enchufarla.
 
