@@ -221,8 +221,7 @@ def c3(clip: str, steps: int) -> dict:
     tmp = slice_motion(clip, C3_SECONDS, Path(tempfile.mkdtemp()) / "slice.json")
     run_dir = _train(f"checks-c3-{Path(clip).stem}", str(tmp), steps, stop_when_done=True)
     last = max(run_dir.glob("step_*.pt"), key=lambda p: int(p.stem.split("_")[1]))
-    model = ActorCritic(MIMIC_OBS_DIM)
-    model.load_state_dict(torch.load(last)["model"])
+    model = ActorCritic.from_state(torch.load(last)["model"])
     model.eval()
     followed, duration, _, _ = follow(model, str(tmp))
     ok = followed >= C3_PASS * duration

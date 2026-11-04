@@ -31,7 +31,7 @@ HORIZON_S = 2.0
 def act(model, obs: np.ndarray, env: MimicEnv) -> np.ndarray:
     """The mean action of an ActorCritic, of an exported ONNX (which outputs motor targets), or none."""
     if model is None:
-        return np.zeros(29)
+        return np.zeros(env.nu)
     if hasattr(model, "run"):  # onnxruntime session: ctrl = ref_next + ACTION_SCALE * action
         ctrl = model.run(None, {"obs": obs[None]})[0][0]
         return (ctrl - env.ref_next) / ACTION_SCALE
@@ -100,8 +100,7 @@ def main() -> None:
         motion = motion or json.loads(args.checkpoint.with_suffix(".json").read_text()).get("motion")
     elif args.checkpoint:
         state = torch.load(args.checkpoint)
-        model = ActorCritic(MIMIC_OBS_DIM)
-        model.load_state_dict(state["model"])
+        model = ActorCritic.from_state(state["model"])
         model.eval()
         motion = motion or state.get("motion")
     print(text(failure_map(model, motion or DEFAULT_MOTION)))

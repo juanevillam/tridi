@@ -53,9 +53,9 @@ def export(checkpoint: Path, policy_id: str, out: Path, task: str | None = None,
     state = torch.load(checkpoint)
     task = state.get("task") or task or "stand"
     walk = task == "mimic"
-    model = ActorCritic(obs_size(task))
-    model.load_state_dict(state["model"])
+    model = ActorCritic.from_state(state["model"])
     model.eval()
+    obs_dim = model.norm.mean.shape[0]
     if walk:
         from .imitate import DEFAULT_MOTION, MimicEnv
 
@@ -68,7 +68,7 @@ def export(checkpoint: Path, policy_id: str, out: Path, task: str | None = None,
     out.mkdir(parents=True, exist_ok=True)
     onnx_path = out / f"{policy_id}.onnx"
     torch.onnx.export(
-        deployed, torch.zeros(1, obs_size(task)), str(onnx_path), input_names=["obs"], output_names=["ctrl"],
+        deployed, torch.zeros(1, obs_dim), str(onnx_path), input_names=["obs"], output_names=["ctrl"],
         dynamic_axes={"obs": {0: "batch"}, "ctrl": {0: "batch"}}, opset_version=17, dynamo=False,
     )
 
@@ -98,10 +98,11 @@ def export(checkpoint: Path, policy_id: str, out: Path, task: str | None = None,
 
     meta = {
         "id": policy_id,
-        "robot": "unitree_g1",
-        "mjcf": MJCF,
-        "obs_dim": obs_size(task),
-        "nu": NU,
+        "robot": env.mjcf.split("/")[0],
+        "robot_package": env.robot_id,
+        "mjcf": env.mjcf,
+        "obs_dim": obs_dim,
+        "nu": env.nu,
         "task": task,
         # Standing learns from pushes, not from people; imitation from the clip it imitates.
         "trained_on": [m.id for m in env.motions] if walk else [],

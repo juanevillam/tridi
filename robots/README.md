@@ -28,4 +28,18 @@ Revisa que las partes existan, que los servos sostengan la pose con la pelvis so
 
 El H1 es 40 cm más alto, pesa 18 kg más y no tiene muñecas ni manos: si algo sirve en los dos, no depende del tamaño del G1. Ninguno se sostiene sin política (los servos de entrenamiento del G1 son blandos a propósito), por eso el chequeo sostiene la pelvis.
 
-**Falta** para que un robot nuevo entre "sin tocar código": que `training.balance`, el retargeting y `training/env.py` lean el paquete en vez de los nombres del G1.
+## Un movimiento en otro robot
+
+```bash
+uv run --project training python -m training.retarget training/references/<clip>-balanced.json --to h1
+uv run --project training python -m training.balance training/references/<clip>-h1.json
+uv run --project training python -m training.feasible training/references/<clip>-h1-balanced.json
+```
+
+1. `training.retarget` copia el movimiento del G1 (ya limpio) al otro paquete: los puntos del cuerpo escalados por el largo de pierna, los brazos por la dirección de cada segmento, los pies apoyados clavados donde están, e IK. Caminata G1 → H1: pies a 0,4 cm, pie apoyado que patina 0,011 m/s, manos a 1,5-1,8 cm.
+2. `training.balance` lo pone en equilibrio con la masa de ese robot (lee el paquete; en el G1 da exactamente lo mismo que antes). H1: ZMP fuera del apoyo 61 % → 2 %.
+3. `training.feasible` le hace las preguntas físicas de C1 y C2 a cualquier robot (en el G1 coincide con `training.checks`).
+
+**Caminata en el H1 hoy:** en equilibrio, sin pies hundidos ni ángulos fuera de rango, piernas a 0,06 rad con la pelvis sostenida; pero los pies tocan el piso cuando la referencia lo dice el 76 % del tiempo (C1 pide 80 %): ~24 % de los cuadros el pie queda 2-4 cm arriba. Sin resolver.
+
+**Falta** para que un robot nuevo entre "sin tocar código": que `training/env.py` e `imitate.py` (el entrenamiento) lean el paquete en vez de los nombres del G1, y el retargeting directo de persona a cualquier robot.

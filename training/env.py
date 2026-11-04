@@ -21,7 +21,9 @@ SCENE = Path(__file__).resolve().parent.parent / "physics" / "models" / "unitree
 MJCF = "unitree_g1/scene_mjx.xml"  # as policy.json names it, relative to physics/models/
 
 # The policy decides 50 times per second: 5 physics steps of 4 ms. Fast enough to catch a stumble
-# (a fall takes ~0.5 s), slow enough that each decision moves the robot measurably.
+# (a fall takes ~0.5 s), slow enough that each decision moves the robot measurably. Another robot
+# package keeps the 20 ms and takes as many of its own physics steps (the H1's are 2 ms: 10).
+CONTROL_S = 0.02
 DECIMATION = 5
 
 # One action unit moves a joint target 0.25 rad from the standing pose. The usual scale for position
@@ -58,7 +60,7 @@ PUSH_EVERY_S = (2.0, 4.0)  # a new push every 2 to 4 s, at random
 INIT_JOINT_NOISE = 0.05
 INIT_VEL_NOISE = 0.1
 
-OBS_DIM = 3 + 3 + 29 + 29 + 29
+OBS_DIM = 3 + 3 + 29 + 29 + 29  # the G1's; a robot with nu motors has 6 + 3 nu (G1Env.obs_dim)
 NU = 29
 
 
@@ -89,24 +91,51 @@ FEET = ("left_ankle_roll_link", "right_ankle_roll_link")
 
 
 class G1Env:
+    """Named for the G1, which it was written for; `robot` takes any package (robots/<id>.json,
+    training/robot.py): sizes, feet, torso and the standing pose come from it, and the fall line
+    scales with its standing height."""
+
     def __init__(self, seed: int = 0, push: bool = True, push_n: tuple[float, float] = PUSH_N,
-                 push_every: tuple[float, float] = PUSH_EVERY_S, stance: Stance | None = None):
-        self.model = mujoco.MjModel.from_xml_path(str(SCENE))
+                 push_every: tuple[float, float] = PUSH_EVERY_S, stance: Stance | None = None,
+                 robot: str = "g1"):
+        if robot == "g1":
+            self.model = mujoco.MjModel.from_xml_path(str(SCENE))
+            feet, torso = FEET, "torso_link"
+            self.mjcf = MJCF
+        else:
+            from .robot import load
+
+            package = load(robot)
+            self.model = package.model
+            feet = tuple(package.model.body(package.points[f"{s}_foot"].body).name for s in ("left", "right"))
+            torso = package.model.body(package.points["torso"].body).name
+            self.mjcf = package.mjcf
+        self.robot_id = robot
+        self.nu = self.model.nu
+        self.obs_dim = 6 + 3 * self.nu
+        self.decimation = max(1, int(round(CONTROL_S / self.model.opt.timestep)))
         self.data = mujoco.MjData(self.model)
         self.rng = np.random.default_rng(seed)
         self.push_enabled = push
         self.push_n = push_n
         self.push_every = push_every
         self.stance = stance or Stance()
-        self.feet = [self.model.body(name).id for name in FEET]
+        self.feet = [self.model.body(name).id for name in feet]
         self.feet_rest = np.zeros(2)  # ankle heights when standing, set at reset
         self.prev_feet = np.zeros((2, 2))  # ankle xy at the previous decision
         self.last_push = -10**9  # decision when the last push started
         key = self.model.key("home")
         self.home_qpos = key.qpos.copy()
-        self.default = key.ctrl.copy()  # joint targets of the standing pose
+        if robot == "g1":
+            self.default = key.ctrl.copy()  # joint targets of the standing pose
+            self.stand_height = STAND_HEIGHT
+        else:
+            self.default = package.home_ctrl.copy()
+            self.stand_height = float(self.home_qpos[2])
+        # The fall line keeps the G1's proportion: 0.5 m of a 0.78 m stance.
+        self.fall_height = FALL_HEIGHT * self.stand_height / STAND_HEIGHT
         self.ctrl_low, self.ctrl_high = self.model.actuator_ctrlrange.T.copy()
-        self.torso = self.model.body("torso_link").id
+        self.torso = self.model.body(torso).id
         self.prev_ctrl = self.default.copy()
         self.steps = 0
         self.next_push = 0
@@ -146,7 +175,7 @@ class G1Env:
         d = self.data
         mujoco.mj_resetData(self.model, d)
         d.qpos[:] = self.home_qpos
-        d.qpos[7:] += self.rng.normal(0, INIT_JOINT_NOISE, NU)
+        d.qpos[7:] += self.rng.normal(0, INIT_JOINT_NOISE, self.nu)
         d.qvel[:] = self.rng.normal(0, INIT_VEL_NOISE, self.model.nv)
         mujoco.mj_forward(self.model, d)
         self.prev_ctrl = self.default.copy()
@@ -162,7 +191,7 @@ class G1Env:
         """Returns obs, reward, terminated (fell), truncated (time up), info."""
         ctrl = self.apply(action)
         self._push()
-        for _ in range(DECIMATION):
+        for _ in range(self.decimation):
             mujoco.mj_step(self.model, self.data)
         self.steps += 1
         reward, info = self.reward(ctrl)
@@ -173,7 +202,7 @@ class G1Env:
 
     def fallen(self) -> bool:
         up = -gravity_in_body(self.data.qpos[3:7])[2]
-        return self.data.qpos[2] < FALL_HEIGHT or up < FALL_UPRIGHT
+        return self.data.qpos[2] < self.fall_height or up < FALL_UPRIGHT
 
     def reward(self, ctrl: np.ndarray) -> tuple[float, dict]:
         """About 1 per step when standing still and upright; less when tilted, sagging or twitching.
@@ -189,7 +218,7 @@ class G1Env:
             # Upright: tilt of 0.2 rad (11 degrees) already halves it.
             "upright": 0.4 * np.exp(-(g[0] ** 2 + g[1] ** 2) / 0.04),
             # Height: 5 cm of sag halves it, so it learns to keep its knees, not to crouch.
-            "height": 0.3 * np.exp(-((qpos[2] - STAND_HEIGHT) ** 2) / 0.0036),
+            "height": 0.3 * np.exp(-((qpos[2] - self.stand_height) ** 2) / 0.0036),
             # Near the standing pose: keeps arms and waist calm instead of flailing to balance.
             "pose": 0.2 * np.exp(-np.sum((qpos[7:] - self.default) ** 2) / 1.0),
             # Still: pelvis drifting at 0.5 m/s halves it.
@@ -204,7 +233,7 @@ class G1Env:
         if w.turn:
             terms["turn"] = -w.turn * qvel[5] ** 2  # qvel[5]: the pelvis' angular velocity about its own z, the yaw rate while upright
         if w.feet:
-            dt = DECIMATION * self.model.opt.timestep
+            dt = self.decimation * self.model.opt.timestep
             speed2 = np.sum((self.data.xpos[self.feet, :2] - self.prev_feet) ** 2) / dt**2
             terms["feet"] = -w.feet * speed2 * float(calm)
         total = max(sum(terms.values()), 0.0)

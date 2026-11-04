@@ -104,12 +104,12 @@ def mlp(inp: int, out: int, hidden=(256, 128, 64)) -> nn.Sequential:
 class ActorCritic(nn.Module):
     """Small enough to run every 20 ms in a phone's browser: ~70k parameters per network."""
 
-    def __init__(self, obs_dim: int = OBS_DIM):
+    def __init__(self, obs_dim: int = OBS_DIM, nu: int = NU):
         super().__init__()
         self.norm = RunningNorm(obs_dim)
-        self.actor = mlp(obs_dim, NU)
+        self.actor = mlp(obs_dim, nu)
         self.critic = mlp(obs_dim, 1)
-        self.log_std = nn.Parameter(torch.full((NU,), float(INIT_LOG_STD)))
+        self.log_std = nn.Parameter(torch.full((nu,), float(INIT_LOG_STD)))
         # The critic learns returns in units of their running std (value-target normalization). Raw
         # returns reach ~50 (0.5 per step over a 100-step horizon); their squared error dominated the
         # loss and every minibatch's gradient was ~22 against MAX_GRAD_NORM = 1, so it was always
@@ -132,6 +132,13 @@ class ActorCritic(nn.Module):
     def normalize_returns(self, ret: torch.Tensor) -> torch.Tensor:
         return (ret - self.ret_norm.mean) / torch.sqrt(self.ret_norm.var + 1e-8)
 
+    @classmethod
+    def from_state(cls, state: dict) -> "ActorCritic":
+        """A network sized as a checkpoint's weights say (any robot), with them loaded."""
+        model = cls(state["norm.mean"].shape[0], state["log_std"].shape[0])
+        model.load_state_dict(state)
+        return model
+
     def load_state_dict(self, state, strict: bool = True):
         # Checkpoints from before value normalization: identity stats, so their critic means the same.
         state = dict(state)
@@ -146,6 +153,21 @@ def obs_size(task: str) -> int:
 
         return MIMIC_OBS_DIM
     return OBS_DIM
+
+
+def dims(task: str, motion: str | None) -> tuple[int, int]:
+    """Observation and action sizes for this task's robot: the G1's, or the package a mimic motion
+    names (training.retarget writes "robot_package")."""
+    if task == "mimic" and motion:
+        from .imitate import mimic_obs_dim, motion_robot
+
+        robot = motion_robot(motion)
+        if robot != "g1":
+            from .robot import load
+
+            nu = load(robot).nu
+            return mimic_obs_dim(nu), nu
+    return obs_size(task), NU
 
 
 def save(model: ActorCritic, run_dir: Path, step: int, meta: dict, export_dir: Path | None = None,
@@ -173,8 +195,8 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
     torch.manual_seed(seed)
     if every <= 0 and total_steps >= 10 * MIN_STEPS:
         every = max(1_000_000, total_steps // AUTO_EVALS // 1_000_000 * 1_000_000)
-    obs_dim = obs_size(task)
-    model = ActorCritic(obs_dim)
+    obs_dim, nu = dims(task, motion)
+    model = ActorCritic(obs_dim, nu)
     if init:  # continue from an earlier run (its steps are not counted again)
         model.load_state_dict(torch.load(init)["model"])
     if std is not None:
@@ -263,7 +285,7 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
           guard.checkpoint()
           t0 = time.time()
           buf_obs = np.zeros((ROLLOUT, NUM_ENVS, obs_dim), np.float32)
-          buf_act = np.zeros((ROLLOUT, NUM_ENVS, NU), np.float32)
+          buf_act = np.zeros((ROLLOUT, NUM_ENVS, nu), np.float32)
           buf_logp = np.zeros((ROLLOUT, NUM_ENVS), np.float32)
           buf_rew = np.zeros((ROLLOUT, NUM_ENVS), np.float32)
           buf_done = np.zeros((ROLLOUT, NUM_ENVS), np.float32)
@@ -306,7 +328,7 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
           # PPO update, in minibatches of 1024.
           model.to(device)
           b_obs = torch.as_tensor(buf_obs.reshape(-1, obs_dim), device=device)
-          b_act = torch.as_tensor(buf_act.reshape(-1, NU), device=device)
+          b_act = torch.as_tensor(buf_act.reshape(-1, nu), device=device)
           b_logp = torch.as_tensor(buf_logp.reshape(-1), device=device)
           b_adv = torch.as_tensor(adv.reshape(-1), device=device)
           model.ret_norm.update(torch.as_tensor(ret.reshape(-1, 1), dtype=torch.float32, device=device))

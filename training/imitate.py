@@ -19,11 +19,11 @@ from pathlib import Path
 import mujoco
 import numpy as np
 
-from .env import ACTION_SCALE, DECIMATION, NU, G1Env, gravity_in_body
+from .env import ACTION_SCALE, CONTROL_S, NU, G1Env, gravity_in_body
 
 MOTIONS = Path(__file__).resolve().parent.parent / "physics" / "motions"
 DEFAULT_MOTION = "clip_2026-10-23_caminar-perfil_01"  # the walk, when no --motion is given
-CONTROL_DT = DECIMATION * 0.004  # 20 ms
+CONTROL_DT = CONTROL_S  # 20 ms
 
 # A reference pelvis more than 0.6 m away, or a fall, ends the episode: past that the robot is
 # doing something else, and every step spent there teaches nothing about the motion (DeepMimic's
@@ -57,13 +57,18 @@ JOINT_SMOOTH_S = 0.1
 # 20 ms leaves the policy no way to step in time. 0.1 s covers that lag; 0.25 s is half a step.
 LOOKAHEAD_S = (0.1, 0.25)
 
-MIMIC_OBS_DIM = 93 + NU + 3 + 1 + len(LOOKAHEAD_S) * (NU + 3)
+def mimic_obs_dim(nu: int) -> int:
+    return 6 + 3 * nu + nu + 3 + 1 + len(LOOKAHEAD_S) * (nu + 3)
+
+
+MIMIC_OBS_DIM = mimic_obs_dim(NU)  # the G1's
 
 
 class Motion:
     """A RobotMotion sampled at any time, with velocities and foot positions precomputed."""
 
-    def __init__(self, path: Path, model: mujoco.MjModel):
+    def __init__(self, path: Path, model: mujoco.MjModel, feet: tuple[str, str] | None = None, soles: list[int] | None = None):
+        """feet: the foot bodies; soles: the sole geom ids. The G1's when not given."""
         m = json.loads(path.read_text())
         self.id = m["clip_id"]
         self.fps = float(m["fps"])
@@ -86,8 +91,8 @@ class Motion:
             self.qpos[:, 7:] = smooth(self.qpos[:, 7:], max(1, int(round(JOINT_SMOOTH_S * self.fps))))
             self.qpos[:, :2] = smooth(self.qpos[:, :2], window)
         d = mujoco.MjData(model)
-        feet_ids = [model.body(n).id for n in FEET]
-        spheres = [model.geom(n).id for side in FOOT_SPHERES.values() for n in side]
+        feet_ids = [model.body(n).id for n in (feet or FEET)]
+        spheres = soles if soles is not None else [model.geom(n).id for side in FOOT_SPHERES.values() for n in side]
         floor = model.geom("floor").id
         self.feet = np.zeros((len(self.qpos), 2, 3))
         for i in range(len(self.qpos)):
@@ -130,15 +135,30 @@ def motion_path(motion: str) -> Path:
     return Path(motion) if motion.endswith(".json") else MOTIONS / f"{motion}.json"
 
 
-def load_motions(model: mujoco.MjModel, motions: list[str]) -> list[Motion]:
-    return [Motion(motion_path(m), model) for m in motions]
+def load_motions(model: mujoco.MjModel, motions: list[str], feet=None, soles=None) -> list[Motion]:
+    return [Motion(motion_path(m), model, feet, soles) for m in motions]
+
+
+def motion_robot(motion: str) -> str:
+    """The robot package a RobotMotion is for: its "robot_package" (training.retarget), else the G1."""
+    return json.loads(motion_path(motion).read_text()).get("robot_package", "g1")
 
 
 class MimicEnv(G1Env):
     def __init__(self, seed: int = 0, clips: tuple[str, ...] = (DEFAULT_MOTION,), push: bool = False):
-        super().__init__(seed=seed, push=push)
-        self.motions = load_motions(self.model, list(clips))
-        self.feet_ids = [self.model.body(n).id for n in FEET]
+        robot = motion_robot(clips[0])
+        super().__init__(seed=seed, push=push, robot=robot)
+        if robot == "g1":
+            feet, soles = None, None
+        else:
+            from .robot import load
+
+            package = load(robot)
+            feet = tuple(self.model.body(i).name for i in self.feet)
+            soles = [g for side in ("left", "right") for g in package.feet[side]]
+        self.obs_dim = mimic_obs_dim(self.nu)
+        self.motions = load_motions(self.model, list(clips), feet, soles)
+        self.feet_ids = list(self.feet)
         self.floor = self.model.geom("floor").id
         self.motion = self.motions[0]
         self.t = 0.0
@@ -225,7 +245,7 @@ class MimicEnv(G1Env):
     def step(self, action: np.ndarray):
         ctrl = self.apply(action)
         self._push()
-        for _ in range(DECIMATION):
+        for _ in range(self.decimation):
             mujoco.mj_step(self.model, self.data)
         self.steps += 1
         self.t += CONTROL_DT
