@@ -33,6 +33,11 @@ MAX_ROOT_ERROR_M = 0.6
 # Episodes start at a random instant of the clip (reference state initialization), so the policy
 # practices every phase of the step, not only the first second.
 MIN_REMAINING_S = 1.0
+# With nudged starts (ppo.py --robust), this share of resets begins at the clip's first frame. The
+# delivery and ladder step 1 always start there; with starts spread evenly (~1 in 10 inside the
+# first second), walk-nudge-v2-seed1 held 2 s from 96 % of mid-clip starts and fell at 1.2 s from
+# 95 % of first-frame starts, and got worse as it trained.
+START_SHARE = 0.25
 
 FEET = ("left_ankle_roll_link", "right_ankle_roll_link")
 
@@ -214,7 +219,10 @@ class MimicEnv(G1Env):
 
     def reset(self) -> np.ndarray:
         self.motion = self.motions[self.rng.integers(len(self.motions))]
-        obs = self.reset_at(self.rng.uniform(0, max(0.0, self.motion.duration - MIN_REMAINING_S)))
+        start = self.rng.uniform(0, max(0.0, self.motion.duration - MIN_REMAINING_S))
+        if self.nudge and self.rng.random() < START_SHARE:
+            start = 0.0
+        obs = self.reset_at(start)
         if self.nudge:
             from .env import INIT_JOINT_NOISE, INIT_VEL_NOISE
 
