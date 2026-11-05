@@ -5,7 +5,7 @@ Del video al cuerpo humano en 3D anclado al mundo, con dedos (bloque 4 de [`../.
 | Pieza | Para qué | Estado |
 | --- | --- | --- |
 | [GVHMR](https://github.com/zju3dv/GVHMR) | Cuerpo SMPL-X en el mundo, con gravedad y cámara que se mueve | Corre en la Mac (`gvhmr_mac.py`); `to_poseclip.py` lo pasa a `PoseClip` v1 y la web ya lo usa |
-| HaMeR o WiLoR | Manos con dedos (MANO), 15 articulaciones por mano | Sin empezar |
+| [WiLoR](https://github.com/rolpotamias/WiLoR) | Manos con dedos (MANO), 15 articulaciones por mano | Instalado (`wilor_mac.py`), detector probado; falta `MANO_RIGHT.pkl` (cuenta MANO de Juan) |
 | Fusión → `PoseClip` v2 | Cuerpo + manos en SMPL-X, con contactos | Sin empezar (contrato primero) |
 
 ## Licencias
@@ -39,7 +39,29 @@ Comprobado (2026-11-04): corre de punta a punta en la Mac. El modelo final de GV
    - `yolo/yolov8x.pt`
 2. Con cuenta en [smpl-x.is.tue.mpg.de](https://smpl-x.is.tue.mpg.de/): `SMPLX_NEUTRAL.npz` (y `MALE`, `FEMALE`) a `inputs/checkpoints/body_models/smplx/`.
 3. Con cuenta en [smpl.is.tue.mpg.de](https://smpl.is.tue.mpg.de/): `SMPL_NEUTRAL.pkl` (y `MALE`, `FEMALE`) a `inputs/checkpoints/body_models/smpl/`.
-4. Para las manos, más adelante: cuenta en [mano.is.tue.mpg.de](https://mano.is.tue.mpg.de/), `MANO_RIGHT.pkl`.
+4. Para las manos: cuenta en [mano.is.tue.mpg.de](https://mano.is.tue.mpg.de/), bajar "Models & Code" (`mano_v1_2.zip`) y copiar `mano_v1_2/models/MANO_RIGHT.pkl` a `~/Code/tridi-thirdparty/WiLoR/mano_data/`.
+
+## Manos: WiLoR (2026-11-05)
+
+Por qué WiLoR y no HaMeR: trae su propio detector de manos (HaMeR necesita ViTPose y un detector aparte) y sus pesos se bajan por script desde el [espacio oficial en Hugging Face](https://huggingface.co/spaces/rolpotamias/WiLoR) (los de HaMeR van por un script a otro servidor). Licencia de los pesos: CC BY-NC-ND (no comercial, sin derivados), más la de MANO: entra en la decisión de Juan del 2026-11-04.
+
+```bash
+git clone --recursive https://github.com/rolpotamias/WiLoR ~/Code/tridi-thirdparty/WiLoR
+cd ~/Code/tridi-thirdparty/WiLoR && uv venv -p 3.10 .venv && . .venv/bin/activate
+uv pip install torch==2.3.1 torchvision==0.18.1 "numpy<2" opencv-python scikit-image pytorch-lightning==2.3.0 smplx==0.1.28 yacs timm einops hydra-core pyrootutils rich ultralytics==8.1.34 "setuptools<70" scipy==1.13.1 dill pip wheel picklescan
+uv pip install --no-build-isolation "chumpy @ git+https://github.com/mattloper/chumpy"
+mkdir -p pretrained_models && cd pretrained_models
+curl -LO https://huggingface.co/spaces/rolpotamias/WiLoR/resolve/main/pretrained_models/detector.pt
+curl -LO https://huggingface.co/spaces/rolpotamias/WiLoR/resolve/main/pretrained_models/wilor_final.ckpt
+```
+
+Revisados con `picklescan`: `wilor_final.ckpt` limpio. `detector.pt` marca `getattr`: revisado a mano, solo hace `getattr(Detect, "forward")` (clase de Ultralytics) y `dill` reconstruye el tipo `set`; el resto son módulos de torch y Ultralytics. Seguro.
+
+```bash
+~/Code/tridi-thirdparty/WiLoR/.venv/bin/python data/capture2/wilor_mac.py <video>.mp4
+```
+
+Sale `<video>.wilor.npz`: por mano (izquierda, derecha) y cuadro, los parámetros MANO, los 21 puntos 3D en la cámara y la confianza (0 si no vio esa mano). Lo que sigue: fusionar con el cuerpo de GVHMR (sus muñecas dicen qué manos son del sujeto) en `PoseClip` v2, contrato primero.
 
 ## Primer resultado (2026-11-04)
 
