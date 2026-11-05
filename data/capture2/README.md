@@ -5,7 +5,7 @@ Del video al cuerpo humano en 3D anclado al mundo, con dedos (bloque 4 de [`../.
 | Pieza | Para qué | Estado |
 | --- | --- | --- |
 | [GVHMR](https://github.com/zju3dv/GVHMR) | Cuerpo SMPL-X en el mundo, con gravedad y cámara que se mueve | Corre en la Mac (`gvhmr_mac.py`); `to_poseclip.py` lo pasa a `PoseClip` v1 y la web ya lo usa |
-| [WiLoR](https://github.com/rolpotamias/WiLoR) | Manos con dedos (MANO), 15 articulaciones por mano | Instalado (`wilor_mac.py`), detector probado; falta `MANO_RIGHT.pkl` (cuenta MANO de Juan) |
+| [WiLoR](https://github.com/rolpotamias/WiLoR) | Manos con dedos (MANO), 15 articulaciones por mano | Corre en la Mac (`wilor_mac.py`): dedos bien en `dedos-01` (el "1" con el índice) |
 | Fusión → `PoseClip` v2 | Cuerpo + manos en SMPL-X, con contactos | Sin empezar (contrato primero) |
 
 ## Licencias
@@ -48,7 +48,7 @@ Por qué WiLoR y no HaMeR: trae su propio detector de manos (HaMeR necesita ViTP
 ```bash
 git clone --recursive https://github.com/rolpotamias/WiLoR ~/Code/tridi-thirdparty/WiLoR
 cd ~/Code/tridi-thirdparty/WiLoR && uv venv -p 3.10 .venv && . .venv/bin/activate
-uv pip install torch==2.3.1 torchvision==0.18.1 "numpy<2" opencv-python scikit-image pytorch-lightning==2.3.0 smplx==0.1.28 yacs timm einops hydra-core pyrootutils rich ultralytics==8.1.34 "setuptools<70" scipy==1.13.1 dill pip wheel picklescan
+uv pip install torch==2.3.1 torchvision==0.18.1 "numpy<2" opencv-python scikit-image pytorch-lightning==2.3.0 smplx==0.1.28 yacs timm einops hydra-core pyrootutils rich ultralytics==8.1.34 "setuptools<70" scipy==1.13.1 dill pyrender pip wheel picklescan
 uv pip install --no-build-isolation "chumpy @ git+https://github.com/mattloper/chumpy"
 mkdir -p pretrained_models && cd pretrained_models
 curl -LO https://huggingface.co/spaces/rolpotamias/WiLoR/resolve/main/pretrained_models/detector.pt
@@ -60,6 +60,8 @@ Revisados con `picklescan`: `wilor_final.ckpt` limpio. `detector.pt` marca `geta
 ```bash
 ~/Code/tridi-thirdparty/WiLoR/.venv/bin/python data/capture2/wilor_mac.py <video>.mp4
 ```
+
+`MANO_RIGHT.pkl` (de `mano_v1_2.zip`, la cuenta de Juan) revisado a mano como el de SMPL: solo numpy, scipy, chumpy y `set`. WiLoR importa pyrender (solo para dibujar) pidiendo EGL de Linux y su modelo arma renderers de entrenamiento: `wilor_mac.py` deja pasar el import con `PYOPENGL_PLATFORM=darwin` y apaga esos renderers, sin tocar su código. En CPU va a ~1,8 s por cuadro; `--max-frames 30` para una prueba rápida.
 
 Sale `<video>.wilor.npz`: por mano (izquierda, derecha) y cuadro, los parámetros MANO, los 21 puntos 3D en la cámara y la confianza (0 si no vio esa mano). Lo que sigue: fusionar con el cuerpo de GVHMR (sus muñecas dicen qué manos son del sujeto) en `PoseClip` v2, contrato primero.
 

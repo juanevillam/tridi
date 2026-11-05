@@ -38,16 +38,23 @@ RESCALE = 2.0
 SIDES = ("left", "right")  # the detector's classes: 0 left, 1 right
 
 
-def run(video: Path, out: Path, device: str) -> Path:
+def run(video: Path, out: Path, device: str, max_frames: int | None = None) -> Path:
     os.chdir(WILOR)  # WiLoR reads its configs and MANO files relative to its root
     sys.path.insert(0, str(WILOR))
+    # WiLoR imports pyrender (drawing only) and asks it for Linux's headless EGL, which macOS lacks;
+    # "darwin" lets the import through. The renderers its model builds for training previews are
+    # switched off: nothing here draws.
+    os.environ.setdefault("PYOPENGL_PLATFORM", "darwin")
     import cv2
     import torch
+    import wilor.models.wilor as wilor_model
     from ultralytics import YOLO
     from wilor.datasets.vitdet_dataset import ViTDetDataset
     from wilor.models import load_wilor
     from wilor.utils import recursive_to
     from wilor.utils.renderer import cam_crop_to_full
+
+    wilor_model.MeshRenderer = wilor_model.SkeletonRenderer = lambda *args, **kwargs: None
 
     model, cfg = load_wilor(checkpoint_path="./pretrained_models/wilor_final.ckpt", cfg_path="./pretrained_models/model_config.yaml")
     model = model.to(device).eval()
@@ -56,6 +63,7 @@ def run(video: Path, out: Path, device: str) -> Path:
     cap = cv2.VideoCapture(str(video))
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
     n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    n = min(n, max_frames or n)
     res = {s: {"global_orient": np.tile(np.eye(3), (n, 1, 1)), "hand_pose": np.tile(np.eye(3), (n, 15, 1, 1)),
                "betas": np.zeros((n, 10)), "keypoints": np.zeros((n, 21, 3)), "conf": np.zeros(n)} for s in SIDES}
     start = time.time()
@@ -105,12 +113,13 @@ def main() -> None:
     p.add_argument("video", type=Path)
     p.add_argument("--out", type=Path, help="default: <video>.wilor.npz")
     p.add_argument("--device", default=None, help="mps (default when available) or cpu")
+    p.add_argument("--max-frames", type=int, help="only the first N frames (a quick test)")
     args = p.parse_args()
     import torch
 
     device = args.device or ("mps" if torch.backends.mps.is_available() else "cpu")
     video = args.video.resolve()
-    run(video, (args.out or video.with_suffix(".wilor.npz")).resolve(), device)
+    run(video, (args.out or video.with_suffix(".wilor.npz")).resolve(), device, args.max_frames)
 
 
 if __name__ == "__main__":
