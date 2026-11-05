@@ -11,12 +11,11 @@ import { levelName, sceneName, worldName } from '../strings-names.js';
 
 export const title = { es: 'Simulaciones', en: 'Simulations' };
 
-// Clips left out of this gallery. The robot's rendition of these two reads as unnatural next to
-// the person — running has the shortest contact with the floor of everything we have, and the
-// synthetic march was written as a test fixture, not as something to watch — so they stay in
-// preloaded.json (the pipeline and the other screens still use them) and only this gallery, the
-// one the public tries, skips them.
-const HIDDEN_CLIPS = ['clip_2026-10-23_correr-perfil_01', 'clip_synthetic_march_01'];
+// Clips left out of this gallery; they stay in preloaded.json because the landing, the delivery
+// and the trained walking policy still use them. The walk and the run are MediaPipe captures: this
+// branch shows capture 2.0 (GVHMR, data/capture2) instead, which reads clearly better side by side
+// (Juan, 2026-11-05). The synthetic march is a test fixture, not something to watch.
+const HIDDEN_CLIPS = ['clip_2026-10-23_caminar-perfil_01', 'clip_2026-10-23_correr-perfil_01', 'clip_synthetic_march_01'];
 
 // The conditions you can set by hand (view.setConditions in physics/). Ranges cover every world in
 // physics/worlds and a bit beyond: grip from wet tile (0.2) to rough concrete (1.2); wind up to

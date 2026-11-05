@@ -809,11 +809,27 @@ select:disabled {
 }
 
 .sims-list {
+  /* As tall as the scene and its controls, never taller: height 0 keeps the clips out of the row's
+     height, min-height 100% stretches the column back to it, and the clips scroll inside. Before,
+     every clip made the page longer and the controls ended far above the end of the list. */
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  height: 0;
+  min-height: 100%;
   padding: 20px;
   border-radius: var(--radius);
   background: var(--surface);
   backdrop-filter: blur(14px);
   box-shadow: var(--shadow);
+}
+
+.sims-list #gallery {
+  flex: 1;
+  min-height: 160px; /* with the training box open, still room for two clips */
+  overflow-y: auto;
+  overscroll-behavior: contain; /* the end of the list does not scroll the page */
+  scrollbar-width: thin;
 }
 
 .sims-list h2 {
@@ -1952,6 +1968,13 @@ select optgroup {
 
   .sims-list {
     order: 2;
+    height: auto; /* phones: the clips are a row that scrolls sideways (#gallery below) */
+    min-height: 0;
+  }
+
+  .sims-list #gallery {
+    min-height: 0;
+    overflow-y: visible;
   }
 
   #controls {

@@ -5,18 +5,8 @@
     "credit": "Video: Mixkit 4855, hombre caminando de perfil"
   },
   {
-    "clip": "clip_caminar-perfil-gvhmr",
-    "title": "Caminar · captura 2.0 (GVHMR)",
-    "credit": "Video: Mixkit 4855, hombre caminando de perfil"
-  },
-  {
     "clip": "clip_2026-10-23_correr-perfil_01",
     "title": "Correr",
-    "credit": "Video: Mixkit 4831, mujer corriendo en un parque"
-  },
-  {
-    "clip": "clip_correr-perfil-gvhmr",
-    "title": "Correr · captura 2.0 (GVHMR)",
     "credit": "Video: Mixkit 4831, mujer corriendo en un parque"
   },
   {
@@ -25,93 +15,113 @@
     "credit": "Generada por código, para pruebas"
   },
   {
-    "clip": "clip_bailar-01",
-    "title": "Bailar · MediaPipe (hoy)",
-    "credit": "Video: Pexels 8111782, mujer bailando"
+    "clip": "clip_caminar-perfil-gvhmr",
+    "title": {
+      "es": "Caminar",
+      "en": "Walking"
+    },
+    "credit": {
+      "es": "Video: Mixkit 4855, hombre caminando de perfil",
+      "en": "Video: Mixkit 4855, man walking, side view"
+    }
+  },
+  {
+    "clip": "clip_correr-perfil-gvhmr",
+    "title": {
+      "es": "Correr",
+      "en": "Running"
+    },
+    "credit": {
+      "es": "Video: Mixkit 4831, mujer corriendo en un parque",
+      "en": "Video: Mixkit 4831, woman running in a park"
+    }
   },
   {
     "clip": "clip_bailar-01-gvhmr",
-    "title": "Bailar · captura 2.0 (GVHMR)",
-    "credit": "Video: Pexels 8111782, mujer bailando"
-  },
-  {
-    "clip": "clip_jacks-01",
-    "title": "Saltos · MediaPipe (hoy)",
-    "credit": "Video: Pexels 4764220, saltos de tijera"
+    "title": {
+      "es": "Bailar",
+      "en": "Dancing"
+    },
+    "credit": {
+      "es": "Video: Pexels 8111782, mujer bailando",
+      "en": "Video: Pexels 8111782, woman dancing"
+    }
   },
   {
     "clip": "clip_jacks-01-gvhmr",
-    "title": "Saltos · captura 2.0 (GVHMR)",
-    "credit": "Video: Pexels 4764220, saltos de tijera"
-  },
-  {
-    "clip": "clip_bailar-02",
-    "title": "Bailar 2 · MediaPipe (hoy)",
-    "credit": "Video: Pexels 10264814, dos mujeres bailando hip hop, cámara en mano"
-  },
-  {
-    "clip": "clip_bailar-02-gvhmr",
-    "title": "Bailar 2 · captura 2.0 (GVHMR)",
-    "credit": "Video: Pexels 10264814, dos mujeres bailando hip hop, cámara en mano"
-  },
-  {
-    "clip": "clip_sentarse-02",
-    "title": "Sentarse · MediaPipe (hoy)",
-    "credit": "Video: Pexels 8979700, hombre se sienta en una silla"
+    "title": {
+      "es": "Saltos de tijera",
+      "en": "Jumping jacks"
+    },
+    "credit": {
+      "es": "Video: Pexels 4764220, mujer haciendo saltos de tijera",
+      "en": "Video: Pexels 4764220, woman doing jumping jacks"
+    }
   },
   {
     "clip": "clip_sentarse-02-gvhmr",
-    "title": "Sentarse · captura 2.0 (GVHMR)",
-    "credit": "Video: Pexels 8979700, hombre se sienta en una silla"
-  },
-  {
-    "clip": "clip_caminar-02",
-    "title": "Saltos y sentadillas · MediaPipe (hoy)",
-    "credit": "Video: Pexels 6156132, hombre haciendo ejercicio al aire libre"
-  },
-  {
-    "clip": "clip_caminar-02-gvhmr",
-    "title": "Saltos y sentadillas · captura 2.0 (GVHMR)",
-    "credit": "Video: Pexels 6156132, hombre haciendo ejercicio al aire libre"
-  },
-  {
-    "clip": "clip_jacks-grupo-01",
-    "title": "Saltos en grupo · MediaPipe (hoy)",
-    "credit": "Video: Pexels 6326725, dos hombres en el gimnasio"
-  },
-  {
-    "clip": "clip_jacks-grupo-01-gvhmr",
-    "title": "Saltos en grupo · captura 2.0 (GVHMR)",
-    "credit": "Video: Pexels 6326725, dos hombres en el gimnasio"
-  },
-  {
-    "clip": "clip_saludar-02",
-    "title": "Gestos · MediaPipe (hoy)",
-    "credit": "Video: Pexels 4492700, mujer tira besos y saluda, cintura para arriba"
-  },
-  {
-    "clip": "clip_saludar-02-gvhmr",
-    "title": "Gestos · captura 2.0 (GVHMR)",
-    "credit": "Video: Pexels 4492700, mujer tira besos y saluda, cintura para arriba"
-  },
-  {
-    "clip": "clip_caminar-01",
-    "title": "Caminar alejándose · MediaPipe (hoy)",
-    "credit": "Video: Pexels 5992458, hombre de espaldas en la costa"
+    "title": {
+      "es": "Sentarse",
+      "en": "Sitting down"
+    },
+    "credit": {
+      "es": "Video: Pexels 8979700, hombre se sienta en una silla",
+      "en": "Video: Pexels 8979700, man sits on a chair"
+    }
   },
   {
     "clip": "clip_caminar-01-gvhmr",
-    "title": "Caminar alejándose · captura 2.0 (GVHMR)",
-    "credit": "Video: Pexels 5992458, hombre de espaldas en la costa"
-  },
-  {
-    "clip": "clip_bailar-grupo-02",
-    "title": "Baile en grupo · MediaPipe (hoy)",
-    "credit": "Video: Pexels 10274941, coreografía de 3 personas"
+    "title": {
+      "es": "Caminar alejándose",
+      "en": "Walking away"
+    },
+    "credit": {
+      "es": "Video: Pexels 5992458, hombre de espaldas en la costa",
+      "en": "Video: Pexels 5992458, man walking away on a coast"
+    }
   },
   {
     "clip": "clip_bailar-grupo-02-gvhmr",
-    "title": "Baile en grupo · captura 2.0 (GVHMR)",
-    "credit": "Video: Pexels 10274941, coreografía de 3 personas"
+    "title": {
+      "es": "Baile en grupo",
+      "en": "Group dance"
+    },
+    "credit": {
+      "es": "Video: Pexels 10274941, coreografía de 3 personas",
+      "en": "Video: Pexels 10274941, 3-person choreography"
+    }
+  },
+  {
+    "clip": "clip_jacks-grupo-01-gvhmr",
+    "title": {
+      "es": "Saltos en grupo",
+      "en": "Group jumping jacks"
+    },
+    "credit": {
+      "es": "Video: Pexels 6326725, dos hombres en el gimnasio",
+      "en": "Video: Pexels 6326725, two men at the gym"
+    }
+  },
+  {
+    "clip": "clip_caminar-02-gvhmr",
+    "title": {
+      "es": "Saltos y sentadillas",
+      "en": "Jumps and squats"
+    },
+    "credit": {
+      "es": "Video: Pexels 6156132, hombre haciendo ejercicio",
+      "en": "Video: Pexels 6156132, man exercising"
+    }
+  },
+  {
+    "clip": "clip_saludar-02-gvhmr",
+    "title": {
+      "es": "Gestos",
+      "en": "Gestures"
+    },
+    "credit": {
+      "es": "Video: Pexels 4492700, mujer saluda y tira besos",
+      "en": "Video: Pexels 4492700, woman waving and blowing kisses"
+    }
   }
 ]
