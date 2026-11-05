@@ -21,6 +21,8 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
 
 - Pausado a pedido de Juan (película en 4K, que la Mac no se caliente) a los 3,21 M pasos, con Ctrl-C: guardó `latest.pt`. Para seguir: `nohup sh training/runs/night-vel.sh > training/runs/night-vel.out 2>&1 &` (la fase 1 ya usa `--resume`).
 
+- **Robots físicos de Luigi** (pedido de Juan, con capturas del chat del equipo): posible reunión el viernes con Luigi, ingeniero electrónico amigo de Ale, que tiene robots sencillos reales (por la imagen, un carrito de dos ruedas con sensor ultrasónico) y simulados en Proteus. Nuevo [`../robots-fisicos.md`](../robots-fisicos.md): qué se dijo en el chat, qué se ve en la imagen, qué es verdad hoy (Tridi nunca corrió en hardware; un carrito no camina), tres demos posibles de menor a mayor valor (gesto → servo en vivo; recorrido de un video → carrito real; controlador entrenado en simulación que funciona en el real, que responde a la duda de César sobre las instrucciones escritas a mano), preguntas para Luigi y qué cambiaría en el repo. Pregunta abierta agregada en [`../preguntas-abiertas.md`](../preguntas-abiertas.md).
+
 ## Qué funcionó
 
 - 
@@ -31,9 +33,13 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
 
 ## Decisiones
 
+- Antes de más rondas largas de humanoide, prioridad a preparar la demo física con Luigi. No se construye código para su robot hasta conocer su hardware: cada respuesta cambia el diseño.
+
 - Los entrenamientos de la noche se lanzan con `nohup`, desacoplados de la sesión de Claude.
 
 ## Sigue
+
+- Reunión con Luigi (tentativa, viernes): llevar las preguntas de [`../robots-fisicos.md`](../robots-fisicos.md). Con sus respuestas: modelo MuJoCo del carrito y la demo del recorrido.
 
 - Resultado de la noche: si el empujón de la web pasa 0,55, cambiar el contrato (`docs/contrato.md`) y `physics/src/policy.js` para dar la velocidad de la pelvis a la política en la web.
 - Entrenar el H1 y resolver su 76 % de contacto.
