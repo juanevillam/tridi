@@ -7,15 +7,17 @@
 // What cannot be two spans (aria-label, title, placeholder, document.title, a canvas) asks for the
 // current language with t() and listens with onLang().
 
-export const LANGS = ['es', 'en'];
-export const LANG_NAMES = { es: 'Español', en: 'English' };
+// English is the page's language and the original of every text; Spanish is a translation, shown
+// only when someone picks it (or a link asks with ?lang=es).
+export const LANGS = ['en', 'es'];
+export const LANG_NAMES = { en: 'English', es: 'Español' };
 const KEY = 'tridi-lang';
 
 const html = document.documentElement;
 const listeners = new Set();
 
 /** The language on screen now. index.html's pre-paint script settled it before the first frame. */
-export const lang = () => (LANGS.includes(html.dataset.lang) ? html.dataset.lang : 'es');
+export const lang = () => (LANGS.includes(html.dataset.lang) ? html.dataset.lang : 'en');
 
 export function setLang(next) {
   if (!LANGS.includes(next) || next === lang()) return;
@@ -57,7 +59,7 @@ export function dict(strings) {
       console.warn(`i18n: missing ${key}`);
       return key;
     }
-    return entry[language] ?? entry.es;
+    return entry[language] ?? entry.en ?? entry.es;
   };
   /** HTML with every language, for innerHTML and templates. Strings may hold markup. */
   const T = (key, vars) => LANGS.map((l) => `<span class="t" lang="${l}">${fill(get(key, l), vars, l)}</span>`).join('');
@@ -88,7 +90,7 @@ const escapeAttr = (value) => String(value).replaceAll('&', '&amp;').replaceAll(
 function applyAttrs(element) {
   try {
     const map = JSON.parse(element.dataset.i18nAttr);
-    for (const [attr, byLang] of Object.entries(map)) element.setAttribute(attr, byLang[lang()] ?? byLang.es);
+    for (const [attr, byLang] of Object.entries(map)) element.setAttribute(attr, byLang[lang()] ?? byLang.en ?? byLang.es);
   } catch {
     // a malformed map leaves the attribute as it was
   }
@@ -121,12 +123,12 @@ export const textAttr = (byLang) => `data-i18n-text="${escapeAttr(JSON.stringify
 
 /** <option> whose text follows the language. */
 export const option = (value, byLang, extra = '') =>
-  `<option value="${escapeAttr(value)}" ${textAttr(byLang)}${extra ? ` ${extra}` : ''}>${escapeHtml(byLang[lang()] ?? byLang.es)}</option>`;
+  `<option value="${escapeAttr(value)}" ${textAttr(byLang)}${extra ? ` ${extra}` : ''}>${escapeHtml(byLang[lang()] ?? byLang.en ?? byLang.es)}</option>`;
 
 function applyText(element) {
   try {
     const byLang = JSON.parse(element.dataset.i18nText);
-    element.textContent = byLang[lang()] ?? byLang.es;
+    element.textContent = byLang[lang()] ?? byLang.en ?? byLang.es;
   } catch {
     // a malformed map leaves the text as it was
   }
