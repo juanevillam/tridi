@@ -104,6 +104,8 @@ Todo el set (2026-11-05, mismo suavizado; temblor en m/s², patina en m/s):
 | saltos en grupo | 10,9 → **6,4** | 0,34 → 0,44 | 6,4 % → **0,1 %** | |
 | correr-01, escalera-02 | MediaPipe vio el cuerpo en 8 % y 22 % de los cuadros | | | GVHMR da los dos enteros |
 
+**De frente** (2026-11-05, videos de Pexels bajados para esto, `frente-*` en el manifiesto): MediaPipe casi no avanza y GVHMR sí. `frente-04` (camina 18 s hacia la cámara): MediaPipe 0,3 m, GVHMR 8,1 m. `frente-correr-01` (corre 10 s): MediaPipe 3,0 m, GVHMR 11,9 m. Ojo: caminando GVHMR da 0,27-0,45 m/s, bajo para una caminata normal (~1,2 m/s): probablemente parte del avance se lo atribuye a la cámara, que en estos videos suele retroceder con la persona. Falta medirlo con un video de cámara fija y distancia conocida.
+
 En los videos de medio cuerpo (`dedos-01`, `saludar-02`, `lavar-*`) GVHMR inventa piernas quietas: su temblor casi cero no es mérito. La altura de GVHMR sale 1,6-1,97 m (MediaPipe 1,4-1,5); algunas parecen altas, falta revisarlo. 4 videos (`caminar-01`, `correr-01`, `escalera-02`, `bailar-grupo-02`) necesitaron `--static`: la odometría SimpleVO no encuentra rasgos en el fondo (mar, cortes de edición) y se cae; `run_set.sh` ya reintenta así.
 
 Lo único que empeora es el pie bajo el piso (~1 cm): lo arregla el refinamiento físico del plan (pies que no patinan ni atraviesan el piso).

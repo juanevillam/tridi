@@ -37,6 +37,28 @@
     }
   },
   {
+    "clip": "clip_frente-04-gvhmr",
+    "title": {
+      "es": "Caminar hacia la cámara",
+      "en": "Walking toward the camera"
+    },
+    "credit": {
+      "es": "Video: Pexels 7253202, hombre de noche en una plaza",
+      "en": "Video: Pexels 7253202, man in a square at night"
+    }
+  },
+  {
+    "clip": "clip_frente-correr-01-gvhmr",
+    "title": {
+      "es": "Correr hacia la cámara",
+      "en": "Running toward the camera"
+    },
+    "credit": {
+      "es": "Video: Pexels 3044159, mujer corriendo en un parque",
+      "en": "Video: Pexels 3044159, woman running in a park"
+    }
+  },
+  {
     "clip": "clip_bailar-01-gvhmr",
     "title": {
       "es": "Bailar",
