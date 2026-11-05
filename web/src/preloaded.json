@@ -13,5 +13,25 @@
     "clip": "clip_synthetic_march_01",
     "title": "Marcha sintética",
     "credit": "Generada por código, para pruebas"
+  },
+  {
+    "clip": "clip_bailar-01",
+    "title": "Bailar · MediaPipe (hoy)",
+    "credit": "Video: Pexels 8111782, mujer bailando"
+  },
+  {
+    "clip": "clip_bailar-01-gvhmr",
+    "title": "Bailar · captura 2.0 (GVHMR)",
+    "credit": "Video: Pexels 8111782, mujer bailando"
+  },
+  {
+    "clip": "clip_jacks-01",
+    "title": "Saltos · MediaPipe (hoy)",
+    "credit": "Video: Pexels 4764220, saltos de tijera"
+  },
+  {
+    "clip": "clip_jacks-01-gvhmr",
+    "title": "Saltos · captura 2.0 (GVHMR)",
+    "credit": "Video: Pexels 4764220, saltos de tijera"
   }
 ]
