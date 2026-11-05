@@ -39,6 +39,9 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
   - Videos de frente bajados de Pexels (licencia libre): `frente-01` a `frente-04` y `frente-correr-01`, pasados a 720p, en el manifiesto. GVHMR corriendo. `frente-01` avanza hacia la cámara a 0,39 m/s.
   - Manos: WiLoR instalado fuera del repo (`~/Code/tridi-thirdparty/WiLoR`), pesos de su espacio oficial en Hugging Face revisados; `data/capture2/wilor_mac.py`; el detector de manos funciona. Falta `MANO_RIGHT.pkl` (cuenta MANO de Juan).
 
+- **Copy de la landing según la aplicación de YC** (pedido de Juan): hero "Video humano, datos para robots" / "Human video, robot training data", con la idea de que los LLM tuvieron internet y los robots no; Capture dice que encuentra a la persona aunque haya más gente y que copiar sin física se cae; Gym "Copiar no es data" con "el video dice qué hacer; la simulación enseña cómo"; Policy: la política en ONNX y los datos corregidos por física en cuatro mundos. Todo respaldado por `yc/verdad-hoy.md`. Videos de YC (`~/Downloads/demo.mp4` e `intro.mp4`) comprimidos a 15 MB en `web/public/media/`, en el cierre, cargan solo al darle play. MANO: Juan baja "Models & Code" (`mano_v1_2.zip`).
+- De frente: `frente-correr-01` avanza 11,9 m hacia la cámara en 10 s (1,19 m/s).
+
 ## Qué funcionó
 
 - 
