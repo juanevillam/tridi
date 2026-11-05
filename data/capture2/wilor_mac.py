@@ -57,7 +57,9 @@ def run(video: Path, out: Path, device: str, max_frames: int | None = None) -> P
     wilor_model.MeshRenderer = wilor_model.SkeletonRenderer = lambda *args, **kwargs: None
 
     model, cfg = load_wilor(checkpoint_path="./pretrained_models/wilor_final.ckpt", cfg_path="./pretrained_models/model_config.yaml")
-    model = model.to(device).eval()
+    # WiLoR's own model on the CPU: on MPS (torch 2.3) it aborts in a slice ("subRange.start ... is
+    # not less than length of dimension"), as GVHMR's did. The hand detector stays on the GPU.
+    model = model.to("cpu").eval()
     detector = YOLO("./pretrained_models/detector.pt")
 
     cap = cv2.VideoCapture(str(video))
@@ -80,7 +82,9 @@ def run(video: Path, out: Path, device: str, max_frames: int | None = None) -> P
         if best:
             sides = sorted(best)
             data = ViTDetDataset(cfg, img, np.stack([best[s][0] for s in sides]), np.array(sides, float), rescale_factor=RESCALE)
-            batch = recursive_to(torch.utils.data.default_collate([data[i] for i in range(len(data))]), device)
+            batch = torch.utils.data.default_collate([data[i] for i in range(len(data))])
+            # The crops come with some float64 tensors (box centers, sizes): float32 as the model's.
+            batch = recursive_to({k: v.float() if torch.is_tensor(v) and v.dtype == torch.float64 else v for k, v in batch.items()}, "cpu")
             with torch.no_grad():
                 o = model(batch)
             # WiLoR predicts every hand as a right hand on a mirrored crop: a left one is mirrored back in x.
