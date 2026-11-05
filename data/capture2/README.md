@@ -50,7 +50,18 @@ Comprobado (2026-11-04): corre de punta a punta en la Mac. El modelo final de GV
 | MediaPipe (hoy) | 11,4 | 0,29 | 0,2 | 9,6 % | 1,56 |
 | GVHMR | 11,6 | **0,04** | 0,9 | **0,0 %** | **1,64** |
 
-El pie apoyado patina 7 veces menos y los huesos ya no se estiran (es un esqueleto de verdad, SMPL-X). La altura sube a 1,64 m: MediaPipe da 10-20 % de menos. El temblor queda igual y el pie se hunde un poco más (menos de 1 cm). Falta medirlo en todo el set de prueba y de frente caminando hacia la cámara.
+`jacks-01` (11 s, saltos de tijera, de frente):
+
+| Captura | temblor | patina | bajo el piso | huesos | altura |
+| --- | --- | --- | --- | --- | --- |
+| MediaPipe (hoy) | 13,4 | 0,28 | 0,3 | 5,7 % | 1,54 |
+| GVHMR | 17,4 | 0,31 | 1,1 | **0,0 %** | 1,74 |
+
+En los saltos GVHMR tiembla más y los pies no mejoran. Ojo: MediaPipe pasa por el suavizado de `data/smooth.py` (Savitzky-Golay) y GVHMR sale crudo; la comparación justa es con el mismo suavizado, y después con el refinamiento físico del plan (pies que no patinan ni atraviesan el piso).
+
+**Tiempo:** `jacks-01` de cero, 5,5 min para 11 s de video (~30× el tiempo real): seguir a la persona 42 s, ViTPose 2,6 min, el resto el extractor de rasgos y la odometría. Cabe de sobra en el presupuesto de la Mac (24 h por video).
+
+En el baile, el pie apoyado patina 7 veces menos y los huesos ya no se estiran (es un esqueleto de verdad, SMPL-X). La altura sube a 1,64 m: MediaPipe da 10-20 % de menos. El temblor queda igual y el pie se hunde un poco más (menos de 1 cm). Falta medirlo en todo el set de prueba y de frente caminando hacia la cámara.
 
 ## Uso
 

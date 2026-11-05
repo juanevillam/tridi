@@ -25,6 +25,8 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
 
 - **Captura 2.0 empezada** (Juan: usar SMPL-X con su licencia no comercial, "Tridi es un playground"). Decisión anotada en [`../plan-v2.md`](../plan-v2.md), sección 10. GVHMR clonado fuera del repo (`~/Code/tridi-thirdparty/GVHMR`, su propio entorno con torch 2.3 y pytorch3d compilado para la Mac). Nuevo [`../../data/capture2/`](../../data/capture2/README.md): `gvhmr_mac.py` lo corre en MPS sin tocar su código (su licencia pide publicar las modificaciones), sin DPVO (usa su odometría SIFT en CPU) y sin render. Su código importa y los `.cuda()` van a MPS. **Falta:** los pesos (Google Drive no deja bajarlos por script; no se usan espejos de terceros porque un `.ckpt` puede ejecutar código) y los modelos de cuerpo SMPL-X/SMPL (piden cuenta): los baja Juan en el navegador, lista exacta en el README.
 
+- **GVHMR corre de punta a punta en la Mac** (Juan bajó los pesos y los modelos de cuerpo; todos revisados con `picklescan`, limpios; el `.pkl` de SMPL, que `picklescan` no lee, revisado a mano: solo tipos de datos). Hizo falta parchar también el `.cuda()` de Lightning y correr el modelo final de GVHMR en CPU (en MPS aborta). `data/capture2/to_joints.py` pasa SMPL-X a los 33 puntos para comparar con `data.quality`. Baile: patina 0,29 → 0,04 m/s, huesos 9,6 % → 0 %, altura 1,56 → 1,64 m, temblor igual. Saltos de tijera: temblor 13,4 → 17,4 y pies igual, huesos 0 %; MediaPipe va suavizado y GVHMR crudo. 5,5 min por 11 s de video.
+
 ## Qué funcionó
 
 - 
@@ -41,7 +43,7 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
 
 ## Sigue
 
-- Juan: bajar los pesos de GVHMR y crear cuenta en SMPL-X y SMPL ([`../../data/capture2/README.md`](../../data/capture2/README.md)). Después: correr GVHMR en un clip de prueba y compararlo con MediaPipe (de frente, temblor); luego manos (HaMeR o WiLoR, cuenta MANO) y `PoseClip` v2.
+- Captura 2.0: suavizar GVHMR igual que MediaPipe y comparar en todo el set de prueba (~2 h de GPU, de noche); probar caminando hacia la cámara; después manos (HaMeR o WiLoR, cuenta MANO de Juan) y `PoseClip` v2.
 
 - Reunión con Luigi (tentativa, viernes): llevar las preguntas de [`../robots-fisicos.md`](../robots-fisicos.md). Con sus respuestas: modelo MuJoCo del carrito y la demo del recorrido.
 
