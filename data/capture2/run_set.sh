@@ -14,7 +14,11 @@ for id in caminar-01 caminar-02 jacks-grupo-01 sentarse-02 bailar-02 correr-01 s
           sentarse-01 correr-02 lavar-04 lavar-02 escalera-02 bailar-grupo-02 bailar-01 jacks-01; do
   [ -f "$OUT/$id.gvhmr.npz" ] && { echo "$id: done already"; continue; }
   cp -n "$SRC/$id.mp4" "$OUT/$id.mp4"
-  "$PY" "$REPO/data/capture2/gvhmr_mac.py" "$OUT/$id.mp4" || echo "$id: FAILED"
-  [ -f "$OUT/$id.gvhmr.npz" ] && "$PY" "$REPO/data/capture2/to_joints.py" "$OUT/$id.gvhmr.npz"
+  # SimpleVO (the moving-camera estimate) fails when the background has too few features (sea,
+  # sky, edit cuts: caminar-01, correr-01, escalera-02 on 2026-11-05); then retry as a still camera.
+  "$PY" "$REPO/data/capture2/gvhmr_mac.py" "$OUT/$id.mp4" \
+    || "$PY" "$REPO/data/capture2/gvhmr_mac.py" "$OUT/$id.mp4" --static \
+    || echo "$id: FAILED"
+  [ -f "$OUT/$id.gvhmr.npz" ] && "$PY" "$REPO/data/capture2/to_poseclip.py" "$OUT/$id.gvhmr.npz"
 done
 echo "all done $(date)"

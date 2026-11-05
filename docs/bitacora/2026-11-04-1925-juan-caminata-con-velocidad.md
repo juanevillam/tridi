@@ -29,6 +29,8 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
 
 - **2026-11-05, para que el equipo pruebe el 3D nuevo el viernes** (Juan: "empieza, ya no estoy usando la Mac"). Nuevo `data/capture2/to_poseclip.py`: GVHMR → `PoseClip` v1 (33 puntos), girado para que z mire a la cámara (el mundo de GVHMR tenía a la persona mirando a −z; se toma el giro del primer medio segundo comparando con la vista de la cámara) y suavizado igual que `data/lift.py`. `gvhmr_mac.py` guarda los fps reales del video (antes 30 fijo). Con el mismo suavizado GVHMR gana en temblor: baile 11,4 → 7,1, saltos 13,4 → 11,7; huesos ~0 %; solo empeora el pie bajo el piso (~1 cm). Galería de `#/simulaciones` (en esta rama, local) con cada video dos veces, MediaPipe y captura 2.0, y el robot imitando cada uno: probado en el navegador, sin errores. Corriendo con `nohup` `data/capture2/run_set.sh` (todo el set de prueba con cuerpo, ~2 h) y después los dos videos precargados (caminar y correr de perfil).
 
+- Tanda del set: 10 videos bien, GVHMR gana en temblor, pie que patina y huesos en todos (bailar-02 26,2 → 6,2; sentarse-02 15,1 → 8,0); en los de medio cuerpo (dedos, saludar, lavar) inventa piernas quietas y su temblor bajo no cuenta. 4 fallaron en la odometría de SimpleVO (pocos rasgos en el fondo: mar, cortes): `caminar-01`, `correr-01`, `escalera-02`, `bailar-grupo-02`; se reintentan como cámara fija y `run_set.sh` ya lo hace solo. `to_joints.py` borrado (lo reemplaza `to_poseclip.py`). Galería con 7 videos × 2 capturas.
+
 ## Qué funcionó
 
 - 
@@ -36,6 +38,7 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
 ## Qué no funcionó
 
 - Correr entrenamientos largos como tarea de fondo de la sesión: mueren con ella.
+- Esperar trabajos con `pgrep -f <texto>`: la propia espera lleva ese texto y se encuentra a sí misma. La tanda terminó a las 12:55 y la Mac quedó parada ~35 min hasta que Juan preguntó. Ahora se espera por PID (`kill -0`).
 
 ## Decisiones
 

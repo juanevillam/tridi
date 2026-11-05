@@ -33,5 +33,55 @@
     "clip": "clip_jacks-01-gvhmr",
     "title": "Saltos · captura 2.0 (GVHMR)",
     "credit": "Video: Pexels 4764220, saltos de tijera"
+  },
+  {
+    "clip": "clip_bailar-02",
+    "title": "Bailar 2 · MediaPipe (hoy)",
+    "credit": "Video: Pexels 10264814, dos mujeres bailando hip hop, cámara en mano"
+  },
+  {
+    "clip": "clip_bailar-02-gvhmr",
+    "title": "Bailar 2 · captura 2.0 (GVHMR)",
+    "credit": "Video: Pexels 10264814, dos mujeres bailando hip hop, cámara en mano"
+  },
+  {
+    "clip": "clip_sentarse-02",
+    "title": "Sentarse · MediaPipe (hoy)",
+    "credit": "Video: Pexels 8979700, hombre se sienta en una silla"
+  },
+  {
+    "clip": "clip_sentarse-02-gvhmr",
+    "title": "Sentarse · captura 2.0 (GVHMR)",
+    "credit": "Video: Pexels 8979700, hombre se sienta en una silla"
+  },
+  {
+    "clip": "clip_caminar-02",
+    "title": "Saltos y sentadillas · MediaPipe (hoy)",
+    "credit": "Video: Pexels 6156132, hombre haciendo ejercicio al aire libre"
+  },
+  {
+    "clip": "clip_caminar-02-gvhmr",
+    "title": "Saltos y sentadillas · captura 2.0 (GVHMR)",
+    "credit": "Video: Pexels 6156132, hombre haciendo ejercicio al aire libre"
+  },
+  {
+    "clip": "clip_jacks-grupo-01",
+    "title": "Saltos en grupo · MediaPipe (hoy)",
+    "credit": "Video: Pexels 6326725, dos hombres en el gimnasio"
+  },
+  {
+    "clip": "clip_jacks-grupo-01-gvhmr",
+    "title": "Saltos en grupo · captura 2.0 (GVHMR)",
+    "credit": "Video: Pexels 6326725, dos hombres en el gimnasio"
+  },
+  {
+    "clip": "clip_saludar-02",
+    "title": "Gestos · MediaPipe (hoy)",
+    "credit": "Video: Pexels 4492700, mujer tira besos y saluda, cintura para arriba"
+  },
+  {
+    "clip": "clip_saludar-02-gvhmr",
+    "title": "Gestos · captura 2.0 (GVHMR)",
+    "credit": "Video: Pexels 4492700, mujer tira besos y saluda, cintura para arriba"
   }
 ]
