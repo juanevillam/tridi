@@ -45,11 +45,16 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
 - **Manos andando:** `MANO_RIGHT.pkl` de Juan revisado (solo tipos de datos) e instalado; WiLoR corre en la Mac (pyrender pasa con `PYOPENGL_PLATFORM=darwin`, renderers de entrenamiento apagados desde afuera). En `dedos-01` dibuja bien el "1" (índice arriba, resto doblado). Corriendo en GPU sobre `dedos-01`, `saludar-02`, `dedos-02`, `lavar-04`.
 - **De frente, resuelto:** MediaPipe 0,3 m en 18 s caminando hacia la cámara, GVHMR 8,1 m; corriendo 3,0 m contra 11,9 m. La velocidad de GVHMR caminando (0,27-0,45 m/s) parece baja: falta un video de cámara fija con distancia conocida. Caminar y correr de frente en la galería.
 
+- **Corrección de Juan a la landing:** el copy en inglés es el original y la página sale en inglés (ya no se mira el idioma del navegador; español solo si alguien lo elige o `?lang=es`). Copy reescrito más simple: "Robots that learn from any video", "It practices until it stops falling", "You get the trained policy and the motion data". Los videos de YC eran solo contexto (transcritos con whisper en local): fuera de la página y del repo.
+- **Caminata de la landing con captura 2.0:** Capture usaba la caminata de MediaPipe guardada en `physics/motions` (con `plantFeet` forzado). Ahora usa `clip_caminar-perfil-gvhmr` (mismo video y mismos 356 cuadros), con su `RobotMotion` guardado en `physics/motions` (commit aparte, carpeta de Pastor) y `plantFeet` automático como en Simulaciones. Simulaciones ya solo muestra v2.
+
 ## Qué funcionó
 
 - 
 
 ## Qué no funcionó
+
+- Vite no ve un archivo nuevo en `physics/motions` (lo lee con `import.meta.glob`) hasta reiniciar el servidor.
 
 - Correr entrenamientos largos como tarea de fondo de la sesión: mueren con ella.
 - Esperar trabajos con `pgrep -f <texto>`: la propia espera lleva ese texto y se encuentra a sí misma. La tanda terminó a las 12:55 y la Mac quedó parada ~35 min hasta que Juan preguntó. Ahora se espera por PID (`kill -0`).
