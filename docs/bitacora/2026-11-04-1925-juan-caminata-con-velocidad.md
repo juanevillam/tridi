@@ -42,6 +42,9 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
 - **Copy de la landing según la aplicación de YC** (pedido de Juan): hero "Video humano, datos para robots" / "Human video, robot training data", con la idea de que los LLM tuvieron internet y los robots no; Capture dice que encuentra a la persona aunque haya más gente y que copiar sin física se cae; Gym "Copiar no es data" con "el video dice qué hacer; la simulación enseña cómo"; Policy: la política en ONNX y los datos corregidos por física en cuatro mundos. Todo respaldado por `yc/verdad-hoy.md`. Videos de YC (`~/Downloads/demo.mp4` e `intro.mp4`) comprimidos a 15 MB en `web/public/media/`, en el cierre, cargan solo al darle play. MANO: Juan baja "Models & Code" (`mano_v1_2.zip`).
 - De frente: `frente-correr-01` avanza 11,9 m hacia la cámara en 10 s (1,19 m/s).
 
+- **Manos andando:** `MANO_RIGHT.pkl` de Juan revisado (solo tipos de datos) e instalado; WiLoR corre en la Mac (pyrender pasa con `PYOPENGL_PLATFORM=darwin`, renderers de entrenamiento apagados desde afuera). En `dedos-01` dibuja bien el "1" (índice arriba, resto doblado). Corriendo en GPU sobre `dedos-01`, `saludar-02`, `dedos-02`, `lavar-04`.
+- **De frente, resuelto:** MediaPipe 0,3 m en 18 s caminando hacia la cámara, GVHMR 8,1 m; corriendo 3,0 m contra 11,9 m. La velocidad de GVHMR caminando (0,27-0,45 m/s) parece baja: falta un video de cámara fija con distancia conocida. Caminar y correr de frente en la galería.
+
 ## Qué funcionó
 
 - 
