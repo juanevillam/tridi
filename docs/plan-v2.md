@@ -255,6 +255,8 @@ Todo corre local; ningún video sale de la Mac. Pero "gratis para usar" no siemp
 
 Para investigar y mostrar, se usan. Antes del primer cliente, cada pieza ❌ tiene un reemplazo propio o con licencia.
 
+**Decidido por Juan (2026-11-04):** la captura 2.0 usa SMPL-X (y SMPL/MANO si hace falta) bajo su licencia no comercial. Tridi v2 es un campo de pruebas: investigar y mostrar está bien. Antes de vender, se compra la licencia comercial (Meshcapade la vende) o se cambia por un modelo de cuerpo abierto.
+
 ## 11. Preguntas abiertas
 
 Respondidas por Juan el 2026-11-03: todo es de Juan; rama `juan/experimental` en su repo privado; manos de 5 dedos; cómputo en su Mac con herramientas gratis; no se muestra a Pastor antes.

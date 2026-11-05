@@ -23,6 +23,8 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
 
 - **Robots físicos de Luigi** (pedido de Juan, con capturas del chat del equipo): posible reunión el viernes con Luigi, ingeniero electrónico amigo de Ale, que tiene robots sencillos reales (por la imagen, un carrito de dos ruedas con sensor ultrasónico) y simulados en Proteus. Nuevo [`../robots-fisicos.md`](../robots-fisicos.md): qué se dijo en el chat, qué se ve en la imagen, qué es verdad hoy (Tridi nunca corrió en hardware; un carrito no camina), tres demos posibles de menor a mayor valor (gesto → servo en vivo; recorrido de un video → carrito real; controlador entrenado en simulación que funciona en el real, que responde a la duda de César sobre las instrucciones escritas a mano), preguntas para Luigi y qué cambiaría en el repo. Pregunta abierta agregada en [`../preguntas-abiertas.md`](../preguntas-abiertas.md).
 
+- **Captura 2.0 empezada** (Juan: usar SMPL-X con su licencia no comercial, "Tridi es un playground"). Decisión anotada en [`../plan-v2.md`](../plan-v2.md), sección 10. GVHMR clonado fuera del repo (`~/Code/tridi-thirdparty/GVHMR`, su propio entorno con torch 2.3 y pytorch3d compilado para la Mac). Nuevo [`../../data/capture2/`](../../data/capture2/README.md): `gvhmr_mac.py` lo corre en MPS sin tocar su código (su licencia pide publicar las modificaciones), sin DPVO (usa su odometría SIFT en CPU) y sin render. Su código importa y los `.cuda()` van a MPS. **Falta:** los pesos (Google Drive no deja bajarlos por script; no se usan espejos de terceros porque un `.ckpt` puede ejecutar código) y los modelos de cuerpo SMPL-X/SMPL (piden cuenta): los baja Juan en el navegador, lista exacta en el README.
+
 ## Qué funcionó
 
 - 
@@ -38,6 +40,8 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
 - Los entrenamientos de la noche se lanzan con `nohup`, desacoplados de la sesión de Claude.
 
 ## Sigue
+
+- Juan: bajar los pesos de GVHMR y crear cuenta en SMPL-X y SMPL ([`../../data/capture2/README.md`](../../data/capture2/README.md)). Después: correr GVHMR en un clip de prueba y compararlo con MediaPipe (de frente, temblor); luego manos (HaMeR o WiLoR, cuenta MANO) y `PoseClip` v2.
 
 - Reunión con Luigi (tentativa, viernes): llevar las preguntas de [`../robots-fisicos.md`](../robots-fisicos.md). Con sus respuestas: modelo MuJoCo del carrito y la demo del recorrido.
 
