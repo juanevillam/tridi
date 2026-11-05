@@ -33,6 +33,12 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
 
 - Terminó todo el set (13:37). Caminar de perfil, el de la web: temblor 43,2 → 23,5, patina 0,87 → 0,40, avanza a 1,06 m/s (MediaPipe 0,76). Correr de perfil 93,9 → 31,5. Caminar alejándose: 5,5 m contra 2,3 m de MediaPipe. Galería: 11 videos con su versión GVHMR, probada en el navegador. Tabla completa en [`../../data/capture2/README.md`](../../data/capture2/README.md).
 
+- **Pedido de Juan (2026-11-05 tarde):** landing, galería solo con captura 2.0, videos bajados en vez de grabados, y manos.
+  - Landing (`web/`, área de César; separado en su commit): rutas siempre en inglés (`#/live`, `#/upload`, `#/simulations`, `#/delivery`, `#/camera`, `#/net`; las viejas en español redirigen), selector de idioma como dos palabras simples en vez de píldora, la etiqueta "simulación en vivo" y las esquinas con 20 px de aire bajo la barra, la lectura de MuJoCo abajo a la derecha, Capture/Gym/Policy con la misma tarjeta (misma altura, ancho, título y texto), los números del Gym como líneas simples (no cajas dentro de la tarjeta), sin "Physical AI for humanoids", sin "For humanoid teams", sin la línea de MuJoCo del pie, el manifiesto en dos líneas. Revisado en el navegador en inglés, español y celular.
+  - Galería: solo captura 2.0 (los clips de MediaPipe salen; caminar y correr originales se quedan en `preloaded.json` porque los usan la landing, la entrega y la política de caminar), sin `bailar-02`, lista con scroll propio del alto de la escena y los controles.
+  - Videos de frente bajados de Pexels (licencia libre): `frente-01` a `frente-04` y `frente-correr-01`, pasados a 720p, en el manifiesto. GVHMR corriendo. `frente-01` avanza hacia la cámara a 0,39 m/s.
+  - Manos: WiLoR instalado fuera del repo (`~/Code/tridi-thirdparty/WiLoR`), pesos de su espacio oficial en Hugging Face revisados; `data/capture2/wilor_mac.py`; el detector de manos funciona. Falta `MANO_RIGHT.pkl` (cuenta MANO de Juan).
+
 ## Qué funcionó
 
 - 
