@@ -47,6 +47,7 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
 
 - **Corrección de Juan a la landing:** el copy en inglés es el original y la página sale en inglés (ya no se mira el idioma del navegador; español solo si alguien lo elige o `?lang=es`). Copy reescrito más simple: "Robots that learn from any video", "It practices until it stops falling", "You get the trained policy and the motion data". Los videos de YC eran solo contexto (transcritos con whisper en local): fuera de la página y del repo.
 - **Caminata de la landing con captura 2.0:** Capture usaba la caminata de MediaPipe guardada en `physics/motions` (con `plantFeet` forzado). Ahora usa `clip_caminar-perfil-gvhmr` (mismo video y mismos 356 cuadros), con su `RobotMotion` guardado en `physics/motions` (commit aparte, carpeta de Pastor) y `plantFeet` automático como en Simulaciones. Simulaciones ya solo muestra v2.
+- **Manos, tanda completa (WiLoR, detector en GPU, modelo en CPU):** dedos-01 311 cuadros en 259 s (derecha 90 %), saludar-02 308 en 268 s (izquierda 39 %, derecha 70 %), dedos-02 240 en 204 s (derecha 100 %), lavar-04 777 en 981 s (izquierda 94 %, derecha 70 %): ~0,85-1,3 s por cuadro. Revisado a ojo sobre 12 cuadros: cuenta bien los dedos (2, 3, 4), lado izquierdo/derecho correcto con las dos manos abiertas, encuentra manos pequeñas lavando. En el primer plano de dedos-02 el dibujo sale algo corrido (la proyección de la revisión asume la cámara de WiLoR, no es error de los dedos). Salida en `~/Tridi/capture2/hands/*.wilor.npz`.
 
 ## Qué funcionó
 
