@@ -66,6 +66,22 @@ Esas dos tablas comparan GVHMR **crudo** contra MediaPipe **suavizado** (`data/s
 | jacks-01 | MediaPipe | 13,4 | 0,28 | 0,3 | 5,7 % | 1,54 |
 | jacks-01 | GVHMR | **11,7** | 0,25 | 1,2 | **0,3 %** | 1,70 |
 
+Todo el set (2026-11-05, mismo suavizado; temblor en m/s², patina en m/s):
+
+| Clip | temblor MP → GVHMR | patina MP → GVHMR | huesos MP → GVHMR | nota |
+| --- | --- | --- | --- | --- |
+| caminar de perfil (el de la web) | 43,2 → **23,5** | 0,87 → **0,40** | 6,4 % → **0,3 %** | avanza a 1,06 m/s (MediaPipe 0,76) |
+| correr de perfil | 93,9 → **31,5** | 3,18 → **0,32** | 12,8 % → **0,6 %** | |
+| caminar alejándose (`caminar-01`) | 11,5 → **4,3** | 0,35 → **0,06** | 4,6 % → **0 %** | se aleja 5,5 m (MediaPipe 2,3 m) |
+| bailar-02 (cámara en mano) | 26,2 → **6,2** | 0,66 → **0,05** | 13,1 % → **0,6 %** | |
+| baile en grupo | 39,9 → **11,4** | 0,89 → **0,21** | 14,5 % → **0,2 %** | |
+| sentarse-02 | 15,1 → **8,0** | 0,23 → **0,03** | 16,1 % → **0,1 %** | |
+| saltos y sentadillas (`caminar-02`) | 44,5 → **33,2** | 0,86 → **0,23** | 11,1 % → **0,8 %** | |
+| saltos en grupo | 10,9 → **6,4** | 0,34 → 0,44 | 6,4 % → **0,1 %** | |
+| correr-01, escalera-02 | MediaPipe vio el cuerpo en 8 % y 22 % de los cuadros | | | GVHMR da los dos enteros |
+
+En los videos de medio cuerpo (`dedos-01`, `saludar-02`, `lavar-*`) GVHMR inventa piernas quietas: su temblor casi cero no es mérito. La altura de GVHMR sale 1,6-1,97 m (MediaPipe 1,4-1,5); algunas parecen altas, falta revisarlo. 4 videos (`caminar-01`, `correr-01`, `escalera-02`, `bailar-grupo-02`) necesitaron `--static`: la odometría SimpleVO no encuentra rasgos en el fondo (mar, cortes de edición) y se cae; `run_set.sh` ya reintenta así.
+
 Lo único que empeora es el pie bajo el piso (~1 cm): lo arregla el refinamiento físico del plan (pies que no patinan ni atraviesan el piso).
 
 **Tiempo:** `jacks-01` de cero, 5,5 min para 11 s de video (~30× el tiempo real): seguir a la persona 42 s, ViTPose 2,6 min, el resto el extractor de rasgos y la odometría. Cabe de sobra en el presupuesto de la Mac (24 h por video).

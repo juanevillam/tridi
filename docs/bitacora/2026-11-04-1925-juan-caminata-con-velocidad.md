@@ -31,6 +31,8 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
 
 - Tanda del set: 10 videos bien, GVHMR gana en temblor, pie que patina y huesos en todos (bailar-02 26,2 → 6,2; sentarse-02 15,1 → 8,0); en los de medio cuerpo (dedos, saludar, lavar) inventa piernas quietas y su temblor bajo no cuenta. 4 fallaron en la odometría de SimpleVO (pocos rasgos en el fondo: mar, cortes): `caminar-01`, `correr-01`, `escalera-02`, `bailar-grupo-02`; se reintentan como cámara fija y `run_set.sh` ya lo hace solo. `to_joints.py` borrado (lo reemplaza `to_poseclip.py`). Galería con 7 videos × 2 capturas.
 
+- Terminó todo el set (13:37). Caminar de perfil, el de la web: temblor 43,2 → 23,5, patina 0,87 → 0,40, avanza a 1,06 m/s (MediaPipe 0,76). Correr de perfil 93,9 → 31,5. Caminar alejándose: 5,5 m contra 2,3 m de MediaPipe. Galería: 11 videos con su versión GVHMR, probada en el navegador. Tabla completa en [`../../data/capture2/README.md`](../../data/capture2/README.md).
+
 ## Qué funcionó
 
 - 
@@ -48,7 +50,7 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
 
 ## Sigue
 
-- Captura 2.0: suavizar GVHMR igual que MediaPipe y comparar en todo el set de prueba (~2 h de GPU, de noche); probar caminando hacia la cámara; después manos (HaMeR o WiLoR, cuenta MANO de Juan) y `PoseClip` v2.
+- Captura 2.0: grabar un video caminando hacia la cámara (el set no tiene); revisar alturas de 1,9 m; pie ~1 cm bajo el piso (refinamiento físico); después manos (HaMeR o WiLoR, cuenta MANO de Juan) y `PoseClip` v2.
 
 - Reunión con Luigi (tentativa, viernes): llevar las preguntas de [`../robots-fisicos.md`](../robots-fisicos.md). Con sus respuestas: modelo MuJoCo del carrito y la demo del recorrido.
 

@@ -5,8 +5,18 @@
     "credit": "Video: Mixkit 4855, hombre caminando de perfil"
   },
   {
+    "clip": "clip_caminar-perfil-gvhmr",
+    "title": "Caminar · captura 2.0 (GVHMR)",
+    "credit": "Video: Mixkit 4855, hombre caminando de perfil"
+  },
+  {
     "clip": "clip_2026-10-23_correr-perfil_01",
     "title": "Correr",
+    "credit": "Video: Mixkit 4831, mujer corriendo en un parque"
+  },
+  {
+    "clip": "clip_correr-perfil-gvhmr",
+    "title": "Correr · captura 2.0 (GVHMR)",
     "credit": "Video: Mixkit 4831, mujer corriendo en un parque"
   },
   {
@@ -83,5 +93,25 @@
     "clip": "clip_saludar-02-gvhmr",
     "title": "Gestos · captura 2.0 (GVHMR)",
     "credit": "Video: Pexels 4492700, mujer tira besos y saluda, cintura para arriba"
+  },
+  {
+    "clip": "clip_caminar-01",
+    "title": "Caminar alejándose · MediaPipe (hoy)",
+    "credit": "Video: Pexels 5992458, hombre de espaldas en la costa"
+  },
+  {
+    "clip": "clip_caminar-01-gvhmr",
+    "title": "Caminar alejándose · captura 2.0 (GVHMR)",
+    "credit": "Video: Pexels 5992458, hombre de espaldas en la costa"
+  },
+  {
+    "clip": "clip_bailar-grupo-02",
+    "title": "Baile en grupo · MediaPipe (hoy)",
+    "credit": "Video: Pexels 10274941, coreografía de 3 personas"
+  },
+  {
+    "clip": "clip_bailar-grupo-02-gvhmr",
+    "title": "Baile en grupo · captura 2.0 (GVHMR)",
+    "credit": "Video: Pexels 10274941, coreografía de 3 personas"
   }
 ]
