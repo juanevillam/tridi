@@ -96,7 +96,10 @@ def run(video: Path, out: Path, static: bool, f_mm: int | None, device: str) -> 
     seconds = time.time() - start
 
     arrays = {f"{space}_{k}": v.numpy() for space in ("global", "incam") for k, v in pred[f"smpl_params_{space}"].items()}
-    np.savez_compressed(out, fps=30.0, static_cam=static, seconds=seconds, **arrays)
+    import cv2
+
+    fps = cv2.VideoCapture(str(video)).get(cv2.CAP_PROP_FPS) or 30.0  # GVHMR keeps every frame of the video
+    np.savez_compressed(out, fps=fps, static_cam=static, seconds=seconds, **arrays)
     frames = int(data["length"])
     print(f"{video.name}: {frames} frames in {seconds:.0f} s ({frames / seconds:.1f} frames/s; preprocessing on {device}) -> {out}")
     return out
