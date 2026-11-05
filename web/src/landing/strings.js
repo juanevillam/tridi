@@ -19,7 +19,6 @@ export const { T, t, A } = dict({
 
   // Hero
   'hero.live': { es: 'Simulación en vivo · Unitree G1 · MuJoCo', en: 'Live simulation · Unitree G1 · MuJoCo' },
-  'hero.eyebrow': { es: 'Physical AI para humanoides', en: 'Physical AI for humanoids' },
   'hero.title': { es: 'Robots que aprenden <em>de un video</em>', en: 'Robots that learn <em>from a video</em>' },
   'hero.lede': {
     es: 'Grabas a una persona moviéndose. Un humanoide aprende a hacerlo igual, practicando en física real hasta no caerse.',
@@ -96,8 +95,8 @@ export const { T, t, A } = dict({
   'arrows.down': { es: 'Sección siguiente', en: 'Next section' },
 
   // Closing
-  'close.kicker': { es: 'Para equipos de humanoides', en: 'For humanoid teams' },
-  'close.manifesto': { es: 'Los robots ya tienen cuerpo. Les falta experiencia.', en: 'Robots already have bodies. What they lack is experience.' },
+  // One sentence per line (home.js keeps the <br> when it splits the words for the animation).
+  'close.manifesto': { es: 'Los robots ya tienen cuerpo.<br>Les falta experiencia.', en: 'Robots already have bodies.<br>What they lack is experience.' },
   'close.text': { es: 'Cualquier video de una persona, convertido en práctica para tu robot.', en: 'Any video of a person, turned into practice for your robot.' },
   'close.tries': { es: 'Probar Tridi', en: 'Try Tridi' },
   'try.live': { es: 'Muévete y el robot te copia', en: 'Move and the robot copies you' },
@@ -124,7 +123,6 @@ export const { T, t, A } = dict({
   'track.next': { es: 'Lo que viene', en: 'What’s next' },
   'track.nextWhat': { es: 'Cualquier movimiento, en cualquier terreno', en: 'Any motion, on any terrain' },
   'track.nextShort': { es: 'Cualquier terreno', en: 'Any terrain' },
-  'foot.physics': { es: 'Física: MuJoCo, el estándar en robótica. Lo nuestro es todo lo que va encima.', en: 'Physics: MuJoCo, the robotics standard. Everything on top of it is ours.' },
   'foot.madeAt': { es: 'Hecho en', en: 'Made at' },
   'foot.robot': { es: 'Robot', en: 'Robot' },
   'foot.code': { es: 'Código', en: 'Code' },

@@ -1,4 +1,4 @@
-// La entrega de un clip (#/entrega, #/entrega/<clip id>): what a client takes away once a video has
+// La entrega de un clip (#/delivery, #/delivery/<clip id>): what a client takes away once a video has
 // been trained, on one screen. The format is docs/contrato.md, "La entrega de un clip": delivery.json
 // sums up the policy and its test in four worlds, replay.json has every test episode at 25 Hz, and
 // `files` lists the downloads. The preloaded deliveries (data/deliveries/) are bundled, so they work
@@ -31,7 +31,7 @@ const FILE_URLS = import.meta.glob(['../../../data/deliveries/*/*', '!../../../d
   import: 'default',
 });
 
-// #/entrega with no id opens the walk, the first clip with a delivery.
+// #/delivery with no id opens the walk, the first clip with a delivery.
 const DEFAULT_CLIP = 'clip_2026-10-23_caminar-perfil_01';
 // Clip ids as data/server.py makes them (its CLIP_ID); nothing else is asked of the server.
 const CLIP_ID = /^clip_[A-Za-z0-9_-]+$/;
@@ -162,7 +162,7 @@ async function loadDelivery(clipId, api, signal) {
 }
 
 export function mount(root, { api }, [param] = []) {
-  // "#/entrega/" gives an empty id, which a default parameter would let through.
+  // "#/delivery/" gives an empty id, which a default parameter would let through.
   const clipId = param || DEFAULT_CLIP;
   document.documentElement.classList.add('is-delivery');
   root.innerHTML = `
@@ -185,7 +185,7 @@ export function mount(root, { api }, [param] = []) {
       // The deliveries that come with the page always open: offer them instead of a dead end.
       const bundled = Object.values(MANIFESTS).filter((manifest) => manifest.clip_id !== clipId);
       root.querySelector('.dl').insertAdjacentHTML('beforeend', bundled.map((manifest) => `
-        <a class="dl-get dl-other" href="#/entrega/${encodeURIComponent(manifest.clip_id)}">${T('seeOther', { title: (l) => clipName({ clip: manifest.clip_id, title: manifest.title || manifest.clip_id }).title[l] })}</a>`).join(''));
+        <a class="dl-get dl-other" href="#/delivery/${encodeURIComponent(manifest.clip_id)}">${T('seeOther', { title: (l) => clipName({ clip: manifest.clip_id, title: manifest.title || manifest.clip_id }).title[l] })}</a>`).join(''));
     });
   return () => {
     gone = true;

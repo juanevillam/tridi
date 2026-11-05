@@ -5,7 +5,7 @@
 // training it, training.js).
 //
 // Optional: a phone as the camera (docs/contrato.md, "El teléfono como cámara"). "Usar el teléfono
-// como cámara" opens a session on the video server and shows a QR; the phone opens #/camara and
+// como cámara" opens a session on the video server and shows a QR; the phone opens #/camera and
 // sends its poses with a small image of its camera; createPhoneCapture plays them here with the same
 // interface as the webcam, so everything below (the skeleton, mimic, recording) does not know which
 // camera it is, and the image goes where the webcam's video would, under the skeleton. Without the
@@ -52,7 +52,7 @@ const FOLLOW_S = 0.5;
 const LIVE_PIXEL_RATIO = 1.25;
 const LIVE_SHADOW_PX = 1024;
 
-// "?debug" in the address (tridi-alpha.vercel.app/?debug#/en-vivo) shows, once a second, how far the robot is from the person and
+// "?debug" in the address (tridi-alpha.vercel.app/?debug#/live) shows, once a second, how far the robot is from the person and
 // what it added that the person did not do (physics/ mimic's `fixes`): to tell a misread from a
 // fix while testing arms in front of a real camera (docs/investigacion/2026-10-24-brazos-humanos-en-vivo.md).
 // It also shows where each frame's time goes (camera models, the robot copying, the screen's
@@ -110,7 +110,7 @@ export function mount(root, { api }) {
         <div class="saved" hidden>
           <p class="saved-text"></p>
           <div class="row">
-            <a class="button primary see-clip" href="#/simulaciones">${T('seeSim')}</a>
+            <a class="button primary see-clip" href="#/simulations">${T('seeSim')}</a>
             <button class="again" type="button">${T('again')}</button>
           </div>
         </div>
@@ -211,7 +211,7 @@ export function mount(root, { api }) {
       $('.saved-text').innerHTML = markup;
       $('.saved-text').classList.toggle('error', !clip);
       $('.see-clip').hidden = !clip;
-      if (clip) $('.see-clip').href = `#/simulaciones/${encodeURIComponent(clip.id)}`;
+      if (clip) $('.see-clip').href = `#/simulations/${encodeURIComponent(clip.id)}`;
       $('.saved').hidden = false;
     };
     let clip;

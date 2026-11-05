@@ -9,7 +9,7 @@ function describe(clip) {
 }
 
 /**
- * @param initialClip  id of the clip to show first (from #/simulaciones/<id>), else the first
+ * @param initialClip  id of the clip to show first (from #/simulations/<id>), else the first
  * @param onSelect     called with the gallery item on every pick (the Entrenar box follows it)
  * @param options.hide ids of preloaded clips to leave out of this gallery; the clips stay
  *                     available everywhere else (preloaded.js still lists them)

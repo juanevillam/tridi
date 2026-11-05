@@ -1,4 +1,4 @@
-// The phone as the live camera (#/camara/<session>): the page the QR on En vivo opens on the
+// The phone as the live camera (#/camera/<session>): the page the QR on En vivo opens on the
 // phone (docs/contrato.md, "El teléfono como cámara"). It runs the same MediaPipe as the webcam on
 // the phone's back camera (createLiveCapture from data/live) and posts the poses to the Mac's
 // session (createPhoneSender), with a small image of the camera (createImageGrabber) so the Mac

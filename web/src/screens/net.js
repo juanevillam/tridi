@@ -1,4 +1,4 @@
-// #/red/<train id>: one training, alone and full size: its policy network (netview.js), how far it
+// #/net/<train id>: one training, alone and full size: its policy network (netview.js), how far it
 // is and a button to cancel it. The training box links here in a new tab, and the link survives
 // reloads and server restarts: a training lives on the server, while the box only exists in the
 // tab that started it.
@@ -67,7 +67,7 @@ export function mount(app, { api }, [trainId]) {
             : progressLine({ phase: 'watching', train: tr });
       $('.net-screen-cancel').hidden = !active;
       $('.net-screen-delivery').hidden = tr.state !== 'done' || Boolean(tr.error);
-      $('.net-screen-delivery').href = `#/entrega/${encodeURIComponent(tr.clip_id)}`;
+      $('.net-screen-delivery').href = `#/delivery/${encodeURIComponent(tr.clip_id)}`;
       view?.follow(api.url, trainId, active && tr.stage !== 'data');
       if (!active) return;
     }

@@ -1,4 +1,4 @@
-// #/red copy in every language (src/i18n.js). English is written for a US robotics team.
+// #/net copy in every language (src/i18n.js). English is written for a US robotics team.
 import { dict } from '../../i18n.js';
 
 export const title = { es: 'La red entrenándose', en: 'The network training' };

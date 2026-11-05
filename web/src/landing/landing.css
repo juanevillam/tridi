@@ -24,6 +24,12 @@ html.is-landing.lenis body {
   --fg-2: var(--ink-soft);
   --dim: var(--muted);
   --gutter: clamp(var(--s-4), 3.4vw, var(--s-7));
+  /* Where the film's frame starts: the top bar ends at 68 px, and 20 px of air keep the live tag
+     and the corners from reading as part of the bar (they touched it before). */
+  --hud-top: 88px;
+  /* Where every chapter's card starts (Capture, Gym): low enough to read as its own block. */
+  --card-top: clamp(124px, 17vh, 168px);
+  --card-width: min(36vw, 500px);
   position: relative;
   color: var(--fg);
   font: 400 17px/1.5 var(--display);
@@ -133,13 +139,13 @@ html.is-landing.lenis body {
 }
 
 .corner.tl {
-  top: 84px;
+  top: var(--hud-top);
   left: 16px;
   border-width: 1px 0 0 1px;
 }
 
 .corner.tr {
-  top: 84px;
+  top: var(--hud-top);
   right: 16px;
   border-width: 1px 1px 0 0;
 }
@@ -158,8 +164,8 @@ html.is-landing.lenis body {
 
 .sim-readout {
   position: absolute;
-  top: 88px;
   right: var(--gutter);
+  bottom: 32px; /* the film's own numbers sit low, inside the bottom corner, away from the bar */
   display: flex;
   gap: 16px;
   padding: 8px 14px;
@@ -423,7 +429,7 @@ html.is-landing.lenis body {
 
 .hero-live {
   position: absolute;
-  top: 88px;
+  top: calc(var(--hud-top) + var(--s-3));
   left: var(--gutter);
   padding: 8px 14px 8px 12px;
   border: 1px solid var(--line);
@@ -514,7 +520,7 @@ html.is-landing.lenis body {
 .hud {
   position: absolute;
   right: var(--gutter);
-  bottom: clamp(40px, 9vh, 96px);
+  bottom: clamp(80px, 12vh, 120px); /* above the simulation readout */
   z-index: 2;
   display: grid;
   justify-items: end;
@@ -659,13 +665,11 @@ html.is-landing.lenis body {
 
 .capture-caption {
   left: var(--gutter);
-  top: clamp(96px, 16vh, 160px);
-  width: min(40vw, 560px);
+  top: var(--card-top);
+  width: var(--card-width);
 }
 
-.capture-caption p {
-  margin-top: 16px !important;
-}
+
 
 /* Gym: three stops of the training, one screen of scroll each */
 
@@ -685,14 +689,24 @@ html.is-landing.lenis body {
   box-shadow: 0 30px 80px -30px rgb(0 0 0 / 0.8);
 }
 
+/* One title size for every chapter card (Capture, Gym, Policy). */
 .panel h2 {
-  font-size: clamp(24px, 2.3vw, 36px);
+  font-size: clamp(24px, 2.4vw, 36px);
+}
+
+/* Every card's first line under the title: same size, same gap. */
+.panel h2 + p,
+.capture-caption p,
+.policy-lede {
+  margin-top: var(--s-3) !important;
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 .gym-caption {
   left: var(--gutter);
-  top: 84px; /* under the top bar: the steps meter makes the card too tall to center */
-  width: min(36vw, 500px);
+  top: var(--card-top); /* as Capture's: the steps meter makes the card too tall to center */
+  width: var(--card-width);
 }
 
 
@@ -804,11 +818,7 @@ html.is-landing.lenis body {
 .axis-stops {
   display: grid;
   grid-template-columns: repeat(4, 1fr); /* one per GYM_STAGES entry (home.js) */
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-2);
-  background: rgb(241 243 238 / 0.03);
+  gap: 4px; /* no box around the stops: the card is the only box (one card, not one inside another) */
 }
 
 .axis-stop {
@@ -850,13 +860,10 @@ html.is-landing.lenis body {
   white-space: nowrap;
 }
 
+/* The stage's sentence and its numbers: plain lines inside the card, no box of their own. */
 .stage-detail {
   display: grid;
   gap: 6px;
-  padding: 12px 14px;
-  border-left: 3px solid var(--signal);
-  border-radius: 0 8px 8px 0;
-  background: rgb(241 243 238 / 0.05);
 }
 
 
@@ -868,17 +875,19 @@ html.is-landing.lenis body {
 .stage-numbers {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
+  gap: 4px 6px;
 }
 
-.stage-numbers span {
-  padding: 6px 10px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-1);
-  font: 500 11px/1 var(--mono);
+.stage-numbers > span {
+  font: 500 11px/1.4 var(--mono);
   text-transform: uppercase;
   color: var(--fg-2);
+}
+
+/* Child spans only: each number holds one span per language (i18n T), which are siblings too. */
+.stage-numbers > span + span::before {
+  content: '·';
+  margin-right: 6px;
 }
 
 .stage-numbers b {
@@ -909,15 +918,11 @@ html.is-landing.lenis body {
 
 .policy-caption {
   right: var(--gutter);
-  top: 50%;
-  width: min(36vw, 500px);
-  transform: translateY(-50%);
+  top: var(--card-top); /* as every chapter's card */
+  width: var(--card-width);
 }
 
-.policy-lede {
-  margin-top: var(--s-3) !important;
-  font-size: 15px;
-}
+
 
 .specs {
   display: grid;
@@ -929,7 +934,7 @@ html.is-landing.lenis body {
   grid-template-columns: minmax(130px, auto) 1fr;
   align-items: baseline;
   gap: 20px;
-  padding: 14px 0;
+  padding: 10px 0; /* the card starts where the others do, so it has to fit below that */
   border-top: 1px solid var(--line);
 }
 
@@ -951,7 +956,7 @@ html.is-landing.lenis body {
   font-size: 14px;
 }
 
-/* The way into what the policy delivers (#/entrega): stays on phones, where the note above hides. */
+/* The way into what the policy delivers (#/delivery): stays on phones, where the note above hides. */
 .policy-data {
   margin-top: 16px;
 }
@@ -968,10 +973,10 @@ html.is-landing.lenis body {
 }
 
 
+/* Two lines, one sentence each (strings.js): sized so the longer one fits the 1200 px column. */
 .manifesto {
-  font-size: clamp(44px, 7vw, 116px) !important;
-  line-height: 0.92 !important;
-  max-width: 12em;
+  font-size: clamp(36px, 5.4vw, 72px) !important;
+  line-height: 0.98 !important;
 }
 
 .manifesto .w {

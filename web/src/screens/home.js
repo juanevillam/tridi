@@ -113,13 +113,12 @@ export function mount(root) {
         <a href="#policy">Policy</a>
       </nav>
       ${langSwitch()}
-      <a class="btn btn-signal btn-small" href="#probar">${T('nav.try')}<span class="only-wide">${T('nav.tryLive')}</span></a>
+      <a class="btn btn-signal btn-small" href="#try">${T('nav.try')}<span class="only-wide">${T('nav.tryLive')}</span></a>
     </header>
 
-    <section class="chapter hero" id="inicio" data-shot="hero" data-mode="stand">
+    <section class="chapter hero" id="home" data-shot="hero" data-mode="stand">
       <div class="hero-live"><i class="live-dot"></i>${T('hero.live')}</div>
       <div class="caption hero-caption">
-        <p class="eyebrow">${T('hero.eyebrow')}</p>
         <h1>${T('hero.title')}</h1>
         <p class="hero-lede"><span class="only-wide">${T('hero.lede')}</span><span class="only-narrow">${T('hero.ledeShort')}</span></p>
         <ol class="hero-steps" ${A({ 'aria-label': 'hero.how' })}>
@@ -152,7 +151,7 @@ export function mount(root) {
             <figcaption><span class="only-wide">${T('capture.skeletonCaption')}</span><span class="only-narrow">${T('capture.skeletonShort')}</span></figcaption>
           </figure>
         </div>
-        <div class="caption capture-caption">
+        <div class="caption capture-caption panel">
           <p class="product">Tridi Capture</p>
           <h2><span class="only-wide">${T('capture.title')}</span><span class="only-narrow">${T('capture.titleShort')}</span></h2>
           <p><span class="only-wide">${T('capture.text')}</span><span class="only-narrow">${T('capture.textShort')}</span></p>
@@ -206,7 +205,7 @@ export function mount(root) {
             <li><b>&lt; 1 ms</b><span><span class="only-wide">${T('policy.latency')}</span><span class="only-narrow">${T('policy.latencyShort')}</span></span></li>
           </ul>
           <p class="policy-note">${T('policy.note')}</p>
-          <a class="btn btn-signal btn-small policy-data" href="#/entrega" data-warm="entrega">${T('policy.cta')}</a>
+          <a class="btn btn-signal btn-small policy-data" href="#/delivery" data-warm="delivery">${T('policy.cta')}</a>
         </div>
       </div>
     </section>
@@ -216,25 +215,24 @@ export function mount(root) {
       <button type="button" class="arrow-down" ${A({ 'aria-label': 'arrows.down' })}>↓</button>
     </nav>
 
-    <section class="chapter closing" id="equipos" data-shot="close" data-mode="stand">
-      <div class="closing-inner" id="probar" data-offset="-112">
-        <p class="product">${T('close.kicker')}</p>
+    <section class="chapter closing" id="teams" data-shot="close" data-mode="stand">
+      <div class="closing-inner" id="try" data-offset="-112">
         <h2 class="manifesto">${T('close.manifesto')}</h2>
         <p class="closing-text">${T('close.text')}</p>
         <nav class="tries" ${A({ 'aria-label': 'close.tries' })}>
-          <a class="try" href="#/en-vivo" data-warm="en-vivo">
+          <a class="try" href="#/live" data-warm="live">
             <svg class="try-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="14" width="28" height="20" rx="3"/><path d="M34 21l9-5v16l-9-5z"/><circle cx="20" cy="24" r="5"/></svg>
             <b><span class="only-wide">${T('try.live')}</span><span class="only-narrow">${T('try.liveShort')}</span></b>
             <span class="try-sub only-narrow">${T('try.live')}</span>
             <span class="try-go">${T('try.liveGo')}</span>
           </a>
-          <a class="try" href="#/subir" data-warm="subir">
+          <a class="try" href="#/upload" data-warm="upload">
             <svg class="try-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="10" width="36" height="26" rx="3"/><path d="M24 31V17M18 22l6-6 6 6"/><path d="M14 40h20"/></svg>
             <b><span class="only-wide">${T('try.upload')}</span><span class="only-narrow">${T('try.uploadShort')}</span></b>
             <span class="try-sub only-narrow">${T('try.uploadSub')}</span>
             <span class="try-go">${T('try.uploadGo')}</span>
           </a>
-          <a class="try" href="#/entrega" data-warm="entrega">
+          <a class="try" href="#/delivery" data-warm="delivery">
             <svg class="try-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="8" y="16" width="32" height="24" rx="2"/><path d="M8 24h32M24 6v14M18 14l6 6 6-6"/></svg>
             <b><span class="only-wide">${T('try.delivery')}</span><span class="only-narrow">${T('try.deliveryShort')}</span></b>
             <span class="try-sub only-narrow">${T('try.deliverySub')}</span>
@@ -265,7 +263,6 @@ export function mount(root) {
         </div>
       </div>
       <footer class="footer">
-        <p>${T('foot.physics')}</p>
         <div class="foot-row">
           <span class="wordmark big" aria-label="Tridi">${LOGO}${WORDMARK}</span>
           <dl class="foot-specs">
@@ -298,10 +295,10 @@ export function mount(root) {
     gsap.ticker.add(tick);
     gsap.ticker.lagSmoothing(0);
   }
-  // A target's page position, moved by its data-offset (px): "#probar" lands below the top bar.
+  // A target's page position, moved by its data-offset (px): "#try" lands below the top bar.
   const anchorTop = (target) => target.getBoundingClientRect().top + scrollY + Number(target.dataset.offset ?? 0);
   const scrollTo = (target) => (lenis ? lenis.scrollTo(anchorTop(target), { duration: 1.6 }) : window.scrollTo({ top: anchorTop(target) }));
-  const probar = $('#probar');
+  const probar = $('#try');
 
   for (const link of $$('[data-warm]')) {
     const warm = () => prefetch(link.dataset.warm);
@@ -951,7 +948,9 @@ export function mount(root) {
     // Closing: the page closes over the film like a curtain, and the manifesto rises word by word.
     gsap.fromTo('.film-shade', { '--shade': 0 }, { '--shade': 0.88, immediateRender: false, scrollTrigger: { trigger: '.closing', start: 'top bottom', end: 'top 30%', scrub: true } });
     const words = $('.manifesto');
-    for (const span of words.querySelectorAll('.t')) span.innerHTML = span.textContent.split(' ').map((w) => `<span class="w"><span>${w}</span></span>`).join(' ');
+    // Word by word, line by line: the manifesto's <br> (one sentence per line) stays where it was.
+    const wrapWords = (text) => text.split(' ').map((w) => `<span class="w"><span>${w}</span></span>`).join(' ');
+    for (const span of words.querySelectorAll('.t')) span.innerHTML = span.innerHTML.split(/<br\s*\/?>/).map((line) => wrapWords(line.trim())).join('<br>');
     gsap.from('.manifesto .w > span', { yPercent: 110, stagger: 0.04, ease: 'power3.out', scrollTrigger: { trigger: '.closing', start: 'top 80%', end: 'top 10%', scrub: true } });
     // Done by the time the closing's top reaches the top of the screen, before "Probar" lands.
     gsap.from('.closing-text, .try', { opacity: 0, y: 40, stagger: 0.06, scrollTrigger: { trigger: '.closing', start: 'top 70%', end: 'top top', scrub: true } });

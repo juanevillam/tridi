@@ -1,4 +1,4 @@
-// #/en-vivo copy in every language (src/i18n.js). The ?debug readout stays in Spanish: it is for
+// #/live copy in every language (src/i18n.js). The ?debug readout stays in Spanish: it is for
 // the team, not for visitors.
 import { dict } from '../../i18n.js';
 

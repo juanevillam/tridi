@@ -1,4 +1,4 @@
-// #/entrega copy in every language (src/i18n.js). The delivery's own data (delivery.json, world
+// #/delivery copy in every language (src/i18n.js). The delivery's own data (delivery.json, world
 // files) is written in Spanish: what can be translated by id or file name is here too.
 import { dict } from '../../i18n.js';
 

@@ -114,8 +114,8 @@ export function mount(root, { api }) {
             <p class="lead"><span class="only-wide">${T('offWide')}</span><span class="only-narrow">${T('offNarrow')}</span></p>
             <div class="row">
               <button class="primary retry" type="button">${T('retry')}</button>
-              <a class="button" href="#/en-vivo">${T('useCamera')}</a>
-              <a class="button" href="#/entrega">${T('seeDelivery')}</a>
+              <a class="button" href="#/live">${T('useCamera')}</a>
+              <a class="button" href="#/delivery">${T('seeDelivery')}</a>
             </div>
             <p class="note server-url"></p>
           </div>

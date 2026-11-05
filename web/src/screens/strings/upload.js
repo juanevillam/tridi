@@ -1,4 +1,4 @@
-// #/subir copy in every language (src/i18n.js).
+// #/upload copy in every language (src/i18n.js).
 import { dict } from '../../i18n.js';
 
 export const title = { es: 'Subir un video', en: 'Upload a video' };
@@ -25,7 +25,7 @@ export const { T, t, A } = dict({
   watching: { es: 'Tridi está mirando tu video', en: 'Tridi is watching your video' },
   isThis: { es: '<strong>¿Es esta la persona?</strong> Si no, toca a la que quieres.', en: '<strong>Is this the person?</strong> If not, tap the one you want.' },
   frameAlt: { es: 'Primer cuadro del video con las personas encontradas', en: 'First frame of the video with the people found' },
-  meanwhile: { es: 'Puedes <a href="#/en-vivo">probar la cámara en vivo</a> mientras tanto: tu video sigue aquí.', en: 'You can <a href="#/en-vivo">try the live camera</a> meanwhile: your video stays here.' },
+  meanwhile: { es: 'Puedes <a href="#/live">probar la cámara en vivo</a> mientras tanto: tu video sigue aquí.', en: 'You can <a href="#/live">try the live camera</a> meanwhile: your video stays here.' },
   done: { es: '¡Listo!', en: 'Done!' },
   again: { es: 'Subir otro video', en: 'Upload another video' },
   home: { es: 'Volver al inicio', en: 'Back to home' },

@@ -1,10 +1,10 @@
 // The phone as the live camera (docs/contrato.md, "El teléfono como cámara"). Two halves that only
 // meet at the server (data/relay.py), which passes frames from one to the other in memory:
 //
-// - the phone (web #/camara/<session>): createLiveCapture with the back camera, and
+// - the phone (web #/camera/<session>): createLiveCapture with the back camera, and
 //   createPhoneSender posts what onPose gives, in batches, with a small JPEG of the camera image
 //   (createImageGrabber) in some of the frames;
-// - the Mac (web #/en-vivo): createPhoneCapture long-polls those frames and offers the same
+// - the Mac (web #/live): createPhoneCapture long-polls those frames and offers the same
 //   interface as createLiveCapture ({ startRecording, stopRecording, isRecording, fps, stop }),
 //   so the screen, the robot's mimic and buildPoseClip do not know which camera it was; onImage
 //   gives the camera image of the frame being played, to show under the skeleton.
@@ -99,7 +99,7 @@ export async function closePhoneSession(baseUrl, sessionId) {
 export function phonePageUrl(webUrl, apiUrl, sessionId) {
   const page = new URL(webUrl);
   page.search = `?api=${encodeURIComponent(base(apiUrl))}`;
-  page.hash = `#/camara/${sessionId}`;
+  page.hash = `#/camera/${sessionId}`;
   return page.toString();
 }
 

@@ -1,4 +1,4 @@
-// #/camara copy in every language (src/i18n.js).
+// #/camera copy in every language (src/i18n.js).
 import { dict } from '../../i18n.js';
 
 export const title = { es: 'Cámara del teléfono', en: 'Phone camera' };

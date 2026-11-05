@@ -70,26 +70,44 @@ html[data-lang='en'] .t[lang='es'] {
 }
 
 /* ES · EN: a small segmented switch for the headers. */
+/* The language: two plain words in the nav's own type, the current one lit and underlined in
+   lime, the other dim. No pill: it is a setting, not a button competing with "Try it". */
 .lang-switch {
   display: inline-flex;
   flex: none;
-  padding: 2px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  font: 600 11px/1 var(--mono);
+  align-items: center;
+  gap: 2px;
+  font: 500 12px/1 var(--mono);
   letter-spacing: 0.06em;
 }
 
 .lang-switch button {
-  min-width: 30px;
-  padding: 6px 8px;
+  min-width: 0;
+  min-height: 0;
+  padding: 6px 4px;
   border: 0;
-  border-radius: 999px;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
   background: none;
-  color: var(--ink-soft);
+  color: var(--muted);
   font: inherit;
+  line-height: 1;
   cursor: pointer;
-  transition: background-color 0.2s, color 0.2s;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+/* The slash sits outside the second word, so only the word is underlined. */
+.lang-switch button + button {
+  position: relative;
+  margin-left: 14px;
+}
+
+.lang-switch button + button::before {
+  content: '/';
+  position: absolute;
+  left: -11px;
+  color: var(--muted);
+  pointer-events: none;
 }
 
 .lang-switch button:hover {
@@ -98,8 +116,8 @@ html[data-lang='en'] .t[lang='es'] {
 
 html[data-lang='es'] .lang-switch button[lang='es'],
 html[data-lang='en'] .lang-switch button[lang='en'] {
-  background: var(--signal);
-  color: var(--on-signal);
+  color: var(--ink);
+  border-bottom-color: var(--signal);
 }
 
 /* Short phone versions of some lines: .only-wide is the long copy, .only-narrow its phone
@@ -861,7 +879,7 @@ select:disabled {
   display: none;
 }
 
-/* #/red/<train id> (screens/net.js): the same view, full size. */
+/* #/net/<train id> (screens/net.js): the same view, full size. */
 .net-screen {
   display: grid;
   gap: var(--s-4);
