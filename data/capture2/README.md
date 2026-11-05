@@ -4,7 +4,7 @@ Del video al cuerpo humano en 3D anclado al mundo, con dedos (bloque 4 de [`../.
 
 | Pieza | Para qué | Estado |
 | --- | --- | --- |
-| [GVHMR](https://github.com/zju3dv/GVHMR) | Cuerpo SMPL-X en el mundo, con gravedad y cámara que se mueve | Instalado en la Mac (`gvhmr_mac.py`); faltan los pesos y los modelos de cuerpo |
+| [GVHMR](https://github.com/zju3dv/GVHMR) | Cuerpo SMPL-X en el mundo, con gravedad y cámara que se mueve | Corre en la Mac (`gvhmr_mac.py`); `to_poseclip.py` lo pasa a `PoseClip` v1 y la web ya lo usa |
 | HaMeR o WiLoR | Manos con dedos (MANO), 15 articulaciones por mano | Sin empezar |
 | Fusión → `PoseClip` v2 | Cuerpo + manos en SMPL-X, con contactos | Sin empezar (contrato primero) |
 
@@ -57,7 +57,16 @@ Comprobado (2026-11-04): corre de punta a punta en la Mac. El modelo final de GV
 | MediaPipe (hoy) | 13,4 | 0,28 | 0,3 | 5,7 % | 1,54 |
 | GVHMR | 17,4 | 0,31 | 1,1 | **0,0 %** | 1,74 |
 
-En los saltos GVHMR tiembla más y los pies no mejoran. Ojo: MediaPipe pasa por el suavizado de `data/smooth.py` (Savitzky-Golay) y GVHMR sale crudo; la comparación justa es con el mismo suavizado, y después con el refinamiento físico del plan (pies que no patinan ni atraviesan el piso).
+Esas dos tablas comparan GVHMR **crudo** contra MediaPipe **suavizado** (`data/smooth.py`). Con el mismo suavizado (`to_poseclip.py`, 2026-11-05), GVHMR gana también en temblor:
+
+| Clip | Captura | temblor | patina | bajo el piso | huesos | altura |
+| --- | --- | --- | --- | --- | --- | --- |
+| bailar-01 | MediaPipe | 11,4 | 0,29 | 0,2 | 9,6 % | 1,56 |
+| bailar-01 | GVHMR | **7,1** | **0,05** | 1,1 | **0,3 %** | 1,63 |
+| jacks-01 | MediaPipe | 13,4 | 0,28 | 0,3 | 5,7 % | 1,54 |
+| jacks-01 | GVHMR | **11,7** | 0,25 | 1,2 | **0,3 %** | 1,70 |
+
+Lo único que empeora es el pie bajo el piso (~1 cm): lo arregla el refinamiento físico del plan (pies que no patinan ni atraviesan el piso).
 
 **Tiempo:** `jacks-01` de cero, 5,5 min para 11 s de video (~30× el tiempo real): seguir a la persona 42 s, ViTPose 2,6 min, el resto el extractor de rasgos y la odometría. Cabe de sobra en el presupuesto de la Mac (24 h por video).
 
@@ -67,6 +76,15 @@ En el baile, el pie apoyado patina 7 veces menos y los huesos ya no se estiran (
 
 ```bash
 ~/Code/tridi-thirdparty/GVHMR/.venv/bin/python data/capture2/gvhmr_mac.py data/samples/<video>.mp4 --f-mm 24
+~/Code/tridi-thirdparty/GVHMR/.venv/bin/python data/capture2/to_poseclip.py data/samples/<video>.gvhmr.npz
 ```
 
-`--static` si la cámara no se mueve (más rápido: no corre la odometría visual). Sale `<video>.gvhmr.npz`: parámetros SMPL-X por cuadro en el mundo y en la cámara.
+`--static` si la cámara no se mueve (más rápido: no corre la odometría visual). `gvhmr_mac.py` deja `<video>.gvhmr.npz`: parámetros SMPL-X por cuadro en el mundo y en la cámara. `to_poseclip.py` lo pasa a un `PoseClip` v1 (`clips/clip_<video>-gvhmr.json` y `.npz`): los 33 puntos de MediaPipe, girado para que z mire a la cámara (el mundo de GVHMR tiene la gravedad bien pero un giro cualquiera; en nuestros clips la persona miraba a −z) y suavizado como `data/lift.py`. Así lo usan la web, el retargeting y `data.quality` sin cambiar el contrato. Todo el set de prueba, de una (se puede cortar y retomar):
+
+```bash
+nohup sh data/capture2/run_set.sh > ~/Tridi/capture2/run_set.out 2>&1 &
+```
+
+## Probarlo en la web
+
+En la rama `juan/experimental`, `npm --prefix web run dev` y abrir `#/simulaciones`: la galería tiene cada video dos veces, "MediaPipe (hoy)" y "captura 2.0 (GVHMR)", con el robot imitando cada uno (`web/clips/`, `web/src/preloaded.json`). La demo publicada no cambia.

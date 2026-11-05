@@ -27,6 +27,8 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
 
 - **GVHMR corre de punta a punta en la Mac** (Juan bajó los pesos y los modelos de cuerpo; todos revisados con `picklescan`, limpios; el `.pkl` de SMPL, que `picklescan` no lee, revisado a mano: solo tipos de datos). Hizo falta parchar también el `.cuda()` de Lightning y correr el modelo final de GVHMR en CPU (en MPS aborta). `data/capture2/to_joints.py` pasa SMPL-X a los 33 puntos para comparar con `data.quality`. Baile: patina 0,29 → 0,04 m/s, huesos 9,6 % → 0 %, altura 1,56 → 1,64 m, temblor igual. Saltos de tijera: temblor 13,4 → 17,4 y pies igual, huesos 0 %; MediaPipe va suavizado y GVHMR crudo. 5,5 min por 11 s de video.
 
+- **2026-11-05, para que el equipo pruebe el 3D nuevo el viernes** (Juan: "empieza, ya no estoy usando la Mac"). Nuevo `data/capture2/to_poseclip.py`: GVHMR → `PoseClip` v1 (33 puntos), girado para que z mire a la cámara (el mundo de GVHMR tenía a la persona mirando a −z; se toma el giro del primer medio segundo comparando con la vista de la cámara) y suavizado igual que `data/lift.py`. `gvhmr_mac.py` guarda los fps reales del video (antes 30 fijo). Con el mismo suavizado GVHMR gana en temblor: baile 11,4 → 7,1, saltos 13,4 → 11,7; huesos ~0 %; solo empeora el pie bajo el piso (~1 cm). Galería de `#/simulaciones` (en esta rama, local) con cada video dos veces, MediaPipe y captura 2.0, y el robot imitando cada uno: probado en el navegador, sin errores. Corriendo con `nohup` `data/capture2/run_set.sh` (todo el set de prueba con cuerpo, ~2 h) y después los dos videos precargados (caminar y correr de perfil).
+
 ## Qué funcionó
 
 - 
