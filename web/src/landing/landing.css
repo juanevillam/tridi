@@ -996,6 +996,46 @@ html.is-landing.lenis body {
   color: var(--fg-2);
 }
 
+/* The YC videos (web/public/media, from the application): the demo and the founders, side by side.
+   preload none: 15 MB that only load when someone presses play. */
+.yc-videos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-4);
+  margin-top: 40px;
+}
+
+.yc-video {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+}
+
+.yc-video video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+  background: #000;
+  object-fit: contain; /* the founders' video is 3:2: no crop of anyone's face */
+}
+
+.yc-video figcaption {
+  display: grid;
+  gap: 4px;
+}
+
+.yc-video b {
+  font: 500 17px/1.2 var(--display);
+}
+
+.yc-video span {
+  font: 500 11px/1.4 var(--mono);
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+
 /* Where we are: a progress line with three milestones. Done is filled, "now" pulses, next is
    hollow; the line fills up to "now" as it scrolls in (home.js). Vertical on phones. */
 .progress-track {
@@ -1408,7 +1448,7 @@ html.is-landing.lenis body {
   }
 
   .gym-lede {
-    margin: 0 !important;
+    margin: var(--s-2) 0 0 !important;
     font-size: 13px;
     color: var(--fg-2) !important;
   }
@@ -1513,6 +1553,11 @@ html.is-landing.lenis body {
   .closing-text {
     margin-top: var(--s-4) !important;
     font-size: 15px;
+  }
+
+  .yc-videos {
+    grid-template-columns: 1fr;
+    margin-top: var(--s-5);
   }
 
   .tries {

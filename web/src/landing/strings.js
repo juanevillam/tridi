@@ -19,18 +19,19 @@ export const { T, t, A } = dict({
 
   // Hero
   'hero.live': { es: 'Simulación en vivo · Unitree G1 · MuJoCo', en: 'Live simulation · Unitree G1 · MuJoCo' },
-  'hero.title': { es: 'Robots que aprenden <em>de un video</em>', en: 'Robots that learn <em>from a video</em>' },
+  // Copy follows the YC application (yc/, 2026-11): every claim here is in yc/verdad-hoy.md.
+  'hero.title': { es: 'Video humano, <em>datos para robots</em>', en: 'Human video, <em>robot training data</em>' },
   'hero.lede': {
-    es: 'Grabas a una persona moviéndose. Un humanoide aprende a hacerlo igual, practicando en física real hasta no caerse.',
-    en: 'Film a person moving. A humanoid learns to move the same way, practicing in real physics until it stops falling.',
+    es: 'Los LLM aprendieron de todo internet. Los robots no tienen nada así. Tridi convierte cualquier video de una persona en movimiento que un humanoide sí puede hacer.',
+    en: 'LLMs learned from the whole internet. Robots have nothing like it. Tridi turns any video of a person into motion a humanoid can actually do.',
   },
-  'hero.ledeShort': { es: 'Grabas a una persona. Un humanoide aprende a moverse igual, con física real.', en: 'Film a person. A humanoid learns to move the same way, in real physics.' },
+  'hero.ledeShort': { es: 'Cualquier video de una persona, convertido en datos para entrenar humanoides.', en: 'Any video of a person, turned into training data for humanoids.' },
   'hero.how': { es: 'Cómo funciona', en: 'How it works' },
-  'hero.step1': { es: 'Video de celular', en: 'Phone video' },
+  'hero.step1': { es: 'Cualquier video', en: 'Any video' },
   'hero.step1Short': { es: 'Video', en: 'Video' },
   'hero.step2': { es: 'Esqueleto 3D', en: '3D skeleton' },
-  'hero.step3': { es: 'Robot que practica', en: 'Robot that practices' },
-  'hero.step3Short': { es: 'Robot practica', en: 'Robot practices' },
+  'hero.step3': { es: 'Práctica en física', en: 'Practice in physics' },
+  'hero.step3Short': { es: 'Física', en: 'Physics' },
   'hero.push': { es: 'Empújalo', en: 'Push it' },
   'key.space': { es: 'espacio', en: 'space' },
   'hero.howLink': { es: 'Cómo aprende', en: 'How it learns' },
@@ -44,18 +45,19 @@ export const { T, t, A } = dict({
   'capture.videoShort': { es: 'Video', en: 'Video' },
   'capture.skeletonCaption': { es: 'Esqueleto 3D · 33 puntos · tenue: lo que la cámara no ve', en: '3D skeleton · 33 points · faint: what the camera cannot see' },
   'capture.skeletonShort': { es: 'Esqueleto 3D', en: '3D skeleton' },
-  'capture.title': { es: 'De un video de celular al cuerpo del robot', en: 'From a phone video to the robot’s body' },
+  'capture.title': { es: 'De cualquier video al cuerpo del robot', en: 'From any video to the robot’s body' },
   'capture.titleShort': { es: 'Del video al robot', en: 'From video to robot' },
   'capture.text': {
-    es: 'El esqueleto 3D de la persona, pasado a las 29 articulaciones del robot. Aquí lo copia sin física.',
-    en: 'The person’s 3D skeleton, mapped onto the robot’s 29 joints. Here it copies the motion without physics.',
+    es: 'Encontramos a la persona, aunque haya más gente, sacamos su esqueleto 3D y lo pasamos a las 29 articulaciones del robot. Aquí solo lo copia: sin física, se caería.',
+    en: 'We find the person, even in a crowd, extract their 3D skeleton and map it onto the robot’s 29 joints. Here it only copies: without physics, it would fall.',
   },
   'capture.textShort': { es: 'El esqueleto 3D de la persona, pasado a las 29 articulaciones del robot.', en: 'The person’s 3D skeleton, mapped onto the robot’s 29 joints.' },
 
   // Gym
-  'gym.title': { es: 'Practica hasta no caerse', en: 'It practices until it stops falling' },
+  'gym.title': { es: 'Copiar no es data', en: 'Copying isn’t data' },
   'gym.stepsLabel': { es: 'pasos de<br>práctica', en: 'practice<br>steps' },
-  'gym.lede': { es: 'Lo empujamos, se cae y vuelve a intentar. Toca una etapa.', en: 'We push it, it falls, it tries again. Tap a stage.' },
+  'gym.lede': { es: 'Practica millones de veces con gravedad, contacto y fricción reales hasta no caerse. El video dice qué hacer; la simulación enseña cómo.', en: 'It practices millions of times with real gravity, contact and friction until it stops falling. The video says what to do; the simulation teaches how.' },
+  'gym.ledeShort': { es: 'Practica en física real hasta no caerse.', en: 'It practices in real physics until it stops falling.' },
   'gym.stages': { es: 'Etapas del entrenamiento', en: 'Training stages' },
   'gym.stepsAt': { es: '{n} pasos', en: '{n} steps' },
   'gym.upOf': { es: '<b>{s}</b> de pie, de 20 s', en: '<b>{s}</b> standing, of 20 s' },
@@ -75,9 +77,9 @@ export const { T, t, A } = dict({
   'stage.3.text': { es: 'Estable y sin girar. Es el de arriba.', en: 'Stable and no pivoting. It is the one at the top.' },
 
   // Policy
-  'policy.title': { es: 'Te llevas el cerebro entrenado del robot', en: 'You take home the robot’s trained brain' },
-  'policy.titleShort': { es: 'Te llevas su cerebro entrenado', en: 'You get its trained brain' },
-  'policy.lede': { es: 'Una red neuronal pequeña (la política) que mueve al robot sola. Corre en tu navegador.', en: 'A small neural network (the policy) that moves the robot on its own. It runs in your browser.' },
+  'policy.title': { es: 'Te llevas la política entrenada y los datos', en: 'You get the trained policy and the data' },
+  'policy.titleShort': { es: 'La política y los datos', en: 'The policy and the data' },
+  'policy.lede': { es: 'Una red pequeña en ONNX, lista para el robot, que mueve sus 29 motores. Aquí corre en tu navegador.', en: 'A small network in ONNX, ready for the robot, that drives all 29 motors. Here it runs in your browser.' },
   'policy.size': { es: 'la red completa que mueve al robot', en: 'the whole network that moves the robot' },
   'policy.sizeShort': { es: 'pesa la red', en: 'network size' },
   'policy.motors': { es: 'motores que controla a la vez', en: 'motors it controls at once' },
@@ -86,7 +88,7 @@ export const { T, t, A } = dict({
   'policy.rateShort': { es: 'entre decisiones', en: 'between decisions' },
   'policy.latency': { es: 'lo que tarda en decidir', en: 'to make a decision' },
   'policy.latencyShort': { es: 'en decidir', en: 'to decide' },
-  'policy.note': { es: 'Con ella van los datos del movimiento, probados en cuatro mundos.', en: 'It ships with the motion data, tested in four worlds.' },
+  'policy.note': { es: 'Con ella van los datos del movimiento corregidos por la física, grabados en cuatro mundos.', en: 'It ships with the motion data corrected by physics, recorded in four worlds.' },
   'policy.cta': { es: 'Ver los datos entrenados →', en: 'See the trained data →' },
 
   // Phone arrows
@@ -97,7 +99,12 @@ export const { T, t, A } = dict({
   // Closing
   // One sentence per line (home.js keeps the <br> when it splits the words for the animation).
   'close.manifesto': { es: 'Los robots ya tienen cuerpo.<br>Les falta experiencia.', en: 'Robots already have bodies.<br>What they lack is experience.' },
-  'close.text': { es: 'Cualquier video de una persona, convertido en práctica para tu robot.', en: 'Any video of a person, turned into practice for your robot.' },
+  'close.videos': { es: 'Los videos', en: 'The videos' },
+  'video.demo': { es: 'La demo', en: 'The demo' },
+  'video.demoSub': { es: '3 min · del video al robot que aguanta empujones', en: '3 min · from a video to a robot that takes pushes' },
+  'video.team': { es: 'Los fundadores', en: 'The founders' },
+  'video.teamSub': { es: '1 min · Pastor, Juan, César y Ale, desde Barquisimeto', en: '1 min · Pastor, Juan, César and Ale, from Barquisimeto' },
+  'close.text': { es: 'Hay muchísimo video de gente moviéndose. Tridi lo convierte en datos con los que un humanoide puede entrenar.', en: 'There is an enormous amount of video of people moving. Tridi turns it into data a humanoid can train on.' },
   'close.tries': { es: 'Probar Tridi', en: 'Try Tridi' },
   'try.live': { es: 'Muévete y el robot te copia', en: 'Move and the robot copies you' },
   'try.liveShort': { es: 'Cámara en vivo', en: 'Live camera' },

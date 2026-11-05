@@ -35,7 +35,8 @@ const REPO = 'https://github.com/platanus-hack/platanus-hack-26-ve-team-26';
 // The walk of Capture: the clip extracted from this very video (data/samples/mixkit-4855.mp4,
 // re-encoded small into public/media). Clip and video start together and last the same 11.8 s.
 const WALK = preloaded.find((item) => item.clip === 'clip_2026-10-23_caminar-perfil_01');
-const WALK_VIDEO = `${import.meta.env.BASE_URL}media/caminar.mp4`;
+const MEDIA = `${import.meta.env.BASE_URL}media/`;
+const WALK_VIDEO = `${MEDIA}caminar.mp4`;
 const PUSH_N = 250; // physics/ pushes with 250 N for 0.1 s (physics/README.md)
 const FALLEN_PELVIS_M = 0.45; // the standing G1 has its pelvis at 0.78 m
 const GYM_PUSH_EVERY_S = 2.5; // the Gym pushes the standing robot this often, so every level shows itself
@@ -164,9 +165,9 @@ export function mount(root) {
         <div class="caption gym-caption panel">
           <p class="product">Tridi Gym</p>
           <h2>${T('gym.title')}</h2>
+          <p class="gym-lede"><span class="only-wide">${T('gym.lede')}</span><span class="only-narrow">${T('gym.ledeShort')}</span></p>
           <div class="steps-meter">
             <p class="steps-now"><b data-gym="steps">0</b><span>${T('gym.stepsLabel')}</span></p>
-            <p class="gym-lede only-narrow">${T('gym.lede')}</p>
             <div class="steps-axis">
               <div class="axis-track" aria-hidden="true">
                 <i class="axis-line"><i class="axis-fill"></i></i>
@@ -219,6 +220,16 @@ export function mount(root) {
       <div class="closing-inner" id="try" data-offset="-112">
         <h2 class="manifesto">${T('close.manifesto')}</h2>
         <p class="closing-text">${T('close.text')}</p>
+        <div class="yc-videos" role="group" ${A({ 'aria-label': 'close.videos' })}>
+          <figure class="yc-video">
+            <video src="${MEDIA}yc-demo.mp4" poster="${MEDIA}yc-demo.jpg" controls playsinline preload="none"></video>
+            <figcaption><b>${T('video.demo')}</b><span>${T('video.demoSub')}</span></figcaption>
+          </figure>
+          <figure class="yc-video">
+            <video src="${MEDIA}yc-founders.mp4" poster="${MEDIA}yc-founders.jpg" controls playsinline preload="none"></video>
+            <figcaption><b>${T('video.team')}</b><span>${T('video.teamSub')}</span></figcaption>
+          </figure>
+        </div>
         <nav class="tries" ${A({ 'aria-label': 'close.tries' })}>
           <a class="try" href="#/live" data-warm="live">
             <svg class="try-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="14" width="28" height="20" rx="3"/><path d="M34 21l9-5v16l-9-5z"/><circle cx="20" cy="24" r="5"/></svg>
@@ -953,7 +964,7 @@ export function mount(root) {
     for (const span of words.querySelectorAll('.t')) span.innerHTML = span.innerHTML.split(/<br\s*\/?>/).map((line) => wrapWords(line.trim())).join('<br>');
     gsap.from('.manifesto .w > span', { yPercent: 110, stagger: 0.04, ease: 'power3.out', scrollTrigger: { trigger: '.closing', start: 'top 80%', end: 'top 10%', scrub: true } });
     // Done by the time the closing's top reaches the top of the screen, before "Probar" lands.
-    gsap.from('.closing-text, .try', { opacity: 0, y: 40, stagger: 0.06, scrollTrigger: { trigger: '.closing', start: 'top 70%', end: 'top top', scrub: true } });
+    gsap.from('.closing-text, .yc-video, .try', { opacity: 0, y: 40, stagger: 0.06, scrollTrigger: { trigger: '.closing', start: 'top 70%', end: 'top top', scrub: true } });
     gsap.from('.milestones li', { opacity: 0, y: 40, stagger: 0.06, scrollTrigger: { trigger: '.progress-track', start: 'top 95%', end: 'top 60%', scrub: true } });
     // The progress line fills up to "Entrenando" (the middle milestone) as it scrolls in.
     gsap.fromTo('.track-fill', { scale: 0 }, { scale: 1, ease: 'none', scrollTrigger: { trigger: '.progress-track', start: 'top 85%', end: 'top 45%', scrub: true } });
