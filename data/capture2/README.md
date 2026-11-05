@@ -28,7 +28,7 @@ Lo que no dice su `requirements.txt` y hizo falta en esta Mac (macOS 27, M2):
 - `scipy==1.13.1`: la 1.15 no carga en este macOS (`__thread_bss has a zero-fill section type`).
 - `setuptools<70` (lightning usa `pkg_resources`), `yacs` y `wis3d` (los importa sin declararlos).
 
-Comprobado (2026-11-04): su código importa y los `.cuda()` van a MPS. Falta correrlo con los pesos.
+Comprobado (2026-11-04): corre de punta a punta en la Mac. El modelo final de GVHMR va en la CPU: en MPS (torch 2.3) aborta en un recorte de tensor.
 
 **A mano (Juan, en el navegador):** Google Drive no deja bajar los pesos grandes por script, y los modelos de cuerpo piden cuenta. No se usan espejos de terceros: un `.ckpt` o `.pth` puede ejecutar código al cargarse.
 
@@ -40,6 +40,17 @@ Comprobado (2026-11-04): su código importa y los `.cuda()` van a MPS. Falta cor
 2. Con cuenta en [smpl-x.is.tue.mpg.de](https://smpl-x.is.tue.mpg.de/): `SMPLX_NEUTRAL.npz` (y `MALE`, `FEMALE`) a `inputs/checkpoints/body_models/smplx/`.
 3. Con cuenta en [smpl.is.tue.mpg.de](https://smpl.is.tue.mpg.de/): `SMPL_NEUTRAL.pkl` (y `MALE`, `FEMALE`) a `inputs/checkpoints/body_models/smpl/`.
 4. Para las manos, más adelante: cuenta en [mano.is.tue.mpg.de](https://mano.is.tue.mpg.de/), `MANO_RIGHT.pkl`.
+
+## Primer resultado (2026-11-04)
+
+`bailar-01` (10,5 s, de frente, cuerpo entero), con `data.quality` sobre los mismos 33 puntos (`to_joints.py` pasa SMPL-X a los índices de MediaPipe):
+
+| Captura | temblor (m/s²) | pie apoyado que patina (m/s) | pie bajo el piso (cm) | huesos que se estiran | altura (m) |
+| --- | --- | --- | --- | --- | --- |
+| MediaPipe (hoy) | 11,4 | 0,29 | 0,2 | 9,6 % | 1,56 |
+| GVHMR | 11,6 | **0,04** | 0,9 | **0,0 %** | **1,64** |
+
+El pie apoyado patina 7 veces menos y los huesos ya no se estiran (es un esqueleto de verdad, SMPL-X). La altura sube a 1,64 m: MediaPipe da 10-20 % de menos. El temblor queda igual y el pie se hunde un poco más (menos de 1 cm). Falta medirlo en todo el set de prueba y de frente caminando hacia la cámara.
 
 ## Uso
 

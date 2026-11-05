@@ -11,6 +11,7 @@ that modifications of its code be published, so this file does not modify it: it
 patches it from the outside for Apple Silicon:
 
 - every `.cuda()` (tensors and modules) goes to MPS (or CPU), and YOLO's tracker gets that device;
+  GVHMR's final model runs on the CPU (it aborts on MPS with torch 2.3);
 - no DPVO (CUDA only): a moving camera uses GVHMR's SimpleVO (SIFT, CPU); --static skips it;
 - no rendering (pytorch3d's renderer): Tridi only needs the parameters.
 
@@ -38,6 +39,10 @@ def _patch_device(device: str) -> None:
 
     torch.Tensor.cuda = to_device
     torch.nn.Module.cuda = to_device
+    # Lightning modules (HMR2, GVHMR's own) have their own .cuda(), which asks torch.cuda directly.
+    from lightning_fabric.utilities.device_dtype_mixin import _DeviceDtypeModuleMixin
+
+    _DeviceDtypeModuleMixin.cuda = to_device
 
     from hmr4d.utils.preproc import tracker
 
@@ -79,9 +84,13 @@ def run(video: Path, out: Path, static: bool, f_mm: int | None, device: str) -> 
     start = time.time()
     demo.run_preprocess(cfg)
     data = demo.load_data_dict(cfg)
+    # GVHMR's own model on the CPU: on MPS (torch 2.3) it aborts in a slice ("subRange.start +
+    # subRange.length does not fit in dimension"). It is small (156 MB); the heavy ViT networks of
+    # the preprocessing above stay on the GPU.
+    _patch_device("cpu")
     model = hydra.utils.instantiate(cfg.model, _recursive_=False)
     model.load_pretrained_model(cfg.ckpt_path)
-    model = model.eval().to(device)
+    model = model.eval().to("cpu")
     with torch.no_grad():
         pred = demo.detach_to_cpu(model.predict(data, static_cam=cfg.static_cam))
     seconds = time.time() - start
@@ -89,7 +98,7 @@ def run(video: Path, out: Path, static: bool, f_mm: int | None, device: str) -> 
     arrays = {f"{space}_{k}": v.numpy() for space in ("global", "incam") for k, v in pred[f"smpl_params_{space}"].items()}
     np.savez_compressed(out, fps=30.0, static_cam=static, seconds=seconds, **arrays)
     frames = int(data["length"])
-    print(f"{video.name}: {frames} frames in {seconds:.0f} s ({frames / seconds:.1f} frames/s on {device}) -> {out}")
+    print(f"{video.name}: {frames} frames in {seconds:.0f} s ({frames / seconds:.1f} frames/s; preprocessing on {device}) -> {out}")
     return out
 
 
