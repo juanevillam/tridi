@@ -112,6 +112,7 @@ def export(checkpoint: Path, policy_id: str, out: Path, task: str | None = None,
         # Imitation: the clip it follows, and how far ahead the observation shows it
         # (imitate.MimicEnv.observe).
         **({"motion": env.motions[0].id, "lookahead_s": list(LOOKAHEAD_S)} if walk else {}),
+        **({"sense_velocity": True} if walk and getattr(env, "sense_velocity", False) else {}),
         "worlds": state.get("worlds") or TRAINED_WORLDS,
         **followed,
         "steps": int(state["step"]),

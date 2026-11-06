@@ -165,8 +165,11 @@ def smooth(x: np.ndarray, window: int) -> np.ndarray:
 
 def motion_path(motion: str) -> Path:
     """A RobotMotion file: any path ending in .json (a user's clip, written with retarget --out), or
-    the clip id of a preloaded one in physics/motions/."""
-    return Path(motion) if motion.endswith(".json") else MOTIONS / f"{motion}.json"
+    the clip id of a preloaded one in physics/motions/ or training/references/."""
+    if motion.endswith(".json"):
+        return Path(motion)
+    p = MOTIONS / f"{motion}.json"
+    return p if p.exists() else Path(__file__).parent / "references" / f"{motion}.json"
 
 
 def load_motions(model: mujoco.MjModel, motions: list[str], feet=None, soles=None) -> list[Motion]:
