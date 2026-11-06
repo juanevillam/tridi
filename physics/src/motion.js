@@ -73,12 +73,13 @@ export async function retargetClipAsync(mujoco, model, clip, { onProgress, budge
 // One yield per frame (its index), and the result as the return value, so the two entry points
 // above share every line of the work.
 function* retargetSteps(mujoco, model, clip, { mirror = false } = {}) {
-  // A clip recorded with the live camera trains on what the robot did while it was recorded: the
-  // wrists and palms, and the freer shoulder twist facing the camera (retarget.js `live`). Clips
-  // from uploaded videos keep the retargeting their references were measured with.
-  const retargeter = createRetargeter(mujoco, model, { mirror, live: clip.source === 'camera' });
-  const tracker = createPoseTracker();
+  // A clip recorded with the live camera, or a PoseClip v2 with WiLoR hands, solves the wrists and
+  // palms and frees the shoulder twist facing the camera (retarget.js `live`). Clips from uploaded
+  // v1 videos without hands keep the retargeting their references were measured with.
   const { frames } = clip;
+  const hasHands = frames.some((f) => f.hands?.left || f.hands?.right);
+  const retargeter = createRetargeter(mujoco, model, { mirror, live: clip.source === 'camera' || hasHands });
+  const tracker = createPoseTracker();
 
   // The hips' path in the robot's axes (x forward, y left): PoseClip x -> robot y, z -> robot x.
   const hips = frames.map(({ joints: J }) => [(J[23][2] + J[24][2]) / 2, (J[23][0] + J[24][0]) / 2]);
@@ -93,7 +94,11 @@ function* retargetSteps(mujoco, model, clip, { mirror = false } = {}) {
       const frame = frames[i];
       // The tracker and the solver read MediaPipe's own axes (y down, z away from the camera).
       const world = frame.joints.map(([x, y, z, visibility]) => ({ x, y: -y, z: -z, visibility }));
-      const result = retargeter.solve(tracker.update(world, world, frame.t), { travelYaw: travelHeading(frames, hips, i) });
+      const hands = frame.hands && {
+        left: frame.hands.left?.map(([x, y, z]) => ({ x, y: -y, z: -z })) ?? null,
+        right: frame.hands.right?.map(([x, y, z]) => ({ x, y: -y, z: -z })) ?? null,
+      };
+      const result = retargeter.solve(tracker.update(world, world, frame.t), { travelYaw: travelHeading(frames, hips, i), hands });
       const qpos = Array.from(result.qpos, round);
       qpos[0] = round(scale * (hips[i][0] - hips[0][0]));
       qpos[1] = round(scale * (hips[i][1] - hips[0][1]));
@@ -108,7 +113,13 @@ function* retargetSteps(mujoco, model, clip, { mirror = false } = {}) {
   }
 
   return {
-    motion: { clip_id: clip.id, robot: 'unitree_g1', fps: clip.fps, qpos: rows },
+    motion: {
+      clip_id: clip.id,
+      robot: 'unitree_g1',
+      fps: clip.fps,
+      qpos: rows,
+      ...(hasHands ? { hands: frames.map((f) => f.hands ?? null) } : {}),
+    },
     stats: { frames: frames.length, tracked, reached: reached / frames.length, scale, travel },
   };
 }

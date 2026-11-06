@@ -82,6 +82,20 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
         if (clipTime >= LOOP_BLEND_S) clip.wrapped = false;
         clip.shown = clipTime;
         sim.puppet(clip.wrapped ? sampleLoopStart(clip.motion, clipTime, row, lastRow) : sampleMotion(clip.motion, clipTime, row));
+        if (clip.motion.hands) {
+          const idx = Math.min(clip.motion.hands.length - 1, Math.max(0, Math.floor(clipTime * clip.motion.fps)));
+          const h = clip.motion.hands[idx];
+          copyFingers(
+            {
+              t: now / 1000,
+              hands: h && {
+                left: h.left?.map(([x, y, z]) => ({ x, y: -y, z: -z })) ?? null,
+                right: h.right?.map(([x, y, z]) => ({ x, y: -y, z: -z })) ?? null,
+              },
+            },
+            false,
+          );
+        }
       } else if (playing) {
         const before = sim.data.time;
         await sim.advance(wall * speed);
@@ -193,23 +207,23 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
 
   // The person's fingers onto the drawn Dex3 hands. A hand the camera stopped seeing for
   // FINGERS_HOLD_S opens back through its filters, instead of staying frozen in a fist.
-  function copyFingers(pose) {
+  function copyFingers(pose, mirrored = mirror) {
     if (!dex3) {
       dex3Loading ??= import('./dex3.js').then(async ({ createDex3Hands, hands }) => {
         fingerSolver = createFingerSolver(hands);
         dex3 = await createDex3Hands(view, sim);
         view.onFrame = () => dex3.update();
-        dex3.show(!!tracker); // still copying when the meshes arrived
+        dex3.show(!!tracker || !!clip?.motion.hands); // still copying when the meshes arrived
       });
       return;
     }
     dex3.show(true);
     for (const robotSide of ['left', 'right']) {
-      const person = pose.hands?.[mirror ? (robotSide === 'left' ? 'right' : 'left') : robotSide];
+      const person = pose.hands?.[mirrored ? (robotSide === 'left' ? 'right' : 'left') : robotSide];
       if (person) {
         lastHandAt[robotSide] = pose.t;
         // Robot axes, as pose.js and retarget.js put the body's points (mirrored like them).
-        const points = person.map((p) => new Vector3(-p.z, mirror ? -p.x : p.x, -p.y));
+        const points = person.map((p) => new Vector3(-p.z, mirrored ? -p.x : p.x, -p.y));
         const angles = fingerSolver.solve(robotSide, points);
         for (const [joint, value] of angles) {
           if (!fingerFilters.has(joint)) fingerFilters.set(joint, new OneEuroFilter(FINGER_FILTER));
@@ -255,6 +269,7 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
       }
       clip = { motion: smoothForDisplay(sim.mujoco, kinematicModel(), motion, { plantFeet }), duration: motionDuration(motion), loop, shown: 0, wrapped: false };
       clipTime = 0;
+      if (!motion.hands) dex3?.show(false);
     },
     /**
      * The RobotMotion of a PoseClip (a recorded or uploaded one), computed here, in slices so the
