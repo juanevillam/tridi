@@ -10,7 +10,7 @@ export const { T, t, A, L, X, S } = dict({
   building: { es: 'Armando al robot…', en: 'Building the robot…' },
   loadFailed: { es: 'No se pudo cargar el robot. Recarga la página para intentar de nuevo.', en: 'The robot could not load. Reload the page to try again.' },
   // stage.js
-  doingImitate: { es: 'imita el video con física (en entrenamiento)', en: 'imitates the video with physics (in training)' },
+  doingImitate: { es: 'imita el video con física', en: 'imitates the video with physics' },
   doingCopy: { es: 'repite el movimiento, sin física', en: 'replays the motion, without physics' },
   doingBalance: { es: 'se equilibra solo ({level})', en: 'balances on its own ({level})' },
   robotLine: { es: 'Robot · {doing}{where}', en: 'Robot · {doing}{where}' },
@@ -26,10 +26,10 @@ export const { T, t, A, L, X, S } = dict({
   pause: { es: 'Pausa', en: 'Pause' },
   play: { es: 'Reproducir', en: 'Play' },
   modeLearnedWide: {
-    es: 'Con física el robot lo hace solo, con sus motores (todavía en entrenamiento: se cae a los pocos segundos). Sin física lo repite como un títere.',
-    en: 'With physics the robot does it on its own, with its motors (still in training: it falls after a few seconds). Without physics it replays it like a puppet.',
+    es: 'Con física el robot lo hace solo, con sus motores, resistiendo empujones. Sin física lo repite como un títere.',
+    en: 'With physics the robot does it on its own, with its motors, resisting pushes. Without physics it replays it like a puppet.',
   },
-  modeLearnedNarrow: { es: 'Con física lo hace solo (aún se cae pronto). Sin física, lo copia como títere.', en: 'With physics it does it alone (still falls soon). Without, it copies like a puppet.' },
+  modeLearnedNarrow: { es: 'Con física lo hace solo, con sus motores. Sin física, lo copia como títere.', en: 'With physics it does it alone, with its motors. Without, it copies like a puppet.' },
   modeNoneWide: {
     es: 'Este movimiento todavía no tiene una política entrenada: el robot lo repite sin física, como referencia.',
     en: 'This motion has no trained policy yet: the robot replays it without physics, as a reference.',

@@ -13,7 +13,7 @@ export const LANGS = ['en', 'es'];
 export const LANG_NAMES = { en: 'English', es: 'Español' };
 const KEY = 'tridi-lang';
 
-const html = document.documentElement;
+const html = typeof document !== 'undefined' ? document.documentElement : { dataset: { lang: 'en' }, lang: 'en' };
 const listeners = new Set();
 
 /** The language on screen now. index.html's pre-paint script settled it before the first frame. */
@@ -82,7 +82,8 @@ export function dict(strings) {
     element.dataset.i18nAttr = JSON.stringify(map);
     applyAttrs(element);
   };
-  return { T, t, A, L, X, S };
+  T.strings = strings;
+  return { T, t, A, L, X, S, strings };
 }
 
 const escapeAttr = (value) => String(value).replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;');
@@ -109,10 +110,12 @@ export function langSwitch(className = '') {
 }
 
 // One listener for every switch on every screen, present or future.
-document.addEventListener('click', (event) => {
-  const button = event.target.closest?.('[data-set-lang]');
-  if (button) setLang(button.dataset.setLang);
-});
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', (event) => {
+    const button = event.target.closest?.('[data-set-lang]');
+    if (button) setLang(button.dataset.setLang);
+  });
+}
 
 /** Text from outside (a server error, a file name) made safe to put inside T()'s markup. */
 export const escapeHtml = (value) =>

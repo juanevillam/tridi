@@ -127,7 +127,7 @@ export const { T, t, A } = dict({
   'track.walk': { es: 'Caminar como la persona del video', en: 'Walk like the person in the video' },
   'track.walkShort': { es: 'Caminar', en: 'Walk' },
   'track.walkSteps': { es: '{n} M pasos · ', en: '{n} M steps · ' },
-  'track.walkProof': { es: 'todavía no camina solo', en: 'not walking on its own yet' },
+  'track.walkProof': { es: '11,8 s caminando solo (65 % de empujones de 250 N)', en: '11.8 s walking on its own (65% of 250 N pushes)' },
   'track.next': { es: 'Lo que viene', en: 'What’s next' },
   'track.nextWhat': { es: 'Cualquier movimiento, en cualquier terreno', en: 'Any motion, on any terrain' },
   'track.nextShort': { es: 'Cualquier terreno', en: 'Any terrain' },
