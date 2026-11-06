@@ -87,7 +87,7 @@ html[data-lang='en'] .t[lang='es'] {
   height: 36px;
   padding: 0;
   border: 1px solid var(--line);
-  border-radius: 50%;
+  border-radius: var(--r-1);
   background: rgb(241 243 238 / 0.04);
   backdrop-filter: blur(10px);
   color: var(--ink-soft);

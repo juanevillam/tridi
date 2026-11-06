@@ -118,7 +118,7 @@ export function mount(root) {
         <a href="#policy">Policy</a>
       </nav>
       ${langSwitch()}
-      <a class="btn btn-signal btn-small" href="#try">${T('nav.try')}<span class="only-wide">${T('nav.tryLive')}</span></a>
+      <a class="btn btn-signal btn-small" href="#try"><span class="only-wide">${T('nav.tryLive')}</span><span class="only-narrow">${T('nav.try')}</span></a>
     </header>
 
     <section class="chapter hero" id="home" data-shot="hero" data-mode="stand">

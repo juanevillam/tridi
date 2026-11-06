@@ -20,7 +20,7 @@ export const { T, t, A } = dict({
   'nav.home': { es: 'Tridi, inicio', en: 'Tridi, home' },
   'nav.product': { es: 'Producto', en: 'Product' },
   'nav.try': { es: 'Probar', en: 'Try it' },
-  'nav.tryLive': { es: ' en vivo', en: ' live' },
+  'nav.tryLive': { es: 'Probar en vivo', en: 'Try it live' },
 
   // Hero
   'hero.live': { es: 'Simulación en vivo · Unitree G1 · MuJoCo', en: 'Live simulation · Unitree G1 · MuJoCo' },
