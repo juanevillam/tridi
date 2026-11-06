@@ -82,24 +82,14 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
         if (clipTime >= LOOP_BLEND_S) clip.wrapped = false;
         clip.shown = clipTime;
         sim.puppet(clip.wrapped ? sampleLoopStart(clip.motion, clipTime, row, lastRow) : sampleMotion(clip.motion, clipTime, row));
-        if (clip.motion.hands) {
-          const idx = Math.min(clip.motion.hands.length - 1, Math.max(0, Math.floor(clipTime * clip.motion.fps)));
-          const h = clip.motion.hands[idx];
-          copyFingers(
-            {
-              t: now / 1000,
-              hands: h && {
-                left: h.left?.map(([x, y, z]) => ({ x, y: -y, z: -z })) ?? null,
-                right: h.right?.map(([x, y, z]) => ({ x, y: -y, z: -z })) ?? null,
-              },
-            },
-            false,
-          );
-        }
+        if (clip.motion.hands) copyMotionHands(clip.motion, clipTime, now);
       } else if (playing) {
         const before = sim.data.time;
         await sim.advance(wall * speed);
         stats.sim += sim.data.time - before;
+        if (sim.policy?.isImitation && lastPolicy?.motion?.hands) {
+          copyMotionHands(lastPolicy.motion, sim.policy.time(sim), now);
+        }
       }
       if (disposed) return;
       stats.wall += wall;
@@ -205,15 +195,31 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
     tracker = retargeter = smoother = rootTracker = leveler = clearance = null;
   }
 
-  // The person's fingers onto the drawn Dex3 hands. A hand the camera stopped seeing for
-  // FINGERS_HOLD_S opens back through its filters, instead of staying frozen in a fist.
+  function copyMotionHands(motion, t, now) {
+    const idx = Math.min(motion.hands.length - 1, Math.max(0, Math.floor(t * motion.fps)));
+    const h = motion.hands[idx];
+    copyFingers(
+      {
+        t: now / 1000,
+        hands: h && {
+          left: h.left?.map(([x, y, z]) => ({ x, y: -y, z: -z })) ?? null,
+          right: h.right?.map(([x, y, z]) => ({ x, y: -y, z: -z })) ?? null,
+        },
+      },
+      false,
+    );
+  }
+
+  // The person's fingers onto the drawn 5-finger Inspire hands (models/inspire/hands.json). A hand
+  // the camera stopped seeing for FINGERS_HOLD_S opens back through its filters, instead of staying
+  // frozen in a fist.
   function copyFingers(pose, mirrored = mirror) {
     if (!dex3) {
-      dex3Loading ??= import('./dex3.js').then(async ({ createDex3Hands, hands }) => {
-        fingerSolver = createFingerSolver(hands);
-        dex3 = await createDex3Hands(view, sim);
+      dex3Loading ??= import('./dex3.js').then(async ({ createDex3Hands, inspireHands }) => {
+        fingerSolver = createFingerSolver(inspireHands);
+        dex3 = await createDex3Hands(view, sim, inspireHands);
         view.onFrame = () => dex3.update();
-        dex3.show(!!tracker || !!clip?.motion.hands); // still copying when the meshes arrived
+        dex3.show(!!tracker || !!clip?.motion.hands || !!(sim.policy?.isImitation && lastPolicy?.motion?.hands)); // still copying when the meshes arrived
       });
       return;
     }

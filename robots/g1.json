@@ -60,5 +60,8 @@
       "right_foot3_collision"
     ]
   },
-  "hands": null
+  "hands": {
+    "dex3": "dex3/hands.json",
+    "inspire": "inspire/hands.json"
+  }
 }

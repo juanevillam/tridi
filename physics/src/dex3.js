@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
 import hands from '../models/dex3/hands.json';
+import inspireHands from '../models/inspire/hands.json';
 
 const MESH_URLS = import.meta.glob('../models/dex3/assets/*.STL', { query: '?url', import: 'default', eager: true });
 const urlOf = (mesh) => MESH_URLS[`../models/dex3/assets/${mesh}.STL`];
@@ -13,17 +14,18 @@ const urlOf = (mesh) => MESH_URLS[`../models/dex3/assets/${mesh}.STL`];
 // g1_mjx.xml, pos="0.0415 ±0.003 0"); the wrist's own mesh sits at the link's origin.
 const RUBBER_HAND_X = 0.0415;
 
-export { hands };
+export { hands, inspireHands };
 
 /**
  * @param viewer  the RobotView (its `world` group is MuJoCo's frame, its `geoms` the drawn robot)
  * @param sim     the Simulation whose data the viewer draws
+ * @param handSpec  hand definition (`hands` = 3-finger Dex3, `inspireHands` = 5-finger Inspire)
  * @returns {Promise<{ show(on: boolean): void, setFingers(side, angles: Map<string, number>): void, update(): void }>}
  *   update() every frame before drawing (the viewer's onFrame does it)
  */
-export async function createDex3Hands(viewer, sim) {
+export async function createDex3Hands(viewer, sim, handSpec = hands) {
   const loader = new STLLoader();
-  const names = new Set(['left', 'right'].flatMap((side) => [hands[side].palm.mesh, ...hands[side].bodies.map((b) => b.mesh)]));
+  const names = new Set(['left', 'right'].flatMap((side) => [handSpec[side].palm.mesh, ...handSpec[side].bodies.map((b) => b.mesh)]));
   const geometries = new Map(
     await Promise.all(
       [...names].map(async (mesh) => {
@@ -48,11 +50,11 @@ export async function createDex3Hands(viewer, sim) {
     const joints = new Map(); // joint name -> { group, axis }
     const groups = new Map([[null, root]]);
     const material = new THREE.MeshStandardMaterial({ color: 0xb8bcc0, metalness: 0.35, roughness: 0.45, flatShading: true });
-    const palm = meshOf(hands[side].palm.mesh, material);
-    palm.position.set(...hands[side].palm.pos);
-    palm.quaternion.copy(quat(hands[side].palm.quat));
+    const palm = meshOf(handSpec[side].palm.mesh, material);
+    palm.position.set(...handSpec[side].palm.pos);
+    palm.quaternion.copy(quat(handSpec[side].palm.quat));
     root.add(palm);
-    for (const b of hands[side].bodies) {
+    for (const b of handSpec[side].bodies) {
       const body = new THREE.Group();
       body.position.set(...b.pos);
       body.quaternion.copy(quat(b.quat));
