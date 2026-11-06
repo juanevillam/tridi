@@ -32,6 +32,10 @@ const LEVELS = {
     es: 'Saltos de tijera imitando el video, con física',
     en: 'Jumping jacks imitating the video, with physics',
   },
+  'g1-saludar': {
+    es: 'Gestos imitando el video, con física',
+    en: 'Gestures imitating the video, with physics',
+  },
 };
 
 const pick = (table) => (id, fallback) => table[id] ?? { es: fallback ?? id, en: fallback ?? id };

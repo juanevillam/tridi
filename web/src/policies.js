@@ -47,6 +47,12 @@ export const IMITATIONS = [
     motion: 'clip_2026-10-24_jumping-jacks-nasm_01-balanced',
     label: 'Saltos de tijera imitando el video, con física',
   },
+  {
+    id: 'g1-saludar',
+    clip: 'clip_saludar-02-gvhmr',
+    motion: 'clip_saludar-02-gvhmr-balanced',
+    label: 'Gestos imitando el video, con física',
+  },
 ].filter(({ id }) => URLS[`../../training/policies/${id}.onnx`]);
 
 export const imitationOf = (id) => IMITATIONS.find((imitation) => imitation.id === id) ?? null;
