@@ -295,7 +295,7 @@ def build_poseclip_v2(npz: Path, hands_npz: Path | None = None, raw: bool = Fals
     foot_contact = detect_foot_contacts(pos, fps)
 
     return {
-        "points": pos.astype(np.float32),
+        "points": pos,
         "fps": fps,
         "static_cam": static_cam,
         "has_hands": has_hands,
@@ -330,7 +330,7 @@ def write(data: dict, video: str, out_dir: Path) -> Path:
 
     n = len(points)
     t = np.arange(n) / fps
-    vis = np.ones((n, 33, 1), dtype=np.float32)
+    vis = np.ones((n, 33, 1))
     if has_hands:
         for side_idx, side in enumerate(("left", "right")):
             seen_mask = hand_conf[:, side_idx] > 0
