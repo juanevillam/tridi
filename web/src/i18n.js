@@ -105,18 +105,47 @@ export const fmtInt = (value) => (language) => Math.round(value).toLocaleString(
 const GLOBE_ICON =
   '<svg class="lang-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" aria-hidden="true"><circle cx="8" cy="8" r="6.2"/><ellipse cx="8" cy="8" rx="2.7" ry="6.2"/><path d="M2.1 6h11.8M2.1 10h11.8"/></svg>';
 
-/** The ES · EN segmented instrument pill for a screen's header. One click flips the page in place. */
+/** Globe-only dropdown trigger for a screen's header: clicking opens the language menu. */
 export function langSwitch(className = '') {
-  return `<div class="lang-switch ${className}" role="group" aria-label="Idioma / Language">${GLOBE_ICON}${LANGS.map(
-    (l) => `<button type="button" data-set-lang="${l}" lang="${l}" aria-label="${LANG_NAMES[l]}" title="${LANG_NAMES[l]}">${l.toUpperCase()}</button>`,
-  ).join('')}</div>`;
+  return `<div class="lang-switch ${className}">
+    <button type="button" class="lang-trigger" aria-haspopup="menu" aria-expanded="false" aria-label="Language / Idioma" title="Language / Idioma">${GLOBE_ICON}</button>
+    <div class="lang-menu" role="menu" aria-label="Language / Idioma">
+      ${LANGS.map(
+        (l) => `<button type="button" role="menuitemradio" data-set-lang="${l}" lang="${l}" aria-label="${LANG_NAMES[l]}"><span>${LANG_NAMES[l]}</span><i class="lang-check" aria-hidden="true">✓</i></button>`,
+      ).join('')}
+    </div>
+  </div>`;
 }
 
 // One listener for every switch on every screen, present or future.
 if (typeof document !== 'undefined') {
+  const closeMenus = (except = null) => {
+    for (const sw of document.querySelectorAll('.lang-switch.open')) {
+      if (sw === except) continue;
+      sw.classList.remove('open');
+      sw.querySelector('.lang-trigger')?.setAttribute('aria-expanded', 'false');
+    }
+  };
   document.addEventListener('click', (event) => {
+    const trigger = event.target.closest?.('.lang-trigger');
+    if (trigger) {
+      const sw = trigger.closest('.lang-switch');
+      const nextOpen = !sw.classList.contains('open');
+      closeMenus(sw);
+      sw.classList.toggle('open', nextOpen);
+      trigger.setAttribute('aria-expanded', String(nextOpen));
+      return;
+    }
     const button = event.target.closest?.('[data-set-lang]');
-    if (button) setLang(button.dataset.setLang);
+    if (button) {
+      setLang(button.dataset.setLang);
+      closeMenus();
+      return;
+    }
+    closeMenus();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeMenus();
   });
 }
 

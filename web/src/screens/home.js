@@ -42,22 +42,20 @@ const MEDIA = `${import.meta.env.BASE_URL}media/`;
 const WALK_VIDEO = `${MEDIA}caminar.mp4`;
 const PUSH_N = 250; // physics/ pushes with 250 N for 0.1 s (physics/README.md)
 const FALLEN_PELVIS_M = 0.45; // the standing G1 has its pelvis at 0.78 m
-const GYM_PUSH_EVERY_S = 2.5; // the Gym pushes the standing robot this often, so every level shows itself
+const GYM_PUSH_EVERY_S = 3.2; // the Gym pushes the standing robot this often, giving it time to recover its stance
 // The first push comes sooner, so a stage shows itself while its stop holds the scroll; never
 // before 2 s, the earliest training ever pushes (training/env.py PUSH_EVERY_S): earlier is outside
 // what the policies learned, and "Estable" could fall.
 const GYM_FIRST_PUSH_S = 2.0;
 const GYM_RESTART_S = 1.6; // a fallen robot lies this long before it is stood up again
 const AFTER_PUSH_S = 5; // after a push in the hero, the robot stands this long before it is reset
-// The Gym in four stops of the real training, each a saved checkpoint of its iterations, with what
-// training/README.md measured for it: seconds standing (of 20) and 250 N pushes held (of 4). The
-// third is v2, the first that held every push; the last is the one the page uses (stand-v7d),
-// which gave up a few pushes to stop pivoting on one foot.
+// The Gym in four stops across orders of magnitude (0, 10 M, 100 M, 1 B steps): each loads its
+// checkpoint and shows how stability scales from falling immediately to absorbing multi-directional shoves.
 const GYM_STAGES = [
-  { level: 'g1-stand-step-0', steps: 0, up: 1.1, pushes: 0 },
-  { level: 'g1-stand-step-10000000', steps: 10e6, up: 9.6, pushes: 1 },
-  { level: 'g1-stand-v2', steps: 40e6, up: 20, pushes: 4 },
-  { level: 'g1-stand', steps: 60e6, up: 20, pushes: 3.6 },
+  { level: 'g1-stand-step-0', steps: 0, label: '0', up: 1.1, pushes: 0 },
+  { level: 'g1-stand-step-10000000', steps: 10e6, label: '10 M', up: 9.6, pushes: 1 },
+  { level: 'g1-stand-v2', steps: 100e6, label: '100 M', up: 20, pushes: 3.6 },
+  { level: 'g1-stand', steps: 1e9, label: '1 B', up: 20, pushes: 4 },
 ];
 // The policy decides 50 times a second (training/README.md), for the simulation's readout.
 const DECISIONS_PER_S = 50;
@@ -175,12 +173,12 @@ export function mount(root) {
             <div class="steps-axis">
               <div class="axis-track" aria-hidden="true">
                 <i class="axis-line"><i class="axis-fill"></i></i>
-                ${GYM_STAGES.map((stage) => `<i class="axis-tick" style="--at: ${(100 * stage.steps) / GYM_STAGES.at(-1).steps}%"></i>`).join('')}
+                ${GYM_STAGES.map((_, i) => `<i class="axis-tick" style="--at: ${(100 * i) / (GYM_STAGES.length - 1)}%"></i>`).join('')}
               </div>
               <div class="axis-stops" role="group" ${A({ 'aria-label': 'gym.stages' })}>
               ${GYM_STAGES.map((stage, i) => `
-                <button class="axis-stop" type="button" data-stage="${i}" style="--at: ${(100 * stage.steps) / GYM_STAGES.at(-1).steps}%">
-                  <span class="axis-label">${T('gym.stepsAt', { n: stage.steps ? `${stage.steps / 1e6} M` : '0' })}</span>
+                <button class="axis-stop" type="button" data-stage="${i}" style="--at: ${(100 * i) / (GYM_STAGES.length - 1)}%">
+                  <span class="axis-label">${T('gym.stepsAt', { n: stage.label })}</span>
                   <span class="axis-verdict">${T(`stage.${i}.verdict`)}</span>
                 </button>`).join('')}
               </div>
@@ -191,7 +189,13 @@ export function mount(root) {
             </div>
           </div>
           <p class="gym-status"><i class="live-dot"></i><span><span data-gym="up">—</span> ${T('gym.standing')} · <span data-gym="status">${T('gym.live')}</span></span></p>
-          <button class="btn btn-signal btn-small gym-push" type="button" disabled>${T('hero.push')} <kbd>${T('key.space')}</kbd></button>
+          <div class="gym-controls">
+            <button class="btn btn-signal btn-small gym-push" type="button" disabled>${T('hero.push')} <kbd>${T('key.space')}</kbd></button>
+            <label class="gym-force">
+              <span class="gym-force-head"><span>${T('gym.force')}</span><b data-gym="force">${PUSH_N} N</b></span>
+              <input type="range" class="gym-force-slider" min="50" max="500" step="25" value="${PUSH_N}" />
+            </label>
+          </div>
           <p class="gym-hint">${T('gym.hint')}</p>
         </div>
       </div>
@@ -244,27 +248,6 @@ export function mount(root) {
             <span class="try-go">${T('try.deliveryGo')}</span>
           </a>
         </nav>
-        <div class="progress-track" ${A({ 'aria-label': 'track.label' })}>
-          <ol class="milestones">
-            <li class="done">
-              <i class="dot" aria-hidden="true"></i>
-              <span class="when">${T('track.today')}</span>
-              <b><span class="only-wide">${T('track.todayWhat')}</span><span class="only-narrow">${T('track.todayShort')}</span></b>
-              <span class="proof">${T('track.todayProof', { held: (l) => T_OF(GYM_STAGES.at(-1).pushes, l), n: PUSH_N })}</span>
-            </li>
-            <li class="now">
-              <i class="dot" aria-hidden="true"></i>
-              <span class="when">${T('track.training')}</span>
-              <b><span class="only-wide">${T('track.walk')}</span><span class="only-narrow">${T('track.walkShort')}</span></b>
-              <span class="proof">${walkPolicy ? T('track.walkSteps', { n: fmtInt(walkPolicy.steps / 1e6) }) : ''}${T('track.walkProof')}</span>
-            </li>
-            <li class="next">
-              <i class="dot" aria-hidden="true"></i>
-              <span class="when">${T('track.next')}</span>
-              <b><span class="only-wide">${T('track.nextWhat')}</span><span class="only-narrow">${T('track.nextShort')}</span></b>
-            </li>
-          </ol>
-        </div>
       </div>
       <footer class="footer">
         <div class="foot-row">
@@ -425,8 +408,8 @@ export function mount(root) {
   }
   // Right after view.push(). Smaller in the hero, whose camera stands 1.35 m from the robot
   // instead of 3.7 m.
-  function drawPush() {
-    if (marks && view) marks.arrow.point(view, mode === 'gym' ? 1 : 0.6);
+  function drawPush(newtons = PUSH_N) {
+    if (marks && view) marks.arrow.point(view, (mode === 'gym' ? 1 : 0.6) * Math.max(0.5, Math.min(1.5, newtons / PUSH_N)));
   }
   function updateMarks() {
     if (!marks) return;
@@ -591,16 +574,34 @@ export function mount(root) {
   // falls (~1,1 s), the others take their first push. Up, the top bar's links and the axis move freely.
   const gymEl = $('.gym');
   const gymPanel = gymEl.querySelector('.sticky');
-  const gym = { since: 0, lastPush: 0, fallen: false, loading: false, shownAt: 0 };
+  const gym = { since: 0, lastPush: 0, fallen: false, loading: false, shownAt: 0, forceN: PUSH_N };
+  const forceSlider = $('.gym-force-slider');
+  const forceLabel = $('[data-gym="force"]');
+  if (forceSlider) {
+    on(forceSlider, 'input', () => {
+      gym.forceN = Number(forceSlider.value) || PUSH_N;
+      if (forceLabel) forceLabel.textContent = `${gym.forceN} N`;
+      shownStage = -1;
+      showGymStage();
+    });
+  }
+  const simInfoBtn = $('.sim-info-btn');
+  if (simInfoBtn) {
+    on(simInfoBtn, 'click', (event) => {
+      event.stopPropagation();
+      simInfoBtn.classList.toggle('open');
+    });
+    on(document, 'click', () => simInfoBtn.classList.remove('open'));
+  }
   // A push by hand (space or the panel's button) on the checkpoint on screen. The Gym's own pushes
   // count from it, so two never land on top of each other.
   function pushGym() {
     if (!view || mode !== 'gym' || !gym.since || gym.fallen || gym.loading) return;
     gym.lastPush = pushed.lastT = view.sim.data.time;
     gym.shownAt ||= performance.now() + GYM_SHOWN_PUSH_S * 1000;
-    view.push();
-    drawPush();
-    $('[data-gym="status"]').innerHTML = T('gym.pushed', { n: PUSH_N });
+    view.push(undefined, gym.forceN);
+    drawPush(gym.forceN);
+    $('[data-gym="status"]').innerHTML = T('gym.pushed', { n: gym.forceN });
   }
   $$('.gym-push').forEach((button) => on(button, 'click', pushGym));
   const GYM_SHOWN_FALL_S = 0.4; // after a fall, a moment on the floor before the scroll is let go
@@ -714,7 +715,7 @@ export function mount(root) {
     }
     $('.axis-fill').style.width = $$('.axis-stop')[stage].style.getPropertyValue('--at');
     $('[data-gym="text"]').innerHTML = T(`stage.${stage}.text`);
-    $('[data-gym="numbers"]').innerHTML = `<span>${T('gym.upOf', { s: (l) => `${fmt(current.up, current.up % 1 ? 1 : 0)(l)} s` })}</span><span>${T('gym.pushesOf', { held: (l) => T_OF(current.pushes, l), n: PUSH_N })}</span>`;
+    $('[data-gym="numbers"]').innerHTML = `<span>${T('gym.upOf', { s: (l) => `${fmt(current.up, current.up % 1 ? 1 : 0)(l)} s` })}</span><span>${T('gym.pushesOf', { held: (l) => T_OF(current.pushes, l), n: gym.forceN })}</span>`;
     // The big number counts up (or back) to this stage's steps.
     const shown = { value: Number($('[data-gym="steps"]').dataset.value ?? 0) };
     gsap.to(shown, {
@@ -724,7 +725,12 @@ export function mount(root) {
       onUpdate: () => {
         const el = $('[data-gym="steps"]');
         el.dataset.value = shown.value;
-        el.textContent = shown.value >= 1e6 ? `${fmt(shown.value / 1e6, shown.value < 1e7 ? 1 : 0)(lang())} M` : fmtInt(shown.value)(lang());
+        el.textContent =
+          shown.value >= 9.95e8
+            ? `${fmt(shown.value / 1e9, 0)(lang())} B`
+            : shown.value >= 1e6
+              ? `${fmt(shown.value / 1e6, shown.value < 1e7 ? 1 : 0)(lang())} M`
+              : fmtInt(shown.value)(lang());
       },
     });
   }
@@ -765,9 +771,9 @@ export function mount(root) {
     if (now - gym.lastPush > GYM_PUSH_EVERY_S) {
       gym.lastPush = pushed.lastT = now;
       gym.shownAt ||= performance.now() + GYM_SHOWN_PUSH_S * 1000;
-      view.push();
-      drawPush();
-      $('[data-gym="status"]').innerHTML = T('gym.pushed', { n: PUSH_N });
+      view.push(undefined, gym.forceN);
+      drawPush(gym.forceN);
+      $('[data-gym="status"]').innerHTML = T('gym.pushed', { n: gym.forceN });
     }
   }
 
@@ -822,6 +828,7 @@ export function mount(root) {
   // A veil per chapter ended in a hard line where the chapter ended; one veil for the whole page,
   // eased toward each chapter's side, leaves no edge. On phones the words sit low: a floor instead.
   const washEl = $('.film-wash');
+  const hudEl = $('.film-hud');
   const navLinks = $$('.topnav a');
   let activeNavHref = '';
   // The hero's title sits low on the left, over the street (landing/city.js).
@@ -839,6 +846,7 @@ export function mount(root) {
         if (isCurrent) link.setAttribute('aria-current', 'true');
         else link.removeAttribute('aria-current');
       }
+      if (hudEl) hudEl.classList.toggle('is-closing', chapter.dataset.shot === 'close');
     }
     const [left, right] = WASH[chapter.dataset.shot] ?? [0, 0];
     const goal = narrow() ? { left: 0, right: 0, floor: chapter.dataset.shot === 'close' ? 0 : 1 } : { left, right, floor: 0 };
@@ -957,9 +965,8 @@ export function mount(root) {
     // Gym: its words come in once; the stages then follow the scroll (gymStage) and stop it (gymGate).
     gsap.from('.gym-caption > *', { opacity: 0, y: 30, stagger: 0.08, duration: 0.6, scrollTrigger: { trigger: '.gym', start: 'top 60%', toggleActions: 'play none none none' } });
 
-    // Policy: the numbers come in one by one.
-    gsap.from('.policy-caption h2, .policy-caption .product, .policy-lede', { opacity: 0, y: 30, stagger: 0.1, scrollTrigger: { trigger: '.policy', start: 'top 60%', end: 'top 10%', scrub: true } });
-    gsap.from('.specs li', { opacity: 0, x: 40, stagger: 0.25, scrollTrigger: { trigger: '.policy', start: 'top top', end: '60% bottom', scrub: true } });
+    // Policy: card rises in cleanly on arrival so all 4 specs and CTA button are immediately visible.
+    gsap.from('.policy-caption > *', { opacity: 0, y: 24, stagger: 0.06, duration: 0.55, scrollTrigger: { trigger: '.policy', start: 'top 65%', toggleActions: 'play none none none' } });
 
     // Closing: the page closes over the film like a curtain, and the manifesto rises word by word.
     gsap.fromTo('.film-shade', { '--shade': 0 }, { '--shade': 0.88, immediateRender: false, scrollTrigger: { trigger: '.closing', start: 'top bottom', end: 'top 30%', scrub: true } });
@@ -971,7 +978,6 @@ export function mount(root) {
     // Done by the time the closing's top reaches the top of the screen, before "Probar" lands.
     // Animate the .tries container rather than individual .try links so GSAP never fights CSS hover states.
     gsap.from('.closing-text, .tries', { opacity: 0, y: 40, stagger: 0.08, scrollTrigger: { trigger: '.closing', start: 'top 70%', end: 'top top', scrub: true } });
-    gsap.from('.milestones li', { opacity: 0, y: 24, stagger: 0.08, duration: 0.5, scrollTrigger: { trigger: '.progress-track', start: 'top 90%', toggleActions: 'play none none none' } });
   }, root);
 
   // The skeleton of Capture: a second WebGL renderer, whose context and shaders took ~1 s to set up

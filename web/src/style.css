@@ -69,53 +69,113 @@ html[data-lang='en'] .t[lang='es'] {
   display: none !important;
 }
 
-/* Language selector: compact segmented instrument capsule with globe icon and active pill. */
+/* Language selector: globe-only trigger button with popover menu (zero width change across languages). */
 .lang-switch {
+  position: relative;
   display: inline-flex;
   flex: none;
   align-items: center;
-  gap: 2px;
-  padding: 3px 3px 3px 8px;
+}
+
+.lang-switch .lang-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 36px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 50%;
   background: rgb(241 243 238 / 0.04);
   backdrop-filter: blur(10px);
-  font: 600 11px/1 var(--mono);
-  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.lang-switch .lang-trigger:hover,
+.lang-switch.open .lang-trigger {
+  border-color: var(--signal);
+  background: rgb(200 255 46 / 0.12);
+  color: var(--signal);
+  box-shadow: none;
 }
 
 .lang-switch .lang-icon {
-  width: 13px;
-  height: 13px;
-  margin-right: 3px;
-  color: var(--muted);
+  width: 16px;
+  height: 16px;
   flex: none;
 }
 
-.lang-switch button {
-  min-width: 0;
-  min-height: 0;
-  padding: 5px 8px;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  line-height: 1;
-  cursor: pointer;
-  transition: color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+.lang-switch .lang-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  display: grid;
+  gap: 2px;
+  min-width: 132px;
+  padding: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-2);
+  background: rgb(8 9 11 / 0.94);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 16px 36px -12px rgb(0 0 0 / 0.85);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s;
 }
 
-.lang-switch button:hover {
+.lang-switch.open .lang-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.lang-switch .lang-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--r-1);
+  background: transparent;
+  color: var(--ink-soft);
+  font: 500 12px/1 var(--display);
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.lang-switch .lang-menu button:hover {
+  background: rgb(241 243 238 / 0.08);
   color: var(--ink);
   box-shadow: none;
 }
 
-html[data-lang='es'] .lang-switch button[lang='es'],
-html[data-lang='en'] .lang-switch button[lang='en'] {
-  background: rgb(200 255 46 / 0.16);
+.lang-switch .lang-check {
+  font-style: normal;
+  font-size: 11px;
   color: var(--signal);
-  box-shadow: inset 0 0 0 1px rgb(200 255 46 / 0.36);
+  opacity: 0;
+}
+
+html[data-lang='es'] .lang-switch .lang-menu button[lang='es'],
+html[data-lang='en'] .lang-switch .lang-menu button[lang='en'] {
+  background: rgb(200 255 46 / 0.12);
+  color: var(--signal);
+}
+
+html[data-lang='es'] .lang-switch .lang-menu button[lang='es'] .lang-check,
+html[data-lang='en'] .lang-switch .lang-menu button[lang='en'] .lang-check {
+  opacity: 1;
 }
 
 /* Short phone versions of some lines: .only-wide is the long copy, .only-narrow its phone
