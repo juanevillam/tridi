@@ -102,9 +102,12 @@ export function mount(root) {
         <div class="boot-track"><i class="boot-bar"></i></div>
       </div>
     </div>
-    <div class="film-hud" aria-hidden="true">
-      <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-      <p class="sim-readout"><span data-sim="rates">MuJoCo</span><span>t <b data-sim="time">0,0</b> s</span><span>${T('sim.contacts')} <b data-sim="contacts">0</b></span></p>
+    <div class="film-hud">
+      <i class="corner tl" aria-hidden="true"></i><i class="corner tr" aria-hidden="true"></i><i class="corner bl" aria-hidden="true"></i><i class="corner br" aria-hidden="true"></i>
+      <div class="sim-readout">
+        <span data-sim="rates">MuJoCo</span><span>t <b data-sim="time">0,0</b> s</span><span>${T('sim.contacts')} <b data-sim="contacts">0</b></span>
+        <button type="button" class="sim-info-btn" aria-label="Info">ⓘ<span class="sim-tooltip" role="tooltip">${T('sim.info')}</span></button>
+      </div>
     </div>
     <div class="film-shade" aria-hidden="true"></div>
     <div class="film-wash" aria-hidden="true"></div>
@@ -148,11 +151,9 @@ export function mount(root) {
           <figure class="frame frame-video">
             <video class="walk-video" src="${WALK_VIDEO}" muted playsinline loop preload="auto"></video>
             <canvas class="walk-overlay" aria-hidden="true"></canvas>
-            <figcaption><span class="only-wide">${T('capture.videoCaption')}</span><span class="only-narrow">${T('capture.videoShort')}</span></figcaption>
           </figure>
           <figure class="frame frame-skeleton">
             <canvas class="skeleton-canvas"></canvas>
-            <figcaption><span class="only-wide">${T('capture.skeletonCaption')}</span><span class="only-narrow">${T('capture.skeletonShort')}</span></figcaption>
           </figure>
         </div>
         <div class="caption capture-caption panel">
@@ -203,10 +204,10 @@ export function mount(root) {
           <h2><span class="only-wide">${T('policy.title')}</span><span class="only-narrow">${T('policy.titleShort')}</span></h2>
           <p class="policy-lede">${T('policy.lede')}</p>
           <ul class="specs">
-            <li><b>265 KB</b><span><span class="only-wide">${T('policy.size')}</span><span class="only-narrow">${T('policy.sizeShort')}</span></span></li>
-            <li><b>29</b><span><span class="only-wide">${T('policy.motors')}</span><span class="only-narrow">${T('policy.motorsShort')}</span></span></li>
-            <li><b>20 ms</b><span><span class="only-wide">${T('policy.rate')}</span><span class="only-narrow">${T('policy.rateShort')}</span></span></li>
-            <li><b>&lt; 1 ms</b><span><span class="only-wide">${T('policy.latency')}</span><span class="only-narrow">${T('policy.latencyShort')}</span></span></li>
+            <li><b>150–500 KB</b><span><span class="only-wide">${T('policy.size')}</span><span class="only-narrow">${T('policy.sizeShort')}</span></span></li>
+            <li><b>19–51 DOF</b><span><span class="only-wide">${T('policy.motors')}</span><span class="only-narrow">${T('policy.motorsShort')}</span></span></li>
+            <li><b>50–250 Hz</b><span><span class="only-wide">${T('policy.rate')}</span><span class="only-narrow">${T('policy.rateShort')}</span></span></li>
+            <li><b>&lt; 0.5 ms</b><span><span class="only-wide">${T('policy.latency')}</span><span class="only-narrow">${T('policy.latencyShort')}</span></span></li>
           </ul>
           <p class="policy-note">${T('policy.note')}</p>
           <a class="btn btn-signal btn-small policy-data" href="#/delivery" data-warm="delivery">${T('policy.cta')}</a>
@@ -244,7 +245,6 @@ export function mount(root) {
           </a>
         </nav>
         <div class="progress-track" ${A({ 'aria-label': 'track.label' })}>
-          <div class="track-line" aria-hidden="true"><i class="track-fill"></i></div>
           <ol class="milestones">
             <li class="done">
               <i class="dot" aria-hidden="true"></i>
@@ -271,7 +271,7 @@ export function mount(root) {
           <span class="wordmark big" aria-label="Tridi">${LOGO}${WORDMARK}</span>
           <dl class="foot-specs">
             <div><dt>${T('foot.madeAt')}</dt><dd>Platanus Hack 26, Caracas</dd></div>
-            <div><dt>${T('foot.robot')}</dt><dd>Unitree G1, MuJoCo Menagerie</dd></div>
+            <div><dt>${T('foot.robot')}</dt><dd>Unitree G1 · Unitree H1 · MuJoCo Menagerie</dd></div>
             <div><dt>${T('foot.code')}</dt><dd><a href="${REPO}" target="_blank" rel="noopener">${T('foot.repo')}</a></dd></div>
           </dl>
         </div>
@@ -822,12 +822,24 @@ export function mount(root) {
   // A veil per chapter ended in a hard line where the chapter ended; one veil for the whole page,
   // eased toward each chapter's side, leaves no edge. On phones the words sit low: a floor instead.
   const washEl = $('.film-wash');
+  const navLinks = $$('.topnav a');
+  let activeNavHref = '';
   // The hero's title sits low on the left, over the street (landing/city.js).
   const WASH = { hero: [0.85, 0], capture: [1, 0], gym: [1, 0], policy: [0, 1], close: [0, 0] };
   const wash = { left: 0, right: 0, floor: 0 };
   const washed = { left: '', right: '', floor: '' }; // what the veil has now: write only changes
   function updateWash() {
     const chapter = chapterAt(scrollY + innerHeight * 0.5);
+    const wantedHref = `#${chapter.id}`;
+    if (wantedHref !== activeNavHref) {
+      activeNavHref = wantedHref;
+      for (const link of navLinks) {
+        const isCurrent = link.getAttribute('href') === wantedHref;
+        link.classList.toggle('active', isCurrent);
+        if (isCurrent) link.setAttribute('aria-current', 'true');
+        else link.removeAttribute('aria-current');
+      }
+    }
     const [left, right] = WASH[chapter.dataset.shot] ?? [0, 0];
     const goal = narrow() ? { left: 0, right: 0, floor: chapter.dataset.shot === 'close' ? 0 : 1 } : { left, right, floor: 0 };
     const k = reducedMotion ? 1 : 0.08;
@@ -957,10 +969,9 @@ export function mount(root) {
     for (const span of words.querySelectorAll('.t')) span.innerHTML = span.innerHTML.split(/<br\s*\/?>/).map((line) => wrapWords(line.trim())).join('<br>');
     gsap.from('.manifesto .w > span', { yPercent: 110, stagger: 0.04, ease: 'power3.out', scrollTrigger: { trigger: '.closing', start: 'top 80%', end: 'top 10%', scrub: true } });
     // Done by the time the closing's top reaches the top of the screen, before "Probar" lands.
-    gsap.from('.closing-text, .try', { opacity: 0, y: 40, stagger: 0.06, scrollTrigger: { trigger: '.closing', start: 'top 70%', end: 'top top', scrub: true } });
-    gsap.from('.milestones li', { opacity: 0, y: 40, stagger: 0.06, scrollTrigger: { trigger: '.progress-track', start: 'top 95%', end: 'top 60%', scrub: true } });
-    // The progress line fills up to "Entrenando" (the middle milestone) as it scrolls in.
-    gsap.fromTo('.track-fill', { scale: 0 }, { scale: 1, ease: 'none', scrollTrigger: { trigger: '.progress-track', start: 'top 85%', end: 'top 45%', scrub: true } });
+    // Animate the .tries container rather than individual .try links so GSAP never fights CSS hover states.
+    gsap.from('.closing-text, .tries', { opacity: 0, y: 40, stagger: 0.08, scrollTrigger: { trigger: '.closing', start: 'top 70%', end: 'top top', scrub: true } });
+    gsap.from('.milestones li', { opacity: 0, y: 24, stagger: 0.08, duration: 0.5, scrollTrigger: { trigger: '.progress-track', start: 'top 90%', toggleActions: 'play none none none' } });
   }, root);
 
   // The skeleton of Capture: a second WebGL renderer, whose context and shaders took ~1 s to set up

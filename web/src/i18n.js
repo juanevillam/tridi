@@ -102,10 +102,13 @@ export const fmt = (value, digits = 1) => (language) =>
   Number(value).toLocaleString(language, { minimumFractionDigits: digits, maximumFractionDigits: digits });
 export const fmtInt = (value) => (language) => Math.round(value).toLocaleString(language);
 
-/** The ES · EN switch for a screen's header. One click flips the page in place. */
+const GLOBE_ICON =
+  '<svg class="lang-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" aria-hidden="true"><circle cx="8" cy="8" r="6.2"/><ellipse cx="8" cy="8" rx="2.7" ry="6.2"/><path d="M2.1 6h11.8M2.1 10h11.8"/></svg>';
+
+/** The ES · EN segmented instrument pill for a screen's header. One click flips the page in place. */
 export function langSwitch(className = '') {
-  return `<div class="lang-switch ${className}" role="group" aria-label="Idioma / Language">${LANGS.map(
-    (l) => `<button type="button" data-set-lang="${l}" lang="${l}" aria-label="${LANG_NAMES[l]}">${l.toUpperCase()}</button>`,
+  return `<div class="lang-switch ${className}" role="group" aria-label="Idioma / Language">${GLOBE_ICON}${LANGS.map(
+    (l) => `<button type="button" data-set-lang="${l}" lang="${l}" aria-label="${LANG_NAMES[l]}" title="${LANG_NAMES[l]}">${l.toUpperCase()}</button>`,
   ).join('')}</div>`;
 }
 

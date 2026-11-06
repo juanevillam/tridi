@@ -11,6 +11,10 @@ export const { T, t, A } = dict({
   'boot.failed': { es: 'No se pudo cargar el robot. Recarga la página.', en: 'The robot could not load. Reload the page.' },
   'sim.contacts': { es: 'contactos', en: 'contacts' },
   'sim.rates': { es: 'MuJoCo · física {hz} Hz · política {policy} Hz', en: 'MuJoCo · physics {hz} Hz · policy {policy} Hz' },
+  'sim.info': {
+    es: 'Física 250 Hz: MuJoCo resuelve gravedad, contactos y torques 250 veces/s (cada 4 ms). Política 50 Hz: la red neuronal actualiza los motores 50 veces/s (cada 20 ms). t: tiempo simulado; contactos: puntos de apoyo activos.',
+    en: 'Physics 250 Hz: MuJoCo solves gravity, contacts and joint torques 250 times/s (every 4 ms). Policy 50 Hz: the neural network updates motor targets 50 times/s (every 20 ms). t: simulation time; contacts: active collision points.',
+  },
 
   // Top bar
   'nav.home': { es: 'Tridi, inicio', en: 'Tridi, home' },
@@ -83,17 +87,17 @@ export const { T, t, A } = dict({
   'policy.title': { es: 'Te llevas la política entrenada y los datos', en: 'You get the trained policy and the motion data' },
   'policy.titleShort': { es: 'La política y los datos', en: 'The policy and the data' },
   'policy.lede': {
-    es: 'Una red neuronal pequeña que mueve sola los 29 motores del robot, exportada a ONNX. Aquí corre en tu navegador.',
-    en: 'A small neural network that drives all 29 motors on its own, exported to ONNX. Here it runs in your browser.',
+    es: 'Una red neuronal compacta exportada a ONNX que coordina los motores del robot en tiempo real. El peso y la frecuencia escalan según la complejidad de la habilidad y el robot.',
+    en: 'A compact neural network exported to ONNX that coordinates the robot’s actuators in real time. Network size and control rate scale with skill complexity and robot morphology.',
   },
-  'policy.size': { es: 'la red completa que mueve al robot', en: 'the whole network that moves the robot' },
-  'policy.sizeShort': { es: 'pesa la red', en: 'network size' },
-  'policy.motors': { es: 'motores que controla a la vez', en: 'motors it controls at once' },
-  'policy.motorsShort': { es: 'motores a la vez', en: 'motors at once' },
-  'policy.rate': { es: 'entre una decisión y la siguiente', en: 'between one decision and the next' },
-  'policy.rateShort': { es: 'entre decisiones', en: 'between decisions' },
-  'policy.latency': { es: 'lo que tarda en decidir', en: 'to make a decision' },
-  'policy.latencyShort': { es: 'en decidir', en: 'to decide' },
+  'policy.size': { es: 'según la complejidad de la habilidad (ONNX)', en: 'scales with skill complexity (ONNX)' },
+  'policy.sizeShort': { es: 'según habilidad', en: 'by complexity' },
+  'policy.motors': { es: 'actuadores coordinados (cuerpo y manos 5 dedos)', en: 'actuators coordinated (body & 5-finger hands)' },
+  'policy.motorsShort': { es: 'grados de libertad', en: 'degrees of freedom' },
+  'policy.rate': { es: 'frecuencia de control (4–20 ms por decisión)', en: 'control loop frequency (4–20 ms per step)' },
+  'policy.rateShort': { es: 'ciclo de control', en: 'control rate' },
+  'policy.latency': { es: 'inferencia en CPU por decisión', en: 'CPU inference latency per step' },
+  'policy.latencyShort': { es: 'inferencia CPU', en: 'CPU inference' },
   'policy.note': { es: 'Con ella van los datos del movimiento, corregidos por la física y probados en cuatro mundos.', en: 'It ships with the motion data, corrected by physics and tested in four worlds.' },
   'policy.cta': { es: 'Ver los datos entrenados →', en: 'See the trained data →' },
 
@@ -104,7 +108,7 @@ export const { T, t, A } = dict({
 
   // Closing
   // One sentence per line (home.js keeps the <br> when it splits the words for the animation).
-  'close.manifesto': { es: 'Los robots ya tienen cuerpo.<br>Les falta experiencia.', en: 'Robots already have bodies.<br>What they lack is experience.' },
+  'close.manifesto': { es: 'El hardware ya existe.<br>Entrenamos la física y las políticas.', en: 'Humanoids have the hardware.<br>We train the physics and policies.' },
   'close.text': { es: 'Tridi convierte cualquier video de una persona en datos para entrenar a tu humanoide.', en: 'Tridi turns any video of a person into training data for your humanoid.' },
   'close.tries': { es: 'Probar Tridi', en: 'Try Tridi' },
   'try.live': { es: 'Muévete y el robot te copia', en: 'Move and the robot copies you' },
@@ -132,7 +136,7 @@ export const { T, t, A } = dict({
   'track.nextWhat': { es: 'Cualquier movimiento, en cualquier terreno', en: 'Any motion, on any terrain' },
   'track.nextShort': { es: 'Cualquier terreno', en: 'Any terrain' },
   'foot.madeAt': { es: 'Hecho en', en: 'Made at' },
-  'foot.robot': { es: 'Robot', en: 'Robot' },
+  'foot.robot': { es: 'Robots', en: 'Robots' },
   'foot.code': { es: 'Código', en: 'Code' },
   'foot.repo': { es: 'Abierto en GitHub', en: 'Open on GitHub' },
 });

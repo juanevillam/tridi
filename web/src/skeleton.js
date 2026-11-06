@@ -3,11 +3,17 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// MediaPipe Pose bones between the 33 landmarks. The face has none: its 11 points (nose, eyes,
-// ears, mouth) are a few centimeters apart and, drawn as joints and bones, read as a blob at
-// full-body scale. pose() draws a head and a neck in their place.
+// MediaPipe Pose bones between the 33 landmarks plus 8 derived anatomical trunk landmarks:
+// 33 pelvis root, 34 lumbar spine (L3), 35 thoracic spine (T8), 36 sternum / neck base (C7),
+// 37-38 left/right clavicles, 39-40 left/right ribcage flanks. The face has no individual bones:
+// pose() draws a head and a neck from the sternum (36) in their place.
+const TOTAL_BODY_JOINTS = 41;
 const BONES = [
-  [11, 12], [11, 23], [12, 24], [23, 24], // torso
+  [23, 33], [33, 24], // pelvic girdle
+  [33, 34], [34, 35], [35, 36], // articulated spine (sacrum -> lumbar -> thoracic -> sternum)
+  [11, 37], [37, 36], [36, 38], [38, 12], // clavicles and shoulder girdle
+  [23, 39], [39, 11], [24, 40], [40, 12], // lateral torso flanks
+  [35, 39], [35, 40], [34, 23], [34, 24], // ribcage and Iliac braces
   [11, 13], [13, 15], [15, 17], [15, 19], [15, 21], [17, 19], // left arm and hand
   [12, 14], [14, 16], [16, 18], [16, 20], [16, 22], [18, 20], // right arm and hand
   [23, 25], [25, 27], [27, 29], [27, 31], [29, 31], // left leg and foot
@@ -106,7 +112,7 @@ export class SkeletonView {
     const material = new THREE.MeshStandardMaterial({ color: HUMAN_COLOR, roughness: 0.5 });
     // A unit cylinder along y, stretched and turned into each bone every frame.
     this.bones = new THREE.InstancedMesh(new THREE.CylinderGeometry(BONE_RADIUS, BONE_RADIUS, 1, 8), material, BONES.length);
-    this.joints = new THREE.InstancedMesh(new THREE.SphereGeometry(JOINT_RADIUS, 12, 8), material, 33);
+    this.joints = new THREE.InstancedMesh(new THREE.SphereGeometry(JOINT_RADIUS, 12, 8), material, TOTAL_BODY_JOINTS);
     this.handBones = new THREE.InstancedMesh(new THREE.CylinderGeometry(HAND_BONE_RADIUS, HAND_BONE_RADIUS, 1, 6), material, 2 * HAND_BONES.length);
     this.handJoints = new THREE.InstancedMesh(new THREE.SphereGeometry(HAND_JOINT_RADIUS, 8, 6), material, 42);
     // three.js culls an InstancedMesh by a bounding sphere computed once, around the first
@@ -119,7 +125,7 @@ export class SkeletonView {
     // compiled with instance colors from the first frame.
     this.tint = new THREE.Color(1, 1, 1);
     for (let i = 0; i < BONES.length; i++) this.bones.setColorAt(i, this.tint);
-    for (let i = 0; i < 33; i++) this.joints.setColorAt(i, this.tint);
+    for (let i = 0; i < TOTAL_BODY_JOINTS; i++) this.joints.setColorAt(i, this.tint);
     for (let i = 0; i < 2 * HAND_BONES.length; i++) this.handBones.setColorAt(i, this.tint);
     for (let i = 0; i < 42; i++) this.handJoints.setColorAt(i, this.tint);
     this.body.add(this.bones, this.joints, this.handBones, this.handJoints, this.head, this.neck);
@@ -152,11 +158,23 @@ export class SkeletonView {
   setClip(clip) {
     this.clip = clip;
     this.time = 0;
-    let floor = Infinity;
+    const lowFeet = [];
+    const hipDiffs = [];
     for (const { joints } of clip.frames) {
-      for (const j of FOOT_JOINTS) if (joints[j][3] >= MIN_VISIBILITY) floor = Math.min(floor, joints[j][1]);
+      let frameLow = Infinity;
+      for (const j of FOOT_JOINTS) if (joints[j][3] >= MIN_VISIBILITY) frameLow = Math.min(frameLow, joints[j][1]);
+      if (Number.isFinite(frameLow)) lowFeet.push(frameLow);
+      if (joints[23][3] >= MIN_VISIBILITY && joints[24][3] >= MIN_VISIBILITY) {
+        hipDiffs.push(joints[23][1] - joints[24][1]);
+      }
     }
+    lowFeet.sort((x, y) => x - y);
+    const floor = lowFeet.length ? lowFeet[Math.floor(0.05 * (lowFeet.length - 1))] : 0;
     this.body.position.y = Number.isFinite(floor) ? -floor : 0;
+    hipDiffs.sort((x, y) => x - y);
+    const medHipDiff = hipDiffs.length ? hipDiffs[Math.floor(0.5 * (hipDiffs.length - 1))] : 0;
+    // Remove small constant regressor vertical bias (up to 3 cm) between left and right hip landmarks.
+    this.hipBiasY = Math.abs(medHipDiff) <= 0.035 ? medHipDiff : 0;
     // The trail: the center of the hips of every frame, on the floor (the body's y offset does not
     // move x and z, so the trail lies under the skeleton without it), as a ribbon: two vertices per
     // frame across the direction of travel, two triangles per step between frames.
@@ -205,10 +223,33 @@ export class SkeletonView {
     return this.clip.frames[this.indexAt(time)];
   }
 
-  pose({ joints, hands }) {
+  pose({ joints: rawJoints, hands }) {
     const { a, b, dir, m, q, s } = this.tmp;
     const fineLeft = !!hands?.left;
     const fineRight = !!hands?.right;
+    const hipBias = this.hipBiasY || 0;
+    const lHip = [rawJoints[23][0], rawJoints[23][1] - 0.5 * hipBias, rawJoints[23][2], rawJoints[23][3]];
+    const rHip = [rawJoints[24][0], rawJoints[24][1] + 0.5 * hipBias, rawJoints[24][2], rawJoints[24][3]];
+    const lSh = rawJoints[11];
+    const rSh = rawJoints[12];
+    const trunkVis = Math.min(lHip[3], rHip[3], lSh[3], rSh[3]);
+    const mix = (p, qPt, t, v = trunkVis) => [
+      p[0] + (qPt[0] - p[0]) * t,
+      p[1] + (qPt[1] - p[1]) * t,
+      p[2] + (qPt[2] - p[2]) * t,
+      v,
+    ];
+    const pelvis = mix(lHip, rHip, 0.5, Math.min(lHip[3], rHip[3])); // 33: pelvis root / sacrum
+    const sternum = mix(lSh, rSh, 0.5, Math.min(lSh[3], rSh[3])); // 36: sternum / neck base (C7)
+    const lumbar = mix(pelvis, sternum, 0.33); // 34: lumbar spine (L3)
+    const thoracic = mix(pelvis, sternum, 0.67); // 35: thoracic spine (T8)
+    const lClavicle = mix(sternum, lSh, 0.5, Math.min(lSh[3], rSh[3])); // 37: left clavicle
+    const rClavicle = mix(sternum, rSh, 0.5, Math.min(lSh[3], rSh[3])); // 38: right clavicle
+    const lRib = mix(lHip, lSh, 0.55, Math.min(lHip[3], lSh[3])); // 39: left ribcage flank
+    const rRib = mix(rHip, rSh, 0.55, Math.min(rHip[3], rSh[3])); // 40: right ribcage flank
+    const joints = rawJoints.map((pt, idx) => (idx === 23 ? lHip : idx === 24 ? rHip : pt));
+    joints.push(pelvis, lumbar, thoracic, sternum, lClavicle, rClavicle, lRib, rRib);
+
     const coarseHidden = (i) => (fineLeft && COARSE_HAND_POINTS.left.has(i)) || (fineRight && COARSE_HAND_POINTS.right.has(i));
     const drawn = (i) => !coarseHidden(i) && (ARM_POINTS.has(i) || joints[i][3] >= MIN_VISIBILITY);
     // 1 where the camera saw the point, down to FADED where MediaPipe estimated it.

@@ -87,10 +87,12 @@ export function mountStage(root) {
     }
   }
 
+  let loadedClipId = null;
+
   // With physics, a clip with an imitation policy is shown with it.
   function physicsFor(clip) {
     const imitation = imitationFor(clip);
-    if (physics && imitation && level !== imitation.id) {
+    if (physics && imitation && (level !== imitation.id || loadedClipId !== clip?.id)) {
       $('policy').value = imitation.id;
       return loadLevel(imitation.id);
     }
@@ -178,10 +180,20 @@ export function mountStage(root) {
       const { onnx, json } = policyUrls(id);
       // An imitation policy also needs the RobotMotion of the clip it learned.
       const imitation = imitationOf(id);
-      const motionId = imitation?.motion ?? imitation?.clip;
-      const learned = imitation && (motions.get(motionId) ?? (await savedMotion(motionId)));
+      const activeClipId = current?.clip?.id;
+      const clipBalancedId =
+        imitation && activeClipId && (imitation.robot ?? 'unitree_g1') === 'unitree_g1' && matchesImitation(imitation, activeClipId)
+          ? `${activeClipId}-balanced`
+          : null;
+      const motionId = clipBalancedId ?? imitation?.motion ?? imitation?.clip;
+      const learned =
+        imitation &&
+        (motions.get(motionId) ??
+          (await savedMotion(motionId)) ??
+          (imitation.motion ? await savedMotion(imitation.motion) : null));
       await view.loadPolicy(onnx, json, imitation ? { motion: learned } : {});
       level = id;
+      loadedClipId = imitation ? (activeClipId ?? imitation.clip) : null;
       robotModel = imitation?.robot ?? 'unitree_g1';
       if ($('robot-model')) $('robot-model').value = robotModel;
       if (imitation) skeleton.time = 0; // the robot starts the clip from its first pose

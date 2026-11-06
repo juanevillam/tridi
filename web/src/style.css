@@ -69,55 +69,53 @@ html[data-lang='en'] .t[lang='es'] {
   display: none !important;
 }
 
-/* ES · EN: a small segmented switch for the headers. */
-/* The language: two plain words in the nav's own type, the current one lit and underlined in
-   lime, the other dim. No pill: it is a setting, not a button competing with "Try it". */
+/* Language selector: compact segmented instrument capsule with globe icon and active pill. */
 .lang-switch {
   display: inline-flex;
   flex: none;
   align-items: center;
   gap: 2px;
-  font: 500 12px/1 var(--mono);
+  padding: 3px 3px 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgb(241 243 238 / 0.04);
+  backdrop-filter: blur(10px);
+  font: 600 11px/1 var(--mono);
   letter-spacing: 0.06em;
+}
+
+.lang-switch .lang-icon {
+  width: 13px;
+  height: 13px;
+  margin-right: 3px;
+  color: var(--muted);
+  flex: none;
 }
 
 .lang-switch button {
   min-width: 0;
   min-height: 0;
-  padding: 6px 4px;
+  padding: 5px 8px;
   border: 0;
-  border-bottom: 1px solid transparent;
-  border-radius: 0;
-  background: none;
+  border-radius: 999px;
+  background: transparent;
   color: var(--muted);
   font: inherit;
   line-height: 1;
   cursor: pointer;
-  transition: color 0.2s, border-color 0.2s;
-}
-
-/* The slash sits outside the second word, so only the word is underlined. */
-.lang-switch button + button {
-  position: relative;
-  margin-left: 14px;
-}
-
-.lang-switch button + button::before {
-  content: '/';
-  position: absolute;
-  left: -11px;
-  color: var(--muted);
-  pointer-events: none;
+  transition: color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
 }
 
 .lang-switch button:hover {
   color: var(--ink);
+  box-shadow: none;
 }
 
 html[data-lang='es'] .lang-switch button[lang='es'],
 html[data-lang='en'] .lang-switch button[lang='en'] {
-  color: var(--ink);
-  border-bottom-color: var(--signal);
+  background: rgb(200 255 46 / 0.16);
+  color: var(--signal);
+  box-shadow: inset 0 0 0 1px rgb(200 255 46 / 0.36);
 }
 
 /* Short phone versions of some lines: .only-wide is the long copy, .only-narrow its phone
@@ -608,6 +606,7 @@ select:disabled {
 .controls {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  align-items: start;
   gap: 16px;
 }
 
@@ -825,14 +824,15 @@ select:disabled {
 }
 
 .sims-list {
-  /* As tall as the scene and its controls, never taller: height 0 keeps the clips out of the row's
-     height, min-height 100% stretches the column back to it, and the clips scroll inside. Before,
-     every clip made the page longer and the controls ended far above the end of the list. */
+  /* Sticky and capped to the viewport height so all motions in #gallery can be scrolled at 100%
+     zoom without scrolling the main page. */
+  position: sticky;
+  top: 16px;
   display: flex;
   flex-direction: column;
-  align-self: stretch;
-  height: 0;
-  min-height: 100%;
+  align-self: start;
+  max-height: calc(100svh - 32px);
+  min-height: 0;
   padding: 20px;
   border-radius: var(--radius);
   background: var(--surface);
