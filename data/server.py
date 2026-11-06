@@ -77,6 +77,8 @@ CLIP_ID = re.compile(r"^clip_[A-Za-z0-9_-]+$")
 POLICY_ID = re.compile(r"^clip_[A-Za-z0-9_-]+-step-\d+$")
 
 ROOT = Path(__file__).resolve().parent.parent
+GVHMR_PYTHON = Path(os.environ.get("GVHMR_ROOT", Path.home() / "Code" / "tridi-thirdparty" / "GVHMR")) / ".venv" / "bin" / "python"
+WILOR_PYTHON = Path(os.environ.get("WILOR_ROOT", Path.home() / "Code" / "tridi-thirdparty" / "WiLoR")) / ".venv" / "bin" / "python"
 
 # Camera clips (POST /clips). A 30 s PoseClip at 30 fps weighs ~0.9 MB (measured on data/clips/):
 # 5 MB leaves room without accepting anything. Below 0.8 valid_ratio the body was missing in more
@@ -187,6 +189,66 @@ def _get(table: dict, key: str, what: str):
 # --- Worker -------------------------------------------------------------------------------------
 
 
+def _use_capture2(subject: Subject) -> bool:
+    """Whether to run Capture 2.0 (GVHMR + WiLoR -> PoseClip v2) instead of MediaPipe v1."""
+    mode = os.environ.get("TRIDI_CAPTURE", "v2").lower()
+    if mode == "v1":
+        return False
+    # GVHMR tracks the main subject automatically; if the user clicked a secondary person in a
+    # multi-person video, use the tracked box + MediaPipe lift for that specific track_id.
+    return GVHMR_PYTHON.exists() and subject.selected_by == "auto"
+
+
+def _lift_capture2(job: Job, video: Video, subject: Subject) -> dict:
+    """Runs GVHMR + WiLoR + to_poseclip.py on `video.path` and writes PoseClip v2 to DATA_DIR/clips."""
+    work_dir = job.dir / f"cap2_{video.path.stem}"
+    work_dir.mkdir(parents=True, exist_ok=True)
+    gvhmr_npz = work_dir / f"{video.path.stem}.gvhmr.npz"
+    wilor_npz = work_dir / f"{video.path.stem}.wilor.npz"
+    video.progress = 0.05
+    res = subprocess.run(
+        [str(GVHMR_PYTHON), str(ROOT / "data" / "capture2" / "gvhmr_mac.py"), str(video.path), "--out", str(gvhmr_npz)],
+        capture_output=True, text=True,
+    )
+    if res.returncode != 0 or not gvhmr_npz.exists():
+        tail = (res.stderr or res.stdout or "").strip().splitlines()[-1:] or ["falló GVHMR"]
+        raise RuntimeError(f"no se pudo reconstruir el cuerpo 3D (GVHMR): {tail[0][:240]}")
+    video.progress = 0.55
+    hands_args: list[str] = []
+    if WILOR_PYTHON.exists():
+        res_w = subprocess.run(
+            [str(WILOR_PYTHON), str(ROOT / "data" / "capture2" / "wilor_mac.py"), str(video.path), "--out", str(wilor_npz)],
+            capture_output=True, text=True,
+        )
+        if res_w.returncode == 0 and wilor_npz.exists():
+            hands_args = ["--hands", str(wilor_npz)]
+    video.progress = 0.85
+    out_clips = work_dir / "clips"
+    res_p = subprocess.run(
+        [str(GVHMR_PYTHON), str(ROOT / "data" / "capture2" / "to_poseclip.py"), str(gvhmr_npz), *hands_args, "--out-dir", str(out_clips)],
+        capture_output=True, text=True,
+    )
+    produced = sorted(out_clips.glob("clip_*.json")) if out_clips.exists() else []
+    if res_p.returncode != 0 or not produced:
+        tail = (res_p.stderr or res_p.stdout or "").strip().splitlines()[-1:] or ["falló to_poseclip"]
+        raise RuntimeError(f"no se pudo armar el PoseClip v2: {tail[0][:240]}")
+    clip = json.loads(produced[0].read_text())
+    (DATA_DIR / "clips").mkdir(parents=True, exist_ok=True)
+    clip_id = _clip_id(video.name, DATA_DIR / "clips")
+    clip.update({
+        "id": clip_id,
+        "source": "upload",
+        "source_file": video.name,
+        "subject": {"track_id": subject.track_id, "selected_by": subject.selected_by},
+    })
+    (DATA_DIR / "clips" / f"{clip_id}.json").write_text(json.dumps(clip, separators=(",", ":")))
+    npz_src = produced[0].with_suffix(".npz")
+    if npz_src.exists():
+        shutil.move(str(npz_src), str(DATA_DIR / "clips" / f"{clip_id}.npz"))
+    shutil.rmtree(work_dir, ignore_errors=True)
+    return clip
+
+
 def _process_video(job: Job, video: Video) -> None:
     def progress(stage: str, i: int, total: int) -> None:
         video.stage = "tracking" if stage == "tracking" else "pose3d"
@@ -216,8 +278,12 @@ def _process_video(job: Job, video: Video) -> None:
         for t in video.tracking.people_at_first_frame()
     ]
     video.stage, video.progress = "pose3d", 0.0
-    lifted = lift_subject(video.path, video.tracking, subject, progress)
-    _, clip = write_clip(video.tracking, subject, lifted, video.name, DATA_DIR / "clips")
+    if _use_capture2(subject):
+        clip = _lift_capture2(job, video, subject)
+        lifted = lift_subject(video.path, video.tracking, subject)
+    else:
+        lifted = lift_subject(video.path, video.tracking, subject, progress)
+        _, clip = write_clip(video.tracking, subject, lifted, video.name, DATA_DIR / "clips")
     write_scene(scene_of(video.path, lifted, video.tracking.fps, clip["id"]), DATA_DIR / "scenes")
     video.clip_id = clip["id"]
     video.valid_ratio = clip["quality"]["valid_ratio"]

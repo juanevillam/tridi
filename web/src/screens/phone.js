@@ -129,6 +129,7 @@ export function mount(root, { api }, [sessionId] = []) {
       if (!api.ok) throw new capture.UploadError(NO_TRIDI);
       const session = await capture.createLiveCapture(video, {
         model: MODEL,
+        hands: true,
         facingMode: 'environment',
         onProgress: ({ stage, done }) =>
           big(T(stage === 'model' ? (done ? 'allow' : 'preparing') : 'waitingPermission')),
