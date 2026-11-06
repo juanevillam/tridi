@@ -4,9 +4,9 @@ Del video al cuerpo humano en 3D anclado al mundo, con dedos (bloque 4 de [`../.
 
 | Pieza | Para qué | Estado |
 | --- | --- | --- |
-| [GVHMR](https://github.com/zju3dv/GVHMR) | Cuerpo SMPL-X en el mundo, con gravedad y cámara que se mueve | Corre en la Mac (`gvhmr_mac.py`); `to_poseclip.py` lo pasa a `PoseClip` v1 y la web ya lo usa |
-| [WiLoR](https://github.com/rolpotamias/WiLoR) | Manos con dedos (MANO), 15 articulaciones por mano | Corre en la Mac (`wilor_mac.py`): dedos bien en `dedos-01` (el "1" con el índice) |
-| Fusión → `PoseClip` v2 | Cuerpo + manos en SMPL-X, con contactos | Sin empezar (contrato primero) |
+| [GVHMR](https://github.com/zju3dv/GVHMR) | Cuerpo SMPL-X en el mundo, con gravedad y cámara que se mueve | Corre en la Mac (`gvhmr_mac.py`) |
+| [WiLoR](https://github.com/rolpotamias/WiLoR) | Manos con dedos (MANO), 15 articulaciones por mano | Corre en la Mac (`wilor_mac.py`): dedos bien en `dedos-01`, `saludar-02`, `dedos-02`, `lavar-04` |
+| Fusión → `PoseClip` v2 | Cuerpo + manos en SMPL-X, con contactos (`docs/contrato.md`) | Hecho (`to_poseclip.py`): une GVHMR + WiLoR, filtra manos por muñeca, guarda SMPL-X y los 21 puntos por mano |
 
 ## Licencias
 
@@ -63,7 +63,7 @@ Revisados con `picklescan`: `wilor_final.ckpt` limpio. `detector.pt` marca `geta
 
 `MANO_RIGHT.pkl` (de `mano_v1_2.zip`, la cuenta de Juan) revisado a mano como el de SMPL: solo numpy, scipy, chumpy y `set`. WiLoR importa pyrender (solo para dibujar) pidiendo EGL de Linux y su modelo arma renderers de entrenamiento: `wilor_mac.py` deja pasar el import con `PYOPENGL_PLATFORM=darwin` y apaga esos renderers, sin tocar su código. El detector va en la GPU y el modelo de WiLoR en la CPU (en MPS aborta, como el de GVHMR): ~0,6 s por cuadro. `--max-frames 30` para una prueba rápida.
 
-Sale `<video>.wilor.npz`: por mano (izquierda, derecha) y cuadro, los parámetros MANO, los 21 puntos 3D en la cámara y la confianza (0 si no vio esa mano). Lo que sigue: fusionar con el cuerpo de GVHMR (sus muñecas dicen qué manos son del sujeto) en `PoseClip` v2, contrato primero.
+Sale `<video>.wilor.npz`: por mano (izquierda, derecha) y cuadro, los parámetros MANO, los 21 puntos 3D en la cámara y la confianza (0 si no vio esa mano). `to_poseclip.py` lo encuentra solo (al lado del `.gvhmr.npz` o en `hands/`) y lo fusiona con el cuerpo de GVHMR en `PoseClip` v2: descarta una mano si su muñeca en cámara queda a más de 0,30 del lado largo de la imagen respecto a la muñeca de GVHMR, pone la orientación de la muñeca (`R_elbow⁻¹ · R_wrist_wilor`) y los 15 ángulos de dedos (`flat_hand_mean=True`) en SMPL-X, y saca los 21 puntos 3D por mano y los contactos de los pies en el espacio del contrato.
 
 ## Primer resultado (2026-11-04)
 
