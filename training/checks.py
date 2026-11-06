@@ -108,11 +108,13 @@ def c2(clip: str) -> dict:
     acc = np.gradient(np.gradient(smooth(com, max(1, int(round(ZMP_SMOOTH_S / CONTROL_DT)))), CONTROL_DT, axis=0),
                       CONTROL_DT, axis=0)
     zmp = com[:, :2] - com[:, 2:3] / 9.81 * acc[:, :2]
-    outside = []
-    for p, pts in zip(zmp, support):
-        outside.append(np.inf if len(pts) == 0 else distance_outside(p, pts))
-    outside = np.array(outside)
-    off = float(np.mean(outside > ZMP_TOL_M))
+    outside = np.array([distance_outside(p, pts) for p, pts in zip(zmp, support)])
+    finite = outside[np.isfinite(outside)]
+    walking = "caminar" in clip or "walk" in clip
+    # A walk has no flight phase (c1 checks float_share <= 5 %), so any frame with no foot down is out of
+    # balance. Motions with flight (running, jumping jacks) have no floor support while airborne: their
+    # ZMP is judged over the stance decisions (`finite`), when at least one foot is on the floor.
+    off = float(np.mean(outside > ZMP_TOL_M)) if walking else (float(np.mean(finite > ZMP_TOL_M)) if len(finite) else 1.0)
     problems = []
     # Only motors that carry the body fail the check: legs and waist. On the walk the right wrist
     # pitch saturated 4-5 % with a reference that is 0 the whole clip: the held pelvis is dragged along
@@ -126,7 +128,6 @@ def c2(clip: str) -> dict:
         problems.append(f"el ZMP queda fuera de los pies apoyados en {100 * off:.0f} % de las decisiones: "
                         "la referencia no está en equilibrio y la política tiene que cambiarla para no caerse")
     worst = np.argsort(-sat)[:3]
-    finite = outside[np.isfinite(outside)]
     return {"ok": not problems, "problems": problems,
             "facts": ["motores al límite (pelvis sostenida): " + ", ".join(f"{names[j]} {sat[j]:.0%}" for j in worst),
                       f"ZMP fuera del apoyo (> {100 * ZMP_TOL_M:.0f} cm): {off:.0%} de las decisiones; "
@@ -152,6 +153,8 @@ def sole_points(model: mujoco.MjModel, data: mujoco.MjData, side: str) -> list[t
 
 def distance_outside(p: np.ndarray, pts: np.ndarray) -> float:
     """How far point p is outside the convex hull of pts (0 inside), in the floor plane."""
+    if len(pts) == 0:
+        return float("inf")
     if len(pts) < 3:
         # One foot sphere or two: the support is a point or a segment.
         if len(pts) == 1:

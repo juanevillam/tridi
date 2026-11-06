@@ -126,13 +126,15 @@ class Motion:
         feet_ids = [model.body(n).id for n in (feet or FEET)]
         spheres = soles if soles is not None else [model.geom(n).id for side in FOOT_SPHERES.values() for n in side]
         floor = model.geom("floor").id
+        contacts = m.get("contacts")
         self.feet = np.zeros((len(self.qpos), 2, 3))
         for i in range(len(self.qpos)):
             d.qpos[:] = self.qpos[i]
             mujoco.mj_kinematics(model, d)
-            self.qpos[i, 2] -= min(mujoco.mj_geomDistance(model, d, g, floor, 1.0, None) for g in spheres)
-            d.qpos[2] = self.qpos[i, 2]
-            mujoco.mj_kinematics(model, d)
+            if contacts is None or any(contacts[i]):
+                self.qpos[i, 2] -= min(mujoco.mj_geomDistance(model, d, g, floor, 1.0, None) for g in spheres)
+                d.qpos[2] = self.qpos[i, 2]
+                mujoco.mj_kinematics(model, d)
             self.feet[i] = d.xpos[feet_ids]
         # Velocities by finite differences of smoothed signals: pelvis in the world, joints in rad/s.
         # The grounded height still wobbles a little, and its raw velocity would bounce the robot.

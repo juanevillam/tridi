@@ -81,13 +81,15 @@ def kinematic(robot: Robot, qpos: np.ndarray, fps: float, walking: bool) -> dict
         support.append(np.array([p[:2] for k, s in enumerate(("left", "right")) if clear[k] < CONTACT_M
                                  for p, r in sole_ends(robot, d, s) if p[2] - r < CONTACT_M]))
     zmp = zmp_of(np.array(com), fps)
-    outside = np.array([distance_outside(zmp[i], support[i]) if len(support[i]) else np.inf for i in range(len(qpos))])
+    outside = np.array([distance_outside(zmp[i], support[i]) for i in range(len(qpos))])
+    finite = outside[np.isfinite(outside)]
+    zmp_out = float(np.mean(outside > ZMP_TOL_M)) if walking else (float(np.mean(finite > ZMP_TOL_M)) if len(finite) else 1.0)
     n = len(qpos)
     w = max(1, int(round(SLIP_WINDOW_S * fps)))
     slip = [np.linalg.norm(feet_xy[i + w][s] - feet_xy[i][s]) / SLIP_WINDOW_S for i in range(n - w)
             if (s := lowest[i]) == lowest[i + w] and contact_ref[i][s] and contact_ref[i + w][s]]
     return {"sunk_share": sunk / n, "float_share": floating / n if walking else 0.0, "range_share": past / n,
-            "zmp_out_share": float(np.mean(outside > ZMP_TOL_M)), "contact_ref": np.array(contact_ref),
+            "zmp_out_share": zmp_out, "contact_ref": np.array(contact_ref),
             "slip_mps": float(np.median(slip)) if slip else None}
 
 
