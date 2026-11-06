@@ -53,10 +53,17 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
   - Fusión en `to_poseclip.py`: asocia cada mano de WiLoR con la muñeca de GVHMR proyectadas al plano de cámara (`MAX_WRIST_IMAGE_DIST = 0.30` del lado largo), pone la muñeca (`R_elbow⁻¹ · R_wrist_wilor`, punto escalar > 0,998 entre los dedos de SMPL-X y los de WiLoR en cámara) y las 15 articulaciones de MANO (`flat_hand_mean = True`, mano izquierda espejada en `x`) en SMPL-X, y ancla los 21 puntos suavizados a la muñeca suavizada del cuerpo. Regenerados los 23 clips de `~/Tridi/capture2/clips/`.
   - `physics/` (commit aparte): `retargetSteps` pasa `hands` de `PoseClip` v2 a `retargeter.solve` (muñecas y palmas) y `playClip` mueve los dedos de las manos Dex3 en los clips con manos; arreglado `check-retarget.mjs` para buscar clips en `data/clips/` o `web/clips/` (`npm --prefix physics run check` pasa entero).
   - `web/` (commit aparte): `SkeletonView` dibuja los 21 puntos y 23 huesos por mano cuando el cuadro trae `hands`, ocultando los 4 huesos gruesos de MediaPipe; actualizados los clips v2 en `web/clips/` y sumados `clip_dedos-01-gvhmr` y `clip_lavar-04-gvhmr` a `preloaded.json`.
+- **Corrida nocturna `night-vel.sh`, balance con fase de vuelo (H1, jumping jacks, correr) y cola autónoma (`night-queue.sh`):**
+  - `walk-vel-seed0` terminó a los 10,0 M pasos siguiendo el clip entero (11,86 / 11,85 s) y pasó el escalón 1 (`calm 100 %`, `pushed 5 %`). `walk-vel-push-seed0` cortó a los 5,0 M pasos por pronóstico (`web push 5 %`, `50 N 100 %, 100 N 90 %, 150 N 50 %, 200 N 15 %, 300 N 5 %`) porque saltó directo de 0 N a 150-300 N sin la rampa intermedia de 150 N → 300 N con `--follow`.
+  - **Unitree H1 (`clip_2026-10-23_caminar-perfil_01-h1-balanced.json`)**: el 76 % de acuerdo de contacto en `training.feasible` venía de que la punta del pie del H1 (14 cm delante del tobillo) bajaba a 0,6-1,3 cm del piso en la segunda mitad del balanceo (`< 1,5 cm` de umbral de contacto). En `ik_frame` (`training/balance.py`), pedir hasta 2 cm de despeje en las cápsulas del pie en vuelo usando solo las articulaciones de esa pierna sube el acuerdo de contacto a **84 %** (ZMP fuera 2 %, `OK: feasible`).
+  - **Fase de vuelo en `training/balance.py`, `training/imitate.py`, `training/checks.py` y `training/feasible.py`:** `imitate.Motion` solo apoya en el piso los cuadros con al menos un pie en contacto (`any(contacts[i])`), conservando el vuelo (`[0, 0]`); `training.balance` resuelve el ZMP en la grilla exacta de 50 Hz de `checks.c2` pesando los pasos con apoyo, suma trayectoria balística de pelvis y despeje de pies en vuelo, simetriza brazos en `jumping-jacks` y usa odometría del pie apoyado en `correr-perfil`. Pasan **C1 y C2** tanto `clip_2026-10-24_jumping-jacks-nasm_01-balanced.json` (contacto 81 %, ZMP fuera 2 %) como `clip_2026-10-23_correr-perfil_01-balanced.json` (contacto 91 %, ZMP fuera 6 %).
+  - Lanzada `training/runs/night-queue.sh` con `nohup` (`--shared nice`): (1) rampa de empujones con velocidad `walk-vel-follow150-seed0` → `walk-vel-follow300-seed0` → `walk-vel-strong-seed0` + evaluaciones; (2) caminata del Unitree H1 (`h1-walk-balanced-seed0`); (3) C3/C4 y entrenamiento de jumping jacks (`jacks-balanced-seed0`); (4) C3/C4 y entrenamiento de correr (`run-balanced-seed0`).
 
 ## Qué funcionó
 
-- 
+- `walk-vel-seed0` aprendió la caminata completa con velocidad de pelvis en 10 M pasos (100 % llega al final sin empujón).
+- Subir el despeje de cápsulas del pie en balanceo en `ik_frame` resolvió el 76 % → 84 % de contacto del Unitree H1 sin levantar el pie plantado.
+- Resolver el ZMP en la grilla de 50 Hz solo sobre cuadros con apoyo permitió que jumping jacks y correr pasen C1 y C2 con fase de vuelo real.
 
 ## Qué no funcionó
 
