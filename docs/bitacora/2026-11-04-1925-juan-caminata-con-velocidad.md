@@ -68,6 +68,13 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
     - Ambos pasan **C1, C2, C3 y C4** (`Listo para entrenar largo`).
     - `jacks-balanced-seed0` aprendió los **5,18 / 5,17 s** completos en 10,0 M pasos (20,7 min, `jacks-balanced-seed0-step-10002432.onnx`).
     - `run-balanced-seed0` aprendió los **3,80 / 3,80 s** completos en 10,0 M pasos (21,3 min, sostiene 2 s desde el 100 % de los inicios, `run-balanced-seed0-step-10002432.onnx`).
+- **Tanda diurna (6 de noviembre, desde las 11:25):**
+  - Publicadas en `training/policies/` las políticas entrenadas: `g1-walk` (`walk-vel-strong-seed0/step_14000000.pt`, 11,86 / 11,85 s y 65 % del empujón de 250 N de la web, con su `g1-walk.fixture.json`), `g1-run` (3,80 / 3,80 s), `g1-jacks` (5,18 / 5,17 s) y `h1-walk` (11,86 / 11,85 s en el Unitree H1).
+  - Conectadas `g1-walk`, `g1-run` y `g1-jacks` en `web/src/policies.js` (`IMITATIONS`), `web/src/motions.js` y `web/src/stage.js` para que en `Simulaciones` el robot camine, corra y haga saltos de tijera con física al elegir el clip; `physics/scripts/check-mimic.mjs` verifica que las tres políticas sigan el clip entero en MuJoCo WASM.
+  - Arreglado en `training/imitate.py` y `training/balance.py` el cambio de signo de hemisferio en los cuaterniones de la pelvis cuando el rumbo cruza $\pm\pi$ (que producía `NaN` en `QACC` al interpolar en `clip_sentarse-02-gvhmr`), y pasado `sense_velocity` a `MimicInWorld` y `training.rollout`. Con eso, `clip_saludar-02-gvhmr-balanced`, `clip_dedos-01-gvhmr-balanced` y `clip_sentarse-02-gvhmr-balanced` pasan C1 y C2.
+  - Generados con `training.rollout` los datasets en los 4 mundos (`plano`, `piedras`, `resbaloso`, `viento`) para `g1-walk`, `g1-run` y `g1-jacks`.
+  - Agregada comprobación automática de bilingüismo (`npm --prefix web run check`, `web/scripts/check-i18n.mjs`, Pilar A1 de `docs/plan-v2.md`): verifica los 9 diccionarios (494 claves ES/EN y `{placeholders}`), las 304 llamadas en `web/src/` y los nombres de mundos, escenas, niveles y los 17 clips precargados.
+  - Lanzada en segundo plano con `nohup` (`training/runs/day-queue.sh`, `--shared nice`) la cola de entrenamiento para: (1) caminata con velocidad en los 4 mundos (`walk-vel-worlds-wind6-seed0` → `walk-vel-worlds-seed0`), (2) escalón 2 con manos (`saludar-gvhmr-seed0`) y (3) escalón 3 sentarse/agacharse (`sentarse-gvhmr-seed0`).
 
 ## Qué funcionó
 
