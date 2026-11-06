@@ -13,6 +13,19 @@ const BONES = [
   [23, 25], [25, 27], [27, 29], [27, 31], [29, 31], // left leg and foot
   [24, 26], [26, 28], [28, 30], [28, 32], [30, 32], // right leg and foot
 ];
+// Coarse hand points on the 33-point skeleton, hidden when PoseClip v2 provides the 21-point hand.
+const COARSE_HAND_POINTS = { left: new Set([17, 19, 21]), right: new Set([18, 20, 22]) };
+// MediaPipe/MANO 21-point hand bones (5 fingers + palm knuckles, 23 bones per hand).
+const HAND_BONES = [
+  [0, 1], [1, 2], [2, 3], [3, 4], // thumb
+  [0, 5], [5, 6], [6, 7], [7, 8], // index
+  [0, 9], [9, 10], [10, 11], [11, 12], // middle
+  [0, 13], [13, 14], [14, 15], [15, 16], // ring
+  [0, 17], [17, 18], [18, 19], [19, 20], // pinky
+  [5, 9], [9, 13], [13, 17], // knuckles
+];
+const HAND_BONE_RADIUS = 0.005; // meters: thin enough that adjacent fingers (~1.5 cm apart) stay distinct
+const HAND_JOINT_RADIUS = 0.007;
 const FACE_POINTS = new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 const NOSE = 0;
 const EARS = [7, 8];
@@ -94,9 +107,11 @@ export class SkeletonView {
     // A unit cylinder along y, stretched and turned into each bone every frame.
     this.bones = new THREE.InstancedMesh(new THREE.CylinderGeometry(BONE_RADIUS, BONE_RADIUS, 1, 8), material, BONES.length);
     this.joints = new THREE.InstancedMesh(new THREE.SphereGeometry(JOINT_RADIUS, 12, 8), material, 33);
+    this.handBones = new THREE.InstancedMesh(new THREE.CylinderGeometry(HAND_BONE_RADIUS, HAND_BONE_RADIUS, 1, 6), material, 2 * HAND_BONES.length);
+    this.handJoints = new THREE.InstancedMesh(new THREE.SphereGeometry(HAND_JOINT_RADIUS, 8, 6), material, 42);
     // three.js culls an InstancedMesh by a bounding sphere computed once, around the first
     // matrices (the origin); a clip that walks a few meters away would vanish. Never cull it.
-    this.bones.frustumCulled = this.joints.frustumCulled = false;
+    this.bones.frustumCulled = this.joints.frustumCulled = this.handBones.frustumCulled = this.handJoints.frustumCulled = false;
     this.head = new THREE.Mesh(new THREE.SphereGeometry(HEAD_RADIUS, 24, 16), material);
     this.neck = new THREE.Mesh(new THREE.CylinderGeometry(BONE_RADIUS, BONE_RADIUS, 1, 8), material);
     this.head.frustumCulled = this.neck.frustumCulled = false;
@@ -105,7 +120,9 @@ export class SkeletonView {
     this.tint = new THREE.Color(1, 1, 1);
     for (let i = 0; i < BONES.length; i++) this.bones.setColorAt(i, this.tint);
     for (let i = 0; i < 33; i++) this.joints.setColorAt(i, this.tint);
-    this.body.add(this.bones, this.joints, this.head, this.neck);
+    for (let i = 0; i < 2 * HAND_BONES.length; i++) this.handBones.setColorAt(i, this.tint);
+    for (let i = 0; i < 42; i++) this.handJoints.setColorAt(i, this.tint);
+    this.body.add(this.bones, this.joints, this.handBones, this.handJoints, this.head, this.neck);
 
     this.camera = new THREE.PerspectiveCamera(40, 1, 0.05, 100);
     this.camera.position.set(2.6, 1.5, 2.6);
@@ -188,9 +205,12 @@ export class SkeletonView {
     return this.clip.frames[this.indexAt(time)];
   }
 
-  pose({ joints }) {
+  pose({ joints, hands }) {
     const { a, b, dir, m, q, s } = this.tmp;
-    const drawn = (i) => ARM_POINTS.has(i) || joints[i][3] >= MIN_VISIBILITY;
+    const fineLeft = !!hands?.left;
+    const fineRight = !!hands?.right;
+    const coarseHidden = (i) => (fineLeft && COARSE_HAND_POINTS.left.has(i)) || (fineRight && COARSE_HAND_POINTS.right.has(i));
+    const drawn = (i) => !coarseHidden(i) && (ARM_POINTS.has(i) || joints[i][3] >= MIN_VISIBILITY);
     // 1 where the camera saw the point, down to FADED where MediaPipe estimated it.
     const seen = (i) => (ARM_POINTS.has(i) ? FADED + (1 - FADED) * THREE.MathUtils.smoothstep(joints[i][3], ESTIMATED, SEEN) : 1);
 
@@ -211,6 +231,27 @@ export class SkeletonView {
       m.compose(a.add(b).multiplyScalar(0.5), q, s.set(1, length, 1));
       this.bones.setMatrixAt(i, m);
     });
+    // PoseClip v2 21-point hands: drawn in place of the 4 coarse hand bones on each seen side.
+    ['left', 'right'].forEach((side, sIdx) => {
+      const pts = hands?.[side];
+      const jBase = 21 * sIdx;
+      const bBase = HAND_BONES.length * sIdx;
+      for (let i = 0; i < 21; i++) {
+        this.handJoints.setMatrixAt(jBase + i, pts && i > 0 ? m.makeTranslation(pts[i][0], pts[i][1], pts[i][2]) : HIDDEN);
+      }
+      HAND_BONES.forEach(([from, to], i) => {
+        if (!pts) {
+          this.handBones.setMatrixAt(bBase + i, HIDDEN);
+          return;
+        }
+        a.fromArray(pts[from]);
+        b.fromArray(pts[to]);
+        const length = a.distanceTo(b);
+        q.setFromUnitVectors(this.up, dir.subVectors(b, a).normalize());
+        m.compose(a.add(b).multiplyScalar(0.5), q, s.set(1, length, 1));
+        this.handBones.setMatrixAt(bBase + i, m);
+      });
+    });
     // The head: a sphere between the ears, nudged toward the nose, and a neck down to between the
     // shoulders. Drawn when the camera saw any of the nose or the ears.
     const { head, neck } = this;
@@ -228,6 +269,8 @@ export class SkeletonView {
     }
     this.joints.instanceMatrix.needsUpdate = true;
     this.bones.instanceMatrix.needsUpdate = true;
+    this.handJoints.instanceMatrix.needsUpdate = true;
+    this.handBones.instanceMatrix.needsUpdate = true;
     this.joints.instanceColor.needsUpdate = true;
     this.bones.instanceColor.needsUpdate = true;
 

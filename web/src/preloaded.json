@@ -145,5 +145,27 @@
       "es": "Video: Pexels 4492700, mujer saluda y tira besos",
       "en": "Video: Pexels 4492700, woman waving and blowing kisses"
     }
+  },
+  {
+    "clip": "clip_dedos-01-gvhmr",
+    "title": {
+      "es": "Contar con los dedos",
+      "en": "Counting on fingers"
+    },
+    "credit": {
+      "es": "Video: Pexels 7563954, mujer contando con la mano",
+      "en": "Video: Pexels 7563954, woman counting on her fingers"
+    }
+  },
+  {
+    "clip": "clip_lavar-04-gvhmr",
+    "title": {
+      "es": "Lavar platos",
+      "en": "Washing dishes"
+    },
+    "credit": {
+      "es": "Video: Pexels 4108715, mujer lavando en la cocina",
+      "en": "Video: Pexels 4108715, woman washing dishes in the kitchen"
+    }
   }
 ]
