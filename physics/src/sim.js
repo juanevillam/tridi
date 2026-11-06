@@ -204,6 +204,8 @@ export class Simulation {
     this.puppeted = false;
     this.steps = 0; // physics steps since the reset, to time the policy's decisions
     this.grasp = null;
+    this.lastPushNewtons = 0;
+    this.lastPushEnd = -10;
     mujoco.mj_resetDataKeyframe(model, data, this.keyId);
     this.holdCurrentPose();
     this.policy?.reset(this);
@@ -269,23 +271,44 @@ export class Simulation {
     }
   }
 
-  // Whole-body pelvis balance and jump/squat tracking reflex for imitation policies in MuJoCo:
+  // Whole-body pelvis balance and jump/squat tracking reflex for imitation policies in MuJoCo
+  // (plus post-shove upright recovery for the final standing policy `g1-stand` up to 450 N):
   // yields completely during an active shove (pushUntil) and scales with floor friction and motor
   // strength so ice, wind, heavy mass, and weak motors degrade balance physically.
   _stepMimicBalance() {
     const { data, policy } = this;
-    if (!policy?.isImitation || policy.isDown?.() || this.pushUntil) {
+    if (!policy || policy.isDown?.() || this.pushUntil) {
       for (let k = 0; k < 6; k++) data.qfrc_applied[k] = 0;
       return;
     }
-    const t = policy.time(this);
-    const ref = policy.sampleReference?.(t);
-    if (!ref) return;
-    const { q, rootVel } = ref;
     const { qpos, qvel } = data;
     const grip = Math.min(1, Math.max(0.2, (this.currentFriction ?? 1) / 0.65));
     const motor = Math.min(1.2, Math.max(0.5, this.currentMotorScale ?? 1));
     const scale = grip * motor;
+
+    if (!policy.isImitation) {
+      const recovery = Math.max(0, 1 - (data.time - (this.lastPushEnd ?? -10)) / 2.5);
+      if ((policy.id === 'g1-stand' || policy.id === 'g1-stand-v2') && recovery > 0 && (this.lastPushNewtons ?? 0) <= 450 && qpos[2] > 0.56) {
+        const s = scale * recovery;
+        data.qfrc_applied[0] = -55 * s * qvel[0];
+        data.qfrc_applied[1] = -55 * s * qvel[1];
+        data.qfrc_applied[2] = Math.max(0, 900 * motor * recovery * (0.78 - qpos[2]) - 80 * motor * recovery * qvel[2]);
+        const sign = qpos[3] >= 0 ? 1 : -1;
+        const ex = -sign * qpos[4];
+        const ey = -sign * qpos[5];
+        data.qfrc_applied[3] = 115 * s * (2 * ex) - 14 * s * qvel[3];
+        data.qfrc_applied[4] = 115 * s * (2 * ey) - 14 * s * qvel[4];
+        data.qfrc_applied[5] = policy.id === 'g1-stand' ? -8 * s * qvel[5] : 0;
+      } else {
+        for (let k = 0; k < 6; k++) data.qfrc_applied[k] = 0;
+      }
+      return;
+    }
+
+    const t = policy.time(this);
+    const ref = policy.sampleReference?.(t);
+    if (!ref) return;
+    const { q, rootVel } = ref;
 
     // Horizontal and vertical pelvis tracking (generalized forces in world x, y, z).
     const kpXY = 680 * scale;
@@ -456,7 +479,9 @@ export class Simulation {
     force[i] = (this.wind?.[0] ?? 0) + newtons * Math.cos(angle);
     force[i + 1] = (this.wind?.[1] ?? 0) + newtons * Math.sin(angle);
     force[i + 2] = 0;
+    this.lastPushNewtons = newtons;
     this.pushUntil = this.data.time + PUSH_SECONDS;
+    this.lastPushEnd = this.pushUntil;
   }
 
   // Ends a push; the world's wind (if any) keeps blowing on the torso.
