@@ -20,7 +20,18 @@ const LEVELS = {
   'g1-stand-v2': { es: '40 millones de pasos (4 de 4 empujones, girando)', en: '40 million steps (4 of 4 pushes, turning)' },
   'g1-stand-quiet': { es: '48 millones de pasos, quieta (3 de 4 empujones)', en: '48 million steps, still (3 of 4 pushes)' },
   'g1-stand': { es: '60 millones de pasos', en: '60 million steps' },
-  'g1-walk': { es: 'Imitando el video, con física (en entrenamiento)', en: 'Imitating the video, with physics (in training)' },
+  'g1-walk': {
+    es: 'Caminar imitando el video, con física (65 % de empujones)',
+    en: 'Walking imitating the video, with physics (65% of pushes)',
+  },
+  'g1-run': {
+    es: 'Correr imitando el video, con física',
+    en: 'Running imitating the video, with physics',
+  },
+  'g1-jacks': {
+    es: 'Saltos de tijera imitando el video, con física',
+    en: 'Jumping jacks imitating the video, with physics',
+  },
 };
 
 const pick = (table) => (id, fallback) => table[id] ?? { es: fallback ?? id, en: fallback ?? id };

@@ -61,11 +61,13 @@ export function mountStage(root) {
   const motions = new Map(); // clip id -> RobotMotion, so a clip is retargeted once
 
   const imitating = () => imitationOf(level) !== null;
+  const matchesImitation = (imitation, clipId) =>
+    Boolean(imitation && clipId && (imitation.clips ? imitation.clips.includes(clipId) : imitation.clip === clipId));
   // With physics (default) the robot moves by itself: the imitation policy of the clip if there is
   // one, or standing with its policy if it has not learned this movement yet. Without physics it
   // replays the movement as a puppet, as a reference: what it would look like, not what it can do.
   let physics = true;
-  const imitationFor = (clip) => IMITATIONS.find((imitation) => imitation.clip === clip?.id) ?? null;
+  const imitationFor = (clip) => IMITATIONS.find((imitation) => matchesImitation(imitation, clip?.id)) ?? null;
   const overlay = createVideoOverlay(root.querySelector('#human-pane'));
 
   // A clip moves with physics only if a policy learned it (an imitation); any other clip is shown
@@ -172,7 +174,8 @@ export function mountStage(root) {
       const { onnx, json } = policyUrls(id);
       // An imitation policy also needs the RobotMotion of the clip it learned.
       const imitation = imitationOf(id);
-      const learned = imitation && (motions.get(imitation.clip) ?? (await savedMotion(imitation.clip)));
+      const motionId = imitation?.motion ?? imitation?.clip;
+      const learned = imitation && (motions.get(motionId) ?? (await savedMotion(motionId)));
       await view.loadPolicy(onnx, json, imitation ? { motion: learned } : {});
       level = id;
       if (imitation) skeleton.time = 0; // the robot starts the clip from its first pose
@@ -185,7 +188,7 @@ export function mountStage(root) {
       root.querySelector('.push').disabled = !robot.view; // never before the robot is there
     }
     // The user may have picked another clip while it loaded: an imitation is only for its own clip.
-    if (imitating() && imitationOf(level).clip !== current?.clip.id) {
+    if (imitating() && !matchesImitation(imitationOf(level), current?.clip.id)) {
       $('policy').value = FINAL_LEVEL;
       return loadLevel(FINAL_LEVEL);
     }
@@ -330,11 +333,11 @@ export function mountStage(root) {
 
   // An imitation option is only for the clip it learned; leaving that clip goes back to standing.
   function offerImitations(clip) {
-    for (const { id, clip: learned } of IMITATIONS) {
-      const option = $('policy').querySelector(`option[value="${id}"]`);
-      if (option) option.disabled = clip.id !== learned;
+    for (const imitation of IMITATIONS) {
+      const option = $('policy').querySelector(`option[value="${imitation.id}"]`);
+      if (option) option.disabled = !matchesImitation(imitation, clip.id);
     }
-    if (imitating() && imitationOf(level).clip !== clip.id) {
+    if (imitating() && !matchesImitation(imitationOf(level), clip.id)) {
       $('policy').value = FINAL_LEVEL;
       loadLevel(FINAL_LEVEL);
     }

@@ -24,9 +24,29 @@ export const LEVELS = [
 export const FINAL_LEVEL = 'g1-stand';
 
 // Imitation policies (training/imitate.py): each learned one clip, and does it with physics instead
-// of standing still. `clip` is the PoseClip/RobotMotion it learned; the option shows only for it.
+// of standing still. `clip` (or `clips`) is the PoseClip in the gallery; `motion` is the balanced
+// RobotMotion reference the policy was trained on.
 export const IMITATIONS = [
-  { id: 'g1-walk', clip: 'clip_2026-10-23_caminar-perfil_01', label: 'Imitando el video, con física (en entrenamiento)' },
+  {
+    id: 'g1-walk',
+    clip: 'clip_caminar-perfil-gvhmr',
+    clips: ['clip_caminar-perfil-gvhmr', 'clip_2026-10-23_caminar-perfil_01'],
+    motion: 'clip_2026-10-23_caminar-perfil_01-balanced',
+    label: 'Caminar imitando el video, con física (65 % de empujones)',
+  },
+  {
+    id: 'g1-run',
+    clip: 'clip_correr-perfil-gvhmr',
+    clips: ['clip_correr-perfil-gvhmr', 'clip_2026-10-23_correr-perfil_01'],
+    motion: 'clip_2026-10-23_correr-perfil_01-balanced',
+    label: 'Correr imitando el video, con física',
+  },
+  {
+    id: 'g1-jacks',
+    clip: 'clip_2026-10-24_jumping-jacks-nasm_01',
+    motion: 'clip_2026-10-24_jumping-jacks-nasm_01-balanced',
+    label: 'Saltos de tijera imitando el video, con física',
+  },
 ].filter(({ id }) => URLS[`../../training/policies/${id}.onnx`]);
 
 export const imitationOf = (id) => IMITATIONS.find((imitation) => imitation.id === id) ?? null;
