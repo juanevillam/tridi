@@ -139,8 +139,10 @@ class StandInWorld(InWorld, G1Env):
 class MimicInWorld(InWorld, MimicEnv):
     def __init__(self, world: dict, seed: int, motion: str = DEFAULT_MOTION, redraw: bool = True,
                  push_n: tuple[float, float] = PUSH_N, push_every: tuple[float, float] = PUSH_EVERY_S,
-                 wind_max: float | None = None):
-        MimicEnv.__init__(self, seed=seed, clips=(motion,), push=True)
+                 wind_max: float | None = None, push: bool = True, follow: bool = False,
+                 recover: bool | float = False, sense_velocity: bool = False):
+        MimicEnv.__init__(self, seed=seed, clips=(motion,), push=push, nudge=push, follow=follow,
+                          recover=recover, sense_velocity=sense_velocity)
         self.push_n = push_n
         self.push_every = push_every
         self.setup_world(world, redraw, wind_max)

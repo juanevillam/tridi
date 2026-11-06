@@ -560,6 +560,9 @@ def balance(clip: str, rounds: int = ROUNDS, log=print, robot_id: str | None = N
         q_ref, fps = motion.qpos.copy(), motion.fps
     else:
         q_ref, fps = np.array(raw["qpos"], dtype=float), float(raw["fps"])
+        for i in range(1, len(q_ref)):
+            if np.dot(q_ref[i - 1, 3:7], q_ref[i, 3:7]) < 0:
+                q_ref[i, 3:7] = -q_ref[i, 3:7]
     walking = "caminar" in clip or "walk" in clip
     jumping = "jumping-jacks" in clip or "jump" in clip
     running = "correr" in clip or "run" in clip

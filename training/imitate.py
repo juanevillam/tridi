@@ -105,6 +105,11 @@ class Motion:
         self.id = m["clip_id"]
         self.fps = float(m["fps"])
         self.qpos = np.array(m["qpos"], dtype=np.float64)
+        # Keep adjacent pelvis quaternions in the same hemisphere so linear blending between frames
+        # follows the short arc instead of crossing near zero when yaw wraps past +-pi.
+        for i in range(1, len(self.qpos)):
+            if np.dot(self.qpos[i - 1, 3:7], self.qpos[i, 3:7]) < 0:
+                self.qpos[i, 3:7] = -self.qpos[i, 3:7]
         self.duration = (len(self.qpos) - 1) / self.fps
         dt = 1 / self.fps
         window = max(1, int(round(SMOOTH_S * self.fps)))
@@ -147,7 +152,10 @@ class Motion:
         x = np.clip(t * self.fps, 0, len(self.qpos) - 1)
         i = min(int(x), len(self.qpos) - 2)
         w = x - i
-        q = (1 - w) * self.qpos[i] + w * self.qpos[i + 1]
+        a, b = self.qpos[i], self.qpos[i + 1].copy()
+        if np.dot(a[3:7], b[3:7]) < 0:
+            b[3:7] = -b[3:7]
+        q = (1 - w) * a + w * b
         q[3:7] /= np.linalg.norm(q[3:7])  # interpolated quaternion, renormalized
         lerp = lambda a: (1 - w) * a[i] + w * a[i + 1]  # noqa: E731
         return q, lerp(self.root_vel), lerp(self.joint_vel), lerp(self.feet)

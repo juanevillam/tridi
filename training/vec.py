@@ -27,7 +27,8 @@ def make_env(task: str, seed: int, push: bool, push_n: tuple[float, float], moti
         world = load_world(worlds[seed % len(worlds)])
         if task == "mimic":
             return MimicInWorld(world, seed, motion or DEFAULT_MOTION, push_n=push_n, push_every=push_every,
-                                wind_max=wind_max)
+                                wind_max=wind_max, push=push and push_n[1] > 0, follow=follow,
+                                recover=recover, sense_velocity=sense_velocity)
         return StandInWorld(world, seed, push_n=push_n, push_every=push_every, stance=stance, wind_max=wind_max)
     if task == "mimic":
         from .imitate import DEFAULT_MOTION, MimicEnv
