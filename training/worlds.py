@@ -131,8 +131,9 @@ class InWorld:
 class StandInWorld(InWorld, G1Env):
     def __init__(self, world: dict, seed: int, redraw: bool = True, push_n: tuple[float, float] = PUSH_N,
                  push_every: tuple[float, float] = PUSH_EVERY_S, stance: Stance | None = None,
-                 wind_max: float | None = None):
-        G1Env.__init__(self, seed=seed, push=True, push_n=push_n, push_every=push_every, stance=stance)
+                 wind_max: float | None = None, sense_velocity: bool = False):
+        G1Env.__init__(self, seed=seed, push=True, push_n=push_n, push_every=push_every, stance=stance,
+                       sense_velocity=sense_velocity)
         self.setup_world(world, redraw, wind_max)
 
 

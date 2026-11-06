@@ -17,12 +17,12 @@ const ANG_VEL_SCALE = 0.25;
 const JOINT_VEL_SCALE = 0.05;
 const ACTION_SCALE = 0.25; // one unit of action is 0.25 rad from the standing pose
 const SUPPORTED_ROBOTS = new Set(['unitree_g1', 'unitree_h1']);
-const standObsDim = (nu) => 3 + 3 + nu + nu + nu;
+const standObsDim = (nu, senseVelocity = false) => 3 + 3 + nu + nu + nu + (senseVelocity ? 3 : 0);
 // Imitation adds the reference 20 ms ahead (joints, pelvis velocity, pelvis height), for each
 // look-ahead instant of policy.json its joints and pelvis position, and optionally (sense_velocity)
 // the robot's own pelvis velocity in the pelvis frame (imitate.MimicEnv.observe).
 const mimicObsDim = (nu, lookahead, senseVelocity = false) =>
-  standObsDim(nu) + nu + 3 + 1 + lookahead.length * (nu + 3) + (senseVelocity ? 3 : 0);
+  standObsDim(nu, false) + nu + 3 + 1 + lookahead.length * (nu + 3) + (senseVelocity ? 3 : 0);
 // A fall, as training ends an episode (env.py): pelvis below 0.5 m or the torso tilted past 60
 // degrees. An imitation policy that falls starts its clip over after FALL_PAUSE_S, long enough to
 // see the fall and short enough that the robot is not left lying on the floor for the rest of the clip.
@@ -46,11 +46,13 @@ const RECOVER_HEIGHT = 0.6;
 export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
   const { model } = sim;
   const nu = meta.nu ?? 29;
-  const standObs = standObsDim(nu);
-  const mimic = meta.task === 'mimic' || (meta.task === undefined && meta.obs_dim !== standObs);
+  const standObs = standObsDim(nu, false);
+  const mimic = meta.task === 'mimic' || (meta.task === undefined && meta.obs_dim !== standObs && meta.obs_dim !== standObsDim(nu, true));
   const lookahead = meta.lookahead_s ?? [];
-  const senseVelocity = Boolean(meta.sense_velocity) || (mimic && meta.obs_dim === mimicObsDim(nu, lookahead, true));
-  const obsDim = mimic ? mimicObsDim(nu, lookahead, senseVelocity) : standObs;
+  const senseVelocity =
+    Boolean(meta.sense_velocity) ||
+    (mimic ? meta.obs_dim === mimicObsDim(nu, lookahead, true) : meta.obs_dim === standObsDim(nu, true));
+  const obsDim = mimic ? mimicObsDim(nu, lookahead, senseVelocity) : standObsDim(nu, senseVelocity);
   if (!SUPPORTED_ROBOTS.has(meta.robot) || meta.obs_dim !== obsDim || model.nu !== nu) {
     throw new Error(`The policy ${meta.id} is not for this robot (${meta.robot}, ${meta.obs_dim} inputs, ${meta.nu} motors).`);
   }
@@ -90,6 +92,14 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
       obs[6 + i] = qpos[7 + i] - standing[i];
       obs[6 + nu + i] = qvel[6 + i] * JOINT_VEL_SCALE;
       obs[6 + 2 * nu + i] = (previous[i] - standing[i]) / ACTION_SCALE;
+    }
+    if (!mimic && senseVelocity) {
+      const R = [
+        1 - 2 * (y * y + z * z), 2 * (x * y - w * z), 2 * (x * z + w * y),
+        2 * (x * y + w * z), 1 - 2 * (x * x + z * z), 2 * (y * z - w * x),
+        2 * (x * z - w * y), 2 * (y * z + w * x), 1 - 2 * (x * x + y * y),
+      ];
+      for (let k = 0; k < 3; k++) obs[standObs + k] = R[k] * qvel[0] + R[3 + k] * qvel[1] + R[6 + k] * qvel[2];
     }
   }
 

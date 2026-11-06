@@ -31,7 +31,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from .env import EPISODE_STEPS, NU, OBS_DIM, PUSH_EVERY_S, PUSH_N, Stance
+from .env import EPISODE_STEPS, NU, OBS_DIM, PUSH_EVERY_S, PUSH_N, STANCE_V2, Stance, stand_obs_dim
 from .guard import Guard
 from .netlive import NetLive
 from .failmap import failure_map, worst
@@ -180,17 +180,17 @@ def obs_size(task: str) -> int:
 def dims(task: str, motion: str | None, sense_velocity: bool = False) -> tuple[int, int]:
     """Observation and action sizes for this task's robot: the G1's, or the package a mimic motion
     names (training.retarget writes "robot_package")."""
-    if task == "mimic" and motion:
-        from .imitate import mimic_obs_dim, motion_robot
+    if task == "mimic":
+        from .imitate import DEFAULT_MOTION, mimic_obs_dim, motion_robot
 
-        robot = motion_robot(motion)
+        robot = motion_robot(motion or DEFAULT_MOTION)
         nu = NU
         if robot != "g1":
             from .robot import load
 
             nu = load(robot).nu
         return mimic_obs_dim(nu, sense_velocity), nu
-    return obs_size(task), NU
+    return stand_obs_dim(NU, sense_velocity), NU
 
 
 def save(model: ActorCritic, run_dir: Path, step: int, meta: dict, export_dir: Path | None = None,
@@ -603,7 +603,7 @@ def main() -> None:
     p.add_argument("--recover", nargs="?", const=True, default=False, type=float, metavar="SECONDS",
                    help="mimic: for RECOVER_S (or SECONDS) after a push, reward staying up over copying the pose (imitate.py)")
     p.add_argument("--sense-velocity", action="store_true",
-                   help="mimic: the policy also observes its pelvis velocity (3 more inputs; imitate.py)")
+                   help="the policy also observes its 3D pelvis velocity in the pelvis frame (3 more inputs; env.py / imitate.py)")
     p.add_argument("--fixed-lr", action="store_true", help=f"keep the learning rate at {LR} (runs before the adaptive rate)")
     p.add_argument("--std", type=float, help="reset the action std to this (e.g. 0.3) when continuing with --init")
     p.add_argument("--seed", type=int, default=0, help="torch and environment seed (every run replays seed 0 otherwise)")
@@ -621,7 +621,12 @@ def main() -> None:
     args = p.parse_args()
     task = "mimic" if args.task == "walk" else args.task
     export_dir = None if args.no_export else (args.export_dir or RUNS / args.run)
-    stance = Stance(**{k: float(v) for k, v in (kv.split("=") for kv in args.reward.split(",") if kv)}) if args.reward else None
+    if args.reward == "v2":
+        stance = STANCE_V2
+    elif args.reward:
+        stance = Stance(**{k: float(v) for k, v in (kv.split("=") for kv in args.reward.split(",") if kv)})
+    else:
+        stance = None
     push_every = tuple(float(v) for v in args.push_every.split(","))
     train(args.steps, args.run, args.device, args.init, (args.push_min, args.push_max), task, args.motion,
           args.every, export_dir, args.policy_prefix, push_every, stance, args.std, args.seed,

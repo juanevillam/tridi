@@ -29,7 +29,8 @@ def make_env(task: str, seed: int, push: bool, push_n: tuple[float, float], moti
             return MimicInWorld(world, seed, motion or DEFAULT_MOTION, push_n=push_n, push_every=push_every,
                                 wind_max=wind_max, push=push and push_n[1] > 0, follow=follow,
                                 recover=recover, sense_velocity=sense_velocity)
-        return StandInWorld(world, seed, push_n=push_n, push_every=push_every, stance=stance, wind_max=wind_max)
+        return StandInWorld(world, seed, push_n=push_n, push_every=push_every, stance=stance, wind_max=wind_max,
+                            sense_velocity=sense_velocity)
     if task == "mimic":
         from .imitate import DEFAULT_MOTION, MimicEnv
 
@@ -37,7 +38,8 @@ def make_env(task: str, seed: int, push: bool, push_n: tuple[float, float], moti
         return MimicEnv(seed=seed, clips=(motion or DEFAULT_MOTION,), push=push and push_n[1] > 0, push_n=push_n,
                         push_every=push_every, nudge=push, follow=follow, recover=recover,
                         sense_velocity=sense_velocity)
-    return G1Env(seed=seed, push=push, push_n=push_n, push_every=push_every, stance=stance)
+    return G1Env(seed=seed, push=push, push_n=push_n, push_every=push_every, stance=stance,
+                 sense_velocity=sense_velocity)
 
 
 def _worker(conn, seeds: list[int], push: bool, push_n: tuple[float, float], task: str, motion: str | None,

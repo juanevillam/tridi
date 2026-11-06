@@ -62,6 +62,23 @@ INIT_VEL_NOISE = 0.1
 
 OBS_DIM = 3 + 3 + 29 + 29 + 29  # the G1's; a robot with nu motors has 6 + 3 nu (G1Env.obs_dim)
 NU = 29
+# Linear inverted pendulum time constant sqrt(h / g) at the G1's 0.7837 m pelvis height:
+# sqrt(0.7837 / 9.81) = 0.2826 s. A pelvis moving horizontally at v m/s comes to rest over a foot
+# placed at the Capture Point p_pelvis + CAPTURE_TAU_S * v_pelvis.
+CAPTURE_TAU_S = 0.283
+
+
+def stand_obs_dim(nu: int = NU, sense_velocity: bool = False) -> int:
+    return 6 + 3 * nu + (3 if sense_velocity else 0)
+
+
+def stand_senses(model) -> dict:
+    """The G1Env options a trained standing model's input needs: {"sense_velocity": True} when it
+    was trained with the 3D pelvis linear velocity (96 inputs on the G1), else {}."""
+    if model is None or not hasattr(model, "norm"):
+        return {}
+    nu = model.log_std.shape[0]
+    return {"sense_velocity": True} if model.norm.mean.shape[0] == stand_obs_dim(nu, True) else {}
 
 
 @dataclass(frozen=True)
@@ -82,6 +99,12 @@ class Stance:
     planted: float = 0.0  # bonus when calm with both feet on the floor (a tap lifts a foot 2-4 cm)
     rate: float = 0.005  # per unit of squared action change: 0.005 is what g1-stand learned with (0.5 % of its reward); 0.02 is the usual share
     calm_s: float = 1.0  # a push's recovery takes 1.0-1.8 s (measured on g1-stand); the first second is free
+    capture: float = 0.0  # bonus for placing the support / stepping foot under the Capture Point p + tau * v (0.25 in stand v2)
+
+
+# Stand v2 default reward preset (--reward v2): Capture-Point stepping recovery during a shove +
+# quiet two-foot planted stance when calm.
+STANCE_V2 = Stance(turn=0.3, feet=0.5, planted=0.1, rate=0.02, calm_s=1.2, capture=0.25)
 
 
 # A foot is planted when its ankle is within this of where it rests when standing: a tap lifts it
@@ -97,7 +120,7 @@ class G1Env:
 
     def __init__(self, seed: int = 0, push: bool = True, push_n: tuple[float, float] = PUSH_N,
                  push_every: tuple[float, float] = PUSH_EVERY_S, stance: Stance | None = None,
-                 robot: str = "g1"):
+                 robot: str = "g1", sense_velocity: bool = False):
         if robot == "g1":
             self.model = mujoco.MjModel.from_xml_path(str(SCENE))
             feet, torso = FEET, "torso_link"
@@ -112,7 +135,8 @@ class G1Env:
             self.mjcf = package.mjcf
         self.robot_id = robot
         self.nu = self.model.nu
-        self.obs_dim = 6 + 3 * self.nu
+        self.sense_velocity = sense_velocity
+        self.obs_dim = stand_obs_dim(self.nu, sense_velocity)
         self.decimation = max(1, int(round(CONTROL_S / self.model.opt.timestep)))
         self.data = mujoco.MjData(self.model)
         self.rng = np.random.default_rng(seed)
@@ -144,8 +168,8 @@ class G1Env:
 
     # --- What the policy sees and does (mirrored in the browser) ---------------------------------
 
-    def observe(self) -> np.ndarray:
-        """93 numbers, in this order:
+    def _base_observe(self) -> np.ndarray:
+        """The 6 + 3*nu base proprioceptive numbers (93 on the G1):
 
         - [0:3]   pelvis angular velocity in its own frame (qvel[3:6]) x 0.25
         - [3:6]   gravity direction seen from the pelvis (unit vector; (0, 0, -1) when upright)
@@ -161,6 +185,17 @@ class G1Env:
             qvel[6:] * JOINT_VEL_SCALE,
             (self.prev_ctrl - self.default) / ACTION_SCALE,
         ]).astype(np.float32)
+
+    def observe(self) -> np.ndarray:
+        """93 base numbers (or 96 with --sense-velocity, adding the 3D pelvis linear velocity in
+        the pelvis frame at the end so the policy feels a shove on the very first decision step)."""
+        base = self._base_observe()
+        if not self.sense_velocity:
+            return base
+        rot = np.zeros(9)
+        mujoco.mju_quat2Mat(rot, self.data.qpos[3:7])
+        vel_body = (rot.reshape(3, 3).T @ self.data.qvel[:3]).astype(np.float32)
+        return np.concatenate([base, vel_body])
 
     def apply(self, action: np.ndarray) -> np.ndarray:
         """Policy output -> motor targets (ctrl): the standing pose plus 0.25 rad per unit, clipped
@@ -214,16 +249,35 @@ class G1Env:
         g = gravity_in_body(qpos[3:7])
         w = self.stance
         calm = self.steps - self.last_push >= w.calm_s * 50
+        # During a push recovery (!calm with w.capture > 0), leg joints (0:12) are allowed twice the
+        # excursion to take a wide protective step while the upper body (12:) stays composed; pelvis
+        # drift ("still") is only enforced when calm so the robot does not fight its own step.
+        if w.capture > 0 and not calm:
+            pose_err2 = 0.25 * np.sum((qpos[7:19] - self.default[:12]) ** 2) + np.sum((qpos[19:] - self.default[12:]) ** 2)
+        else:
+            pose_err2 = np.sum((qpos[7:] - self.default) ** 2)
         terms = {
             # Upright: tilt of 0.2 rad (11 degrees) already halves it.
             "upright": 0.4 * np.exp(-(g[0] ** 2 + g[1] ** 2) / 0.04),
             # Height: 5 cm of sag halves it, so it learns to keep its knees, not to crouch.
             "height": 0.3 * np.exp(-((qpos[2] - self.stand_height) ** 2) / 0.0036),
             # Near the standing pose: keeps arms and waist calm instead of flailing to balance.
-            "pose": 0.2 * np.exp(-np.sum((qpos[7:] - self.default) ** 2) / 1.0),
-            # Still: pelvis drifting at 0.5 m/s halves it.
-            "still": 0.1 * np.exp(-np.sum(qvel[:2] ** 2) / 0.25),
+            "pose": 0.2 * np.exp(-pose_err2 / 1.0),
+            # Still: pelvis drifting at 0.5 m/s halves it (when calm, or always if capture is off).
+            "still": 0.1 * (np.exp(-np.sum(qvel[:2] ** 2) / 0.25) if (calm or w.capture <= 0) else 1.0),
         }
+        if w.capture:
+            # Capture Point x_cp = x_pelvis + sqrt(h/g) * v_pelvis: when shoved (!calm), reward
+            # placing the stepping foot under x_cp; when calm, reward keeping the midpoint of both
+            # feet centered under x_cp.
+            cp = qpos[:2] + CAPTURE_TAU_S * qvel[:2]
+            feet_xy = self.data.xpos[self.feet, :2]
+            mid_err2 = float(np.sum((feet_xy.mean(axis=0) - cp) ** 2))
+            if calm:
+                terms["capture"] = w.capture * float(np.exp(-mid_err2 / 0.02))
+            else:
+                step_err2 = float(np.min(np.sum((feet_xy - cp) ** 2, axis=1)))
+                terms["capture"] = w.capture * float(np.exp(-(0.5 * step_err2 + 0.5 * mid_err2) / 0.04))
         if w.planted:
             down = np.all(self.data.xpos[self.feet, 2] - self.feet_rest < PLANTED_M)
             terms["planted"] = w.planted * float(calm and down)

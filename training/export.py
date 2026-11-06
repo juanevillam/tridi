@@ -19,7 +19,7 @@ import onnxruntime as ort
 import torch
 from torch import nn
 
-from .env import ACTION_SCALE, MJCF, NU, OBS_DIM, G1Env
+from .env import ACTION_SCALE, MJCF, NU, OBS_DIM, G1Env, stand_senses
 from .imitate import LOOKAHEAD_S
 from .ppo import ActorCritic, obs_size
 
@@ -65,7 +65,7 @@ def export(checkpoint: Path, policy_id: str, out: Path, task: str | None = None,
         motion = motion or state.get("motion") or DEFAULT_MOTION
         env = MimicEnv(seed=0, clips=(motion,), **senses(model))
     else:
-        env = G1Env(seed=0, push=False)
+        env = G1Env(seed=0, push=False, **stand_senses(model))
     deployed = Deployed(model, env, walk).eval()
 
     out.mkdir(parents=True, exist_ok=True)
@@ -112,7 +112,7 @@ def export(checkpoint: Path, policy_id: str, out: Path, task: str | None = None,
         # Imitation: the clip it follows, and how far ahead the observation shows it
         # (imitate.MimicEnv.observe).
         **({"motion": env.motions[0].id, "lookahead_s": list(LOOKAHEAD_S)} if walk else {}),
-        **({"sense_velocity": True} if walk and getattr(env, "sense_velocity", False) else {}),
+        **({"sense_velocity": True} if getattr(env, "sense_velocity", False) else {}),
         "worlds": state.get("worlds") or TRAINED_WORLDS,
         **followed,
         "steps": int(state["step"]),

@@ -252,7 +252,7 @@ class MimicEnv(G1Env):
             q_ahead = self.sample(self.t + s)[0]
             ahead += [q_ahead[7:] - self.default, to_body @ (q_ahead[:3] - self.data.qpos[:3])]
         return np.concatenate([
-            super().observe(),
+            self._base_observe(),
             self.ref_next - self.default,
             to_body @ root_vel,
             [q[2] - self.data.qpos[2]],
