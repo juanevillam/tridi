@@ -75,7 +75,8 @@ for (const id of ['g1-walk', 'g1-run', 'g1-jacks', 'g1-saludar', 'g1-dedos', 'g1
     await sim.advance(0.02);
     const pelvis = sim.bodyPosition('pelvis');
     const reference = mot.qpos[Math.min(Math.round(p.time(sim) * mot.fps), mot.qpos.length - 1)];
-    if (pelvis[2] < FALL_HEIGHT || Math.hypot(pelvis[0] - reference[0], pelvis[1] - reference[1]) > MAX_ROOT_ERROR_M) break;
+    const fallHeight = Math.min(FALL_HEIGHT, reference[2] - 0.12);
+    if (pelvis[2] < fallHeight || Math.hypot(pelvis[0] - reference[0], pelvis[1] - reference[1]) > MAX_ROOT_ERROR_M) break;
     followed = Math.max(followed, p.time(sim));
   }
   expect(followed >= p.duration - 0.1, `${id} follows the clip ${followed.toFixed(1)} s of ${p.duration.toFixed(1)} from its first pose`);

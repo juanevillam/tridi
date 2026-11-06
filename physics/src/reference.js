@@ -98,27 +98,30 @@ export function createReference(mujoco, model, motion) {
   // frames with foot contact. A capsule's lowest point is its center, minus half its length along
   // its tilted axis, minus its radius: what mj_geomDistance gives against the floor plane.
   const contacts = motion.contacts;
-  const data = new mujoco.MjData(model);
-  try {
-    const feet = footGeoms(mujoco, model);
-    for (let i = 0; i < qpos.length; i++) {
-      if (contacts && !contacts[i].some(Boolean)) continue;
-      const r = qpos[i];
-      data.qpos.set(r);
-      mujoco.mj_kinematics(model, data);
-      const xpos = data.geom_xpos;
-      const xmat = data.geom_xmat;
-      const size = model.geom_size;
-      let lowest = Infinity;
-      for (const g of feet) {
-        const radius = size[3 * g];
-        const half = size[3 * g + 1];
-        lowest = Math.min(lowest, xpos[3 * g + 2] - half * Math.abs(xmat[9 * g + 8]) - radius);
+  const flight = motion.flight;
+  if (motion.balanced_by !== 'smoothForDisplay') {
+    const data = new mujoco.MjData(model);
+    try {
+      const feet = footGeoms(mujoco, model);
+      for (let i = 0; i < qpos.length; i++) {
+        if (contacts && !contacts[i].some(Boolean) && !flight) continue;
+        const r = qpos[i];
+        data.qpos.set(r);
+        mujoco.mj_kinematics(model, data);
+        const xpos = data.geom_xpos;
+        const xmat = data.geom_xmat;
+        const size = model.geom_size;
+        let lowest = Infinity;
+        for (const g of feet) {
+          const radius = size[3 * g];
+          const half = size[3 * g + 1];
+          lowest = Math.min(lowest, xpos[3 * g + 2] - half * Math.abs(xmat[9 * g + 8]) - radius);
+        }
+        r[2] -= lowest - (flight?.[i] ?? 0);
       }
-      r[2] -= lowest;
+    } finally {
+      data.delete();
     }
-  } finally {
-    data.delete();
   }
 
   // Velocities by finite differences of smoothed signals (the grounded height still wobbles).

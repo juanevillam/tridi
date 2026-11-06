@@ -84,6 +84,8 @@ function* retargetSteps(mujoco, model, clip, { mirror = false } = {}) {
   // The hips' path in the robot's axes (x forward, y left): PoseClip x -> robot y, z -> robot x.
   const hips = frames.map(({ joints: J }) => [(J[23][2] + J[24][2]) / 2, (J[23][0] + J[24][0]) / 2]);
   const scale = pathScale(frames, retargeter.legLength);
+  const flight = clipFlightHeights(frames, clip.fps, scale);
+  const hasFlight = flight.some((h) => h > 0);
 
   const rows = [];
   let tracked = 0;
@@ -102,6 +104,7 @@ function* retargetSteps(mujoco, model, clip, { mirror = false } = {}) {
       const qpos = Array.from(result.qpos, round);
       qpos[0] = round(scale * (hips[i][0] - hips[0][0]));
       qpos[1] = round(scale * (hips[i][1] - hips[0][1]));
+      qpos[2] = round(qpos[2] + flight[i]);
       rows.push(qpos);
       if (result.tracked) tracked++;
       if (result.tracked && result.residual < REACH_TOLERANCE) reached++;
@@ -118,6 +121,7 @@ function* retargetSteps(mujoco, model, clip, { mirror = false } = {}) {
       robot: 'unitree_g1',
       fps: clip.fps,
       qpos: rows,
+      ...(hasFlight ? { flight } : {}),
       ...(hasHands ? { hands: frames.map((f) => f.hands ?? null) } : {}),
     },
     stats: { frames: frames.length, tracked, reached: reached / frames.length, scale, travel },
@@ -144,6 +148,38 @@ function pathScale(frames, robotLeg) {
 }
 
 const distance = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+
+// Aerial clearance (m, scaled to the robot's legs) of the lowest foot above the running 1 s floor
+// envelope. In jumping jacks the person also unbends their knees while spreading their legs in the
+// air (hips rise 18-21 cm while soles clear the floor by 4-7 cm), so when both feet leave the floor
+// (> 4 mm beyond the 2.2 cm stance noise margin) we take the larger of the foot clearance and 75%
+// of the hip jump above its running 25th-percentile stance height, capped at 30 cm.
+const FLIGHT_WINDOW_S = 1.0;
+const STANCE_FOOT_MARGIN_M = 0.022;
+const MIN_FLIGHT_CLEAR_M = 0.004;
+const HIP_JUMP_MARGIN_M = 0.035;
+const HIP_JUMP_GAIN = 0.75;
+const MAX_FLIGHT_M = 0.3;
+
+function clipFlightHeights(frames, fps, scale) {
+  const n = frames.length;
+  if (!n) return [];
+  const r = Math.max(1, Math.round(0.5 * FLIGHT_WINDOW_S * fps));
+  const low = frames.map(({ joints: J }) => Math.min(J[27][1], J[28][1], J[29][1], J[30][1], J[31][1], J[32][1]));
+  const hipY = frames.map(({ joints: J }) => 0.5 * (J[23][1] + J[24][1]));
+  return frames.map((_, i) => {
+    const a = Math.max(0, i - r);
+    const b = Math.min(n, i + r + 1);
+    let env = Infinity;
+    for (let k = a; k < b; k++) env = Math.min(env, low[k]);
+    const footClear = Math.max(0, low[i] - env - STANCE_FOOT_MARGIN_M);
+    if (footClear <= MIN_FLIGHT_CLEAR_M) return 0;
+    const winHips = hipY.slice(a, b).sort((x, y) => x - y);
+    const hipBase = winHips[Math.floor(0.25 * (winHips.length - 1))];
+    const hipLift = Math.max(0, hipY[i] - hipBase - HIP_JUMP_MARGIN_M);
+    return round(scale * Math.min(MAX_FLIGHT_M, Math.max(footClear, HIP_JUMP_GAIN * hipLift)));
+  });
+}
 
 // Direction (rad, robot axes) the person travels around frame i, or undefined if they are
 // (nearly) still.
@@ -210,15 +246,15 @@ function soleGeoms(mujoco, model) {
   });
 }
 
-// Lowers or raises each row's pelvis so its lowest sole touches the floor.
-function groundRows(mujoco, model, qpos) {
+// Lowers or raises each row's pelvis so its lowest sole touches the floor (or sits at flight[i] during jumps).
+function groundRows(mujoco, model, qpos, flight) {
   const data = new mujoco.MjData(model);
   const soles = soleGeoms(mujoco, model).flat();
-  for (const q of qpos) {
+  qpos.forEach((q, i) => {
     data.qpos.set(q);
     mujoco.mj_kinematics(model, data);
-    q[2] -= Math.min(...soles.map((g) => data.geom_xpos[3 * g + 2] - model.geom_size[3 * g]));
-  }
+    q[2] -= Math.min(...soles.map((g) => data.geom_xpos[3 * g + 2] - model.geom_size[3 * g])) - (flight?.[i] ?? 0);
+  });
   data.delete();
 }
 
@@ -290,10 +326,11 @@ export function smoothForDisplay(mujoco, model, motion, { plantFeet: planted = f
     const clearance = createClearance(mujoco, model);
     clearance.clearClip(qpos, motion.fps);
     clearance.delete();
-    groundRows(mujoco, model, qpos);
+    groundRows(mujoco, model, qpos, motion.flight);
     const window = Math.max(1, Math.round(DISPLAY_HEIGHT_SMOOTH_S * motion.fps));
-    const height = movingAverage(qpos.map((row) => row[2]), window);
-    qpos.forEach((row, i) => (row[2] = height[i]));
+    const stance = movingAverage(qpos.map((row, i) => row[2] - (motion.flight?.[i] ?? 0)), window);
+    const air = motion.flight ? movingAverage(motion.flight, 3) : null;
+    qpos.forEach((row, i) => (row[2] = stance[i] + (air ? air[i] : 0)));
     if (planted) plantFeet(mujoco, model, qpos, motion.fps);
     smoothed = { ...motion, qpos };
   }

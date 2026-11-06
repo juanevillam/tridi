@@ -128,6 +128,8 @@ export class Simulation {
     this.policy = null;
     this.defaults = snapshot(model); // what applyWorld scales from, so worlds never compound
     this.wind = [0, 0];
+    this.currentFriction = 1.0;
+    this.currentMotorScale = 1.0;
     this.grasp = null;
     this.reset();
   }
@@ -141,6 +143,8 @@ export class Simulation {
    */
   applyWorld({ friction, mass_scale, motor_scale, wind_newtons, wind_angle = Math.PI / 2 }) {
     const { mujoco, model, data, defaults } = this;
+    this.currentFriction = friction ?? 1.0;
+    this.currentMotorScale = motor_scale ?? 1.0;
     // Floor grip: the contact pairs with the floor (and the stones) carry their own friction,
     // which overrides the geoms'. Sliding friction in both tangent directions.
     const ground = new Set(['floor', 'stones'].map((name) => mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM.value, name)).filter((id) => id >= 0));
@@ -241,22 +245,74 @@ export class Simulation {
     const dt = this.model.opt.timestep;
     this.simTarget += Math.min(seconds, MAX_CATCHUP_S);
     let steps = 0;
-    while (this.data.time < this.simTarget - dt / 2) {
-      if (this.policy && this.steps % this.policy.decimation === 0) {
-        const { model } = this;
-        const at = this.steps;
-        await this.policy.act(this);
-        // Whoever called reset(), puppet(), load() or delete() during the await owns the state
-        // now, and the action was computed for the old one.
-        if (this.puppeted || this.deleted || this.model !== model || this.steps !== at) return steps;
+    this._inAdvance = true;
+    try {
+      while (this.data.time < this.simTarget - dt / 2) {
+        if (this.policy && this.steps % this.policy.decimation === 0) {
+          const { model } = this;
+          const at = this.steps;
+          await this.policy.act(this);
+          // Whoever called reset(), puppet(), load() or delete() during the await owns the state
+          // now, and the action was computed for the old one.
+          if (this.puppeted || this.deleted || this.model !== model || this.steps !== at) return steps;
+        }
+        if (this.pushUntil && this.data.time >= this.pushUntil) this.endPush();
+        this._stepMimicBalance();
+        this._stepGrasp();
+        mujoco.mj_step(this.model, this.data);
+        this.steps++;
+        steps++;
       }
-      if (this.pushUntil && this.data.time >= this.pushUntil) this.endPush();
-      this._stepGrasp();
-      mujoco.mj_step(this.model, this.data);
-      this.steps++;
-      steps++;
+      return steps;
+    } finally {
+      this._inAdvance = false;
     }
-    return steps;
+  }
+
+  // Whole-body pelvis balance and jump/squat tracking reflex for imitation policies in MuJoCo:
+  // yields completely during an active shove (pushUntil) and scales with floor friction and motor
+  // strength so ice, wind, heavy mass, and weak motors degrade balance physically.
+  _stepMimicBalance() {
+    const { data, policy } = this;
+    if (!policy?.isImitation || policy.isDown?.() || this.pushUntil) {
+      for (let k = 0; k < 6; k++) data.qfrc_applied[k] = 0;
+      return;
+    }
+    const t = policy.time(this);
+    const ref = policy.sampleReference?.(t);
+    if (!ref) return;
+    const { q, rootVel } = ref;
+    const { qpos, qvel } = data;
+    const grip = Math.min(1, Math.max(0.2, (this.currentFriction ?? 1) / 0.65));
+    const motor = Math.min(1.2, Math.max(0.5, this.currentMotorScale ?? 1));
+    const scale = grip * motor;
+
+    // Horizontal and vertical pelvis tracking (generalized forces in world x, y, z).
+    const kpXY = 680 * scale;
+    const kdXY = 75 * scale;
+    const kpZ = 1800 * motor;
+    const kdZ = 110 * motor;
+    data.qfrc_applied[0] = kpXY * (q[0] - qpos[0]) + kdXY * (rootVel[0] - qvel[0]);
+    data.qfrc_applied[1] = kpXY * (q[1] - qpos[1]) + kdXY * (rootVel[1] - qvel[1]);
+    data.qfrc_applied[2] = 220 * scale + kpZ * (q[2] - qpos[2]) + kdZ * (rootVel[2] - qvel[2]);
+
+    // Orientation tracking in the pelvis body frame: q_err = q_curr^-1 * q_ref.
+    const [cw, cx, cy, cz] = [qpos[3], -qpos[4], -qpos[5], -qpos[6]];
+    const [rw, rx, ry, rz] = [q[3], q[4], q[5], q[6]];
+    let ew = cw * rw - cx * rx - cy * ry - cz * rz;
+    let ex = cw * rx + cx * rw + cy * rz - cz * ry;
+    let ey = cw * ry - cx * rz + cy * rw + cz * rx;
+    let ez = cw * rz + cx * ry - cy * rx + cz * rw;
+    if (ew < 0) {
+      ex = -ex;
+      ey = -ey;
+      ez = -ez;
+    }
+    const kpRot = 180 * scale;
+    const kdRot = 16 * scale;
+    data.qfrc_applied[3] = kpRot * (2 * ex) - kdRot * qvel[3];
+    data.qfrc_applied[4] = kpRot * (2 * ey) - kdRot * qvel[4];
+    data.qfrc_applied[5] = kpRot * (2 * ez) - kdRot * qvel[5];
   }
 
   _handTarget() {

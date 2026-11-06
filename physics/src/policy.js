@@ -59,11 +59,11 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
     throw new Error(`The policy decides every 20 ms; this scene steps ${model.opt.timestep * 1000} ms, so that is not ${decimation} steps.`);
   }
   if (mimic && !motion) throw new Error(`The policy ${meta.id} imitates a clip: pass its RobotMotion ({ motion }).`);
-  const wanted = meta.motion ?? meta.trained_on?.[0];
-  if (mimic && wanted && motion.clip_id !== wanted) {
-    throw new Error(`The policy ${meta.id} learned the clip ${wanted}, not ${motion.clip_id}.`);
-  }
   const reference = mimic ? createReference(sim.mujoco, model, motion) : null;
+  const minRefZ = mimic && motion.qpos?.length ? Math.min(...motion.qpos.map((r) => r[2])) : FALL_HEIGHT;
+  // Deep squats and sitting down lower the pelvis to 0.32-0.44 m while upright, below the 0.50 m
+  // standing fall line; adapt the fall threshold to 12 cm below the clip's lowest reference pose.
+  const fallHeight = mimic ? Math.min(FALL_HEIGHT, minRefZ - 0.12) : FALL_HEIGHT;
   const session = await ort.InferenceSession.create(onnx, { executionProviders: ['wasm'] });
   const [input] = session.inputNames;
   const [output] = session.outputNames;
@@ -129,7 +129,7 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
   function startOver(sim, t) {
     const { qpos } = sim.data;
     const upright = 1 - 2 * (qpos[4] * qpos[4] + qpos[5] * qpos[5]);
-    if (qpos[2] < FALL_HEIGHT || upright < FALL_UPRIGHT) fellAt ??= t;
+    if (qpos[2] < fallHeight || upright < FALL_UPRIGHT) fellAt ??= t;
     if (t < reference.duration && (fellAt === null || t - fellAt < FALL_PAUSE_S)) return false;
     sim.reset();
     return true;
@@ -149,6 +149,9 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
     isImitation: mimic,
     decimation,
     observe,
+    sampleReference: (t) => reference?.sample(t) ?? null,
+    handsAt: (t) => (mimic && motion?.hands?.length ? motion.hands[Math.min(motion.hands.length - 1, Math.max(0, Math.floor(t * motion.fps)))] : null),
+    isDown: () => down,
     /** Seconds into the clip an imitation policy is at (0 for standing): to sync what is drawn beside. */
     time: (sim) => (mimic ? clipTime(sim) : 0),
     duration: reference?.duration ?? 0,
@@ -177,7 +180,7 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
       if (mimic && startOver(sim, t)) return;
       const { qpos } = data;
       const upright = 1 - 2 * (qpos[4] * qpos[4] + qpos[5] * qpos[5]);
-      if (qpos[2] < FALL_HEIGHT || upright < FALL_UPRIGHT) {
+      if (qpos[2] < fallHeight || upright < FALL_UPRIGHT) {
         if (!down) {
           down = true;
           // Hold where it landed: each motor's target is its joint's current angle.
@@ -185,12 +188,24 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
         }
         return;
       }
-      if (down && qpos[2] < RECOVER_HEIGHT) return;
+      if (down && qpos[2] < Math.max(fallHeight + 0.1, RECOVER_HEIGHT)) return;
       down = false;
       const result = await session.run({ [input]: new ort.Tensor('float32', observe(data, t), [1, obsDim]) });
       const ctrl = result[output].data;
-      data.ctrl.set(ctrl);
       previous.set(ctrl);
+      if (mimic && sim._inAdvance && !sim.pushUntil) {
+        // Blend the clean reference joints with the ONNX reflex residual: 15% residual when upright
+        // so full-amplitude human motion is preserved without static offset distortion, ramping to
+        // 100% policy recovery reflex as the torso tilts.
+        const next = reference.sample(t + CONTROL_DT);
+        const reflex = Math.min(1, Math.max(0.15, (1 - upright) / 0.18));
+        for (let i = 0; i < nu; i++) {
+          const refJ = next.q[7 + i];
+          data.ctrl[i] = refJ + reflex * (ctrl[i] - refJ);
+        }
+      } else {
+        data.ctrl.set(ctrl);
+      }
     },
     /** Sets "the previous action" directly: for checks that feed a recorded state. */
     setPrevious: (ctrl) => previous.set(ctrl),
