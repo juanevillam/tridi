@@ -48,6 +48,11 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
 - **Corrección de Juan a la landing:** el copy en inglés es el original y la página sale en inglés (ya no se mira el idioma del navegador; español solo si alguien lo elige o `?lang=es`). Copy reescrito más simple: "Robots that learn from any video", "It practices until it stops falling", "You get the trained policy and the motion data". Los videos de YC eran solo contexto (transcritos con whisper en local): fuera de la página y del repo.
 - **Caminata de la landing con captura 2.0:** Capture usaba la caminata de MediaPipe guardada en `physics/motions` (con `plantFeet` forzado). Ahora usa `clip_caminar-perfil-gvhmr` (mismo video y mismos 356 cuadros), con su `RobotMotion` guardado en `physics/motions` (commit aparte, carpeta de Pastor) y `plantFeet` automático como en Simulaciones. Simulaciones ya solo muestra v2.
 - **Manos, tanda completa (WiLoR, detector en GPU, modelo en CPU):** dedos-01 311 cuadros en 259 s (derecha 90 %), saludar-02 308 en 268 s (izquierda 39 %, derecha 70 %), dedos-02 240 en 204 s (derecha 100 %), lavar-04 777 en 981 s (izquierda 94 %, derecha 70 %): ~0,85-1,3 s por cuadro. Revisado a ojo sobre 12 cuadros: cuenta bien los dedos (2, 3, 4), lado izquierdo/derecho correcto con las dos manos abiertas, encuentra manos pequeñas lavando. En el primer plano de dedos-02 el dibujo sale algo corrido (la proyección de la revisión asume la cámara de WiLoR, no es error de los dedos). Salida en `~/Tridi/capture2/hands/*.wilor.npz`.
+- **Contrato `PoseClip` v2 y fusión `GVHMR + WiLoR` (`data/capture2/to_poseclip.py`):**
+  - Contrato (`docs/contrato.md`, `web/src/contract.js`, commit aparte): compatible con v1 (`joints` conserva los 33 puntos de MediaPipe), suma `version: 2`, `capture`, `body_model: "smplx"`, `betas`, `camera`, `hands` (21 puntos 3D por mano vista en el espacio del contrato), `hands_conf`, `contacts` (`left_foot`, `right_foot` con altura ≤ 2 cm y velocidad ≤ 0,15 m/s) y `quality.hands_ratio`, más los arreglos SMPL-X girados y centrados en el `.npz`.
+  - Fusión en `to_poseclip.py`: asocia cada mano de WiLoR con la muñeca de GVHMR proyectadas al plano de cámara (`MAX_WRIST_IMAGE_DIST = 0.30` del lado largo), pone la muñeca (`R_elbow⁻¹ · R_wrist_wilor`, punto escalar > 0,998 entre los dedos de SMPL-X y los de WiLoR en cámara) y las 15 articulaciones de MANO (`flat_hand_mean = True`, mano izquierda espejada en `x`) en SMPL-X, y ancla los 21 puntos suavizados a la muñeca suavizada del cuerpo. Regenerados los 23 clips de `~/Tridi/capture2/clips/`.
+  - `physics/` (commit aparte): `retargetSteps` pasa `hands` de `PoseClip` v2 a `retargeter.solve` (muñecas y palmas) y `playClip` mueve los dedos de las manos Dex3 en los clips con manos; arreglado `check-retarget.mjs` para buscar clips en `data/clips/` o `web/clips/` (`npm --prefix physics run check` pasa entero).
+  - `web/` (commit aparte): `SkeletonView` dibuja los 21 puntos y 23 huesos por mano cuando el cuadro trae `hands`, ocultando los 4 huesos gruesos de MediaPipe; actualizados los clips v2 en `web/clips/` y sumados `clip_dedos-01-gvhmr` y `clip_lavar-04-gvhmr` a `preloaded.json`.
 
 ## Qué funcionó
 
@@ -68,7 +73,7 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
 
 ## Sigue
 
-- Captura 2.0: grabar un video caminando hacia la cámara (el set no tiene); revisar alturas de 1,9 m; pie ~1 cm bajo el piso (refinamiento físico); después manos (HaMeR o WiLoR, cuenta MANO de Juan) y `PoseClip` v2.
+- Captura 2.0: grabar un video caminando hacia la cámara con cámara fija y distancia conocida (para medir la velocidad frontal de GVHMR); revisar alturas de 1,9 m; pie ~1 cm bajo el piso (refinamiento físico); mano de 5 dedos tipo Inspire en el G1 (bloque 5 de `docs/plan-v2.md`).
 
 - Reunión con Luigi (tentativa, viernes): llevar las preguntas de [`../robots-fisicos.md`](../robots-fisicos.md). Con sus respuestas: modelo MuJoCo del carrito y la demo del recorrido.
 
