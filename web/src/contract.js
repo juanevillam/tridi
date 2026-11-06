@@ -47,6 +47,7 @@
  * @property {number} obs_dim
  * @property {number} nu
  * @property {string[]} trained_on
+ * @property {boolean} [sense_velocity]  whether mimic observation ends with pelvis linear velocity in body frame (3 floats)
  * @property {number} steps
  * @property {string} created_at
  */

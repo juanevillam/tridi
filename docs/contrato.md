@@ -154,13 +154,14 @@ Lo produce `training/`. Lo corre la web con onnxruntime-web junto a MuJoCo WASM.
 | `task` | `"stand"` (de pie, aguanta empujones) o `"mimic"` (imita un `RobotMotion`; en `training.ppo` es `--task mimic`, o su nombre viejo `walk`) | Lo escribe `training/export.py`. En políticas viejas sin el campo, `obs_dim` las distingue: 93 es `stand`, otro valor es `mimic` |
 | `motion` | El `clip_id` del `RobotMotion` que imita (solo `mimic`) | Lo escribe `training/export.py` |
 | `lookahead_s` | Qué tan adelante muestra la observación la referencia, en segundos (solo `mimic`) | Lo escribe `training/export.py`: `[0.1, 0.25]` |
+| `sense_velocity` | `true` si la observación de `mimic` incluye al final la velocidad lineal de la pelvis en su propio marco (`R^T qvel[0:3]`, 3 números más: `obs_dim = 193` en el G1) | Lo escribe `training/export.py` cuando la política se entrenó con `--sense-velocity` |
 | `worlds` | Los ids de los mundos con que se entrenó (ver "Mundos") | Lo escribe `training/export.py`. `["plano"]` hasta que la imitación sortee mundos (ENT-3) |
 | `followed_s`, `duration_s` | Cuántos segundos del clip sigue este checkpoint desde el principio, sin caerse ni alejarse más de 0,6 m del recorrido, en el mundo plano y sin ruido (como `training/evaluate_walk.py`), y cuánto dura el clip (solo `mimic`) | Lo escribe `training/export.py` al exportar cada checkpoint |
 
 La observación de cada tipo, número por número:
 
 - `stand` (93): la tabla de [`training/README.md`](../training/README.md).
-- `mimic` (190): los 93 de `stand`; los ángulos de la referencia a 20 ms menos la pose de pie (29); la velocidad de la pelvis de la referencia en el marco de la pelvis (3); la altura de la pelvis de la referencia menos la actual (1); y por cada valor de `lookahead_s`, los ángulos de la referencia en ese instante menos la pose de pie (29) y la posición de su pelvis menos la actual, en el marco de la pelvis (3). El detalle está en `MimicEnv.observe()` de `training/imitate.py`. La salida ya trae sumada la pose de referencia: se escribe tal cual en `data.ctrl`.
+- `mimic` (190, o 193 con `sense_velocity: true`): los 93 de `stand`; los ángulos de la referencia a 20 ms menos la pose de pie (29); la velocidad de la pelvis de la referencia en el marco de la pelvis (3); la altura de la pelvis de la referencia menos la actual (1); por cada valor de `lookahead_s`, los ángulos de la referencia en ese instante menos la pose de pie (29) y la posición de su pelvis menos la actual, en el marco de la pelvis (3); y, si `sense_velocity` es `true`, la velocidad lineal de la pelvis del propio robot en el marco de la pelvis (`R^T qvel[0:3]`, 3 números en m/s). El detalle está en `MimicEnv.observe()` de `training/imitate.py`. La salida ya trae sumada la pose de referencia: se escribe tal cual en `data.ctrl`.
 
 ## API del servidor de video (`data/server.py`)
 
