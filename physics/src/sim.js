@@ -287,21 +287,7 @@ export class Simulation {
     const scale = grip * motor;
 
     if (!policy.isImitation) {
-      const recovery = Math.max(0, 1 - (data.time - (this.lastPushEnd ?? -10)) / 2.5);
-      if ((policy.id === 'g1-stand' || policy.id === 'g1-stand-v2') && recovery > 0 && (this.lastPushNewtons ?? 0) <= 450 && qpos[2] > 0.56) {
-        const s = scale * recovery;
-        data.qfrc_applied[0] = -55 * s * qvel[0];
-        data.qfrc_applied[1] = -55 * s * qvel[1];
-        data.qfrc_applied[2] = Math.max(0, 900 * motor * recovery * (0.78 - qpos[2]) - 80 * motor * recovery * qvel[2]);
-        const sign = qpos[3] >= 0 ? 1 : -1;
-        const ex = -sign * qpos[4];
-        const ey = -sign * qpos[5];
-        data.qfrc_applied[3] = 115 * s * (2 * ex) - 14 * s * qvel[3];
-        data.qfrc_applied[4] = 115 * s * (2 * ey) - 14 * s * qvel[4];
-        data.qfrc_applied[5] = policy.id === 'g1-stand' ? -8 * s * qvel[5] : 0;
-      } else {
-        for (let k = 0; k < 6; k++) data.qfrc_applied[k] = 0;
-      }
+      for (let k = 0; k < 6; k++) data.qfrc_applied[k] = 0;
       return;
     }
 

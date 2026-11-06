@@ -49,13 +49,15 @@ const GYM_PUSH_EVERY_S = 3.2; // the Gym pushes the standing robot this often, g
 const GYM_FIRST_PUSH_S = 2.0;
 const GYM_RESTART_S = 1.6; // a fallen robot lies this long before it is stood up again
 const AFTER_PUSH_S = 5; // after a push in the hero, the robot stands this long before it is reset
-// The Gym in four stops across orders of magnitude (0, 10 M, 100 M, 1 B steps): each loads its
-// checkpoint and shows how stability scales from falling immediately to absorbing multi-directional shoves.
+// The Gym in four stops of the real training, each a saved checkpoint of its iterations, with what
+// training/README.md measured for it: seconds standing (of 20) and 250 N pushes held (of 4). The
+// third is v2 (40 M steps), the first that held every push; the last is the one the page uses
+// (stand-v7d, 60 M steps), which gave up a few pushes to stop pivoting on one foot.
 const GYM_STAGES = [
   { level: 'g1-stand-step-0', steps: 0, label: '0', up: 1.1, pushes: 0 },
   { level: 'g1-stand-step-10000000', steps: 10e6, label: '10 M', up: 9.6, pushes: 1 },
-  { level: 'g1-stand-v2', steps: 100e6, label: '100 M', up: 20, pushes: 3.6 },
-  { level: 'g1-stand', steps: 1e9, label: '1 B', up: 20, pushes: 4 },
+  { level: 'g1-stand-v2', steps: 40e6, label: '40 M', up: 20, pushes: 4 },
+  { level: 'g1-stand', steps: 60e6, label: '60 M', up: 20, pushes: 3.6 },
 ];
 // The policy decides 50 times a second (training/README.md), for the simulation's readout.
 const DECISIONS_PER_S = 50;
@@ -173,11 +175,11 @@ export function mount(root) {
             <div class="steps-axis">
               <div class="axis-track" aria-hidden="true">
                 <i class="axis-line"><i class="axis-fill"></i></i>
-                ${GYM_STAGES.map((_, i) => `<i class="axis-tick" style="--at: ${(100 * i) / (GYM_STAGES.length - 1)}%"></i>`).join('')}
+                ${GYM_STAGES.map((stage) => `<i class="axis-tick" style="--at: ${(100 * stage.steps) / GYM_STAGES.at(-1).steps}%"></i>`).join('')}
               </div>
               <div class="axis-stops" role="group" ${A({ 'aria-label': 'gym.stages' })}>
               ${GYM_STAGES.map((stage, i) => `
-                <button class="axis-stop" type="button" data-stage="${i}" style="--at: ${(100 * i) / (GYM_STAGES.length - 1)}%">
+                <button class="axis-stop" type="button" data-stage="${i}" style="--at: ${(100 * stage.steps) / GYM_STAGES.at(-1).steps}%">
                   <span class="axis-label">${T('gym.stepsAt', { n: stage.label })}</span>
                   <span class="axis-verdict">${T(`stage.${i}.verdict`)}</span>
                 </button>`).join('')}
