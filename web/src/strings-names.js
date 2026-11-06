@@ -12,6 +12,10 @@ const SCENES = {
   deposito: { es: 'Depósito', en: 'Warehouse' },
   vereda: { es: 'Vereda', en: 'Sidewalk' },
 };
+const ROBOTS = {
+  unitree_g1: { es: 'Unitree G1 (29 motores + manos 5 dedos)', en: 'Unitree G1 (29 motors + 5-finger hands)' },
+  unitree_h1: { es: 'Unitree H1 (19 motores, open-source)', en: 'Unitree H1 (19 motors, open-source)' },
+};
 const LEVELS = {
   'g1-stand-step-0': { es: 'Sin entrenar', en: 'Untrained' },
   'g1-stand-step-3000000': { es: '3 millones de pasos', en: '3 million steps' },
@@ -23,6 +27,10 @@ const LEVELS = {
   'g1-walk': {
     es: 'Caminar imitando el video, con física (65 % de empujones)',
     en: 'Walking imitating the video, with physics (65% of pushes)',
+  },
+  'h1-walk': {
+    es: 'Unitree H1 · Caminar imitando el video, con física',
+    en: 'Unitree H1 · Walking imitating the video, with physics',
   },
   'g1-run': {
     es: 'Correr imitando el video, con física',
@@ -57,6 +65,7 @@ const LEVELS = {
 const pick = (table) => (id, fallback) => table[id] ?? { es: fallback ?? id, en: fallback ?? id };
 export const worldName = pick(WORLDS);
 export const sceneName = pick(SCENES);
+export const robotName = pick(ROBOTS);
 export const levelName = pick(LEVELS);
 
 /** { es, en } as T() would write it: one span per language. */

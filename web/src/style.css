@@ -763,6 +763,22 @@ select:disabled {
   color: var(--muted);
 }
 
+.grasp-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.mode.grasp-actions {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.mode.grasp-actions button {
+  font-size: 13px;
+  padding: 0 6px;
+}
+
 /* The person's pane with the source video: the recording, its skeleton over it, no 3D skeleton. */
 .pane .source-video,
 .pane .source-overlay {

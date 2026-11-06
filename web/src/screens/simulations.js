@@ -1,13 +1,13 @@
 // Ver simulaciones: the gallery of preloaded clips and the stage with the person and the robot.
 import { mountGallery } from '../gallery.js';
 import { SCENES, WORLDS } from 'tridi-physics';
-import { FINAL_LEVEL, IMITATIONS, LEVELS } from '../policies.js';
+import { FINAL_LEVEL, IMITATIONS, LEVELS, ROBOT_MODELS } from '../policies.js';
 import { robotPaneHTML } from '../robot-pane.js';
 import { ICONS, mountStage } from '../stage.js';
 import { mountTrainBox, trainBoxHTML } from '../training.js';
 import { option } from '../i18n.js';
 import { A, T, X, t } from '../strings-stage.js';
-import { levelName, sceneName, worldName } from '../strings-names.js';
+import { levelName, robotName, sceneName, worldName } from '../strings-names.js';
 
 export const title = { es: 'Simulaciones', en: 'Simulations' };
 
@@ -67,6 +67,11 @@ export function mount(root, { api }, [clipId] = []) {
             <section class="control-group" aria-labelledby="ctl-world">
               <h3 id="ctl-world">${T('conditions')}</h3>
               <div class="fields">
+                <label class="field wide">${T('robotModel')}
+                  <select id="robot-model">
+                    ${ROBOT_MODELS.map(({ id, label }) => option(id, robotName(id, label), id === 'unitree_g1' ? 'selected' : '')).join('')}
+                  </select>
+                </label>
                 <label class="field">${T('world')}
                   <select id="world">
                     ${WORLDS.map(({ id, title }) => option(id, worldName(id, title), id === 'plano' ? 'selected' : '')).join('')}
@@ -84,6 +89,15 @@ export function mount(root, { api }, [clipId] = []) {
                     ${IMITATIONS.length ? `<optgroup ${A({ label: 'imitates' })}>${IMITATIONS.map(({ id, label }) => option(id, levelName(id, label), 'disabled')).join('')}</optgroup>` : ''}
                   </select>
                 </label>
+              </div>
+              <div class="grasp-box">
+                <p class="mode-note">${T('objectsHead')}</p>
+                <div class="mode grasp-actions" role="group" ${A({ 'aria-label': 'objectsHead' })}>
+                  <button type="button" id="hold-dry" aria-pressed="false">${T('holdDry')}</button>
+                  <button type="button" id="hold-wet" aria-pressed="false">${T('holdWet')}</button>
+                  <button type="button" id="drop-obj" aria-pressed="false">${T('dropObj')}</button>
+                </div>
+                <p class="mode-note" id="grasp-status" hidden></p>
               </div>
               <details class="tune">
               <summary>${T('tune')}</summary>

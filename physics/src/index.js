@@ -277,6 +277,9 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
      *   travel (a run seen from the side); true or false force it.
      */
     playClip(motion, { loop = true, plantFeet = 'auto' } = {}) {
+      if (baseScene.startsWith('unitree_h1/') && motion.robot === 'unitree_g1') {
+        swapScene(worldScene(world), 'home');
+      }
       // The robot's own values (36), not the model's: a place with loose objects adds 7 per object.
       const robotValues = kinematicModel().nq;
       if (motion.robot !== 'unitree_g1' || motion.qpos[0]?.length !== robotValues) {
@@ -353,8 +356,9 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
     async setWorld(next) {
       world = next;
       conditions = null; // a new world starts from its own middle values
-      if (baseScene !== worldScene(next)) {
-        swapScene(worldScene(next), 'home');
+      const targetScene = baseScene.startsWith('unitree_h1/') ? baseScene : worldScene(next);
+      if (baseScene !== targetScene) {
+        swapScene(targetScene, 'home');
         await restorePolicy();
       } else {
         stop();

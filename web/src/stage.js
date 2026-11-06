@@ -55,6 +55,7 @@ export function mountStage(root) {
   let playing = true;
   let speed = 1;
   let level = $('policy').value;
+  let robotModel = $('robot-model')?.value ?? 'unitree_g1';
   let current = null; // { clip, title }: what the gallery selected
   let motion = null; // the RobotMotion of `current`
   let copying = false; // the robot is playing `motion`
@@ -67,7 +68,10 @@ export function mountStage(root) {
   // one, or standing with its policy if it has not learned this movement yet. Without physics it
   // replays the movement as a puppet, as a reference: what it would look like, not what it can do.
   let physics = true;
-  const imitationFor = (clip) => IMITATIONS.find((imitation) => matchesImitation(imitation, clip?.id)) ?? null;
+  const imitationFor = (clip, rModel = robotModel) =>
+    IMITATIONS.find((imitation) => (imitation.robot ?? 'unitree_g1') === rModel && matchesImitation(imitation, clip?.id)) ??
+    IMITATIONS.find((imitation) => matchesImitation(imitation, clip?.id)) ??
+    null;
   const overlay = createVideoOverlay(root.querySelector('#human-pane'));
 
   // A clip moves with physics only if a policy learned it (an imitation); any other clip is shown
@@ -178,6 +182,8 @@ export function mountStage(root) {
       const learned = imitation && (motions.get(motionId) ?? (await savedMotion(motionId)));
       await view.loadPolicy(onnx, json, imitation ? { motion: learned } : {});
       level = id;
+      robotModel = imitation?.robot ?? 'unitree_g1';
+      if ($('robot-model')) $('robot-model').value = robotModel;
       if (imitation) skeleton.time = 0; // the robot starts the clip from its first pose
     } catch (error) {
       console.error(error);
@@ -188,7 +194,7 @@ export function mountStage(root) {
       root.querySelector('.push').disabled = !robot.view; // never before the robot is there
     }
     // The user may have picked another clip while it loaded: an imitation is only for its own clip.
-    if (imitating() && !matchesImitation(imitationOf(level), current?.clip.id)) {
+    if (imitating() && robotModel !== 'unitree_h1' && !matchesImitation(imitationOf(level), current?.clip.id)) {
       $('policy').value = FINAL_LEVEL;
       return loadLevel(FINAL_LEVEL);
     }
@@ -256,6 +262,69 @@ export function mountStage(root) {
   $('show').onchange = (event) => ($('stage').dataset.show = event.target.value);
   $('policy').onchange = (event) => loadLevel(event.target.value);
   $('world').onchange = (event) => setWorld(event.target.value);
+  if ($('robot-model')) {
+    $('robot-model').onchange = async (event) => {
+      robotModel = event.target.value;
+      if (robotModel === 'unitree_h1') {
+        const h1 = IMITATIONS.find((im) => im.robot === 'unitree_h1');
+        if (h1) {
+          const opt = $('policy').querySelector(`option[value="${h1.id}"]`);
+          if (opt) opt.disabled = false;
+          $('policy').value = h1.id;
+          physics = true;
+          await loadLevel(h1.id);
+        }
+      } else {
+        const g1Im = imitationFor(current?.clip, 'unitree_g1');
+        const nextId = physics && g1Im ? g1Im.id : FINAL_LEVEL;
+        $('policy').value = nextId;
+        await loadLevel(nextId);
+      }
+    };
+  }
+
+  // Physical object grasping, soapy/wet slip, and gravity release with dynamic liquid spheres.
+  const graspButtons = [root.querySelector('#hold-dry'), root.querySelector('#hold-wet'), root.querySelector('#drop-obj')].filter(Boolean);
+  const setGraspStatus = (key, activeBtn) => {
+    graspButtons.forEach((b) => b.setAttribute('aria-pressed', String(b === activeBtn)));
+    const status = $('grasp-status');
+    if (!status) return;
+    if (!key) {
+      status.hidden = true;
+      return;
+    }
+    status.hidden = false;
+    status.innerHTML = T(key);
+  };
+  if ($('hold-dry')) {
+    $('hold-dry').onclick = async () => {
+      if (!robot.view) return;
+      copying = false;
+      await robot.view.holdObject({ wet: false });
+      await dressPlace(robot.view);
+      refreshLook();
+      setRobotLabel();
+      setGraspStatus('graspHoldingDry', $('hold-dry'));
+    };
+  }
+  if ($('hold-wet')) {
+    $('hold-wet').onclick = async () => {
+      if (!robot.view) return;
+      copying = false;
+      await robot.view.holdObject({ wet: true });
+      await dressPlace(robot.view);
+      refreshLook();
+      setRobotLabel();
+      setGraspStatus('graspHoldingWet', $('hold-wet'));
+    };
+  }
+  if ($('drop-obj')) {
+    $('drop-obj').onclick = () => {
+      if (!robot.view) return;
+      robot.view.dropObject();
+      setGraspStatus('graspDropped', $('drop-obj'));
+    };
+  }
 
   // Conditions by hand: each slider sets one value at once (view.setConditions), over the world.
   const sliders = [...root.querySelectorAll('input[data-condition]')];
@@ -335,9 +404,9 @@ export function mountStage(root) {
   function offerImitations(clip) {
     for (const imitation of IMITATIONS) {
       const option = $('policy').querySelector(`option[value="${imitation.id}"]`);
-      if (option) option.disabled = !matchesImitation(imitation, clip.id);
+      if (option) option.disabled = imitation.robot !== 'unitree_h1' && !matchesImitation(imitation, clip.id);
     }
-    if (imitating() && !matchesImitation(imitationOf(level), clip.id)) {
+    if (imitating() && robotModel !== 'unitree_h1' && !matchesImitation(imitationOf(level), clip.id)) {
       $('policy').value = FINAL_LEVEL;
       loadLevel(FINAL_LEVEL);
     }
