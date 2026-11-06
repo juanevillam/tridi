@@ -3,7 +3,7 @@ persona: Juan
 rama: juan/experimental
 sesion: 6f6767dc-9ab1-4aa4-97c3-b1e8ee179dea
 inicio: 2026-11-04 19:25
-estado: en curso
+estado: cerrada
 ---
 
 # Caminata que siente su velocidad (corrida de la noche)
@@ -53,37 +53,48 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
   - Fusión en `to_poseclip.py`: asocia cada mano de WiLoR con la muñeca de GVHMR proyectadas al plano de cámara (`MAX_WRIST_IMAGE_DIST = 0.30` del lado largo), pone la muñeca (`R_elbow⁻¹ · R_wrist_wilor`, punto escalar > 0,998 entre los dedos de SMPL-X y los de WiLoR en cámara) y las 15 articulaciones de MANO (`flat_hand_mean = True`, mano izquierda espejada en `x`) en SMPL-X, y ancla los 21 puntos suavizados a la muñeca suavizada del cuerpo. Regenerados los 23 clips de `~/Tridi/capture2/clips/`.
   - `physics/` (commit aparte): `retargetSteps` pasa `hands` de `PoseClip` v2 a `retargeter.solve` (muñecas y palmas) y `playClip` mueve los dedos de las manos Dex3 en los clips con manos; arreglado `check-retarget.mjs` para buscar clips en `data/clips/` o `web/clips/` (`npm --prefix physics run check` pasa entero).
   - `web/` (commit aparte): `SkeletonView` dibuja los 21 puntos y 23 huesos por mano cuando el cuadro trae `hands`, ocultando los 4 huesos gruesos de MediaPipe; actualizados los clips v2 en `web/clips/` y sumados `clip_dedos-01-gvhmr` y `clip_lavar-04-gvhmr` a `preloaded.json`.
-- **Corrida nocturna `night-vel.sh`, balance con fase de vuelo (H1, jumping jacks, correr) y cola autónoma (`night-queue.sh`):**
-  - `walk-vel-seed0` terminó a los 10,0 M pasos siguiendo el clip entero (11,86 / 11,85 s) y pasó el escalón 1 (`calm 100 %`, `pushed 5 %`). `walk-vel-push-seed0` cortó a los 5,0 M pasos por pronóstico (`web push 5 %`, `50 N 100 %, 100 N 90 %, 150 N 50 %, 200 N 15 %, 300 N 5 %`) porque saltó directo de 0 N a 150-300 N sin la rampa intermedia de 150 N → 300 N con `--follow`.
-  - **Unitree H1 (`clip_2026-10-23_caminar-perfil_01-h1-balanced.json`)**: el 76 % de acuerdo de contacto en `training.feasible` venía de que la punta del pie del H1 (14 cm delante del tobillo) bajaba a 0,6-1,3 cm del piso en la segunda mitad del balanceo (`< 1,5 cm` de umbral de contacto). En `ik_frame` (`training/balance.py`), pedir hasta 2 cm de despeje en las cápsulas del pie en vuelo usando solo las articulaciones de esa pierna sube el acuerdo de contacto a **84 %** (ZMP fuera 2 %, `OK: feasible`).
-  - **Fase de vuelo en `training/balance.py`, `training/imitate.py`, `training/checks.py` y `training/feasible.py`:** `imitate.Motion` solo apoya en el piso los cuadros con al menos un pie en contacto (`any(contacts[i])`), conservando el vuelo (`[0, 0]`); `training.balance` resuelve el ZMP en la grilla exacta de 50 Hz de `checks.c2` pesando los pasos con apoyo, suma trayectoria balística de pelvis y despeje de pies en vuelo, simetriza brazos en `jumping-jacks` y usa odometría del pie apoyado en `correr-perfil`. Pasan **C1 y C2** tanto `clip_2026-10-24_jumping-jacks-nasm_01-balanced.json` (contacto 81 %, ZMP fuera 2 %) como `clip_2026-10-23_correr-perfil_01-balanced.json` (contacto 91 %, ZMP fuera 6 %).
-  - Lanzada `training/runs/night-queue.sh` con `nohup` (`--shared nice`): (1) rampa de empujones con velocidad `walk-vel-follow150-seed0` → `walk-vel-follow300-seed0` → `walk-vel-strong-seed0` + evaluaciones; (2) caminata del Unitree H1 (`h1-walk-balanced-seed0`); (3) C3/C4 y entrenamiento de jumping jacks (`jacks-balanced-seed0`); (4) C3/C4 y entrenamiento de correr (`run-balanced-seed0`).
+- **Corrida nocturna `night-vel.sh`, balance con fase de vuelo (H1, jumping jacks, correr) y colas autónomas (`night-queue.sh` y `night-queue-part2.sh`):**
+  - **Escalón 1 con velocidad (`walk-vel-seed0`, `walk-vel-seed1`, `walk-vel-seed2`):** las 3 semillas desde cero aprendieron los 11,85 s completos en 10,0 M pasos y **pasaron `training.rung1` (3 de 3 con 100 % en calma)**.
+  - **Rampa de empujones con velocidad (`walk-vel-follow150-seed0` → `walk-vel-follow300-seed0` → `walk-vel-strong-seed0`):**
+    - `walk-vel-push-seed0` (sin rampa) había cortado en 5 % del empujón de la web (250 N).
+    - Con la rampa (`4 M` en `0-150 N` + `4 M` en `0-300 N` con `--follow`, luego `150-300 N` con `--recover`), `walk-vel-strong-seed0` subió por encima del techo de 55 % sin velocidad: en **14 M pasos (`step_14000000.pt`) alcanza 65 % del empujón de la web (26 de 40: frente 50 %, izquierda 90 %, espalda 100 %, derecha 20 %)** y en fuerzas aleatorias llega a **50 N 100 %, 100 N 100 %, 150 N 95 %, 200 N 80 %, 300 N 50 %** (en 15 M pasos: 57 % web push, frente 70 %, izquierda 70 %, espalda 80 %).
+    - Como superó el umbral de 0,55, se actualizó el contrato (`docs/contrato.md`, `web/src/contract.js`), `training/export.py`, `training/browser_fixture.py`, `physics/src/policy.js` y `physics/src/reference.js` (commits separados por área): `Policy` soporta `sense_velocity: true` (`obs_dim = 193` en el G1, sumando `R^T qvel[0:3]`), y JS coincide con Python en las 193 entradas a `6,0e-8` y en los 29 motores a `2,7e-7 rad`.
+  - **Unitree H1 (`clip_2026-10-23_caminar-perfil_01-h1-balanced.json` y `h1-walk-balanced-seed0`):**
+    - El 76 % de acuerdo de contacto en `training.feasible` venía de que la punta del pie del H1 (14 cm delante del tobillo) bajaba a 0,6-1,3 cm del piso en la segunda mitad del balanceo (`< 1,5 cm`). En `ik_frame` (`training/balance.py`), pedir hasta 2 cm de despeje en las cápsulas del pie en vuelo usando solo las articulaciones de esa pierna sube el acuerdo de contacto a **84 %** (ZMP fuera 2 %, `OK: feasible`).
+    - Arreglado `training/export.py` para usar `nu` del robot (`obs[:, 6+3*nu : 6+4*nu]`) en lugar de `93:122` fijo.
+    - Entrenado `h1-walk-balanced-seed0`: en **10,0 M pasos (19,7 min)** sigue el clip entero (**11,86 / 11,85 s**, sostiene 2 s desde el 100 % de los inicios; exportado `h1-walk-balanced-seed0-step-10002432.onnx`, 300 KB).
+  - **Jumping Jacks (`jacks-balanced-seed0`) y Correr (`run-balanced-seed0`) con fase de vuelo:**
+    - `imitate.Motion` y `physics/src/reference.js` solo apoyan en el piso los cuadros con al menos un pie en contacto (`any(contacts[i])`), conservando el vuelo (`[0, 0]`); `training.balance` resuelve el ZMP en la grilla exacta de 50 Hz de `checks.c2` pesando los pasos con apoyo, suma trayectoria balística de pelvis y despeje de pies en vuelo, simetriza brazos en `jumping-jacks` y usa odometría del pie apoyado en `correr-perfil`.
+    - Ambos pasan **C1, C2, C3 y C4** (`Listo para entrenar largo`).
+    - `jacks-balanced-seed0` aprendió los **5,18 / 5,17 s** completos en 10,0 M pasos (20,7 min, `jacks-balanced-seed0-step-10002432.onnx`).
+    - `run-balanced-seed0` aprendió los **3,80 / 3,80 s** completos en 10,0 M pasos (21,3 min, sostiene 2 s desde el 100 % de los inicios, `run-balanced-seed0-step-10002432.onnx`).
 
 ## Qué funcionó
 
-- `walk-vel-seed0` aprendió la caminata completa con velocidad de pelvis en 10 M pasos (100 % llega al final sin empujón).
-- Subir el despeje de cápsulas del pie en balanceo en `ik_frame` resolvió el 76 % → 84 % de contacto del Unitree H1 sin levantar el pie plantado.
-- Resolver el ZMP en la grilla de 50 Hz solo sobre cuadros con apoyo permitió que jumping jacks y correr pasen C1 y C2 con fase de vuelo real.
+- Las 3 semillas de `walk-vel` aprendieron la caminata completa en 10 M pasos (100 % en calma, escalón 1 aprobado) y con la rampa `150 N → 300 N → 150-300 N + recover` llegaron a **65 % del empujón de 250 N de la web** (espalda 100 %, izquierda 90 %, frente 50 %) y **80 % a 200 N / 50 % a 300 N**.
+- Subir el despeje de cápsulas del pie en balanceo en `ik_frame` resolvió el 76 % → 84 % de contacto del Unitree H1 sin levantar el pie plantado, y el H1 aprendió la caminata entera (11,86 / 11,85 s) en 10 M pasos.
+- Resolver el ZMP en la grilla de 50 Hz solo sobre cuadros con apoyo permitió que jumping jacks y correr pasen C1–C4 con fase de vuelo real y aprendan el clip entero en 10 M pasos.
 
 ## Qué no funcionó
 
 - Vite no ve un archivo nuevo en `physics/motions` (lo lee con `import.meta.glob`) hasta reiniciar el servidor.
-
 - Correr entrenamientos largos como tarea de fondo de la sesión: mueren con ella.
 - Esperar trabajos con `pgrep -f <texto>`: la propia espera lleva ese texto y se encuentra a sí misma. La tanda terminó a las 12:55 y la Mac quedó parada ~35 min hasta que Juan preguntó. Ahora se espera por PID (`kill -0`).
+- Saltar de 0 N directo a 150-300 N en `walk-vel-push-seed0` sin la rampa intermedia `follow150 → follow300` se estancó en 5 %; con la rampa subió a 65 %.
+- El pronóstico log-lineal de `pushwalk` a los 5 M pasos cortó antes de tiempo porque entre 12 k y 1 M pasos la métrica vale ~0 y recién despega entre 2 M y 14 M (de 5 % a 65 %).
 
 ## Decisiones
 
 - Antes de más rondas largas de humanoide, prioridad a preparar la demo física con Luigi. No se construye código para su robot hasta conocer su hardware: cada respuesta cambia el diseño.
-
-- Los entrenamientos de la noche se lanzan con `nohup`, desacoplados de la sesión de Claude.
+- Los entrenamientos de la noche se lanzan con `nohup`, desacoplados de la sesión.
+- Como la caminata con velocidad superó el 55 % en el empujón de la web (65 % en 14 M pasos), `sense_velocity` entra al contrato (`docs/contrato.md`) y a `physics/src/policy.js`.
 
 ## Sigue
 
-- Captura 2.0: grabar un video caminando hacia la cámara con cámara fija y distancia conocida (para medir la velocidad frontal de GVHMR); revisar alturas de 1,9 m; pie ~1 cm bajo el piso (refinamiento físico); mano de 5 dedos tipo Inspire en el G1 (bloque 5 de `docs/plan-v2.md`).
-
-- Reunión con Luigi (tentativa, viernes): llevar las preguntas de [`../robots-fisicos.md`](../robots-fisicos.md). Con sus respuestas: modelo MuJoCo del carrito y la demo del recorrido.
-
-- Resultado de la noche: si el empujón de la web pasa 0,55, cambiar el contrato (`docs/contrato.md`) y `physics/src/policy.js` para dar la velocidad de la pelvis a la política en la web.
-- Entrenar el H1 y resolver su 76 % de contacto.
-- Licencia de SMPL-X (no comercial): Juan decide antes de la captura 2.0.
+- **Con Juan:**
+  - Reunión con Luigi (tentativa, viernes): llevar las preguntas de [`../robots-fisicos.md`](../robots-fisicos.md). Con sus respuestas: modelo MuJoCo del carrito y la demo del recorrido.
+  - Captura 2.0: grabar un video caminando hacia la cámara con cámara fija y distancia conocida (para medir la velocidad frontal de GVHMR).
+  - Decidir si publicar en `training/policies/g1-walk` el checkpoint de 14 M pasos de `walk-vel-strong-seed0` (65 % del empujón de 250 N, con la referencia balanceada en `physics/motions/`).
+- **Autónomo / siguiente:**
+  - Mano de 5 dedos tipo Inspire en el G1 (bloque 5 de `docs/plan-v2.md`).
+  - Caminata en los 4 mundos (`plano,piedras,resbaloso,viento`) partiendo de `walk-vel-strong-seed0`.
