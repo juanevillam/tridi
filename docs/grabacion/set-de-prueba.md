@@ -11,7 +11,7 @@ Juan puede sumar grabaciones propias cuando quiera (sección 4), pero no hace fa
 | Qué | Dónde |
 | --- | --- |
 | La lista de videos (id, habilidad, fuente, link, licencia, estado) | [`data/set-de-prueba/manifest.csv`](../../data/set-de-prueba/manifest.csv), versionada |
-| Los videos y sus `PoseClip` | `~/Tridi/set-de-prueba/` en la Mac. **Nunca** en el repo ni en la nube |
+| Los videos y sus `PoseClip` | `data/set-de-prueba/` en la Mac (gitignored). **Nunca** en git ni en la nube |
 | Las notas de calidad de cada versión de la captura | [`data/set-de-prueba/quality.csv`](../../data/set-de-prueba/quality.csv), versionada |
 
 ```bash

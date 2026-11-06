@@ -14,11 +14,11 @@ SMPL-X, SMPL, MANO y GVHMR son **no comerciales**. Juan decidió usarlos así (2
 
 ## Instalación (una vez)
 
-GVHMR vive fuera del repo, en `~/Code/tridi-thirdparty/GVHMR`, con su propio entorno (fija torch 2.3 y necesita pytorch3d):
+GVHMR vive en `data/thirdparty/GVHMR` (gitignored), con su propio entorno (fija torch 2.3 y necesita pytorch3d):
 
 ```bash
-git clone https://github.com/zju3dv/GVHMR ~/Code/tridi-thirdparty/GVHMR
-cd ~/Code/tridi-thirdparty/GVHMR && uv venv -p 3.10 .venv && . .venv/bin/activate
+git clone https://github.com/zju3dv/GVHMR data/thirdparty/GVHMR
+cd data/thirdparty/GVHMR && uv venv -p 3.10 .venv && . .venv/bin/activate
 uv pip install torch==2.3.1 torchvision==0.18.1 timm==0.9.12 lightning==2.3.0 pytorch-lightning==2.3.0 hydra-core==1.3.2 hydra-zen hydra_colorlog rich numpy==1.23.5 matplotlib "setuptools>=68" tensorboardX opencv-python ffmpeg-python scikit-image termcolor einops imageio==2.34.1 av==13.0.0 joblib trimesh smplx pycolmap ultralytics==8.2.42 lapx yacs wis3d "setuptools<70" scipy==1.13.1
 CFLAGS=-Wno-invalid-specialization CXXFLAGS=-Wno-invalid-specialization uv pip install --no-build-isolation "git+https://github.com/facebookresearch/pytorch3d.git@V0.7.8"
 ```
@@ -32,22 +32,22 @@ Comprobado (2026-11-04): corre de punta a punta en la Mac. El modelo final de GV
 
 **A mano (Juan, en el navegador):** Google Drive no deja bajar los pesos grandes por script, y los modelos de cuerpo piden cuenta. No se usan espejos de terceros: un `.ckpt` o `.pth` puede ejecutar código al cargarse.
 
-1. Del [Drive oficial de GVHMR](https://drive.google.com/drive/folders/1eebJ13FUEXrKBawHpJroW0sNSxLjh9xD), a `~/Code/tridi-thirdparty/GVHMR/inputs/checkpoints/`:
+1. Del [Drive oficial de GVHMR](https://drive.google.com/drive/folders/1eebJ13FUEXrKBawHpJroW0sNSxLjh9xD), a `data/thirdparty/GVHMR/inputs/checkpoints/`:
    - `gvhmr/gvhmr_siga24_release.ckpt`
    - `hmr2/epoch=10-step=25000.ckpt`
    - `vitpose/vitpose-h-multi-coco.pth`
    - `yolo/yolov8x.pt`
 2. Con cuenta en [smpl-x.is.tue.mpg.de](https://smpl-x.is.tue.mpg.de/): `SMPLX_NEUTRAL.npz` (y `MALE`, `FEMALE`) a `inputs/checkpoints/body_models/smplx/`.
 3. Con cuenta en [smpl.is.tue.mpg.de](https://smpl.is.tue.mpg.de/): `SMPL_NEUTRAL.pkl` (y `MALE`, `FEMALE`) a `inputs/checkpoints/body_models/smpl/`.
-4. Para las manos: cuenta en [mano.is.tue.mpg.de](https://mano.is.tue.mpg.de/), bajar "Models & Code" (`mano_v1_2.zip`) y copiar `mano_v1_2/models/MANO_RIGHT.pkl` a `~/Code/tridi-thirdparty/WiLoR/mano_data/`.
+4. Para las manos: cuenta en [mano.is.tue.mpg.de](https://mano.is.tue.mpg.de/), bajar "Models & Code" (`mano_v1_2.zip`) y copiar `mano_v1_2/models/MANO_RIGHT.pkl` a `data/thirdparty/WiLoR/mano_data/`.
 
 ## Manos: WiLoR (2026-11-05)
 
 Por qué WiLoR y no HaMeR: trae su propio detector de manos (HaMeR necesita ViTPose y un detector aparte) y sus pesos se bajan por script desde el [espacio oficial en Hugging Face](https://huggingface.co/spaces/rolpotamias/WiLoR) (los de HaMeR van por un script a otro servidor). Licencia de los pesos: CC BY-NC-ND (no comercial, sin derivados), más la de MANO: entra en la decisión de Juan del 2026-11-04.
 
 ```bash
-git clone --recursive https://github.com/rolpotamias/WiLoR ~/Code/tridi-thirdparty/WiLoR
-cd ~/Code/tridi-thirdparty/WiLoR && uv venv -p 3.10 .venv && . .venv/bin/activate
+git clone --recursive https://github.com/rolpotamias/WiLoR data/thirdparty/WiLoR
+cd data/thirdparty/WiLoR && uv venv -p 3.10 .venv && . .venv/bin/activate
 uv pip install torch==2.3.1 torchvision==0.18.1 "numpy<2" opencv-python scikit-image pytorch-lightning==2.3.0 smplx==0.1.28 yacs timm einops hydra-core pyrootutils rich ultralytics==8.1.34 "setuptools<70" scipy==1.13.1 dill pyrender pip wheel picklescan
 uv pip install --no-build-isolation "chumpy @ git+https://github.com/mattloper/chumpy"
 mkdir -p pretrained_models && cd pretrained_models
@@ -58,7 +58,7 @@ curl -LO https://huggingface.co/spaces/rolpotamias/WiLoR/resolve/main/pretrained
 Revisados con `picklescan`: `wilor_final.ckpt` limpio. `detector.pt` marca `getattr`: revisado a mano, solo hace `getattr(Detect, "forward")` (clase de Ultralytics) y `dill` reconstruye el tipo `set`; el resto son módulos de torch y Ultralytics. Seguro.
 
 ```bash
-~/Code/tridi-thirdparty/WiLoR/.venv/bin/python data/capture2/wilor_mac.py <video>.mp4
+data/thirdparty/WiLoR/.venv/bin/python data/capture2/wilor_mac.py <video>.mp4
 ```
 
 `MANO_RIGHT.pkl` (de `mano_v1_2.zip`, la cuenta de Juan) revisado a mano como el de SMPL: solo numpy, scipy, chumpy y `set`. WiLoR importa pyrender (solo para dibujar) pidiendo EGL de Linux y su modelo arma renderers de entrenamiento: `wilor_mac.py` deja pasar el import con `PYOPENGL_PLATFORM=darwin` y apaga esos renderers, sin tocar su código. El detector va en la GPU y el modelo de WiLoR en la CPU (en MPS aborta, como el de GVHMR): ~0,6 s por cuadro. `--max-frames 30` para una prueba rápida.
@@ -117,14 +117,14 @@ En el baile, el pie apoyado patina 7 veces menos y los huesos ya no se estiran (
 ## Uso
 
 ```bash
-~/Code/tridi-thirdparty/GVHMR/.venv/bin/python data/capture2/gvhmr_mac.py data/samples/<video>.mp4 --f-mm 24
-~/Code/tridi-thirdparty/GVHMR/.venv/bin/python data/capture2/to_poseclip.py data/samples/<video>.gvhmr.npz
+data/thirdparty/GVHMR/.venv/bin/python data/capture2/gvhmr_mac.py data/samples/<video>.mp4 --f-mm 24
+data/thirdparty/GVHMR/.venv/bin/python data/capture2/to_poseclip.py data/samples/<video>.gvhmr.npz
 ```
 
 `--static` si la cámara no se mueve (más rápido: no corre la odometría visual). `gvhmr_mac.py` deja `<video>.gvhmr.npz`: parámetros SMPL-X por cuadro en el mundo y en la cámara. `to_poseclip.py` lo pasa a un `PoseClip` v1 (`clips/clip_<video>-gvhmr.json` y `.npz`): los 33 puntos de MediaPipe, girado para que z mire a la cámara (el mundo de GVHMR tiene la gravedad bien pero un giro cualquiera; en nuestros clips la persona miraba a −z) y suavizado como `data/lift.py`. Así lo usan la web, el retargeting y `data.quality` sin cambiar el contrato. Todo el set de prueba, de una (se puede cortar y retomar):
 
 ```bash
-nohup sh data/capture2/run_set.sh > ~/Tridi/capture2/run_set.out 2>&1 &
+nohup sh data/capture2/run_set.sh > data/capture2/out/run_set.out 2>&1 &
 ```
 
 ## Probarlo en la web

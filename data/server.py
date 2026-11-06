@@ -77,8 +77,8 @@ CLIP_ID = re.compile(r"^clip_[A-Za-z0-9_-]+$")
 POLICY_ID = re.compile(r"^clip_[A-Za-z0-9_-]+-step-\d+$")
 
 ROOT = Path(__file__).resolve().parent.parent
-GVHMR_PYTHON = Path(os.environ.get("GVHMR_ROOT", Path.home() / "Code" / "tridi-thirdparty" / "GVHMR")) / ".venv" / "bin" / "python"
-WILOR_PYTHON = Path(os.environ.get("WILOR_ROOT", Path.home() / "Code" / "tridi-thirdparty" / "WiLoR")) / ".venv" / "bin" / "python"
+GVHMR_PYTHON = Path(os.environ.get("GVHMR_ROOT", ROOT / "data" / "thirdparty" / "GVHMR")) / ".venv" / "bin" / "python"
+WILOR_PYTHON = Path(os.environ.get("WILOR_ROOT", ROOT / "data" / "thirdparty" / "WiLoR")) / ".venv" / "bin" / "python"
 
 # Camera clips (POST /clips). A 30 s PoseClip at 30 fps weighs ~0.9 MB (measured on data/clips/):
 # 5 MB leaves room without accepting anything. Below 0.8 valid_ratio the body was missing in more

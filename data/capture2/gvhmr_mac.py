@@ -2,7 +2,7 @@
 
 Runs inside GVHMR's own environment, not data/'s (it pins torch 2.3 and needs pytorch3d):
 
-    ~/Code/tridi-thirdparty/GVHMR/.venv/bin/python data/capture2/gvhmr_mac.py <video> [--static] [--f-mm 24]
+    data/thirdparty/GVHMR/.venv/bin/python data/capture2/gvhmr_mac.py <video> [--static] [--f-mm 24]
 
 GVHMR (https://github.com/zju3dv/GVHMR) recovers the person's body (SMPL-X) anchored to the world,
 with gravity and a camera that may move, so walking toward the camera still advances (today's
@@ -28,7 +28,7 @@ import sys
 import time
 from pathlib import Path
 
-GVHMR = Path(os.environ.get("GVHMR_ROOT", Path.home() / "Code" / "tridi-thirdparty" / "GVHMR"))
+GVHMR = Path(os.environ.get("GVHMR_ROOT", Path(__file__).resolve().parents[1] / "thirdparty" / "GVHMR"))
 
 
 def _patch_device(device: str) -> None:

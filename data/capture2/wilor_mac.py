@@ -2,7 +2,7 @@
 
 Runs inside WiLoR's own environment, not data/'s:
 
-    ~/Code/tridi-thirdparty/WiLoR/.venv/bin/python data/capture2/wilor_mac.py <video> [--device mps]
+    data/thirdparty/WiLoR/.venv/bin/python data/capture2/wilor_mac.py <video> [--device mps]
 
 WiLoR (https://github.com/rolpotamias/WiLoR) finds the hands with its own YOLO detector and gives,
 per hand, the MANO parameters: 15 finger joints (3 per finger) as rotations, the wrist's turn and the
@@ -30,7 +30,7 @@ from pathlib import Path
 
 import numpy as np
 
-WILOR = Path(os.environ.get("WILOR_ROOT", Path.home() / "Code" / "tridi-thirdparty" / "WiLoR"))
+WILOR = Path(os.environ.get("WILOR_ROOT", Path(__file__).resolve().parents[1] / "thirdparty" / "WiLoR"))
 # The detector's own threshold in WiLoR's demo: below it, blurred hands in motion read as noise.
 MIN_CONF = 0.3
 # WiLoR's demo pads each hand's box by 2x so the crop keeps the whole hand when the box is tight.

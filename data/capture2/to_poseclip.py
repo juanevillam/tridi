@@ -2,7 +2,7 @@
 
 Runs in GVHMR's environment (needs smplx, scipy and torch):
 
-    ~/Code/tridi-thirdparty/GVHMR/.venv/bin/python data/capture2/to_poseclip.py <video>.gvhmr.npz [--hands <video>.wilor.npz] [--out-dir DIR] [--raw]
+    data/thirdparty/GVHMR/.venv/bin/python data/capture2/to_poseclip.py <video>.gvhmr.npz [--hands <video>.wilor.npz] [--out-dir DIR] [--raw]
 
 Writes clip_<video>-gvhmr.json and .npz in --out-dir (default: a clips/ folder next to the .npz), as
 docs/contrato.md's PoseClip v2: y up, z toward the camera, the first frame's hips at (0, 0, 0). Every
@@ -44,7 +44,7 @@ from smooth import savgol, smooth_points  # noqa: E402
 ROOT_WINDOW_S = 0.6
 ROOT_ORDER = 2
 
-GVHMR = Path.home() / "Code" / "tridi-thirdparty" / "GVHMR"
+GVHMR = Path(__file__).resolve().parents[1] / "thirdparty" / "GVHMR"
 SMPLX_DIR = GVHMR / "inputs" / "checkpoints" / "body_models"
 
 # SMPL-X joint index (smplx library order, with its extra face and feet joints) for each of

@@ -9,8 +9,8 @@
 Tridi has to work with whatever video people have: a handheld phone, a webcam, a TikTok with five
 people dancing. So the test set is not a studio session; it is a list of real videos per skill
 (data/set-de-prueba/manifest.csv, versioned) and the numbers each capture version gets on them
-(quality.csv). The videos and their clips stay on this Mac, in ~/Tridi/set-de-prueba/ (never in
-the repo, never uploaded).
+(quality.csv). The videos and their clips stay on this Mac, in data/set-de-prueba/ (gitignored,
+never in git, never uploaded).
 
 Licenses (the manifest's "licencia" column): Pexels, Mixkit and Pixabay allow free use, commercial
 included. A TikTok, YouTube or Instagram video belongs to whoever posted it: fine for testing on this
@@ -27,7 +27,7 @@ from pathlib import Path
 
 HERE = Path(__file__).parent / "set-de-prueba"
 MANIFEST = HERE / "manifest.csv"
-HOME = Path.home() / "Tridi" / "set-de-prueba"
+HOME = HERE
 VIDEOS = HOME / "videos"
 CLIPS = HOME / "clips"
 FIELDS = ["id", "categoria", "fuente", "url", "licencia", "estado", "notas"]
