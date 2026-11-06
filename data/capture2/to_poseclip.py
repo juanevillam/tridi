@@ -111,11 +111,70 @@ def find_hands_npz(gvhmr_npz: Path, hands_arg: Path | None) -> Path | None:
     return None
 
 
+# SMPL-X's neutral J_regressor places left_hip (joint 1, MediaPipe 23) 1.114 cm above right_hip
+# (joint 2, MediaPipe 24) and left_shoulder (16, MP 11) 0.481 cm above right_shoulder (17, MP 12)
+# in the zero T-pose, which shows as a 5.3-degree permanent hip tilt on the 3D skeleton.
+SMPLX_HIP_Y_BIAS_M = 0.01114
+SMPLX_SHOULDER_Y_BIAS_M = 0.00481
+# Window (seconds) for the running lower-envelope of the feet: 1.0 s spans a full stride or jump
+# cycle (~0.5-0.7 s) so flight phases stay airborne while camera-pitch vertical drift is removed.
+FLOOR_ENVELOPE_WINDOW_S = 1.0
+# Entry/exit margin (frames) when trimming frozen edge bounding boxes where a runner enters/leaves frame.
+BBX_EDGE_MARGIN_FRAMES = 3
+
+
+def _active_frame_slice(npz: Path, n_total: int, global_orient: np.ndarray | None = None) -> slice:
+    """Trims padded leading/trailing frames where GVHMR's tracker froze or inverted the subject."""
+    video = npz.name.split(".")[0]
+    bbx_path = npz.parent / "gvhmr_work" / video / "preprocess" / "bbx.pt"
+    start, end = 0, n_total
+    b = None
+    if bbx_path.exists():
+        import torch
+
+        b = torch.load(bbx_path, map_location="cpu")["bbx_xyxy"].numpy()
+        if len(b) == n_total and n_total > 20:
+            diff = np.linalg.norm(np.diff(b, axis=0), axis=1)
+            active = np.where(diff > 1e-4)[0]
+            if len(active):
+                first, last = int(active[0]), int(active[-1] + 1)
+                if first > 0:
+                    start = min(n_total - 1, first + BBX_EDGE_MARGIN_FRAMES)
+                if last < n_total - 1:
+                    end = max(start + 1, last - BBX_EDGE_MARGIN_FRAMES)
+    if global_orient is not None and end - start > 60:
+        from scipy.spatial.transform import Rotation as R
+
+        up_y = R.from_rotvec(global_orient[start:end]).apply([0.0, 1.0, 0.0])[:, 1]
+        # If GVHMR's tracker inverted the pelvis near the end (up_y < 0, >90 deg tilt), cut before the
+        # camera cut / severe tracking wobble in the second half.
+        if (up_y < 0.0).any():
+            bad_mask = up_y < 0.866
+            if b is not None and len(b) == n_total:
+                h = b[start:end, 3] - b[start:end, 1]
+                bad_mask = bad_mask | (h < 0.65 * np.median(h))
+            bad = np.where(bad_mask)[0]
+            bad_tail = bad[bad >= (end - start) // 2]
+            if len(bad_tail):
+                end = start + max(60, int(bad_tail[0]) - 15)
+    return slice(start, end)
+
+
+def _floor_envelope(low_y: np.ndarray, fps: float, window_s: float = FLOOR_ENVELOPE_WINDOW_S) -> np.ndarray:
+    """Smooth running minimum of the lowest foot height: tracks ground slope without eating jumps."""
+    n = len(low_y)
+    r = max(1, int(round(0.5 * window_s * fps)))
+    env = np.array([low_y[max(0, i - r) : min(n, i + r + 1)].min() for i in range(n)], dtype=np.float64)
+    pad = np.pad(env, r, mode="edge")
+    return np.convolve(pad, np.ones(2 * r + 1) / (2 * r + 1), mode="valid")
+
+
 def fuse_wilor_hands(
-    d: np.lib.npyio.NpzFile,
+    d: dict | np.lib.npyio.NpzFile,
     incam_joints: np.ndarray,
     wilor_npz: Path | None,
     f_mm: int = DEFAULT_F_MM,
+    frame_slice: slice = slice(None),
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Fuses WiLoR hands into SMPL-X body_pose (wrists) and left/right_hand_pose.
 
@@ -131,7 +190,8 @@ def fuse_wilor_hands(
     if wilor_npz is None:
         return body_pose, hand_pose["left"], hand_pose["right"], hand_conf
 
-    w = np.load(wilor_npz)
+    w_raw = np.load(wilor_npz)
+    w = {k: (w_raw[k][frame_slice] if w_raw[k].ndim >= 1 else w_raw[k]) for k in w_raw.files}
     m = min(n, len(w["left_conf"]))
     incam_go = d["incam_global_orient"][:m]
     incam_bp = body_pose[:m].reshape(m, 21, 3)
@@ -237,9 +297,11 @@ def build_poseclip_v2(npz: Path, hands_npz: Path | None = None, raw: bool = Fals
     """Builds all PoseClip v2 arrays in the contract's space (y up, z toward camera, first hips at 0)."""
     from scipy.spatial.transform import Rotation as R
 
-    d = np.load(npz)
-    fps = float(d["fps"])
-    static_cam = bool(d["static_cam"]) if "static_cam" in d else False
+    d_raw = np.load(npz)
+    fps = float(d_raw["fps"])
+    static_cam = bool(d_raw["static_cam"]) if "static_cam" in d_raw else False
+    frame_slice = _active_frame_slice(npz, len(d_raw["global_transl"]), d_raw["global_global_orient"])
+    d = {k: (d_raw[k][frame_slice] if d_raw[k].ndim >= 1 and len(d_raw[k]) == len(d_raw["global_transl"]) else d_raw[k]) for k in d_raw.files}
 
     # 1. Unmodified body pass first: preserves the exact heading and 33 body points of v1.
     incam_all = smplx_joints(d["incam_global_orient"], d["incam_body_pose"], d["incam_betas"], d["incam_transl"])
@@ -248,16 +310,25 @@ def build_poseclip_v2(npz: Path, hands_npz: Path | None = None, raw: bool = Fals
     world_mp = world_body_all[:, MEDIAPIPE_FROM_SMPLX]
     angle = facing_angle(seen) - facing_angle(world_mp)
     pos = turn_y(world_mp, angle)
+    # Remove SMPL-X's canonical T-pose vertical regressor asymmetry between left and right hips/shoulders.
+    pos[:, 23, 1] -= 0.5 * SMPLX_HIP_Y_BIAS_M
+    pos[:, 24, 1] += 0.5 * SMPLX_HIP_Y_BIAS_M
+    pos[:, 11, 1] -= 0.5 * SMPLX_SHOULDER_Y_BIAS_M
+    pos[:, 12, 1] += 0.5 * SMPLX_SHOULDER_Y_BIAS_M
     if not raw:
         hips = (pos[:, 23] + pos[:, 24]) / 2
         body = smooth_points(pos - hips[:, None], fps)
         root = savgol(hips, int(round(ROOT_WINDOW_S * fps)) | 1, ROOT_ORDER)
         pos = body + root[:, None]
+        # Remove camera-pitch vertical drift so stance feet stay on a flat floor while jumps stay airborne.
+        low_foot_y = pos[:, [27, 28, 29, 30, 31, 32], 1].min(axis=1)
+        floor_env = _floor_envelope(low_foot_y, fps)
+        pos[:, :, 1] -= (floor_env - floor_env[0])[:, None]
     origin = (pos[0, 23] + pos[0, 24]) / 2
     pos = pos - origin
 
     # 2. Fuse WiLoR hands (when available) into SMPL-X and extract the 21 hand joints per side.
-    body_pose, left_hand_pose, right_hand_pose, hand_conf = fuse_wilor_hands(d, incam_all, hands_npz)
+    body_pose, left_hand_pose, right_hand_pose, hand_conf = fuse_wilor_hands(d, incam_all, hands_npz, frame_slice=frame_slice)
     has_hands = bool((hand_conf > 0).any())
     if has_hands:
         fused_all = smplx_joints(
