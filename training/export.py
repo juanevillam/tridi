@@ -35,6 +35,7 @@ class Deployed(nn.Module):
         super().__init__()
         self.model = model
         self.walk = walk
+        self.nu = int(env.nu)
         self.register_buffer("default", torch.as_tensor(env.default, dtype=torch.float32))
         self.register_buffer("low", torch.as_tensor(env.ctrl_low, dtype=torch.float32))
         self.register_buffer("high", torch.as_tensor(env.ctrl_high, dtype=torch.float32))
@@ -42,8 +43,10 @@ class Deployed(nn.Module):
     def forward(self, obs: torch.Tensor) -> torch.Tensor:
         action = self.model.actor(self.model.norm(obs))  # the mean: no exploration noise in the demo
         # Standing corrects the standing pose; walking corrects the reference pose it receives in
-        # obs[93:122] (as an offset from the standing pose, see imitate.MimicEnv.observe).
-        base = self.default + obs[:, 93:122] if self.walk else self.default
+        # obs[6 + 3*nu : 6 + 4*nu] (93:122 on the 29-joint G1, 63:82 on the 19-joint H1; see
+        # imitate.MimicEnv.observe).
+        s = 6 + 3 * self.nu
+        base = self.default + obs[:, s:s + self.nu] if self.walk else self.default
         return torch.minimum(torch.maximum(base + ACTION_SCALE * action, self.low), self.high)
 
 
