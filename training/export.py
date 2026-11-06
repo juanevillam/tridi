@@ -62,7 +62,7 @@ def export(checkpoint: Path, policy_id: str, out: Path, task: str | None = None,
     if walk:
         from .imitate import DEFAULT_MOTION, MimicEnv, senses
 
-        motion = state.get("motion") or motion or DEFAULT_MOTION
+        motion = motion or state.get("motion") or DEFAULT_MOTION
         env = MimicEnv(seed=0, clips=(motion,), **senses(model))
     else:
         env = G1Env(seed=0, push=False)
