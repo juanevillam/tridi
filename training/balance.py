@@ -563,8 +563,7 @@ def balance(clip: str, rounds: int = ROUNDS, log=print, robot_id: str | None = N
         for i in range(1, len(q_ref)):
             if np.dot(q_ref[i - 1, 3:7], q_ref[i, 3:7]) < 0:
                 q_ref[i, 3:7] = -q_ref[i, 3:7]
-    walking = "caminar" in clip or "walk" in clip
-    jumping = "jumping-jacks" in clip or "jump" in clip
+    jumping = "jumping-jacks" in clip or "jacks" in clip or "jump" in clip
     running = "correr" in clip or "run" in clip
     has_flight = jumping or running
     dofs, qadr = leg_dofs(model)
@@ -572,7 +571,7 @@ def balance(clip: str, rounds: int = ROUNDS, log=print, robot_id: str | None = N
         q_ref, on = prepare_flight_clip(robot, data, q_ref, fps, jumping, running)
         pos, yaw, _ = kinematics_foot_pos(robot, data, q_ref)
     else:
-        on, pos, yaw = contacts(robot, data, q_ref, fps, walking)
+        on, pos, yaw = contacts(robot, data, q_ref, fps, walking=True)
         on = double_support(on, fps)
     tgt, tyaw = feet_targets(on, pos, yaw, sole_height(robot), fps, has_flight=has_flight)
     mode = foot_modes(on)
