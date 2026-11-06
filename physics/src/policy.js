@@ -19,9 +19,11 @@ const JOINT_VEL_SCALE = 0.05;
 const ACTION_SCALE = 0.25; // one unit of action is 0.25 rad from the standing pose
 const NU = 29;
 const STAND_OBS = 3 + 3 + NU + NU + NU;
-// Imitation adds the reference 20 ms ahead (joints, pelvis velocity, pelvis height) and, for each
-// look-ahead instant of policy.json, its joints and pelvis position (imitate.MimicEnv.observe).
-const mimicObsDim = (lookahead) => STAND_OBS + NU + 3 + 1 + lookahead.length * (NU + 3);
+// Imitation adds the reference 20 ms ahead (joints, pelvis velocity, pelvis height), for each
+// look-ahead instant of policy.json its joints and pelvis position, and optionally (sense_velocity)
+// the robot's own pelvis velocity in the pelvis frame (imitate.MimicEnv.observe).
+const mimicObsDim = (lookahead, senseVelocity = false) =>
+  STAND_OBS + NU + 3 + 1 + lookahead.length * (NU + 3) + (senseVelocity ? 3 : 0);
 // A fall, as training ends an episode (env.py): pelvis below 0.5 m or the torso tilted past 60
 // degrees. An imitation policy that falls starts its clip over after FALL_PAUSE_S, long enough to
 // see the fall and short enough that the robot is not left lying on the floor for the rest of the clip.
@@ -46,7 +48,8 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
   const { model } = sim;
   const mimic = meta.task === 'mimic' || (meta.task === undefined && meta.obs_dim !== STAND_OBS);
   const lookahead = meta.lookahead_s ?? [];
-  const obsDim = mimic ? mimicObsDim(lookahead) : STAND_OBS;
+  const senseVelocity = Boolean(meta.sense_velocity) || (mimic && meta.obs_dim === mimicObsDim(lookahead, true));
+  const obsDim = mimic ? mimicObsDim(lookahead, senseVelocity) : STAND_OBS;
   if (meta.robot !== 'unitree_g1' || meta.obs_dim !== obsDim || meta.nu !== NU || model.nu !== NU) {
     throw new Error(`The policy ${meta.id} is not for this robot (${meta.robot}, ${meta.obs_dim} inputs, ${meta.nu} motors).`);
   }
@@ -106,6 +109,9 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
       for (let i = 0; i < NU; i++) obs[at++] = q[7 + i] - standing[i];
       const offset = [q[0] - qpos[0], q[1] - qpos[1], q[2] - qpos[2]];
       for (let k = 0; k < 3; k++) obs[at++] = toBody(offset, k);
+    }
+    if (senseVelocity) {
+      for (let k = 0; k < 3; k++) obs[at++] = toBody(qvel, k);
     }
   }
 

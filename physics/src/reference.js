@@ -71,22 +71,27 @@ export function createReference(mujoco, model, motion) {
   const window = windowOf(SMOOTH_S, fps);
   const qpos = motion.qpos.map((r) => Float64Array.from(r));
 
-  // 1. joints lightly smoothed; 2. pelvis path smoothed on the floor plane only.
-  const joints = smooth(qpos, 7, qpos[0].length, windowOf(JOINT_SMOOTH_S, fps));
-  const plane = smooth(qpos, 0, 2, window);
-  qpos.forEach((r, i) => {
-    r.set(joints[i], 7);
-    r.set(plane[i], 0);
-  });
+  // 1. joints lightly smoothed; 2. pelvis path smoothed on the floor plane only (skipped when
+  // already balanced by training.balance, matching training/imitate.py Motion).
+  if (!motion.balanced_by) {
+    const joints = smooth(qpos, 7, qpos[0].length, windowOf(JOINT_SMOOTH_S, fps));
+    const plane = smooth(qpos, 0, 2, window);
+    qpos.forEach((r, i) => {
+      r.set(joints[i], 7);
+      r.set(plane[i], 0);
+    });
+  }
 
-  // 3. pelvis height set frame by frame so the lowest foot geom touches the floor (z = 0). A
-  // capsule's lowest point is its center, minus half its length along its tilted axis, minus its
-  // radius: exactly what mj_geomDistance gives against the floor plane in training. A sphere is a
-  // capsule of length 0.
+  // 3. pelvis height set frame by frame so the lowest foot geom touches the floor (z = 0) on
+  // frames with foot contact. A capsule's lowest point is its center, minus half its length along
+  // its tilted axis, minus its radius: what mj_geomDistance gives against the floor plane.
+  const contacts = motion.contacts;
   const data = new mujoco.MjData(model);
   try {
     const feet = footGeoms(mujoco, model);
-    for (const r of qpos) {
+    for (let i = 0; i < qpos.length; i++) {
+      if (contacts && !contacts[i].some(Boolean)) continue;
+      const r = qpos[i];
       data.qpos.set(r);
       mujoco.mj_kinematics(model, data);
       const xpos = data.geom_xpos;
