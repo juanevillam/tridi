@@ -36,6 +36,22 @@ const LEVELS = {
     es: 'Gestos imitando el video, con física',
     en: 'Gestures imitating the video, with physics',
   },
+  'g1-dedos': {
+    es: 'Contar con los dedos imitando el video, con física',
+    en: 'Counting on fingers imitating the video, with physics',
+  },
+  'g1-bailar': {
+    es: 'Bailar imitando el video, con física',
+    en: 'Dancing imitating the video, with physics',
+  },
+  'g1-frente': {
+    es: 'Caminar hacia la cámara imitando el video, con física',
+    en: 'Walking toward the camera imitating the video, with physics',
+  },
+  'g1-sentarse': {
+    es: 'Sentarse y levantarse imitando el video, con física',
+    en: 'Sitting down and standing up imitating the video, with physics',
+  },
 };
 
 const pick = (table) => (id, fallback) => table[id] ?? { es: fallback ?? id, en: fallback ?? id };

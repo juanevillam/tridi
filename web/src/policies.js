@@ -53,6 +53,30 @@ export const IMITATIONS = [
     motion: 'clip_saludar-02-gvhmr-balanced',
     label: 'Gestos imitando el video, con física',
   },
+  {
+    id: 'g1-dedos',
+    clip: 'clip_dedos-01-gvhmr',
+    motion: 'clip_dedos-01-gvhmr-balanced',
+    label: 'Contar con los dedos imitando el video, con física',
+  },
+  {
+    id: 'g1-bailar',
+    clip: 'clip_bailar-01-gvhmr',
+    motion: 'clip_bailar-01-gvhmr-balanced',
+    label: 'Bailar imitando el video, con física',
+  },
+  {
+    id: 'g1-frente',
+    clip: 'clip_frente-04-gvhmr',
+    motion: 'clip_frente-04-gvhmr-balanced',
+    label: 'Caminar hacia la cámara imitando el video, con física',
+  },
+  {
+    id: 'g1-sentarse',
+    clip: 'clip_sentarse-02-gvhmr',
+    motion: 'clip_sentarse-02-gvhmr-balanced',
+    label: 'Sentarse y levantarse imitando el video, con física',
+  },
 ].filter(({ id }) => URLS[`../../training/policies/${id}.onnx`]);
 
 export const imitationOf = (id) => IMITATIONS.find((imitation) => imitation.id === id) ?? null;
