@@ -8,22 +8,21 @@
 import { createReference } from './reference.js';
 import { idOf } from './sim.js';
 
-// The policy decides every 5 physics steps: 20 ms with scene_mjx.xml's 4 ms step (training DECIMATION).
-const DECIMATION = 5;
+// The policy decides every 20 ms: 5 steps with G1 scene_mjx.xml's 4 ms step, 10 steps with H1's 2 ms step.
 const CONTROL_DT = 0.02;
-// The keyframe training starts from; its ctrl is the standing pose the observation is measured from.
+// The keyframe training starts from; its ctrl (or qpos for torque models) is the standing pose.
 const HOME_KEY = 'home';
 // Observation scales, from training/env.py. They keep every input near [-1, 1].
 const ANG_VEL_SCALE = 0.25;
 const JOINT_VEL_SCALE = 0.05;
 const ACTION_SCALE = 0.25; // one unit of action is 0.25 rad from the standing pose
-const NU = 29;
-const STAND_OBS = 3 + 3 + NU + NU + NU;
+const SUPPORTED_ROBOTS = new Set(['unitree_g1', 'unitree_h1']);
+const standObsDim = (nu) => 3 + 3 + nu + nu + nu;
 // Imitation adds the reference 20 ms ahead (joints, pelvis velocity, pelvis height), for each
 // look-ahead instant of policy.json its joints and pelvis position, and optionally (sense_velocity)
 // the robot's own pelvis velocity in the pelvis frame (imitate.MimicEnv.observe).
-const mimicObsDim = (lookahead, senseVelocity = false) =>
-  STAND_OBS + NU + 3 + 1 + lookahead.length * (NU + 3) + (senseVelocity ? 3 : 0);
+const mimicObsDim = (nu, lookahead, senseVelocity = false) =>
+  standObsDim(nu) + nu + 3 + 1 + lookahead.length * (nu + 3) + (senseVelocity ? 3 : 0);
 // A fall, as training ends an episode (env.py): pelvis below 0.5 m or the torso tilted past 60
 // degrees. An imitation policy that falls starts its clip over after FALL_PAUSE_S, long enough to
 // see the fall and short enough that the robot is not left lying on the floor for the rest of the clip.
@@ -46,15 +45,18 @@ const RECOVER_HEIGHT = 0.6;
  */
 export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
   const { model } = sim;
-  const mimic = meta.task === 'mimic' || (meta.task === undefined && meta.obs_dim !== STAND_OBS);
+  const nu = meta.nu ?? 29;
+  const standObs = standObsDim(nu);
+  const mimic = meta.task === 'mimic' || (meta.task === undefined && meta.obs_dim !== standObs);
   const lookahead = meta.lookahead_s ?? [];
-  const senseVelocity = Boolean(meta.sense_velocity) || (mimic && meta.obs_dim === mimicObsDim(lookahead, true));
-  const obsDim = mimic ? mimicObsDim(lookahead, senseVelocity) : STAND_OBS;
-  if (meta.robot !== 'unitree_g1' || meta.obs_dim !== obsDim || meta.nu !== NU || model.nu !== NU) {
+  const senseVelocity = Boolean(meta.sense_velocity) || (mimic && meta.obs_dim === mimicObsDim(nu, lookahead, true));
+  const obsDim = mimic ? mimicObsDim(nu, lookahead, senseVelocity) : standObs;
+  if (!SUPPORTED_ROBOTS.has(meta.robot) || meta.obs_dim !== obsDim || model.nu !== nu) {
     throw new Error(`The policy ${meta.id} is not for this robot (${meta.robot}, ${meta.obs_dim} inputs, ${meta.nu} motors).`);
   }
-  if (Math.abs(model.opt.timestep * DECIMATION - CONTROL_DT) > 1e-9) {
-    throw new Error(`The policy decides every 20 ms; this scene steps ${model.opt.timestep * 1000} ms, so that is not ${DECIMATION} steps.`);
+  const decimation = Math.round(CONTROL_DT / model.opt.timestep);
+  if (Math.abs(model.opt.timestep * decimation - CONTROL_DT) > 1e-9) {
+    throw new Error(`The policy decides every 20 ms; this scene steps ${model.opt.timestep * 1000} ms, so that is not ${decimation} steps.`);
   }
   if (mimic && !motion) throw new Error(`The policy ${meta.id} imitates a clip: pass its RobotMotion ({ motion }).`);
   const wanted = meta.motion ?? meta.trained_on?.[0];
@@ -66,13 +68,16 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
   const [input] = session.inputNames;
   const [output] = session.outputNames;
 
-  // The standing pose: the motor targets of the home keyframe.
+  // The standing pose: the motor targets of the home keyframe (or key_qpos joints for torque models like H1).
   const home = idOf(sim.mujoco, model, 'KEY', HOME_KEY);
-  const standing = Float64Array.from(model.key_ctrl.subarray(home * NU, (home + 1) * NU));
+  const keyCtrl = Float64Array.from(model.key_ctrl.subarray(home * nu, (home + 1) * nu));
+  const standing = keyCtrl.some((v) => v !== 0)
+    ? keyCtrl
+    : Float64Array.from({ length: nu }, (_, i) => model.key_qpos[home * model.nq + model.jnt_qposadr[model.actuator_trnid[2 * i]]]);
   const previous = standing.slice(); // the targets of the last decision, as the next observation
   const obs = new Float32Array(obsDim);
 
-  // The 93 numbers of standing, in the order of training/README.md.
+  // The standing observation numbers, in the order of training/README.md.
   function observeStand({ qpos, qvel }) {
     // Angular velocity of the pelvis in its own frame (a free joint reports it that way).
     for (let i = 0; i < 3; i++) obs[i] = qvel[3 + i] * ANG_VEL_SCALE;
@@ -81,14 +86,14 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
     obs[3] = -2 * (x * z - w * y);
     obs[4] = -2 * (y * z + w * x);
     obs[5] = -(1 - 2 * (x * x + y * y));
-    for (let i = 0; i < NU; i++) {
+    for (let i = 0; i < nu; i++) {
       obs[6 + i] = qpos[7 + i] - standing[i];
-      obs[6 + NU + i] = qvel[6 + i] * JOINT_VEL_SCALE;
-      obs[6 + 2 * NU + i] = (previous[i] - standing[i]) / ACTION_SCALE;
+      obs[6 + nu + i] = qvel[6 + i] * JOINT_VEL_SCALE;
+      obs[6 + 2 * nu + i] = (previous[i] - standing[i]) / ACTION_SCALE;
     }
   }
 
-  // Imitation at clip time t: the 93, then what the reference asks for 20 ms ahead and at each
+  // Imitation at clip time t: the standing obs, then what the reference asks for 20 ms ahead and at each
   // look-ahead instant. Vectors from the world go to the pelvis frame with R^T (MuJoCo's quat2Mat).
   function observeMimic({ qpos, qvel }, t) {
     observeStand({ qpos, qvel });
@@ -99,14 +104,14 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
       2 * (x * z - w * y), 2 * (y * z + w * x), 1 - 2 * (x * x + y * y),
     ];
     const toBody = (v, k) => R[k] * v[0] + R[3 + k] * v[1] + R[6 + k] * v[2]; // (R^T v)[k]
-    let at = STAND_OBS;
+    let at = standObs;
     const next = reference.sample(t + CONTROL_DT);
-    for (let i = 0; i < NU; i++) obs[at++] = next.q[7 + i] - standing[i];
+    for (let i = 0; i < nu; i++) obs[at++] = next.q[7 + i] - standing[i];
     for (let k = 0; k < 3; k++) obs[at++] = toBody(next.rootVel, k);
     obs[at++] = next.q[2] - qpos[2];
     for (const s of lookahead) {
       const { q } = reference.sample(t + s);
-      for (let i = 0; i < NU; i++) obs[at++] = q[7 + i] - standing[i];
+      for (let i = 0; i < nu; i++) obs[at++] = q[7 + i] - standing[i];
       const offset = [q[0] - qpos[0], q[1] - qpos[1], q[2] - qpos[2]];
       for (let k = 0; k < 3; k++) obs[at++] = toBody(offset, k);
     }
@@ -138,9 +143,11 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
 
   return {
     id: meta.id,
+    robot: meta.robot,
     steps: meta.steps,
     task: mimic ? 'mimic' : 'stand',
-    decimation: DECIMATION,
+    isImitation: mimic,
+    decimation,
     observe,
     /** Seconds into the clip an imitation policy is at (0 for standing): to sync what is drawn beside. */
     time: (sim) => (mimic ? clipTime(sim) : 0),
@@ -154,11 +161,11 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
       fellAt = null;
       const { data } = sim;
       const { q, rootVel, jointVel } = reference.sample(0);
-      data.qpos.set(q);
-      data.qvel.fill(0);
+      data.qpos.set(q, 0);
+      data.qvel.fill(0, 0, 6 + nu);
       data.qvel.set(rootVel, 0);
       data.qvel.set(jointVel, 6);
-      previous.set(q.slice(7));
+      previous.set(q.slice(7, 7 + nu));
       data.ctrl.set(previous);
     },
     // One decision: the network's output already is the motor targets (it adds the reference or
@@ -174,7 +181,7 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
         if (!down) {
           down = true;
           // Hold where it landed: each motor's target is its joint's current angle.
-          for (let i = 0; i < NU; i++) data.ctrl[i] = qpos[7 + i];
+          for (let i = 0; i < nu; i++) data.ctrl[i] = qpos[7 + i];
         }
         return;
       }

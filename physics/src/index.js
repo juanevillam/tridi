@@ -12,8 +12,14 @@ import { createClearance } from './clearance.js';
 import { createRobotPoseFilter, OneEuroFilter } from './filters.js';
 import { createFingerSolver } from './fingers.js';
 import { RobotView } from './viewer.js';
-import { placeXml, SCENE_ORDER } from './scenes.js';
+import { HELD_OBJECT_SCENE, placeXml, SCENE_ORDER } from './scenes.js';
 import { middleValues, sceneFile as worldScene, windForce, windSpeed, WORLD_ORDER } from './worlds.js';
+
+export { HELD_OBJECT_SCENE } from './scenes.js';
+export const ROBOTS = [
+  { id: 'g1', robot: 'unitree_g1', name: 'Unitree G1 (29 DOF + Inspire 5 dedos)' },
+  { id: 'h1', robot: 'unitree_h1', name: 'Unitree H1 (19 DOF, open-source)' },
+];
 
 // The fingers' smoothing: faster than the body's (ROBOT_POSE_FILTER, 1.5 Hz) because fingers open
 // and close in a fraction of a second, and they are only drawn (no feet to keep planted).
@@ -157,12 +163,15 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
   // The MJCF of `base` with the current place in it, generated once per place and base and kept
   // with the model files, where the Simulation loads it from.
   function placeFile(base) {
-    const name = `place_${place.id}_${base}`;
+    const slash = base.lastIndexOf('/');
+    const dir = slash >= 0 ? base.slice(0, slash + 1) : '';
+    const leaf = slash >= 0 ? base.slice(slash + 1) : base;
+    const name = `${dir}place_${place.id}_${leaf}`;
     if (!sim.files[name]) {
       const text = (file) => new TextDecoder().decode(sim.files[file]);
       const baseXml = text(base);
       const robot = baseXml.match(/<include file="([^"]+)"/)?.[1];
-      sim.files[name] = new TextEncoder().encode(placeXml(baseXml, robot ? text(robot) : '', place));
+      sim.files[name] = new TextEncoder().encode(placeXml(baseXml, robot ? text(`${dir}${robot}`) : '', place));
     }
     return name;
   }
@@ -309,14 +318,16 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
       const bytes = typeof onnx === 'string' ? new Uint8Array(await (await fetch(onnx)).arrayBuffer()) : new Uint8Array(onnx);
       if (typeof meta === 'string') meta = await (await fetch(meta)).json();
       if (typeof motion === 'string') motion = await (await fetch(motion)).json();
-      // The policy's scene ('unitree_g1/scene_mjx.xml' -> 'scene_mjx.xml'), or the current world's
-      // version of it (the same robot, another floor).
-      const sceneFile = world ? worldScene(world) : meta.mjcf.slice(meta.mjcf.indexOf('/') + 1);
+      // The policy's scene ('unitree_g1/scene_mjx.xml' -> 'scene_mjx.xml'; 'unitree_h1/scene.xml'
+      // stays in its subfolder), or the current world's version of it for the G1.
+      const isH1 = meta.robot === 'unitree_h1';
+      const sceneFile = isH1 ? meta.mjcf : world ? worldScene(world) : meta.mjcf.slice(meta.mjcf.indexOf('/') + 1);
       const { loadOrt } = await import('./ort.js');
       const ort = await loadOrt();
       const previous = { sceneFile: baseScene, keyName: sim.keyName };
       if (baseScene !== sceneFile) swapScene(sceneFile, 'home');
       else stop();
+      if (isH1) dex3?.show(false);
       try {
         const policy = await createPolicy(ort, sim, bytes, meta, { motion });
         sim.policy?.dispose();
@@ -385,6 +396,52 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
     },
     /** The place the robot is in, or null. */
     scene: () => place,
+    /**
+     * Places a graspable object (cup + 6 water spheres) into the robot's right hand with Coulomb
+     * friction (`wet: false` mu=0.85 holds; `wet: true` mu=0.12 slips under gravity). If no place
+     * with a movable object is loaded yet, loads `HELD_OBJECT_SCENE` first.
+     */
+    async holdObject({ wet = false } = {}) {
+      if (!place || !place.objects?.some((o) => o.movable)) {
+        place = HELD_OBJECT_SCENE;
+        swapScene(baseScene, sim.keyName);
+        await restorePolicy();
+      } else if (clip || sim.puppeted) {
+        stop();
+      }
+      const ok = sim.holdObject({ wet });
+      if (ok && !baseScene.startsWith('unitree_h1/')) {
+        if (!dex3) {
+          const { createDex3Hands, inspireHands } = await import('./dex3.js');
+          fingerSolver ??= createFingerSolver(inspireHands);
+          dex3 = await createDex3Hands(view, sim, inspireHands);
+          view.onFrame = () => dex3.update();
+        }
+        dex3.show(true);
+        const grip = new Map([
+          ['right_hand_thumb_0_joint', 0.45],
+          ['right_hand_thumb_1_joint', 0.55],
+          ['right_hand_thumb_2_joint', 0.45],
+          ['right_hand_index_0_joint', 0.95],
+          ['right_hand_index_1_joint', 0.85],
+          ['right_hand_middle_0_joint', 0.95],
+          ['right_hand_middle_1_joint', 0.85],
+          ['right_hand_ring_0_joint', 0.95],
+          ['right_hand_ring_1_joint', 0.85],
+          ['right_hand_pinky_0_joint', 0.95],
+          ['right_hand_pinky_1_joint', 0.85],
+        ]);
+        dex3.setFingers('right', grip);
+      }
+      return ok;
+    },
+    /** Releases the held object (and opens the right hand) so it falls under gravity. */
+    dropObject() {
+      sim.dropObject();
+      if (dex3) dex3.setFingers('right', new Map());
+    },
+    /** Current hand-object grasp state: { active, wet, slipped }. */
+    graspState: () => sim.graspState(),
     /**
      * Makes the G1 copy a person, one camera frame at a time. Pass what createLiveCapture's
      * onPose gives. A null pose or one too occluded keeps the last pose. reset() ends it.

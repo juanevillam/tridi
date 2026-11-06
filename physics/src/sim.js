@@ -13,6 +13,54 @@ const PUSH_BODY = 'torso_link';
 const PUSH_NEWTONS = 250;
 const PUSH_SECONDS = 0.1;
 
+// PD servo gains for torque-motor models (Unitree H1, robots/h1.json), matched by joint name.
+const H1_PD_GAINS = [
+  { match: 'hip', kp: 150, kd: 2 },
+  { match: 'knee', kp: 200, kd: 4 },
+  { match: 'ankle', kp: 40, kd: 2 },
+  { match: 'torso', kp: 300, kd: 6 },
+  { match: 'shoulder', kp: 150, kd: 2 },
+  { match: 'elbow', kp: 100, kd: 2 },
+];
+
+// Physical hand grasping constants: normal squeeze force F_N = 18 N; dry rubber/ceramic friction
+// mu = 0.85 gives F_max = 15.3 N (> 3.5 N cup weight, holds firmly); soapy/wet surface mu = 0.12
+// gives F_max = 2.16 N (< 3.43 N weight of the 0.35 kg cup, so a wet object slips downward under
+// gravity and detaches once it slides > 12 cm from the palm).
+const GRASP_NORMAL_N = 18;
+const GRASP_FRICTION_DRY = 0.85;
+const GRASP_FRICTION_WET = 0.12;
+const GRASP_KP = 180; // N/m spring stiffness at the palm contact
+const GRASP_KD = 14; // N·s/m damping at the palm contact
+const GRASP_SLIP_DETACH_M = 0.12; // m: beyond 12 cm from palm center, fingers lose contact
+const GRAVITY_MPS2 = 9.81;
+
+function configureTorqueServos(mujoco, model) {
+  for (let a = 0; a < model.nu; a++) {
+    if (model.actuator_biastype[a] !== 0) continue; // already an affine PD servo (G1)
+    const jntId = model.actuator_trnid[2 * a];
+    const name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_JOINT.value, jntId) ?? '';
+    const gain = H1_PD_GAINS.find((g) => name.includes(g.match));
+    if (!gain) continue;
+    const fMin = model.actuator_ctrlrange[2 * a];
+    const fMax = model.actuator_ctrlrange[2 * a + 1];
+    model.actuator_gaintype[a] = 0; // mjGAIN_FIXED
+    model.actuator_biastype[a] = 1; // mjBIAS_AFFINE
+    model.actuator_gainprm[10 * a] = gain.kp;
+    model.actuator_biasprm[10 * a] = 0;
+    model.actuator_biasprm[10 * a + 1] = -gain.kp;
+    model.actuator_biasprm[10 * a + 2] = -gain.kd;
+    model.actuator_forcelimited[a] = 1;
+    model.actuator_forcerange[2 * a] = fMin;
+    model.actuator_forcerange[2 * a + 1] = fMax;
+    model.actuator_ctrlrange[2 * a] = model.jnt_range[2 * jntId];
+    model.actuator_ctrlrange[2 * a + 1] = model.jnt_range[2 * jntId + 1];
+    model.actuator_ctrllimited[a] = 1;
+    model.jnt_actfrcrange[2 * jntId] = fMin;
+    model.jnt_actfrcrange[2 * jntId + 1] = fMax;
+  }
+}
+
 // Id of a named MuJoCo object; `type` is the suffix of its mjOBJ_ constant (BODY, JOINT, KEY...).
 export function idOf(mujoco, model, type, name) {
   const id = mujoco.mj_name2id(model, mujoco.mjtObj[`mjOBJ_${type}`].value, name);
@@ -68,6 +116,7 @@ export class Simulation {
   load(sceneFile, keyName) {
     const { mujoco } = this;
     const model = this.createModel(sceneFile);
+    configureTorqueServos(mujoco, model);
     this.data?.delete();
     this.model?.delete();
     this.model = model;
@@ -79,6 +128,7 @@ export class Simulation {
     this.policy = null;
     this.defaults = snapshot(model); // what applyWorld scales from, so worlds never compound
     this.wind = [0, 0];
+    this.grasp = null;
     this.reset();
   }
 
@@ -149,6 +199,7 @@ export class Simulation {
     const { mujoco, model, data } = this;
     this.puppeted = false;
     this.steps = 0; // physics steps since the reset, to time the policy's decisions
+    this.grasp = null;
     mujoco.mj_resetDataKeyframe(model, data, this.keyId);
     this.holdCurrentPose();
     this.policy?.reset(this);
@@ -200,11 +251,145 @@ export class Simulation {
         if (this.puppeted || this.deleted || this.model !== model || this.steps !== at) return steps;
       }
       if (this.pushUntil && this.data.time >= this.pushUntil) this.endPush();
+      this._stepGrasp();
       mujoco.mj_step(this.model, this.data);
       this.steps++;
       steps++;
     }
     return steps;
+  }
+
+  _handTarget() {
+    const { mujoco, model, data } = this;
+    const wristName = ['right_wrist_yaw_link', 'right_elbow_link'].find(
+      (n) => mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY.value, n) >= 0,
+    );
+    if (!wristName) return null;
+    const b = this.id('BODY', wristName);
+    const offset = wristName === 'right_wrist_yaw_link' ? [0.10, -0.05, 0.01] : [0.30, -0.04, 0.0];
+    const R = data.xmat.subarray(9 * b, 9 * b + 9);
+    const pos = [
+      data.xpos[3 * b] + R[0] * offset[0] + R[1] * offset[1] + R[2] * offset[2],
+      data.xpos[3 * b + 1] + R[3] * offset[0] + R[4] * offset[1] + R[5] * offset[2],
+      data.xpos[3 * b + 2] + R[6] * offset[0] + R[7] * offset[1] + R[8] * offset[2],
+    ];
+    return { bodyId: b, pos };
+  }
+
+  /**
+   * Places a movable object (such as the kitchen cup `taza` and any `agua` liquid spheres) in the
+   * robot's right hand and grips it with Coulomb friction (dry mu=0.85 holds; wet mu=0.12 slips).
+   */
+  holdObject({ wet = false } = {}) {
+    const { mujoco, model, data } = this;
+    let objBody = -1;
+    const fluids = [];
+    for (let b = 1; b < model.nbody; b++) {
+      const name = mujoco.mj_id2name(model, mujoco.mjtObj.mjOBJ_BODY.value, b) ?? '';
+      if (!name.startsWith('place_') || !name.endsWith('_body')) continue;
+      if (name.includes('_agua_')) fluids.push(b);
+      else if (objBody < 0 || name.includes('_taza_')) objBody = b;
+    }
+    const hand = this._handTarget();
+    if (objBody < 0 || !hand) return false;
+    const putBody = (b, pos) => {
+      const j = model.body_jntadr[b];
+      const qadr = model.jnt_qposadr[j];
+      const vadr = model.jnt_dofadr[j];
+      data.qpos[qadr] = pos[0];
+      data.qpos[qadr + 1] = pos[1];
+      data.qpos[qadr + 2] = pos[2];
+      data.qpos[qadr + 3] = 1;
+      data.qpos[qadr + 4] = 0;
+      data.qpos[qadr + 5] = 0;
+      data.qpos[qadr + 6] = 0;
+      for (let k = 0; k < 6; k++) data.qvel[vadr + k] = 0;
+    };
+    putBody(objBody, hand.pos);
+    fluids.forEach((fb, idx) => {
+      const angle = (idx / Math.max(1, fluids.length)) * 2 * Math.PI;
+      putBody(fb, [
+        hand.pos[0] + 0.018 * Math.cos(angle),
+        hand.pos[1] + 0.018 * Math.sin(angle),
+        hand.pos[2] + 0.045 + 0.022 * Math.floor(idx / 3),
+      ]);
+    });
+    mujoco.mj_forward(model, data);
+    this.grasp = { active: true, wet: Boolean(wet), slipped: false, bodyId: objBody, fluids };
+    return true;
+  }
+
+  /** Releases the held object and its liquid particles so they fall under gravity. */
+  dropObject() {
+    if (!this.grasp) return;
+    const { data } = this;
+    const clear = (b) => {
+      for (let k = 0; k < 6; k++) data.xfrc_applied[6 * b + k] = 0;
+    };
+    clear(this.grasp.bodyId);
+    this.grasp.fluids.forEach(clear);
+    const hand = this._handTarget();
+    if (hand) clear(hand.bodyId);
+    this.grasp.active = false;
+  }
+
+  graspState() {
+    if (!this.grasp) return { active: false, held: false, wet: false, slipped: false };
+    return { active: this.grasp.active, held: this.grasp.active, wet: this.grasp.wet, slipped: this.grasp.slipped };
+  }
+
+  _stepGrasp() {
+    if (!this.grasp?.active) return;
+    const { model, data } = this;
+    const hand = this._handTarget();
+    if (!hand) return;
+    const b = this.grasp.bodyId;
+    const j = model.body_jntadr[b];
+    const vadr = model.jnt_dofadr[j];
+    const objPos = [data.xpos[3 * b], data.xpos[3 * b + 1], data.xpos[3 * b + 2]];
+    const objVel = [data.qvel[vadr], data.qvel[vadr + 1], data.qvel[vadr + 2]];
+    const dx = hand.pos[0] - objPos[0];
+    const dy = hand.pos[1] - objPos[1];
+    const dz = hand.pos[2] - objPos[2];
+    const dist = Math.hypot(dx, dy, dz);
+    if (dist > GRASP_SLIP_DETACH_M) {
+      this.dropObject();
+      this.grasp.slipped = true;
+      return;
+    }
+    const mass = model.body_mass[b];
+    let fx = GRASP_KP * dx - GRASP_KD * objVel[0];
+    let fy = GRASP_KP * dy - GRASP_KD * objVel[1];
+    let fz = GRASP_KP * dz - GRASP_KD * objVel[2] + mass * GRAVITY_MPS2;
+    const fMax = (this.grasp.wet ? GRASP_FRICTION_WET : GRASP_FRICTION_DRY) * GRASP_NORMAL_N;
+    const mag = Math.hypot(fx, fy, fz);
+    if (mag > fMax) {
+      const s = fMax / mag;
+      fx *= s;
+      fy *= s;
+      fz *= s;
+    }
+    data.xfrc_applied[6 * b] = fx;
+    data.xfrc_applied[6 * b + 1] = fy;
+    data.xfrc_applied[6 * b + 2] = fz;
+    // Equal-and-opposite reaction force on the robot's hand so its arm feels the held weight.
+    data.xfrc_applied[6 * hand.bodyId] = -fx;
+    data.xfrc_applied[6 * hand.bodyId + 1] = -fy;
+    data.xfrc_applied[6 * hand.bodyId + 2] = -fz;
+    // Keep liquid spheres inside the vessel while it is upright in the hand; once slipped/dropped,
+    // they fall freely under gravity and scatter on the floor.
+    this.grasp.fluids.forEach((fb, idx) => {
+      const fj = model.body_jntadr[fb];
+      const fv = model.jnt_dofadr[fj];
+      const fMass = model.body_mass[fb];
+      const angle = (idx / Math.max(1, this.grasp.fluids.length)) * 2 * Math.PI + data.time * 3;
+      const tx = objPos[0] + 0.016 * Math.cos(angle) - data.xpos[3 * fb];
+      const ty = objPos[1] + 0.016 * Math.sin(angle) - data.xpos[3 * fb + 1];
+      const tz = objPos[2] + 0.03 + 0.018 * (idx % 2) - data.xpos[3 * fb + 2];
+      data.xfrc_applied[6 * fb] = 60 * tx - 3 * data.qvel[fv];
+      data.xfrc_applied[6 * fb + 1] = 60 * ty - 3 * data.qvel[fv + 1];
+      data.xfrc_applied[6 * fb + 2] = 60 * tz - 3 * data.qvel[fv + 2] + fMass * GRAVITY_MPS2;
+    });
   }
 
   // Horizontal shove on the torso, in a random direction unless `angle` (rad, about the vertical,

@@ -60,9 +60,11 @@ expect(worstObs < OBS_TOLERANCE, `same observation as Python in ${fixture.sample
 expect(worstCtrl < CTRL_TOLERANCE, `same motor targets as Python (worst ${worstCtrl.toExponential(1)} rad)`);
 
 // The policy driving the robot from the clip's first pose, as the page does.
-for (const id of ['g1-walk', 'g1-run', 'g1-jacks', 'g1-saludar', 'g1-dedos', 'g1-bailar', 'g1-frente', 'g1-sentarse']) {
+for (const id of ['g1-walk', 'g1-run', 'g1-jacks', 'g1-saludar', 'g1-dedos', 'g1-bailar', 'g1-frente', 'g1-sentarse', 'h1-walk']) {
   if (!existsSync(new URL(`${id}.onnx`, POLICIES))) continue;
   const m = read(new URL(`${id}.json`, POLICIES));
+  const sceneFile = m.robot === 'unitree_h1' ? 'unitree_h1/scene.xml' : 'scene_mjx.xml';
+  if (sim.loadedScene !== sceneFile) sim.load(sceneFile, 'home');
   const inM = new URL(`${m.motion}.json`, MOTIONS);
   const mot = read(existsSync(inM) ? inM : new URL(`${m.motion}.json`, REFERENCES));
   const p = await createPolicy(ort, sim, new Uint8Array(readFileSync(new URL(`${id}.onnx`, POLICIES))), m, { motion: mot });

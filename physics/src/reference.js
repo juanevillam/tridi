@@ -12,11 +12,16 @@ const SMOOTH_S = 0.3;
 const JOINT_SMOOTH_S = 0.1;
 // The feet: the spheres and capsules on the two ankle bodies. In scene_mjx.xml those are exactly the
 // six collision capsules training uses (imitate.FOOT_SPHERES); in g1_kinematics.xml, the eight sole
-// spheres the retargeting puts on the floor. So the same code grounds a reference for either model.
-const FOOT_BODIES = ['left_ankle_roll_link', 'right_ankle_roll_link'];
+// spheres the retargeting puts on the floor; in unitree_h1/scene.xml, the ankle capsules on
+// left_ankle_link / right_ankle_link. So the same code grounds a reference for any of these models.
+const FOOT_CANDIDATES = [
+  ['left_ankle_roll_link', 'right_ankle_roll_link'],
+  ['left_ankle_link', 'right_ankle_link'],
+];
 
 function footGeoms(mujoco, model) {
-  const bodies = FOOT_BODIES.map((name) => idOf(mujoco, model, 'BODY', name));
+  const names = FOOT_CANDIDATES.find(([l]) => mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY.value, l) >= 0) ?? FOOT_CANDIDATES[0];
+  const bodies = names.map((name) => idOf(mujoco, model, 'BODY', name));
   const kinds = [mujoco.mjtGeom.mjGEOM_SPHERE.value, mujoco.mjtGeom.mjGEOM_CAPSULE.value];
   const out = [];
   for (let g = 0; g < model.ngeom; g++) if (bodies.includes(model.geom_bodyid[g]) && kinds.includes(model.geom_type[g])) out.push(g);
@@ -70,6 +75,13 @@ export function createReference(mujoco, model, motion) {
   const n = motion.qpos.length;
   const window = windowOf(SMOOTH_S, fps);
   const qpos = motion.qpos.map((r) => Float64Array.from(r));
+  for (let i = 1; i < qpos.length; i++) {
+    const a = qpos[i - 1];
+    const b = qpos[i];
+    if (a[3] * b[3] + a[4] * b[4] + a[5] * b[5] + a[6] * b[6] < 0) {
+      for (let k = 3; k < 7; k++) b[k] = -b[k];
+    }
+  }
 
   // 1. joints lightly smoothed; 2. pelvis path smoothed on the floor plane only (skipped when
   // already balanced by training.balance, matching training/imitate.py Motion).
