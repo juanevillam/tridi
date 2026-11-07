@@ -123,8 +123,37 @@ const TRAIN_STEPS = [
 export const trainBoxHTML = () => `
 <section class="train-box" hidden aria-live="polite">
   <h2>${T('title')}</h2>
+  <div data-train="preloaded" hidden>
+    <p class="train-badge-line"><span class="card-badge trained">${T('preloadedBadge')}</span></p>
+    <p class="train-text">${T('preloadedText')}</p>
+    <div class="train-actions-row">
+      <a class="button" href="#/live">${T('recordNew')}</a>
+      <a class="button" href="#/upload">${T('uploadNew')}</a>
+      <a class="button train-example" href="#/delivery">${T('example')}</a>
+    </div>
+  </div>
   <div data-train="idle">
     <p class="train-text">${T('idle')}</p>
+    <div class="train-config">
+      <label class="field">${T('cfgSteps')}
+        <select class="train-cfg-steps">
+          <option value="20000000" selected>${T('cfgSteps20')}</option>
+          <option value="50000000">${T('cfgSteps50')}</option>
+          <option value="100000000">${T('cfgSteps100')}</option>
+        </select>
+      </label>
+      <label class="field">${T('cfgPush')}
+        <select class="train-cfg-push">
+          <option value="150">${T('cfgPush150')}</option>
+          <option value="250" selected>${T('cfgPush250')}</option>
+          <option value="350">${T('cfgPush350')}</option>
+        </select>
+      </label>
+      <div class="field train-cfg-worlds">
+        <span>${T('cfgWorlds')}</span>
+        <strong>${T('cfgWorldsVal')}</strong>
+      </div>
+    </div>
     <button class="primary train-start" type="button">${T('start')}</button>
     <p class="train-why"></p>
     <a class="button train-example" href="#/delivery">${T('example')}</a>
@@ -185,6 +214,10 @@ export function mountTrainBox(box, api) {
   let netView = null; // the network in 3D (netview.js), made the first time a training runs here; false without WebGL
 
   function render(run) {
+    if (!item?.data) {
+      box.querySelectorAll('[data-train]').forEach((el) => (el.hidden = el.dataset.train !== 'preloaded'));
+      return;
+    }
     const phase = run ? (run.phase === 'done' || run.phase === 'failed' ? run.phase : 'progress') : 'idle';
     box.querySelectorAll('[data-train]').forEach((el) => (el.hidden = el.dataset.train !== phase));
     if (phase === 'idle') {
@@ -234,8 +267,12 @@ export function mountTrainBox(box, api) {
     unsubscribe?.();
     unsubscribe = null;
     item = selected;
-    box.hidden = !item?.data; // only clips made on this visit carry their PoseClip in memory
+    box.hidden = !item;
     if (box.hidden) return;
+    if (!item.data) {
+      render(null);
+      return;
+    }
     unsubscribe = subscribe(item, render);
     render(runFor(item));
     // Until /health answers, the button waits as if there were no server.

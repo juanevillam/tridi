@@ -36,6 +36,13 @@ export const { T, t, A, L } = dict({
   seeOther: { es: 'Ver la entrega de {title} →', en: 'See the delivery of {title} →' },
 
   backHome: { es: 'Volver al inicio', en: 'Back to the start' },
+  switchClipAria: { es: 'Cambiar de entrega entrenada', en: 'Switch trained delivery' },
+  expClipHead: { es: '1. Clip (referencia humana)', en: '1. Clip (human reference)' },
+  expClipBody: { es: 'Esqueleto 3D extraído del video y adaptado a las medidas del Unitree G1.', en: '3D skeleton extracted from video and retargeted to Unitree G1 proportions.' },
+  expPolicyHead: { es: '2. Política (red neuronal ONNX)', en: '2. Policy (ONNX neural net)' },
+  expPolicyBody: { es: 'Cerebro ligero a 50 Hz que lee sensores y controla los 29 motores en física real.', en: 'Lightweight 50 Hz brain reading sensors and driving all 29 motors in real physics.' },
+  expPracticeHead: { es: '3. Práctica (entrenamiento PPO)', en: '3. Practice (PPO training)' },
+  expPracticeBody: { es: 'Millones de pasos practicados en MuJoCo en 4 mundos resistiendo empujones de 250 N.', en: 'Millions of steps practiced in MuJoCo across 4 worlds resisting 250 N pushes.' },
   clip: { es: 'Clip', en: 'Clip' },
   policy: { es: 'Política', en: 'Policy' },
   mimic: { es: ' · imitación', en: ' · imitation' },

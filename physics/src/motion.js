@@ -316,7 +316,7 @@ export function smoothForDisplay(mujoco, model, motion, { plantFeet: planted = f
   if (planted === 'auto') {
     const plain = smoothForDisplay(mujoco, model, motion);
     const feet = smoothForDisplay(mujoco, model, motion, { plantFeet: true });
-    smoothed = feetExplainTravel(plain.qpos, feet.qpos) ? feet : plain;
+    smoothed = feetExplainTravel(plain.qpos, feet.qpos, motion.flight) ? feet : plain;
   } else {
     const reference = createReference(mujoco, model, motion);
     const qpos = motion.qpos.map((_, i) => reference.sample(i / motion.fps).q);
@@ -345,8 +345,9 @@ export function smoothForDisplay(mujoco, model, motion, { plantFeet: planted = f
 // instead of 34), so both are planted.
 const AUTO_TRAVEL_M = 1;
 const AUTO_MIN_SHARE = 0.5;
-function feetExplainTravel(plain, planted) {
+function feetExplainTravel(plain, planted, flight) {
   const travel = (q) => Math.hypot(q.at(-1)[0] - q[0][0], q.at(-1)[1] - q[0][1]);
+  if (travel(plain) >= AUTO_TRAVEL_M && flight?.some((h) => h > 0.025)) return false;
   return travel(plain) < AUTO_TRAVEL_M || travel(planted) >= AUTO_MIN_SHARE * travel(plain);
 }
 

@@ -16,12 +16,27 @@ function describe(clip) {
  */
 export function mountGallery(root, stage, initialClip, onSelect, { hide = [] } = {}) {
   const list = root.querySelector('#gallery');
-  const items = [...userClips, ...preloaded.filter((item) => !hide.includes(item.clip))];
-  const cards = items.map((item) => {
+  const preloadedVisible = preloaded.filter((item) => !hide.includes(item.clip));
+  const items = [...userClips, ...preloadedVisible];
+  const cards = [];
+
+  const appendSectionHeader = (key) => {
+    const li = document.createElement('li');
+    li.className = 'gallery-section-head';
+    li.innerHTML = T(key);
+    list.append(li);
+  };
+
+  if (userClips.length > 0) appendSectionHeader('groupUser');
+
+  items.forEach((item, idx) => {
+    if (idx === userClips.length) appendSectionHeader('groupPreloaded');
+    const isUser = Boolean(item.data);
     const li = document.createElement('li');
     const button = document.createElement('button');
-    button.className = 'card';
-    button.innerHTML = '<strong></strong><span class="meta">…</span><span class="credit"></span>';
+    button.className = `card ${isUser ? 'card-user' : 'card-preloaded'}`;
+    const badge = T(isUser ? 'badgeTrainable' : 'badgeTrained');
+    button.innerHTML = `<span class="card-top"><strong></strong><span class="card-badge ${isUser ? 'trainable' : 'trained'}">${badge}</span></span><span class="meta">…</span><span class="credit"></span>`;
     const names = clipName(item);
     button.querySelector('strong').innerHTML = spans(names.title);
     button.querySelector('.credit').innerHTML = spans(names.credit);
@@ -32,7 +47,7 @@ export function mountGallery(root, stage, initialClip, onSelect, { hide = [] } =
       (clip) => (button.querySelector('.meta').innerHTML = describe(clip)),
       () => (button.querySelector('.meta').innerHTML = T('downloadFailed')),
     );
-    return button;
+    cards.push(button);
   });
 
   async function select(item, button) {

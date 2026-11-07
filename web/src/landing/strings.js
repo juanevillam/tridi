@@ -70,6 +70,8 @@ export const { T, t, A } = dict({
   'gym.upOf': { es: '<b>{s}</b> de pie, de 20 s', en: '<b>{s}</b> standing, of 20 s' },
   'gym.pushesOf': { es: '<b>{held}</b> empujones de {n} N', en: '<b>{held}</b> pushes of {n} N held' },
   'gym.force': { es: 'Fuerza', en: 'Force' },
+  'gym.capZero': { es: 'Etapa 0: cae sin empujón', en: 'Stage 0: falls with no push' },
+  'gym.capHold': { es: 'Etapa {label}: soporta ≤ {max} N', en: 'Stage {label}: holds ≤ {max} N' },
   'gym.standing': { es: 'de pie', en: 'standing' },
   'gym.live': { es: 'en vivo', en: 'live' },
   'gym.pushed': { es: 'empujón de {n} N', en: '{n} N push' },

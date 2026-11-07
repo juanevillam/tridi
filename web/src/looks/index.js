@@ -22,12 +22,17 @@ function dressSidewalk(view) {
   const showGrid = hideViewerFloor(view);
   const undo = dressCity(scene, renderer);
   const city = scene.getObjectByName('landing-city');
-  if (city) city.rotation.y = Math.PI / 2;
+  const syncCityRotation = () => {
+    if (city) city.rotation.y = view._streetAlongX ? 0 : Math.PI / 2;
+  };
+  syncCityRotation();
   // The city at dusk is dark: the landing lights it brighter (home.js); here a little less.
   const exposure = renderer.toneMappingExposure;
   renderer.toneMappingExposure = 1.25;
   return {
-    update() {},
+    update() {
+      syncCityRotation();
+    },
     undo() {
       renderer.toneMappingExposure = exposure;
       undo();

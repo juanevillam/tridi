@@ -222,6 +222,8 @@ function showDelivery(root, { manifest: m, source, url }, signal) {
   const trainedWorlds = worlds.filter((world) => trained.has(world.id));
   const testOnly = worlds.length - trainedWorlds.length;
   const clipTitle = clipName({ clip: m.clip_id, title: m.title || m.clip_id }).title; // escaped
+  const bundledManifests = Object.values(MANIFESTS);
+  const switcherOptions = bundledManifests.some((b) => b.clip_id === m.clip_id) ? bundledManifests : [m, ...bundledManifests];
 
   // The status line, put together in each language.
   const statusIn = (l) => [
@@ -242,9 +244,16 @@ function showDelivery(root, { manifest: m, source, url }, signal) {
           <h1>${langSpans(clipTitle)}</h1>
         </div>
         <dl class="dl-meta">
-          <div><dt>${T('clip')}</dt><dd class="dl-mono dl-clip" title="${esc(m.clip_id)}">${esc(m.clip_id)}</dd></div>
+          <div><dt>${T('clip')}</dt><dd>
+            <select class="dl-switcher" ${A({ 'aria-label': 'switchClipAria' })}>
+              ${switcherOptions.map((item) => {
+                const tObj = clipName({ clip: item.clip_id, title: item.title || item.clip_id }).title;
+                return `<option value="${esc(item.clip_id)}" ${item.clip_id === m.clip_id ? 'selected' : ''}>${esc(tObj[lang()])} (${esc(item.policy?.id ?? item.clip_id)})</option>`;
+              }).join('')}
+            </select>
+          </dd></div>
           <div><dt>${T('policy')}</dt><dd><span class="dl-mono">${esc(policy.id ?? '—')}</span>${policy.task === 'mimic' ? T('mimic') : ''}</dd></div>
-          <div><dt>${T('practice')}</dt><dd>${policy.steps ? T('mSteps', { n: N(policy.steps / 1e6, 1) }) : '—'}</dd></div>
+          <div><dt>${T('practice')}</dt><dd>${policy.steps ? T('mSteps', { n: N(policy.steps / 1e6, 0) }) : '—'}</dd></div>
           <div class="dl-follow"><dt>${T('follows')}</dt><dd>${followed !== null ? T('sOfS', { a: N(followed, 2), b: N(duration, 2) }) : '—'}
             <i class="dl-meter" aria-hidden="true"><b style="width:${followed !== null ? Math.min(100, (100 * followed) / duration) : 0}%"></b></i></dd></div>
           <div><dt>${T('created')}</dt><dd>${langSpans(Object.fromEntries(LANGS.map((l) => [l, esc(createdText(l))])))}</dd></div>
@@ -253,6 +262,11 @@ function showDelivery(root, { manifest: m, source, url }, signal) {
         ${langSwitch('dl-lang')}
       </header>
       <p class="dl-status"><b>${T('state')}</b> ${langSpans(Object.fromEntries(LANGS.map((l) => [l, statusIn(l)])))}</p>
+      <div class="dl-explain">
+        <div class="dl-explain-item"><strong>${T('expClipHead')}</strong><span>${T('expClipBody')}</span></div>
+        <div class="dl-explain-item"><strong>${T('expPolicyHead')}</strong><span>${T('expPolicyBody')}</span></div>
+        <div class="dl-explain-item"><strong>${T('expPracticeHead')}</strong><span>${T('expPracticeBody')}</span></div>
+      </div>
 
       <div class="dl-main">
         <section class="dl-win dl-sim" ${A({ 'aria-label': 'simAria' })}>
@@ -369,6 +383,12 @@ function showDelivery(root, { manifest: m, source, url }, signal) {
     target.addEventListener(type, fn, options);
     cleanups.push(() => target.removeEventListener(type, fn, options));
   };
+  const switcher = $('.dl-switcher');
+  if (switcher) {
+    listen(switcher, 'change', (e) => {
+      location.hash = `#/delivery/${encodeURIComponent(e.target.value)}`;
+    });
+  }
 
   let sel = order[0]?.index ?? 0;
   let t = 0; // s from the episode's start

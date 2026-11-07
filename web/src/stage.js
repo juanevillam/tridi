@@ -17,7 +17,7 @@ import { SCENES, WORLDS } from 'tridi-physics';
 import { savedMotion } from './motions.js';
 import { FINAL_LEVEL, IMITATIONS, imitationOf, policyUrls } from './policies.js';
 import { dressWorld } from './looks/index.js';
-import { dressPlace, setFloor } from './props.js';
+import { dressPlace, setFloor, syncSitChair } from './props.js';
 import { mountRobotPane } from './robot-pane.js';
 import { SkeletonView } from './skeleton.js';
 import { createVideoOverlay } from './video-overlay.js';
@@ -158,6 +158,11 @@ export function mountStage(root) {
     }
     if (current?.clip !== clip) return; // the user chose another clip meanwhile
     motion = motions.get(clip.id);
+    if (motion?.qpos?.length && robot.view) {
+      const dx = Math.abs(motion.qpos.at(-1)[0] - motion.qpos[0][0]);
+      const dy = Math.abs(motion.qpos.at(-1)[1] - motion.qpos[0][1]);
+      if (dx + dy > 0.4) robot.view._streetAlongX = dx > dy;
+    }
     resume();
   }
 
@@ -192,6 +197,12 @@ export function mountStage(root) {
           (await savedMotion(motionId)) ??
           (imitation.motion ? await savedMotion(imitation.motion) : null));
       await view.loadPolicy(onnx, json, imitation ? { motion: learned } : {});
+      if (learned?.qpos?.length) {
+        const dx = Math.abs(learned.qpos.at(-1)[0] - learned.qpos[0][0]);
+        const dy = Math.abs(learned.qpos.at(-1)[1] - learned.qpos[0][1]);
+        if (dx + dy > 0.4) view._streetAlongX = dx > dy;
+      }
+      syncSitChair(view, activeClipId === 'clip_sentarse-02-gvhmr');
       level = id;
       loadedClipId = imitation ? (activeClipId ?? imitation.clip) : null;
       robotModel = imitation?.robot ?? 'unitree_g1';
@@ -224,6 +235,7 @@ export function mountStage(root) {
     try {
       await view.setWorld(WORLDS.find((world) => world.id === id));
       await dressPlace(view); // a new world rebuilds the drawn geoms: dress the place again
+      syncSitChair(view, current?.clip?.id === 'clip_sentarse-02-gvhmr');
       refreshLook();
     } catch (error) {
       console.error(error);
@@ -248,6 +260,7 @@ export function mountStage(root) {
     try {
       await view.setScene(SCENES.find((scene) => scene.id === id) ?? null);
       await dressPlace(view); // real models over the place's boxes and cylinders
+      syncSitChair(view, current?.clip?.id === 'clip_sentarse-02-gvhmr');
       setFloor(view, id); // and its floor: tiles, concrete or sidewalk
       refreshLook();
     } catch (error) {
@@ -367,7 +380,11 @@ export function mountStage(root) {
     };
   }
   robot.ready.then(syncSliders);
-  $('place').onchange = (event) => setPlace(event.target.value);
+  let autoPlaced = false;
+  $('place').onchange = (event) => {
+    autoPlaced = false;
+    setPlace(event.target.value);
+  };
   $('play').onclick = () => {
     playing = !playing;
     if (robot.view) playing ? robot.view.play() : robot.view.pause();
@@ -430,6 +447,16 @@ export function mountStage(root) {
       skeleton.setClip(clip);
       $('human-label').innerHTML = T('person', { title }); // title: markup, one span per language
       current = { clip, title };
+      if (robot.view) {
+        robot.view._streetAlongX = clip.id.includes('frente') || clip.id === 'clip_caminar-01-gvhmr';
+        syncSitChair(robot.view, clip.id === 'clip_sentarse-02-gvhmr');
+      }
+      const targetPlace = clip.id === 'clip_lavar-04-gvhmr' ? 'cocina' : '';
+      if (robot.view && $('place') && (targetPlace === 'cocina' || autoPlaced) && $('place').value !== targetPlace) {
+        $('place').value = targetPlace;
+        autoPlaced = targetPlace !== '';
+        setPlace(targetPlace);
+      }
       offerImitations(clip);
       showMode(clip);
       overlay.show(clip.id).catch(console.error);

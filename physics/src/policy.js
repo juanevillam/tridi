@@ -204,14 +204,15 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
       const ctrl = result[output].data;
       previous.set(ctrl);
       if (mimic && sim._inAdvance && !sim.pushUntil) {
-        // Blend the clean reference joints with the ONNX reflex residual: 15% residual when upright
-        // so full-amplitude human motion is preserved without static offset distortion, ramping to
-        // 100% policy recovery reflex as the torso tilts.
+        // Blend the clean reference joints with the ONNX reflex residual: 6% residual when upright
+        // so full-amplitude human motion is preserved without 50 Hz motor chatter, ramping to
+        // 100% policy recovery reflex as the torso tilts, with a 1-step exponential smoothing filter.
         const next = reference.sample(t + CONTROL_DT);
-        const reflex = Math.min(1, Math.max(0.15, (1 - upright) / 0.18));
+        const reflex = Math.min(1, Math.max(0.06, (1 - upright - 0.02) / 0.18));
         for (let i = 0; i < nu; i++) {
           const refJ = next.q[7 + i];
-          data.ctrl[i] = refJ + reflex * (ctrl[i] - refJ);
+          const target = refJ + reflex * (ctrl[i] - refJ);
+          data.ctrl[i] = 0.55 * target + 0.45 * data.ctrl[i];
         }
       } else {
         data.ctrl.set(ctrl);

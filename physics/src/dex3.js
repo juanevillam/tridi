@@ -10,9 +10,10 @@ import inspireHands from '../models/inspire/hands.json';
 
 const MESH_URLS = import.meta.glob('../models/dex3/assets/*.STL', { query: '?url', import: 'default', eager: true });
 const urlOf = (mesh) => MESH_URLS[`../models/dex3/assets/${mesh}.STL`];
-// The rubber hand is the G1's geom on the wrist_yaw_link set this far along the hand (g1.xml and
-// g1_mjx.xml, pos="0.0415 ±0.003 0"); the wrist's own mesh sits at the link's origin.
-const RUBBER_HAND_X = 0.0415;
+// The rubber hand is the G1's geom on the wrist_yaw_link set past x = 0.0415 m along the hand
+// (g1.xml and g1_mjx.xml, pos="0.0415 ±0.003 0", compiled mesh center x ≈ 0.106 m), whereas the
+// wrist's own mesh sits near the link's origin (x ≈ 0.021 m).
+const RUBBER_HAND_X = 0.04;
 
 export { hands, inspireHands };
 
@@ -82,7 +83,7 @@ export async function createDex3Hands(viewer, sim, handSpec = hands) {
       const wrist = sim.id('BODY', rig.wrist);
       for (const { id, object } of viewer.geoms) {
         if (model.geom_bodyid[id] !== wrist) continue;
-        if (Math.abs(model.geom_pos[3 * id] - RUBBER_HAND_X) < 1e-3) rubber.push(object);
+        if (model.geom_pos[3 * id] > RUBBER_HAND_X) rubber.push(object);
         else rig.material.color.copy(object.material.color); // the wrist's own mesh: same finish
       }
     }

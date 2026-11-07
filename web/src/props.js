@@ -181,3 +181,32 @@ export function setFloor(view, id) {
   undoFloor();
   undoFloor = FLOORS[id]?.(view.viewer.scene, view.viewer.renderer, view.scene?.()) ?? (() => {});
 }
+
+/**
+ * Places a 3D bench right behind the robot's legs (`x = -0.30, y = 0, z = 0.215` in MuJoCo z-up
+ * coordinates) when viewing a sitting clip (`clip_sentarse-02-gvhmr`), so the robot sits on a solid
+ * physical seat instead of floating in empty air.
+ */
+export async function syncSitChair(view, show) {
+  if (!view?.viewer?.world) return;
+  const world = view.viewer.world;
+  const existing = world.getObjectByName('tridi-sit-bench');
+  if (!show) {
+    if (existing) world.remove(existing);
+    return;
+  }
+  if (existing) return;
+  try {
+    const template = await loadModel('furniture/bench.glb');
+    if (!view?.viewer?.world || world.getObjectByName('tridi-sit-bench')) return;
+    const copy = template.clone();
+    copy.name = 'tridi-sit-bench';
+    const s = template.userData.size;
+    // Size: 0.40 m deep (x), 0.92 m wide (y), 0.43 m tall (z, matching sitting thigh height ~0.43 m)
+    copy.scale.set(0.40 / s.x, 0.92 / s.y, 0.43 / s.z);
+    copy.position.set(-0.31, 0, 0.215);
+    world.add(copy);
+  } catch (err) {
+    console.error(err);
+  }
+}

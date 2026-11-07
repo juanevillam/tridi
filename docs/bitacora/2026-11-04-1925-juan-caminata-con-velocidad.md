@@ -126,3 +126,11 @@ Que la caminata aguante el empujón de la web (250 N) dándole a la política su
 - **Autónomo / siguiente:**
   - Mano de 5 dedos tipo Inspire en el G1 (bloque 5 de `docs/plan-v2.md`).
   - Caminata en los 4 mundos (`plano,piedras,resbaloso,viento`) partiendo de `walk-vel-strong-seed0`.
+  - **2026-11-07 (cierre pre-reunión con Luigi a las 5pm):**
+    - Corregido el bug visual de "dos juegos de dedos" en `physics/src/dex3.js`: al compilar MuJoCo los eslabones sin masa de la muñeca, `left_rubber_hand` y `right_rubber_hand` quedaban con `geom_pos[x] = 0.1061 m` en vez de `0.0415 m`, por lo que no se ocultaban al montar la mano articulada Inspire de 5 dedos.
+    - Aumentada la separación mínima entre manos (`HANDS_APART_M = 0.145 m`, `HAND_PAST_WRIST = 0.72` en `physics/src/clearance.js`) para evitar colisiones de dedos en el aire en `Washing dishes` y `Gestures`.
+    - Eliminado el tembleque (`50 Hz`) en modo `With physics` (`physics/src/policy.js`, `physics/src/sim.js`) mediante filtro exponencial en `ctrl` y amortiguamiento crítico de pelvis.
+    - Corregido el piso flotante en la calle (`ROAD_DROP_M = 0` en `web/src/landing/city.js`) y la orientación de la calle según el eje de avance del clip (`web/src/looks/index.js`, `web/src/stage.js`) para que ningún clip atraviese las casas.
+    - Limpiados los clips `Running`, `Running toward the camera`, `Jumping jacks` y `Gestures`; añadido banco 3D bajo el robot en `Sitting down` (`syncSitChair` en `web/src/props.js`) y auto-selección de `Cocina` en `Washing dishes`; ocultados `Group jumping jacks`, `Jumps and squats` y el selector roto de `Unitree H1`.
+    - Separadas en `#/simulations` las capturas de usuario (entrenables, con panel de configuración previa de pasos PPO, empujones y 4 mundos) de los ejemplos precargados (ya entrenados), y renovado `#/delivery` con entregas Capture 2.0 (`Caminar`, `Correr`, `Bailar`, `Saltos de tijera`), selector de clip y explicación de `Clip / Política / Práctica`.
+    - En la landing (`web/src/screens/home.js`, `web/src/landing/landing.css`): slider de fuerza de `50` en `50 N` con indicador visual del límite por etapa (`0 N`, `200 N`, `350 N`, `500 N`) y sección final (`closing`) con scroll lock (`sticky`) mientras entra el footer de `Tridi`.

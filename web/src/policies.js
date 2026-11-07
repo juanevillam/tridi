@@ -21,7 +21,6 @@ export const FINAL_LEVEL = 'g1-stand';
 
 export const ROBOT_MODELS = [
   { id: 'unitree_g1', label: 'Unitree G1 (29 motores + manos 5 dedos)' },
-  { id: 'unitree_h1', label: 'Unitree H1 (19 motores, open-source)' },
 ];
 
 // Imitation policies (training/imitate.py): each learned one clip, and does it with physics instead
@@ -35,14 +34,6 @@ export const IMITATIONS = [
     clips: ['clip_caminar-perfil-gvhmr', 'clip_caminar-01-gvhmr', 'clip_caminar-02-gvhmr', 'clip_2026-10-23_caminar-perfil_01'],
     motion: 'clip_caminar-perfil-gvhmr-balanced',
     label: 'Caminar imitando el video, con física (65 % de empujones)',
-  },
-  {
-    id: 'h1-walk',
-    robot: 'unitree_h1',
-    clip: 'clip_caminar-perfil-gvhmr',
-    clips: ['clip_caminar-perfil-gvhmr', 'clip_caminar-01-gvhmr', 'clip_2026-10-23_caminar-perfil_01'],
-    motion: 'clip_2026-10-23_caminar-perfil_01-h1-balanced',
-    label: 'Unitree H1 · Caminar imitando el video, con física',
   },
   {
     id: 'g1-run',

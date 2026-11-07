@@ -53,10 +53,10 @@ const AFTER_PUSH_S = 5; // after a push in the hero, the robot stands this long 
 // checkpoint with what training.evaluate measured for it: seconds standing (of 20) and 250 N
 // pushes held (of 4).
 const GYM_STAGES = [
-  { level: 'g1-stand-step-0', steps: 0, label: '0', up: 1.1, pushes: 0 },
-  { level: 'g1-stand-step-10000000', steps: 10e6, label: '10 M', up: 11.2, pushes: 1.6 },
-  { level: 'g1-stand-step-100000000', steps: 100e6, label: '100 M', up: 20, pushes: 4 },
-  { level: 'g1-stand', steps: 300e6, label: '300 M', up: 20, pushes: 4 },
+  { level: 'g1-stand-step-0', steps: 0, label: '0', up: 1.1, pushes: 0, maxN: 0 },
+  { level: 'g1-stand-step-10000000', steps: 10e6, label: '10 M', up: 11.2, pushes: 1.6, maxN: 200 },
+  { level: 'g1-stand-step-100000000', steps: 100e6, label: '100 M', up: 20, pushes: 4, maxN: 350 },
+  { level: 'g1-stand', steps: 300e6, label: '300 M', up: 20, pushes: 4, maxN: 500 },
 ];
 // The policy decides 50 times a second (training/README.md), for the simulation's readout.
 const DECISIONS_PER_S = 50;
@@ -194,7 +194,11 @@ export function mount(root) {
             <button class="btn btn-signal btn-small gym-push" type="button" disabled>${T('hero.push')} <kbd>${T('key.space')}</kbd></button>
             <label class="gym-force">
               <span class="gym-force-head"><span>${T('gym.force')}</span><b data-gym="force">${PUSH_N} N</b></span>
-              <input type="range" class="gym-force-slider" min="50" max="500" step="25" value="${PUSH_N}" />
+              <div class="gym-force-track">
+                <i class="gym-force-zone" data-gym="force-zone"></i>
+                <input type="range" class="gym-force-slider" min="50" max="500" step="50" value="${PUSH_N}" />
+              </div>
+              <span class="gym-force-cap" data-gym="force-cap"></span>
             </label>
           </div>
           <p class="gym-hint">${T('gym.hint')}</p>
@@ -226,29 +230,31 @@ export function mount(root) {
     </nav>
 
     <section class="chapter closing" id="teams" data-shot="close" data-mode="stand">
-      <div class="closing-inner" id="try" data-offset="-112">
-        <h2 class="manifesto">${T('close.manifesto')}</h2>
-        <p class="closing-text">${T('close.text')}</p>
-        <nav class="tries" ${A({ 'aria-label': 'close.tries' })}>
-          <a class="try" href="#/live" data-warm="live">
-            <svg class="try-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="14" width="28" height="20" rx="3"/><path d="M34 21l9-5v16l-9-5z"/><circle cx="20" cy="24" r="5"/></svg>
-            <b><span class="only-wide">${T('try.live')}</span><span class="only-narrow">${T('try.liveShort')}</span></b>
-            <span class="try-sub only-narrow">${T('try.live')}</span>
-            <span class="try-go">${T('try.liveGo')}</span>
-          </a>
-          <a class="try" href="#/upload" data-warm="upload">
-            <svg class="try-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="10" width="36" height="26" rx="3"/><path d="M24 31V17M18 22l6-6 6 6"/><path d="M14 40h20"/></svg>
-            <b><span class="only-wide">${T('try.upload')}</span><span class="only-narrow">${T('try.uploadShort')}</span></b>
-            <span class="try-sub only-narrow">${T('try.uploadSub')}</span>
-            <span class="try-go">${T('try.uploadGo')}</span>
-          </a>
-          <a class="try" href="#/delivery" data-warm="delivery">
-            <svg class="try-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="8" y="16" width="32" height="24" rx="2"/><path d="M8 24h32M24 6v14M18 14l6 6 6-6"/></svg>
-            <b><span class="only-wide">${T('try.delivery')}</span><span class="only-narrow">${T('try.deliveryShort')}</span></b>
-            <span class="try-sub only-narrow">${T('try.deliverySub')}</span>
-            <span class="try-go">${T('try.deliveryGo')}</span>
-          </a>
-        </nav>
+      <div class="closing-sticky">
+        <div class="closing-inner" id="try" data-offset="-112">
+          <h2 class="manifesto">${T('close.manifesto')}</h2>
+          <p class="closing-text">${T('close.text')}</p>
+          <nav class="tries" ${A({ 'aria-label': 'close.tries' })}>
+            <a class="try" href="#/live" data-warm="live">
+              <svg class="try-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="14" width="28" height="20" rx="3"/><path d="M34 21l9-5v16l-9-5z"/><circle cx="20" cy="24" r="5"/></svg>
+              <b><span class="only-wide">${T('try.live')}</span><span class="only-narrow">${T('try.liveShort')}</span></b>
+              <span class="try-sub only-narrow">${T('try.live')}</span>
+              <span class="try-go">${T('try.liveGo')}</span>
+            </a>
+            <a class="try" href="#/upload" data-warm="upload">
+              <svg class="try-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="10" width="36" height="26" rx="3"/><path d="M24 31V17M18 22l6-6 6 6"/><path d="M14 40h20"/></svg>
+              <b><span class="only-wide">${T('try.upload')}</span><span class="only-narrow">${T('try.uploadShort')}</span></b>
+              <span class="try-sub only-narrow">${T('try.uploadSub')}</span>
+              <span class="try-go">${T('try.uploadGo')}</span>
+            </a>
+            <a class="try" href="#/delivery" data-warm="delivery">
+              <svg class="try-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="8" y="16" width="32" height="24" rx="2"/><path d="M8 24h32M24 6v14M18 14l6 6 6-6"/></svg>
+              <b><span class="only-wide">${T('try.delivery')}</span><span class="only-narrow">${T('try.deliveryShort')}</span></b>
+              <span class="try-sub only-narrow">${T('try.deliverySub')}</span>
+              <span class="try-go">${T('try.deliveryGo')}</span>
+            </a>
+          </nav>
+        </div>
       </div>
       <footer class="footer">
         <div class="foot-row">
@@ -717,6 +723,16 @@ export function mount(root) {
     $('.axis-fill').style.width = $$('.axis-stop')[stage].style.getPropertyValue('--at');
     $('[data-gym="text"]').innerHTML = T(`stage.${stage}.text`);
     $('[data-gym="numbers"]').innerHTML = `<span>${T('gym.upOf', { s: (l) => `${fmt(current.up, current.up % 1 ? 1 : 0)(l)} s` })}</span><span>${T('gym.pushesOf', { held: (l) => T_OF(current.pushes, l), n: gym.forceN })}</span>`;
+    const capEl = $('[data-gym="force-cap"]');
+    const zoneEl = $('[data-gym="force-zone"]');
+    if (capEl) {
+      capEl.innerHTML = current.maxN > 0 ? T('gym.capHold', { label: current.label, max: current.maxN }) : T('gym.capZero');
+      capEl.dataset.over = String(gym.forceN > current.maxN);
+    }
+    if (zoneEl) {
+      const pct = current.maxN <= 0 ? 0 : Math.min(100, Math.max(0, ((current.maxN - 50) / 450) * 100));
+      zoneEl.style.width = `${pct}%`;
+    }
     // The big number counts up (or back) to this stage's steps.
     const shown = { value: Number($('[data-gym="steps"]').dataset.value ?? 0) };
     gsap.to(shown, {

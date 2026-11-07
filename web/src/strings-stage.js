@@ -38,6 +38,10 @@ export const { T, t, A, L, X, S } = dict({
   person: { es: 'Persona · {title}', en: 'Person · {title}' },
   // gallery.js
   meta: { es: '{seconds} segundos · se ve el {pct} % del tiempo', en: '{seconds} seconds · visible {pct} % of the time' },
+  badgeTrained: { es: 'Entrenado · Con física', en: 'Trained · With physics' },
+  badgeTrainable: { es: 'Tu captura · Entrenable', en: 'Your capture · Trainable' },
+  groupUser: { es: 'Tus capturas (cámara o video subido)', en: 'Your captures (camera or uploaded video)' },
+  groupPreloaded: { es: 'Ejemplos precargados (políticas ya entrenadas)', en: 'Preloaded examples (pre-trained policies)' },
   downloadFailed: { es: 'No se pudo descargar', en: 'Could not download' },
   downloadRetry: { es: 'No se pudo descargar; toca para reintentar', en: 'Could not download; tap to retry' },
   // Simulaciones

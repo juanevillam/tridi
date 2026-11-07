@@ -32,7 +32,7 @@ const SHOPS_Z = 6.2; // the robot's row of shops
 const CURB_Z = -2.2; // its curb: the walk drifts up to 1 m toward the road (z = -1.0)
 const FAR_CURB_Z = -9.4; // 7.2 m of road: a parking lane on each side and one lane, one way, between
 const FAR_SHOPS_Z = -12.4; // 3 m of far sidewalk, then the far row
-const ROAD_DROP_M = 0.14; // the road lies a curb below; the sidewalks are the physics floor (y = 0)
+const ROAD_DROP_M = 0; // flush with the physics floor (y = 0) so the robot never floats over the road
 const CURB_W = 0.22;
 const STREET_M = 140; // floor length along x; the end buildings close the street well before
 // The two rows of shops, along x: the hero looks down the street toward -x, and past 40 m the dusk
