@@ -10,15 +10,11 @@ export const LEVELS = [
   { id: 'g1-stand-step-3000000', label: '3 millones de pasos' },
   { id: 'g1-stand-step-10000000', label: '10 millones de pasos' },
   { id: 'g1-stand-step-20000768', label: '20 millones de pasos' },
-  // stand-v2: v1 plus 20 M with stronger pushes. Holds every one of the web's pushes, but by
-  // pivoting on one foot (55 deg/s); restored from git (abea922) for the Gym's ladder.
-  { id: 'g1-stand-v2', label: '40 millones de pasos (4 de 4 empujones, girando)' },
-  // stand-v7b: v2 (40 M, stronger pushes) plus 8 M with the stance terms. It no longer pivots
-  // (0,9 deg/s against v2's 55) but holds 3 of 4 of the web's pushes (training.evaluate).
   { id: 'g1-stand-quiet', label: '48 millones de pasos, quieta (3 de 4 empujones)' },
-  // stand-v7d: 12 M more from v7b. Just as quiet (1,6 deg/s) and holds 3,6 of 4 pushes, so it is the
-  // final one (docs/bitacora/2026-10-24-1300-juan-landing-caminata.md).
-  { id: 'g1-stand', label: '60 millones de pasos' },
+  { id: 'g1-stand-step-100000000', label: '100 millones de pasos (4 de 4 empujones)' },
+  { id: 'g1-stand-v2', label: '100 millones de pasos (stand v2)' },
+  { id: 'g1-stand-step-300000000', label: '300 millones de pasos (4 mundos, 4 de 4 empujones)' },
+  { id: 'g1-stand', label: '300 millones de pasos' },
 ].filter(({ id }) => URLS[`../../training/policies/${id}.onnx`]);
 
 export const FINAL_LEVEL = 'g1-stand';

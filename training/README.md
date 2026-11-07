@@ -133,6 +133,7 @@ Ninguno llega al final: `g1-walk` sigue 3,5 s del clip desde el inicio y se entr
 | 6-34 | Ángulos menos la pose de pie: `qpos[7:36] − default` |
 | 35-63 | Velocidades de las articulaciones: `qvel[6:35] × 0,05` |
 | 64-92 | Los `ctrl` anteriores como acción: `(ctrl_anterior − default) / 0,25` (al empezar, `ctrl_anterior = default`) |
+| 93-95 | Con `--sense-velocity` (96 entradas): velocidad lineal `(vx, vy, vz)` de la pelvis en el marco del cuerpo |
 
 `default` es el `ctrl` del keyframe `home` de `scene_mjx.xml`. El orden de los 29 motores es el de los actuadores del modelo (de la cadera izquierda a la muñeca derecha).
 
@@ -143,22 +144,22 @@ Ninguno llega al final: `g1-walk` sigue 3,5 s del clip desde el inicio y se entr
 | Simulación, 64 robots en 8 núcleos | 11.400 pasos de política por segundo |
 | PPO en CPU vs MPS | 11.200 vs 10.100 pasos/s: la red es tan chica que mandar cada lote a la GPU cuesta más de lo que ahorra |
 | Sin política (motores fijos en la pose de pie) | Se cae en 1 s |
-| ONNX vs torch | Misma salida (diferencia máxima 3e-7 rad), 265 KB |
+| ONNX vs torch | Misma salida (diferencia máxima 3e-7 rad), 268 KB |
 | Primer entrenamiento (`stand-v1`, 20 M pasos) | 38,5 min |
 
-## La política de hoy: `policies/g1-stand.onnx`
+## La política de hoy: `policies/g1-stand.onnx` (Stand v2, 300 M pasos)
 
-Dos vueltas en una M2: `stand-v1` (20 M pasos, 38,5 min, empujones al azar de 0 a 300 N) y `stand-v2`, que la continúa con empujones de 100 a 350 N (20 M pasos más, 34,5 min). Evaluada con `evaluate.py`: 5 arranques de 20 s, y el empujón de la web (250 N, 0,1 s, en el torso) a los 4, 8, 12 y 16 s desde adelante, la izquierda, atrás y la derecha.
+Entrenada hasta **300 M pasos** (`stand-300m`, continuando la línea `stand-v1 → stand-v2 → stand-v7b → stand-v7d` con `--sense-velocity` de 96 entradas y término de Capture Point `STANCE_V2`): a los 100 M pasos domina el piso plano (`4,0 de 4` empujones hasta 350 N), y de 100 M a 300 M entrena en los 4 mundos (`plano, piedras, resbaloso, viento`, viento hasta 6 m/s y empujones de 50 a 350 N). Evaluada con `evaluate.py`: 5 arranques de 20 s, y el empujón de la web (250 N, 0,1 s, en el torso) a los 4, 8, 12 y 16 s desde adelante, la izquierda, atrás y la derecha.
 
 | Política (`policies/`) | De pie (de 20 s) | Empujones de 250 N aguantados (de 4) |
 | --- | --- | --- |
 | Sin política (motores fijos en la pose de pie) | 1,1 s | 0 |
 | `g1-stand-step-0` (sin entrenar) | 1,1 s | 0 |
 | `g1-stand-step-3000000` (v1, 3 M) | 4,2 s | 0 |
-| `g1-stand-step-10000000` (v1, 10 M) | 9,6 s | 1,2 |
+| `g1-stand-step-10000000` (10 M) | 11,2 s (20,0 s quieto) | 1,6 |
 | `g1-stand-step-20000768` (v1, 20 M) | 13,4 s | 2,2 |
-| v2 (40 M en total; fue `g1-stand` hasta `6b9bb38`, sigue en git) | 20 s, girando a 55°/s y con 3,9 pisadas/s | 4 |
-| `g1-stand-quiet` (`stand-v7b` @ 8 M, 48 M en total: v2 + términos de quietud) | 20 s, sin girar (0,9°/s) | 3,0 (falla desde la derecha) |
-| **`g1-stand`** (`stand-v7d` @ 12 M desde `stand-v7b`, 60 M en total) | **20 s, sin girar (1,6°/s), 0,2 pisadas/s** | **3,6** (falla desde la derecha) |
+| `g1-stand-quiet` (`stand-v7b`, 48 M) | 20 s, sin girar (0,9°/s) | 3,0 |
+| `g1-stand-step-100000000` / `g1-stand-v2` (100 M, `stand-300m`) | **20 s, sin girar (0,4°/s), 0,0 pisadas/s** | **4,0** (4,0 de 4 hasta 350 N en plano) |
+| **`g1-stand-step-300000000` / `g1-stand`** (300 M, 4 mundos) | **20 s, sin girar (0,3°/s), 0,0 pisadas/s** | **4,0** |
 
-La v2 aguantaba todos los empujones hasta 250 N (con 300 N, 3,2 de 4; con 350 N, 1,2), pero lo lograba pivotando sobre un pie. `g1-stand` es la postura quieta que se ve en la web, a cambio de unos empujones: con el botón de la web, que empuja en dirección al azar, se cae más o menos 1 de cada 4 veces. Medidas de `training.evaluate`, el 2026-10-24. La escalera de `g1-stand-step-*` es la del pitch: el mismo robot sin entrenar, a medias y entrenado. Curvas: `policies/g1-stand-progress.csv` (v1) y `policies/g1-stand-v2-progress.csv`.
+Con `stand-300m` (`100 M` y `300 M` pasos), el G1 ya no necesita elegir entre quedarse quieto o aguantar empujones: gracias a la velocidad lineal de la pelvis (`sense_velocity`, 96 entradas) y el bono de Capture Point (`capture=0.05`), permanece plantado con ambos pies (`0,0 pisadas/s`, `0,3–0,4 °/s` de giro) cuando está en calma y da el paso de recuperación exacto cuando recibe un empujón de 250 N desde cualquiera de los 4 lados (`4,0 de 4`). Curvas: `policies/g1-stand-progress.csv` (v1) y `policies/g1-stand-v2-progress.csv`.

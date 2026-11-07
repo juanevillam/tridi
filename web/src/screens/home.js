@@ -49,15 +49,14 @@ const GYM_PUSH_EVERY_S = 3.2; // the Gym pushes the standing robot this often, g
 const GYM_FIRST_PUSH_S = 2.0;
 const GYM_RESTART_S = 1.6; // a fallen robot lies this long before it is stood up again
 const AFTER_PUSH_S = 5; // after a push in the hero, the robot stands this long before it is reset
-// The Gym in four stops of the real training, each a saved checkpoint of its iterations, with what
-// training/README.md measured for it: seconds standing (of 20) and 250 N pushes held (of 4). The
-// third is v2 (40 M steps), the first that held every push; the last is the one the page uses
-// (stand-v7d, 60 M steps), which gave up a few pushes to stop pivoting on one foot.
+// The Gym in four stops of the real training (stand-300m, training/README.md), each a saved
+// checkpoint with what training.evaluate measured for it: seconds standing (of 20) and 250 N
+// pushes held (of 4).
 const GYM_STAGES = [
   { level: 'g1-stand-step-0', steps: 0, label: '0', up: 1.1, pushes: 0 },
-  { level: 'g1-stand-step-10000000', steps: 10e6, label: '10 M', up: 9.6, pushes: 1 },
-  { level: 'g1-stand-v2', steps: 40e6, label: '40 M', up: 20, pushes: 4 },
-  { level: 'g1-stand', steps: 60e6, label: '60 M', up: 20, pushes: 3.6 },
+  { level: 'g1-stand-step-10000000', steps: 10e6, label: '10 M', up: 11.2, pushes: 1.6 },
+  { level: 'g1-stand-step-100000000', steps: 100e6, label: '100 M', up: 20, pushes: 4 },
+  { level: 'g1-stand', steps: 300e6, label: '300 M', up: 20, pushes: 4 },
 ];
 // The policy decides 50 times a second (training/README.md), for the simulation's readout.
 const DECISIONS_PER_S = 50;

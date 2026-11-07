@@ -240,7 +240,7 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
     obs = envs.reset()
     meta = {"task": task, "motion": motion} if task == "mimic" else {"task": task}
     meta["worlds"] = list(worlds) or ["plano"]
-    extra = range(every, total_steps, every) if every > 0 else []
+    extra = range(every, total_steps + 1, every) if every > 0 else []
     pending = sorted({c for c in CHECKPOINTS if c <= total_steps} | set(extra))
     out = (export_dir, prefix or run)
     step, elapsed = 0, 0.0
@@ -249,6 +249,11 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
         state = torch.load(latest)
         model.load_state_dict(state["model"])
         opt.load_state_dict(state["opt"])
+        if not adaptive_lr:
+            for g in opt.param_groups:
+                g["lr"] = LR
+        if std is not None:
+            model.log_std.data.fill_(np.log(std))
         step, elapsed = state["step"], state["seconds"]
         pending = [c for c in pending if c > step]
         print(f"resuming {run} at {step:,} steps ({elapsed / 3600:.1f} h trained so far)")
@@ -371,7 +376,8 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
           b_act = torch.as_tensor(buf_act.reshape(-1, nu), device=device)
           b_logp = torch.as_tensor(buf_logp.reshape(-1), device=device)
           b_adv = torch.as_tensor(adv.reshape(-1), device=device)
-          model.ret_norm.update(torch.as_tensor(ret.reshape(-1, 1), dtype=torch.float32, device=device))
+          if task != "stand":
+              model.ret_norm.update(torch.as_tensor(ret.reshape(-1, 1), dtype=torch.float32, device=device))
           b_ret = model.normalize_returns(torch.as_tensor(ret.reshape(-1), dtype=torch.float32, device=device))
           b_adv = (b_adv - b_adv.mean()) / (b_adv.std() + 1e-8)
           n = b_obs.shape[0]
@@ -395,15 +401,15 @@ def train(total_steps: int, run: str, device: str, init: Path | None, push_n: tu
                   loss.backward()
                   norms.append(float(nn.utils.clip_grad_norm_(model.parameters(), MAX_GRAD_NORM)))
                   opt.step()
-                  if adaptive_lr:
-                      kl = kls[-1]
-                      lr = opt.param_groups[0]["lr"]
-                      if kl > 2 * KL_TARGET:
-                          lr = max(LR_RANGE[0], lr / LR_STEP)
-                      elif kl < KL_TARGET / 2:
-                          lr = min(LR_RANGE[1], lr * LR_STEP)
-                      for g in opt.param_groups:
-                          g["lr"] = lr
+          if adaptive_lr and kls:
+              kl = float(np.mean(kls))
+              lr = opt.param_groups[0]["lr"]
+              if kl > 2 * KL_TARGET:
+                  lr = max(LR_RANGE[0], lr / LR_STEP)
+              elif kl < KL_TARGET / 2:
+                  lr = min(LR_RANGE[1], lr * LR_STEP)
+              for g in opt.param_groups:
+                  g["lr"] = lr
           model.to("cpu")
           # How well the critic predicts the returns (1 perfect, 0 no better than the mean).
           returns = ret.reshape(-1)

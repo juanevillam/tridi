@@ -104,7 +104,7 @@ class Stance:
 
 # Stand v2 default reward preset (--reward v2): Capture-Point stepping recovery during a shove +
 # quiet two-foot planted stance when calm.
-STANCE_V2 = Stance(turn=0.3, feet=0.5, planted=0.1, rate=0.02, calm_s=1.2, capture=0.25)
+STANCE_V2 = Stance(turn=0.3, feet=0.5, planted=0.1, rate=0.02, calm_s=1.0, capture=0.05)
 
 
 # A foot is planted when its ankle is within this of where it rests when standing: a tap lifts it
@@ -249,22 +249,15 @@ class G1Env:
         g = gravity_in_body(qpos[3:7])
         w = self.stance
         calm = self.steps - self.last_push >= w.calm_s * 50
-        # During a push recovery (!calm with w.capture > 0), leg joints (0:12) are allowed twice the
-        # excursion to take a wide protective step while the upper body (12:) stays composed; pelvis
-        # drift ("still") is only enforced when calm so the robot does not fight its own step.
-        if w.capture > 0 and not calm:
-            pose_err2 = 0.25 * np.sum((qpos[7:19] - self.default[:12]) ** 2) + np.sum((qpos[19:] - self.default[12:]) ** 2)
-        else:
-            pose_err2 = np.sum((qpos[7:] - self.default) ** 2)
         terms = {
             # Upright: tilt of 0.2 rad (11 degrees) already halves it.
             "upright": 0.4 * np.exp(-(g[0] ** 2 + g[1] ** 2) / 0.04),
             # Height: 5 cm of sag halves it, so it learns to keep its knees, not to crouch.
             "height": 0.3 * np.exp(-((qpos[2] - self.stand_height) ** 2) / 0.0036),
             # Near the standing pose: keeps arms and waist calm instead of flailing to balance.
-            "pose": 0.2 * np.exp(-pose_err2 / 1.0),
-            # Still: pelvis drifting at 0.5 m/s halves it (when calm, or always if capture is off).
-            "still": 0.1 * (np.exp(-np.sum(qvel[:2] ** 2) / 0.25) if (calm or w.capture <= 0) else 1.0),
+            "pose": 0.2 * np.exp(-np.sum((qpos[7:] - self.default) ** 2) / 1.0),
+            # Still: pelvis drifting at 0.5 m/s halves it.
+            "still": 0.1 * np.exp(-np.sum(qvel[:2] ** 2) / 0.25),
         }
         if w.capture:
             # Capture Point x_cp = x_pelvis + sqrt(h/g) * v_pelvis: when shoved (!calm), reward
