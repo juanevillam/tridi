@@ -1,13 +1,13 @@
 // Ver simulaciones: the gallery of preloaded clips and the stage with the person and the robot.
 import { mountGallery } from '../gallery.js';
 import { SCENES, WORLDS } from 'tridi-physics';
-import { FINAL_LEVEL, IMITATIONS, LEVELS } from '../policies.js';
+import { FINAL_LEVEL, IMITATIONS, LEVELS, ROBOT_MODELS } from '../policies.js';
 import { robotPaneHTML } from '../robot-pane.js';
 import { ICONS, mountStage } from '../stage.js';
 import { mountTrainBox, trainBoxHTML } from '../training.js';
 import { option } from '../i18n.js';
 import { A, T, X, t } from '../strings-stage.js';
-import { levelName, sceneName, worldName } from '../strings-names.js';
+import { levelName, robotName, sceneName, worldName } from '../strings-names.js';
 
 export const title = { es: 'Simulaciones', en: 'Simulations' };
 
@@ -73,6 +73,11 @@ export function mount(root, { api }, [clipId] = []) {
             <section class="control-group" aria-labelledby="ctl-world">
               <h3 id="ctl-world">${T('conditions')}</h3>
               <div class="fields">
+                <label class="field wide">${T('robotModel')}
+                  <select id="robot-model">
+                    ${ROBOT_MODELS.map(({ id, label }) => option(id, robotName(id, label), id === 'unitree_g1' ? 'selected' : '')).join('')}
+                  </select>
+                </label>
                 <label class="field">${T('world')}
                   <select id="world">
                     ${WORLDS.map(({ id, title }) => option(id, worldName(id, title), id === 'plano' ? 'selected' : '')).join('')}
@@ -90,6 +95,19 @@ export function mount(root, { api }, [clipId] = []) {
                     ${IMITATIONS.length ? `<optgroup ${A({ label: 'imitates' })}>${IMITATIONS.map(({ id, label }) => option(id, levelName(id, label), 'disabled')).join('')}</optgroup>` : ''}
                   </select>
                 </label>
+              </div>
+              <div class="grasp-box" id="arduino-box" hidden>
+                <p class="mode-note"><strong>Arduino UNO (Lab III · 9600 baud)</strong> — Gemelo digital en vivo por USB (<code>HC-SR04</code> + <code>APDS-9960</code> + <code>L298N</code>)</p>
+                <div class="mode grasp-actions" role="group">
+                  <button type="button" id="arduino-connect" aria-pressed="false">🔌 Conectar Arduino USB</button>
+                  <button type="button" data-cmd="F">⬆️ Avanzar (F)</button>
+                  <button type="button" data-cmd="B">⬇️ Atrás (B)</button>
+                  <button type="button" data-cmd="L">⬅️ Giro Izq (L)</button>
+                  <button type="button" data-cmd="R">➡️ Giro Der (R)</button>
+                  <button type="button" data-cmd="S">⏹ Quieto (S)</button>
+                  <button type="button" data-cmd="AUTO">🤖 Patrulla ONNX</button>
+                </div>
+                <p class="mode-note" id="arduino-status">Conecta el cable USB del Arduino UNO (en Chrome) para leer el HC-SR04 y el APDS-9960 en vivo dentro de MuJoCo.</p>
               </div>
               <div class="grasp-box">
                 <p class="mode-note">${T('objectsHead')}</p>

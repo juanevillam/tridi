@@ -14,9 +14,17 @@ const SCENES = {
 };
 const ROBOTS = {
   unitree_g1: { es: 'Unitree G1 (29 motores + manos 5 dedos)', en: 'Unitree G1 (29 motors + 5-finger hands)' },
+  luigi_lab3: {
+    es: 'Robot Explorador Lab III — Luigi (Arduino UNO + HC-SR04 + APDS-9960)',
+    en: 'Lab III Explorer Robot — Luigi (Arduino UNO + HC-SR04 + APDS-9960)',
+  },
   unitree_h1: { es: 'Unitree H1 (19 motores, open-source)', en: 'Unitree H1 (19 motors, open-source)' },
 };
 const LEVELS = {
+  'luigi-lab3': {
+    es: 'Robot Lab III (Luigi) · Exploración y evasión con física (5 M pasos, 200 RPM)',
+    en: 'Lab III Robot (Luigi) · Physics exploration & obstacle avoidance (5M steps, 200 RPM)',
+  },
   'g1-stand-step-0': { es: 'Sin entrenar', en: 'Untrained' },
   'g1-stand-step-3000000': { es: '3 millones de pasos', en: '3 million steps' },
   'g1-stand-step-10000000': { es: '10 millones de pasos', en: '10 million steps' },

@@ -76,10 +76,15 @@ export function mountStage(root) {
 
   // A clip moves with physics only if a policy learned it (an imitation); any other clip is shown
   // as before, the robot replaying its movement without physics.
-  const withPhysics = () => physics && imitationFor(current?.clip) !== null;
+  const withPhysics = () => physics && (robotModel === 'luigi_lab3' || imitationFor(current?.clip) !== null);
 
   // After any change (checkpoint, world, place): the puppet replay unless the clip moves with physics.
   function resume() {
+    if (robotModel === 'luigi_lab3') {
+      copying = false;
+      setRobotLabel();
+      return;
+    }
     if (!withPhysics() && motion && !imitating()) startMotion();
     else {
       copying = false;
@@ -91,6 +96,7 @@ export function mountStage(root) {
 
   // With physics, a clip with an imitation policy is shown with it.
   function physicsFor(clip) {
+    if (robotModel === 'luigi_lab3') return resume();
     const imitation = imitationFor(clip);
     if (physics && imitation && (level !== imitation.id || loadedClipId !== clip?.id)) {
       $('policy').value = imitation.id;
@@ -129,7 +135,7 @@ export function mountStage(root) {
     last = now;
     // Imitating, the robot's physics sets the time and the skeleton follows it. Otherwise the
     // skeleton's clock is the stage's and the robot follows it, so the two never drift apart.
-    if (imitating() && robot.view) skeleton.time = robot.view.clipTime();
+    if (imitating() && robotModel !== 'luigi_lab3' && robot.view) skeleton.time = robot.view.clipTime();
     else if (playing) skeleton.advance(wall * speed);
     if (copying && robot.view) robot.view.seek(skeleton.time);
     look?.update(wall);
@@ -167,7 +173,7 @@ export function mountStage(root) {
   }
 
   function startMotion() {
-    if (!robot.view || !motion || imitating()) return;
+    if (!robot.view || !motion || imitating() || robotModel === 'luigi_lab3') return;
     robot.view.playClip(motion);
     robot.view.seek(skeleton.time);
     copying = true;
@@ -185,28 +191,40 @@ export function mountStage(root) {
       const { onnx, json } = policyUrls(id);
       // An imitation policy also needs the RobotMotion of the clip it learned.
       const imitation = imitationOf(id);
+      const isLuigi = imitation?.robot === 'luigi_lab3';
       const activeClipId = current?.clip?.id;
       const clipBalancedId =
-        imitation && activeClipId && (imitation.robot ?? 'unitree_g1') === 'unitree_g1' && matchesImitation(imitation, activeClipId)
+        imitation && !isLuigi && activeClipId && (imitation.robot ?? 'unitree_g1') === 'unitree_g1' && matchesImitation(imitation, activeClipId)
           ? `${activeClipId}-balanced`
           : null;
       const motionId = clipBalancedId ?? imitation?.motion ?? imitation?.clip;
       const learned =
         imitation &&
+        !isLuigi &&
         (motions.get(motionId) ??
           (await savedMotion(motionId)) ??
           (imitation.motion ? await savedMotion(imitation.motion) : null));
-      await view.loadPolicy(onnx, json, imitation ? { motion: learned } : {});
+      await view.loadPolicy(onnx, json, imitation && !isLuigi ? { motion: learned } : {});
+      if (isLuigi) {
+        view.viewer.controls.minDistance = 0.25;
+        view.viewer.camera.position.set(0.68, 0.42, -0.58);
+        view.viewer.controls.update();
+      } else if (robotModel === 'luigi_lab3') {
+        view.viewer.controls.minDistance = 0.8;
+        view.viewer.camera.position.set(2.6, 1.5, -1.6);
+        view.viewer.controls.update();
+      }
       if (learned?.qpos?.length) {
         const dx = Math.abs(learned.qpos.at(-1)[0] - learned.qpos[0][0]);
         const dy = Math.abs(learned.qpos.at(-1)[1] - learned.qpos[0][1]);
         if (dx + dy > 0.4) view._streetAlongX = dx > dy;
       }
-      syncSitChair(view, activeClipId === 'clip_sentarse-02-gvhmr');
+      syncSitChair(view, !isLuigi && activeClipId === 'clip_sentarse-02-gvhmr');
       level = id;
       loadedClipId = imitation ? (activeClipId ?? imitation.clip) : null;
       robotModel = imitation?.robot ?? 'unitree_g1';
       if ($('robot-model')) $('robot-model').value = robotModel;
+      if ($('arduino-box')) $('arduino-box').hidden = robotModel !== 'luigi_lab3';
       if (imitation) skeleton.time = 0; // the robot starts the clip from its first pose
     } catch (error) {
       console.error(error);
@@ -217,7 +235,7 @@ export function mountStage(root) {
       root.querySelector('.push').disabled = !robot.view; // never before the robot is there
     }
     // The user may have picked another clip while it loaded: an imitation is only for its own clip.
-    if (imitating() && robotModel !== 'unitree_h1' && !matchesImitation(imitationOf(level), current?.clip.id)) {
+    if (imitating() && robotModel !== 'unitree_h1' && robotModel !== 'luigi_lab3' && !matchesImitation(imitationOf(level), current?.clip.id)) {
       $('policy').value = FINAL_LEVEL;
       return loadLevel(FINAL_LEVEL);
     }
@@ -290,20 +308,172 @@ export function mountStage(root) {
   if ($('robot-model')) {
     $('robot-model').onchange = async (event) => {
       robotModel = event.target.value;
-      if (robotModel === 'unitree_h1') {
-        const h1 = IMITATIONS.find((im) => im.robot === 'unitree_h1');
-        if (h1) {
-          const opt = $('policy').querySelector(`option[value="${h1.id}"]`);
+      if (robotModel === 'unitree_h1' || robotModel === 'luigi_lab3') {
+        const customIm = IMITATIONS.find((im) => im.robot === robotModel);
+        if (customIm) {
+          const opt = $('policy').querySelector(`option[value="${customIm.id}"]`);
           if (opt) opt.disabled = false;
-          $('policy').value = h1.id;
+          $('policy').value = customIm.id;
           physics = true;
-          await loadLevel(h1.id);
+          if (robotModel === 'luigi_lab3' && $('show')) {
+            $('show').value = 'robot';
+            $('stage').dataset.show = 'robot';
+          }
+          await loadLevel(customIm.id);
         }
       } else {
+        if ($('show') && $('show').value === 'robot') {
+          $('show').value = 'both';
+          $('stage').dataset.show = 'both';
+        }
         const g1Im = imitationFor(current?.clip, 'unitree_g1');
         const nextId = physics && g1Im ? g1Im.id : FINAL_LEVEL;
         $('policy').value = nextId;
         await loadLevel(nextId);
+      }
+    };
+  }
+
+  // Live Arduino UNO WebSerial bridge + gesture command buttons (robot_gestos.ino @ 9600 baud).
+  let serialWriter = null;
+  let onnxPatrolTimer = null;
+  let lastHwDistCm = 999;
+  const CMD_SPECS = {
+    F: { ctrl: [15.5, 15.5], ms: 1500, label: 'F · Avanzar (PWM 190, 1.5 s)' },
+    B: { ctrl: [-12.5, -12.5], ms: 1000, label: 'B · Retroceder (PWM 150, 1.0 s)' },
+    L: { ctrl: [-13.0, 13.0], ms: 450, label: 'L · Giro Izquierda (PWM 160, 0.45 s)' },
+    R: { ctrl: [13.0, -13.0], ms: 450, label: 'R · Giro Derecha (PWM 160, 0.45 s)' },
+    S: { ctrl: [0, 0], ms: 2000, label: 'S · Detenido (Modo Manual / Espera)' },
+  };
+  function stopOnnxPatrolStream() {
+    if (onnxPatrolTimer) {
+      clearInterval(onnxPatrolTimer);
+      onnxPatrolTimer = null;
+    }
+  }
+  function startOnnxPatrolStream() {
+    stopOnnxPatrolStream();
+    if (!robot.view?.sim) return;
+    robot.view.sim._usbLocked = false;
+    robot.view.sim._serialCmd = null;
+    onnxPatrolTimer = setInterval(() => {
+      const sim = robot.view?.sim;
+      if (!sim || sim._usbLocked) return;
+      const st = $('arduino-status');
+      // If the real HC-SR04 ultrasonic sensor on the physical robot sees an obstacle < 22 cm,
+      // inject a closed-loop escape impulse into both MuJoCo and the physical Arduino!
+      if (lastHwDistCm < 22) {
+        sim.data.ctrl[0] = -14.0;
+        sim.data.ctrl[1] = -6.0;
+        if (serialWriter) serialWriter.write(new TextEncoder().encode('B')).catch(() => {});
+        if (st) {
+          st.innerHTML = `🤖 <strong>ONNX + HC-SR04 Físico (${lastHwDistCm} cm &lt; 22 cm)</strong> → ⚠️ Evasión neuronal: <strong>Reversa + Giro (B)</strong>`;
+        }
+        return;
+      }
+      const cL = sim.data.ctrl[0] ?? 0;
+      const cR = sim.data.ctrl[1] ?? 0;
+      const avg = 0.5 * (cL + cR);
+      const diff = cR - cL;
+      let hwCmd = 'F';
+      if (avg < -2) hwCmd = 'B';
+      else if (diff > 4.5) hwCmd = 'L';
+      else if (diff < -4.5) hwCmd = 'R';
+      else if (Math.abs(avg) < 1) hwCmd = 'S';
+      if (serialWriter) {
+        serialWriter.write(new TextEncoder().encode(hwCmd)).catch(() => {});
+      }
+      if (st) {
+        const distInfo = lastHwDistCm < 900 ? ` · HC-SR04 real: <strong>${lastHwDistCm} cm</strong>` : '';
+        st.innerHTML = `🤖 <strong>Red Neuronal ONNX al volante</strong> → Ruedas: <code>[${cL.toFixed(1)}, ${cR.toFixed(1)}] rad/s</code> → Arduino USB: <strong>${hwCmd}</strong>${distInfo}`;
+      }
+    }, 320);
+  }
+  function applyArduinoCmd(cmd, fromHw = false, distCm = null, safety = false) {
+    if (!robot.view?.sim) return;
+    if (distCm !== null) lastHwDistCm = distCm;
+    if (cmd === 'AUTO') {
+      if (serialWriter) serialWriter.write(new TextEncoder().encode('A')).catch(() => {});
+      startOnnxPatrolStream();
+      return;
+    }
+    // When ONNX patrol is active, do not let idle 'S' telemetry from the Arduino cancel the neural network!
+    if (fromHw && onnxPatrolTimer) {
+      if (safety || (distCm !== null && distCm < 22)) {
+        robot.view.sim.data.ctrl[0] = -14.0;
+        robot.view.sim.data.ctrl[1] = -6.0;
+      }
+      return;
+    }
+    // In manual/gesture mode, ignore periodic 'S' status prints while a button command is still running
+    if (fromHw && cmd === 'S' && robot.view.sim._serialCmd && performance.now() < robot.view.sim._serialCmd.until) {
+      return;
+    }
+    stopOnnxPatrolStream();
+    const spec = CMD_SPECS[cmd];
+    if (!spec) return;
+    robot.view.sim._usbLocked = true;
+    robot.view.sim._serialCmd = {
+      ctrl: spec.ctrl,
+      until: cmd === 'S' ? 0 : fromHw ? performance.now() + 500 : performance.now() + spec.ms,
+    };
+    const st = $('arduino-status');
+    if (st) {
+      const distTxt = distCm !== null ? ` · HC-SR04: <strong>${distCm} cm</strong>` : '';
+      const safeTxt = safety ? ' · ⚠️ <strong>SEGURIDAD (&lt;20 cm)</strong>' : '';
+      st.innerHTML = `${fromHw ? '🔌 Arduino UNO en vivo' : '🎮 Modo Gestos / USB'}: <strong>${spec.label}</strong>${distTxt}${safeTxt}`;
+    }
+    if (!fromHw && serialWriter) {
+      serialWriter.write(new TextEncoder().encode(cmd)).catch(() => {});
+    }
+  }
+  root.querySelectorAll('#arduino-box [data-cmd]').forEach((btn) => {
+    btn.onclick = () => applyArduinoCmd(btn.dataset.cmd, false);
+  });
+  if ($('arduino-connect')) {
+    $('arduino-connect').onclick = async () => {
+      const st = $('arduino-status');
+      if (!('serial' in navigator)) {
+        if (st) st.textContent = 'Abre este link en Google Chrome para usar WebSerial con el cable USB del Arduino.';
+        return;
+      }
+      try {
+        const port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 9600 });
+        if (robot.view?.sim) {
+          robot.view.sim._usbLocked = true;
+          robot.view.sim._serialCmd = null;
+          robot.view.reset();
+        }
+        $('arduino-connect').setAttribute('aria-pressed', 'true');
+        $('arduino-connect').textContent = '✅ Arduino UNO Conectado (9600 baud)';
+        if (st) st.textContent = 'Conectado a 9600 baud. Pasa la mano frente al APDS-9960 o acerca un objeto al HC-SR04.';
+        if (port.writable) serialWriter = port.writable.getWriter();
+        const reader = port.readable.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+        (async () => {
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buf += decoder.decode(value, { stream: true });
+            const lines = buf.split(/\r?\n/);
+            buf = lines.pop() ?? '';
+            for (const line of lines) {
+              const gMatch = line.match(/Gesto\s*->\s*([FBLRS])/);
+              if (gMatch) applyArduinoCmd(gMatch[1], true);
+              const dMatch = line.match(/Dist:\s*(\d+)\s*cm\s*\|\s*Accion:\s*([FBLRS])/);
+              if (dMatch) {
+                const dist = Number(dMatch[1]);
+                const act = dMatch[2];
+                const safe = line.includes('SEGURIDAD');
+                applyArduinoCmd(act, true, dist, safe);
+              }
+            }
+          }
+        })().catch((err) => console.warn('Serial read ended:', err));
+      } catch (err) {
+        if (st) st.textContent = `No se pudo abrir el puerto USB: ${err.message}`;
       }
     };
   }
@@ -433,9 +603,9 @@ export function mountStage(root) {
   function offerImitations(clip) {
     for (const imitation of IMITATIONS) {
       const option = $('policy').querySelector(`option[value="${imitation.id}"]`);
-      if (option) option.disabled = imitation.robot !== 'unitree_h1' && !matchesImitation(imitation, clip.id);
+      if (option) option.disabled = imitation.robot !== 'unitree_h1' && imitation.robot !== 'luigi_lab3' && !matchesImitation(imitation, clip.id);
     }
-    if (imitating() && robotModel !== 'unitree_h1' && !matchesImitation(imitationOf(level), clip.id)) {
+    if (imitating() && robotModel !== 'unitree_h1' && robotModel !== 'luigi_lab3' && !matchesImitation(imitationOf(level), clip.id)) {
       $('policy').value = FINAL_LEVEL;
       loadLevel(FINAL_LEVEL);
     }
@@ -465,6 +635,7 @@ export function mountStage(root) {
       if (!motion) copyCurrent();
     },
     dispose() {
+      stopOnnxPatrolStream();
       cancelAnimationFrame(frameId);
       skeleton.dispose();
       overlay.dispose();

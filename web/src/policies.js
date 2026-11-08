@@ -21,6 +21,7 @@ export const FINAL_LEVEL = 'g1-stand';
 
 export const ROBOT_MODELS = [
   { id: 'unitree_g1', label: 'Unitree G1 (29 motores + manos 5 dedos)' },
+  { id: 'luigi_lab3', label: 'Robot Explorador Lab III — Luigi (Arduino UNO + HC-SR04 + APDS-9960)' },
 ];
 
 // Imitation policies (training/imitate.py): each learned one clip, and does it with physics instead
@@ -80,6 +81,12 @@ export const IMITATIONS = [
     clip: 'clip_sentarse-02-gvhmr',
     motion: 'clip_sentarse-02-gvhmr-balanced',
     label: 'Sentarse y levantarse imitando el video, con física',
+  },
+  {
+    id: 'luigi-lab3',
+    robot: 'luigi_lab3',
+    clip: '__luigi__',
+    label: 'Robot Lab III (Luigi) · Exploración y evasión con física (5 M pasos, 200 RPM)',
   },
 ].filter(({ id }) => URLS[`../../training/policies/${id}.onnx`]);
 

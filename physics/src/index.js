@@ -18,6 +18,7 @@ import { middleValues, sceneFile as worldScene, windForce, windSpeed, WORLD_ORDE
 export { HELD_OBJECT_SCENE } from './scenes.js';
 export const ROBOTS = [
   { id: 'g1', robot: 'unitree_g1', name: 'Unitree G1 (29 DOF + Inspire 5 dedos)' },
+  { id: 'luigi', robot: 'luigi_lab3', name: 'Robot Explorador Lab III — Luigi (Arduino UNO + HC-SR04 + APDS-9960)' },
   { id: 'h1', robot: 'unitree_h1', name: 'Unitree H1 (19 DOF, open-source)' },
 ];
 
@@ -277,7 +278,7 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
      *   travel (a run seen from the side); true or false force it.
      */
     playClip(motion, { loop = true, plantFeet = 'auto' } = {}) {
-      if (baseScene.startsWith('unitree_h1/') && motion.robot === 'unitree_g1') {
+      if ((baseScene.startsWith('unitree_h1/') || baseScene.startsWith('luigi_lab3/')) && motion.robot === 'unitree_g1') {
         swapScene(worldScene(world), 'home');
       }
       // The robot's own values (36), not the model's: a place with loose objects adds 7 per object.
@@ -322,15 +323,16 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
       if (typeof meta === 'string') meta = await (await fetch(meta)).json();
       if (typeof motion === 'string') motion = await (await fetch(motion)).json();
       // The policy's scene ('unitree_g1/scene_mjx.xml' -> 'scene_mjx.xml'; 'unitree_h1/scene.xml'
-      // stays in its subfolder), or the current world's version of it for the G1.
-      const isH1 = meta.robot === 'unitree_h1';
-      const sceneFile = isH1 ? meta.mjcf : world ? worldScene(world) : meta.mjcf.slice(meta.mjcf.indexOf('/') + 1);
+      // and 'luigi_lab3/scene.xml' stay in their subfolder), or the current world's version of it for the G1.
+      const isCustomRobot = meta.robot === 'unitree_h1' || meta.robot === 'luigi_lab3';
+      const sceneFile = isCustomRobot ? meta.mjcf : world ? worldScene(world) : meta.mjcf.slice(meta.mjcf.indexOf('/') + 1);
       const { loadOrt } = await import('./ort.js');
       const ort = await loadOrt();
       const previous = { sceneFile: baseScene, keyName: sim.keyName };
       if (baseScene !== sceneFile) swapScene(sceneFile, 'home');
       else stop();
-      if (isH1) dex3?.show(false);
+      if (isCustomRobot) dex3?.show(false);
+      view.targetHeight = meta.robot === 'luigi_lab3' ? 0.12 : 0.75;
       try {
         const policy = await createPolicy(ort, sim, bytes, meta, { motion });
         sim.policy?.dispose();
@@ -356,7 +358,7 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
     async setWorld(next) {
       world = next;
       conditions = null; // a new world starts from its own middle values
-      const targetScene = baseScene.startsWith('unitree_h1/') ? baseScene : worldScene(next);
+      const targetScene = baseScene.startsWith('unitree_h1/') || baseScene.startsWith('luigi_lab3/') ? baseScene : worldScene(next);
       if (baseScene !== targetScene) {
         swapScene(targetScene, 'home');
         await restorePolicy();

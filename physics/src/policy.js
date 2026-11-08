@@ -16,7 +16,7 @@ const HOME_KEY = 'home';
 const ANG_VEL_SCALE = 0.25;
 const JOINT_VEL_SCALE = 0.05;
 const ACTION_SCALE = 0.25; // one unit of action is 0.25 rad from the standing pose
-const SUPPORTED_ROBOTS = new Set(['unitree_g1', 'unitree_h1']);
+const SUPPORTED_ROBOTS = new Set(['unitree_g1', 'unitree_h1', 'luigi_lab3']);
 const standObsDim = (nu, senseVelocity = false) => 3 + 3 + nu + nu + nu + (senseVelocity ? 3 : 0);
 // Imitation adds the reference 20 ms ahead (joints, pelvis velocity, pelvis height), for each
 // look-ahead instant of policy.json its joints and pelvis position, and optionally (sense_velocity)
@@ -65,7 +65,8 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
   const minRefZ = mimic && motion.qpos?.length ? Math.min(...motion.qpos.map((r) => r[2])) : FALL_HEIGHT;
   // Deep squats and sitting down lower the pelvis to 0.32-0.44 m while upright, below the 0.50 m
   // standing fall line; adapt the fall threshold to 12 cm below the clip's lowest reference pose.
-  const fallHeight = mimic ? Math.min(FALL_HEIGHT, minRefZ - 0.12) : FALL_HEIGHT;
+  const isWheeled = meta.robot === 'luigi_lab3';
+  const fallHeight = isWheeled ? 0.02 : mimic ? Math.min(FALL_HEIGHT, minRefZ - 0.12) : FALL_HEIGHT;
   const session = await ort.InferenceSession.create(onnx, { executionProviders: ['wasm'] });
   const [input] = session.inputNames;
   const [output] = session.outputNames;
@@ -200,6 +201,15 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
       }
       if (down && qpos[2] < Math.max(fallHeight + 0.1, RECOVER_HEIGHT)) return;
       down = false;
+      if (isWheeled && (sim._serialCmd || sim._usbLocked)) {
+        const active = sim._serialCmd && (!sim._serialCmd.until || performance.now() < sim._serialCmd.until);
+        const sCtrl = active ? sim._serialCmd.ctrl : [0, 0];
+        if (!active) sim._serialCmd = null;
+        data.ctrl[0] = sCtrl[0];
+        data.ctrl[1] = sCtrl[1];
+        previous.set(data.ctrl);
+        return;
+      }
       const result = await session.run({ [input]: new ort.Tensor('float32', observe(data, t), [1, obsDim]) });
       const ctrl = result[output].data;
       previous.set(ctrl);
