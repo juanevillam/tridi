@@ -139,10 +139,46 @@ export function mountStage(root) {
     else if (playing) skeleton.advance(wall * speed);
     if (copying && robot.view) robot.view.seek(skeleton.time);
     look?.update(wall);
+    if (robotModel === 'luigi_lab3' && robot.view?.sim?.sensorReadout) {
+      const sr = robot.view.sim.sensorReadout;
+      const elHc = $('sim-hcsr04');
+      const elApds = $('sim-apds');
+      const elWh = $('sim-wheels');
+      const elSt = $('sim-dodge-state');
+      if (elHc) elHc.textContent = `${sr.distCm} cm`;
+      if (elApds) elApds.textContent = `${sr.irProx} / 255`;
+      if (elWh) {
+        const c0 = (robot.view.sim.data.ctrl[0] ?? 0).toFixed(1);
+        const c1 = (robot.view.sim.data.ctrl[1] ?? 0).toFixed(1);
+        elWh.textContent = `[${c0}, ${c1}] rad/s`;
+      }
+      if (elSt) {
+        const stages = [
+          'Crucero ONNX (50 Hz)',
+          '1/4 · Freno Activo (-20 rad/s)',
+          '2/4 · Reversa de Despeje',
+          '3/4 · Giro Diferencial 90°',
+        ];
+        elSt.textContent = stages[sr.dodgeStage] ?? stages[0];
+        elSt.style.color = sr.dodgeStage > 0 ? '#ff6a3d' : '#c8ff2e';
+      }
+    }
     overlay.sync(skeleton.time, playing, speed);
     skeleton.render();
     frameId = requestAnimationFrame(frame);
   });
+
+  function syncRobotDependentUI() {
+    const isLuigi = robotModel === 'luigi_lab3';
+    if ($('arduino-box')) $('arduino-box').hidden = !isLuigi;
+    if ($('grasp-box')) $('grasp-box').hidden = isLuigi;
+    if ($('place-field')) $('place-field').hidden = isLuigi;
+    if ($('luigi-sim-panel')) $('luigi-sim-panel').hidden = !isLuigi;
+    if ($('pick-heading')) $('pick-heading').hidden = isLuigi;
+    if ($('gallery')) $('gallery').hidden = isLuigi;
+    const tBox = root.querySelector('.train-box');
+    if (tBox) tBox.hidden = isLuigi || !current;
+  }
 
   // Shows the current clip on the robot. Its RobotMotion comes from the saved ones if there is one;
   // otherwise it is computed in slices, with its progress on the label, so the page keeps working.
@@ -206,11 +242,13 @@ export function mountStage(root) {
           (imitation.motion ? await savedMotion(imitation.motion) : null));
       await view.loadPolicy(onnx, json, imitation && !isLuigi ? { motion: learned } : {});
       if (isLuigi) {
+        view.viewer.targetHeight = 0.09;
         view.viewer.controls.minDistance = 0.25;
-        view.viewer.camera.position.set(0.68, 0.42, -0.58);
+        view.viewer.camera.position.set(1.05, 0.72, -0.95);
         view.viewer.controls.update();
       } else if (robotModel === 'luigi_lab3') {
-        view.viewer.controls.minDistance = 0.8;
+        view.viewer.targetHeight = 0.75;
+        view.viewer.controls.minDistance = 0.65;
         view.viewer.camera.position.set(2.6, 1.5, -1.6);
         view.viewer.controls.update();
       }
@@ -224,7 +262,8 @@ export function mountStage(root) {
       loadedClipId = imitation ? (activeClipId ?? imitation.clip) : null;
       robotModel = imitation?.robot ?? 'unitree_g1';
       if ($('robot-model')) $('robot-model').value = robotModel;
-      if ($('arduino-box')) $('arduino-box').hidden = robotModel !== 'luigi_lab3';
+      syncRobotDependentUI();
+      refreshLook();
       if (imitation) skeleton.time = 0; // the robot starts the clip from its first pose
     } catch (error) {
       console.error(error);
@@ -611,12 +650,32 @@ export function mountStage(root) {
     }
   }
 
+  if ($('luigi-reset-arena')) {
+    $('luigi-reset-arena').onclick = () => {
+      if (robot.view?.sim) {
+        robot.view.sim._usbLocked = false;
+        robot.view.sim._serialCmd = null;
+      }
+      robot.view?.reset();
+    };
+  }
+  if ($('luigi-back-g1')) {
+    $('luigi-back-g1').onclick = () => {
+      if ($('robot-model')) {
+        $('robot-model').value = 'unitree_g1';
+        $('robot-model').dispatchEvent(new Event('change'));
+      }
+    };
+  }
+  syncRobotDependentUI();
+
   return {
     /** @param {import('./contract.js').PoseClip} clip  @param {string} title */
     showClip(clip, title) {
       skeleton.setClip(clip);
       $('human-label').innerHTML = T('person', { title }); // title: markup, one span per language
       current = { clip, title };
+      syncRobotDependentUI();
       if (robot.view) {
         robot.view._streetAlongX = clip.id.includes('frente') || clip.id === 'clip_caminar-01-gvhmr';
         syncSitChair(robot.view, clip.id === 'clip_sentarse-02-gvhmr');
@@ -640,13 +699,28 @@ export function mountStage(root) {
       skeleton.dispose();
       overlay.dispose();
       const view = robot.view;
-      // The app shares one robot: the next screen starts on flat, empty ground. One rebuild at a time.
+      // The app shares one robot: the next screen starts on flat, empty ground with the Unitree G1.
       if (view) {
         look?.undo();
         look = null;
         setFloor(view, null); // the viewer's own floor again
-        const flat = view.world() && view.world().id !== 'plano' ? view.setWorld(WORLDS.find((world) => world.id === 'plano')) : Promise.resolve();
-        flat.then(() => view.scene() && view.setScene(null));
+        if (view.sim) {
+          view.sim._usbLocked = false;
+          view.sim._serialCmd = null;
+          view.sim.sensorReadout = null;
+        }
+        view.viewer.targetHeight = 0.75;
+        view.viewer.controls.minDistance = 0.65;
+        const restoreRobot =
+          view.sim?.policy?.robot && view.sim.policy.robot !== 'unitree_g1'
+            ? (() => {
+                const { onnx, json } = policyUrls(FINAL_LEVEL);
+                return view.loadPolicy(onnx, json);
+              })()
+            : Promise.resolve();
+        restoreRobot
+          .then(() => (view.world() && view.world().id !== 'plano' ? view.setWorld(WORLDS.find((world) => world.id === 'plano')) : null))
+          .then(() => view.scene() && view.setScene(null));
       }
       robot.dispose();
     },

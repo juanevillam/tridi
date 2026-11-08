@@ -11,7 +11,7 @@ const MEDIA = `${import.meta.env.BASE_URL}media/`;
 
 export function mount(root) {
   root.innerHTML = `
-    <section class="page milestones">
+    <section class="page milestones-page">
       <header class="page-head milestones-head">
         <a class="back" href="#/" ${A({ 'aria-label': 'back' })}>←<span class="only-wide">&nbsp;${T('back')}</span></a>
         <div class="milestones-title-group">
@@ -39,6 +39,40 @@ export function mount(root) {
             <div class="milestone-video-head">${T('m2.vidHwLabel')}</div>
             <video src="${MEDIA}luigi-hardware.mp4" autoplay muted loop playsinline controls preload="metadata"></video>
             <figcaption>${T('m2.vidHwCap')}</figcaption>
+          </figure>
+        </div>
+
+        <h3 class="milestone-subhead">${T('m2.galleryTitle')}</h3>
+        <div class="milestone-gallery-grid">
+          <figure class="milestone-photo-card">
+            <div class="milestone-photo-tag">${T('m2.g1.tag')}</div>
+            <img src="${MEDIA}luigi-cad-robot.png" alt="CAD 3D Robot Luigi" loading="lazy" />
+            <figcaption>${T('m2.g1.cap')}</figcaption>
+          </figure>
+          <figure class="milestone-photo-card">
+            <div class="milestone-photo-tag">${T('m2.g2.tag')}</div>
+            <img src="${MEDIA}luigi-cad-planta.png" alt="Plano de planta CAD Robot Luigi" loading="lazy" />
+            <figcaption>${T('m2.g2.cap')}</figcaption>
+          </figure>
+          <figure class="milestone-photo-card">
+            <div class="milestone-photo-tag">${T('m2.g3.tag')}</div>
+            <img src="${MEDIA}luigi-cad-frente.png" alt="CAD frontal sensores HC-SR04 y APDS-9960" loading="lazy" />
+            <figcaption>${T('m2.g3.cap')}</figcaption>
+          </figure>
+          <figure class="milestone-photo-card">
+            <div class="milestone-photo-tag">${T('m2.g4.tag')}</div>
+            <img src="${MEDIA}luigi-real-sensores.jpg" alt="Sensores reales HC-SR04 y APDS-9960" loading="lazy" />
+            <figcaption>${T('m2.g4.cap')}</figcaption>
+          </figure>
+          <figure class="milestone-photo-card">
+            <div class="milestone-photo-tag">${T('m2.g5.tag')}</div>
+            <img src="${MEDIA}luigi-real-cables.jpg" alt="Cableado real Arduino UNO y L298N" loading="lazy" />
+            <figcaption>${T('m2.g5.cap')}</figcaption>
+          </figure>
+          <figure class="milestone-photo-card">
+            <div class="milestone-photo-tag">${T('m2.g6.tag')}</div>
+            <img src="${MEDIA}luigi-real-abajo.jpg" alt="Tren motriz inferior y baterías 18650" loading="lazy" />
+            <figcaption>${T('m2.g6.cap')}</figcaption>
           </figure>
         </div>
 

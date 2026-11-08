@@ -40,6 +40,41 @@ export const { T, t, A } = dict({
   },
   'm2.ctaSim': { es: 'Abrir el robot de Luigi en Simulaciones →', en: 'Open Luigi’s robot in Simulations →' },
 
+  'm2.galleryTitle': {
+    es: 'Del modelo CAD y planos de sensores al montaje físico real',
+    en: 'From CAD assembly & sensor blueprints to real physical wiring',
+  },
+  'm2.g1.tag': { es: 'CAD 3D · Ensamble', en: '3D CAD · Assembly' },
+  'm2.g1.cap': {
+    es: 'Modelo paramétrico completo (frente, atrás y planta inferior) exportado a 6 mallas STL para MuJoCo.',
+    en: 'Full parametric CAD assembly (front, rear & bottom views) exported to 6 STL meshes for MuJoCo.',
+  },
+  'm2.g2.tag': { es: 'Plano de Ingeniería · Planta', en: 'Engineering Blueprint · Top' },
+  'm2.g2.cap': {
+    es: 'Distribución real de masas: puente H L298N atrás, Arduino UNO al centro, protoboard y cabezal de sensores al frente.',
+    en: 'Mass distribution blueprint: L298N H-bridge at rear, Arduino UNO center, breadboard & sensor head at front.',
+  },
+  'm2.g3.tag': { es: 'CAD Frontal · Sensores', en: 'Front CAD · Sensor Mount' },
+  'm2.g3.cap': {
+    es: 'Soporte frontal con ojos ultrasónicos HC-SR04 (Trig D9 / Echo A1) y ranura para el radar IR APDS-9960.',
+    en: 'Front bracket housing the HC-SR04 ultrasonic eyes (Trig D9 / Echo A1) and APDS-9960 IR radar slot.',
+  },
+  'm2.g4.tag': { es: 'Hardware Real · Sensores', en: 'Real Hardware · Sensors' },
+  'm2.g4.cap': {
+    es: 'Montaje físico del HC-SR04 y el módulo APDS-9960 (Chip ID 0x9E) sobresaliendo al frente con arnés Dupont.',
+    en: 'Physical mount of the HC-SR04 and APDS-9960 module (Chip ID 0x9E) cantilevered ahead with Dupont harness.',
+  },
+  'm2.g5.tag': { es: 'Hardware Real · Electrónica', en: 'Real Hardware · Electronics' },
+  'm2.g5.cap': {
+    es: 'Cableado real sobre el chasis: Arduino UNO (ATmega328P), driver L298N con disipador y bus I2C en protoboard.',
+    en: 'Real chassis wiring: Arduino UNO (ATmega328P), heatsinked L298N driver, and I2C bus on mini breadboard.',
+  },
+  'm2.g6.tag': { es: 'Hardware Real · Tren Motriz', en: 'Real Hardware · Drivetrain' },
+  'm2.g6.cap': {
+    es: 'Vista inferior: 2 baterías IMR18650B (7,4 V), 2 motores TT amarillos (200 RPM), llantas TPU y patín delantero.',
+    en: 'Underside view: 2× IMR18650B cells (7.4 V), dual yellow TT gearmotors (200 RPM), TPU tires & front skid.',
+  },
+
   'm2.stepsTitle': {
     es: 'Cómo resolvimos cada etapa (y los 4 problemas reales de hardware)',
     en: 'How we solved each stage (and the 4 real hardware bottlenecks)',

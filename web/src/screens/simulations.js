@@ -83,7 +83,7 @@ export function mount(root, { api }, [clipId] = []) {
                     ${WORLDS.map(({ id, title }) => option(id, worldName(id, title), id === 'plano' ? 'selected' : '')).join('')}
                   </select>
                 </label>
-                <label class="field">${T('place')}
+                <label class="field" id="place-field">${T('place')}
                   <select id="place">
                     <option value="" selected ${X('noFurniture')}>${t('noFurniture')}</option>
                     ${SCENES.map(({ id, title }) => option(id, sceneName(id, title))).join('')}
@@ -109,7 +109,7 @@ export function mount(root, { api }, [clipId] = []) {
                 </div>
                 <p class="mode-note" id="arduino-status">Conecta el cable USB del Arduino UNO (en Chrome) para leer el HC-SR04 y el APDS-9960 en vivo dentro de MuJoCo.</p>
               </div>
-              <div class="grasp-box">
+              <div class="grasp-box" id="grasp-box">
                 <p class="mode-note">${T('objectsHead')}</p>
                 <div class="mode grasp-actions" role="group" ${A({ 'aria-label': 'objectsHead' })}>
                   <button type="button" id="hold-dry" aria-pressed="false">${T('holdDry')}</button>
@@ -133,8 +133,44 @@ export function mount(root, { api }, [clipId] = []) {
           </div>
         </div>
         <aside class="sims-list">
+          <section class="luigi-sim-panel" id="luigi-sim-panel" hidden>
+            <div class="luigi-sim-head">
+              <span class="card-badge trained"><span class="t" lang="es">Sim-to-Real · Lazo Cerrado</span><span class="t" lang="en">Sim-to-Real · Closed-Loop</span></span>
+              <h2><span class="t" lang="es">Telemetría de Sensores en MuJoCo</span><span class="t" lang="en">Live Sensor Telemetry in MuJoCo</span></h2>
+              <p class="train-text">
+                <span class="t" lang="es">El robot diferencial simula el cono ultrasónico <code>HC-SR04</code> (±24°), el radar IR <code>APDS-9960 (0x9C)</code>, el arnés de cables Dupont y colisiones sólidas en una arena de prueba de 3,4 m × 3,4 m.</span>
+                <span class="t" lang="en">The differential robot simulates the <code>HC-SR04</code> ultrasonic cone (±24°), the <code>APDS-9960 (0x9C)</code> IR radar, Dupont jumper harness, and solid collisions inside a 3.4 m × 3.4 m test arena.</span>
+              </p>
+            </div>
+            <div class="luigi-telemetry-grid">
+              <div class="luigi-tel-card">
+                <span>HC-SR04 (Trig D9 / Echo D10)</span>
+                <strong id="sim-hcsr04">120 cm</strong>
+              </div>
+              <div class="luigi-tel-card">
+                <span>APDS-9960 IR (Reg 0x9C)</span>
+                <strong id="sim-apds">18 / 255</strong>
+              </div>
+              <div class="luigi-tel-card">
+                <span>Puente H L298N (Izq / Der)</span>
+                <strong id="sim-wheels">[15.5, 15.5] rad/s</strong>
+              </div>
+              <div class="luigi-tel-card">
+                <span>Estado Evasión (4 Etapas)</span>
+                <strong id="sim-dodge-state">Crucero ONNX (50 Hz)</strong>
+              </div>
+            </div>
+            <div class="train-actions-row">
+              <button type="button" class="button primary" id="luigi-reset-arena">
+                <span class="t" lang="es">Reiniciar en centro de arena</span><span class="t" lang="en">Reset at arena center</span>
+              </button>
+              <button type="button" class="button" id="luigi-back-g1">
+                <span class="t" lang="es">Volver a Unitree G1 (Humanoide)</span><span class="t" lang="en">Switch back to Unitree G1</span>
+              </button>
+            </div>
+          </section>
           ${trainBoxHTML()}
-          <h2>${T('pick')}</h2>
+          <h2 id="pick-heading">${T('pick')}</h2>
           <ul id="gallery"></ul>
         </aside>
       </div>

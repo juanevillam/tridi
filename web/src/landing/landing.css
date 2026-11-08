@@ -1210,7 +1210,7 @@ html.is-landing.lenis body {
   margin-top: 48px;
 }
 
-.milestones {
+.landing .milestones {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
@@ -1219,7 +1219,7 @@ html.is-landing.lenis body {
   list-style: none;
 }
 
-.milestones li {
+.landing .milestones li {
   position: relative;
   display: grid;
   align-content: start;
@@ -1270,7 +1270,7 @@ html.is-landing.lenis body {
   color: var(--signal);
 }
 
-.milestones b {
+.landing .milestones b {
   max-width: 24ch;
   font: 500 clamp(18px, 1.5vw, 22px)/1.2 var(--display);
   letter-spacing: -0.02em;
@@ -1288,9 +1288,15 @@ html.is-landing.lenis body {
 
 .tries {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-top: 12px;
+}
+
+@media (max-width: 1080px) {
+  .tries {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* The ways to try it (and see what it delivers): real cards, each with its own icon, a short detail and a button, so

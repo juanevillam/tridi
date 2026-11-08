@@ -117,6 +117,7 @@ export function mount(root) {
         <a href="#capture">Capture</a>
         <a href="#gym">Gym</a>
         <a href="#policy">Policy</a>
+        <a href="#/simulations" data-warm="simulations">${T('nav.simulations')}</a>
         <a href="#/milestones" data-warm="milestones">${T('nav.milestones')}</a>
       </nav>
       ${langSwitch()}
@@ -236,6 +237,12 @@ export function mount(root) {
           <h2 class="manifesto">${T('close.manifesto')}</h2>
           <p class="closing-text">${T('close.text')}</p>
           <nav class="tries" ${A({ 'aria-label': 'close.tries' })}>
+            <a class="try" href="#/simulations" data-warm="simulations">
+              <svg class="try-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 6l16 9v18l-16 9-16-9V15z"/><path d="M8 15l16 9 16-9M24 24v18"/></svg>
+              <b><span class="only-wide">${T('try.sims')}</span><span class="only-narrow">${T('try.simsShort')}</span></b>
+              <span class="try-sub only-narrow">${T('try.simsSub')}</span>
+              <span class="try-go">${T('try.simsGo')}</span>
+            </a>
             <a class="try" href="#/live" data-warm="live">
               <svg class="try-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="14" width="28" height="20" rx="3"/><path d="M34 21l9-5v16l-9-5z"/><circle cx="20" cy="24" r="5"/></svg>
               <b><span class="only-wide">${T('try.live')}</span><span class="only-narrow">${T('try.liveShort')}</span></b>
@@ -293,7 +300,17 @@ export function mount(root) {
   }
   // A target's page position, moved by its data-offset (px): "#try" lands below the top bar.
   const anchorTop = (target) => target.getBoundingClientRect().top + scrollY + Number(target.dataset.offset ?? 0);
-  const scrollTo = (target) => (lenis ? lenis.scrollTo(anchorTop(target), { duration: 1.6 }) : window.scrollTo({ top: anchorTop(target) }));
+  const navFlight = { until: 0, chapter: null };
+  const scrollTo = (target) => {
+    const destChapter = target.closest?.('.chapter') ?? null;
+    if (destChapter) {
+      navFlight.until = performance.now() + 1650;
+      navFlight.chapter = destChapter;
+    }
+    return lenis ? lenis.scrollTo(anchorTop(target), { duration: 1.6 }) : window.scrollTo({ top: anchorTop(target) });
+  };
+  on(window, 'wheel', () => (navFlight.until = 0), { passive: true });
+  on(window, 'touchstart', () => (navFlight.until = 0), { passive: true });
   const probar = $('#try');
 
   for (const link of $$('[data-warm]')) {
@@ -336,6 +353,10 @@ export function mount(root) {
   const layout = { tops: [], gymTop: 0, gymStep: 1 };
   const chapterAt = (y) => chapters[layout.tops.findLastIndex((top) => top <= y)] ?? chapters[0];
   function targetShot() {
+    if (navFlight.chapter && performance.now() < navFlight.until) {
+      const dest = SHOTS[navFlight.chapter.dataset.shot] ?? SHOTS.close;
+      return narrow() ? narrowShot(dest) : dest;
+    }
     const mid = scrollY + innerHeight * 0.5;
     let from = chapters[0];
     let to = chapters[0];
@@ -361,14 +382,41 @@ export function mount(root) {
     return narrow() ? narrowShot(blend) : blend;
   }
 
+  // Click-and-drag camera orbiting on the landing background so the user can rotate around the robot.
+  const userOrbit = { az: 0, el: 0, dragging: false, lastX: 0, lastY: 0 };
+  on(window, 'pointerdown', (e) => {
+    if (e.button !== 0) return;
+    if (e.target.closest?.('a, button, input, select, label, video, .panel, .topbar, .try, .sim-readout, .phone-arrows')) return;
+    userOrbit.dragging = true;
+    userOrbit.lastX = e.clientX;
+    userOrbit.lastY = e.clientY;
+    document.body.style.cursor = 'grabbing';
+  });
+  on(window, 'pointermove', (e) => {
+    if (!userOrbit.dragging) return;
+    const dx = e.clientX - userOrbit.lastX;
+    const dy = e.clientY - userOrbit.lastY;
+    userOrbit.lastX = e.clientX;
+    userOrbit.lastY = e.clientY;
+    userOrbit.az -= dx * 0.35;
+    userOrbit.el = Math.max(-10, Math.min(28, userOrbit.el + dy * 0.22));
+  });
+  const endOrbitDrag = () => {
+    if (!userOrbit.dragging) return;
+    userOrbit.dragging = false;
+    document.body.style.cursor = '';
+  };
+  on(window, 'pointerup', endOrbitDrag);
+  on(window, 'pointercancel', endOrbitDrag);
+
   function directCamera(v) {
     const goal = targetShot();
     const k = reducedMotion ? 1 : 0.06;
     for (const key of Object.keys(shot)) shot[key] += (goal[key] - shot[key]) * k;
     v.viewer.followTau = reducedMotion ? 0 : shot.follow;
     const { camera, controls } = v.viewer;
-    const az = (shot.az * Math.PI) / 180;
-    const el = (shot.el * Math.PI) / 180;
+    const az = ((shot.az + userOrbit.az) * Math.PI) / 180;
+    const el = (Math.max(-5, Math.min(42, shot.el + userOrbit.el)) * Math.PI) / 180;
     // The camera is level and the picture is shifted instead (an architect's shift lens): a camera
     // tilted down to the aim made every vertical away from the image's center lean, and with the
     // robot slid to the side for the words (shift) and running ahead of the camera in the walk, the
@@ -430,12 +478,12 @@ export function mount(root) {
   }
 
   // ---- What the robot does in each chapter ----
-  let level = FINAL_LEVEL; // the policy it has (robot-host loads the final one)
+  let level = null; // checked against view.sim.policy.id so returning from another robot always reloads G1
   let queue = Promise.resolve();
   function useLevel(id) {
     queue = queue
       .then(async () => {
-        if (gone || !view || level === id) return;
+        if (gone || !view || (level === id && view.sim?.policy?.id === id && view.sim?.policy?.robot === 'unitree_g1')) return;
         const { onnx, json } = policyUrls(id);
         await view.loadPolicy(onnx, json);
         level = id;
@@ -477,7 +525,12 @@ export function mount(root) {
       if (token === modeToken && (previous !== 'gym' || fallen)) view.stop();
     }
   }
-  const modeAt = () => chapterAt(scrollY + innerHeight * 0.5).dataset.mode ?? 'stand';
+  const modeAt = () => {
+    if (navFlight.chapter && performance.now() < navFlight.until) {
+      return navFlight.chapter.dataset.mode ?? 'stand';
+    }
+    return chapterAt(scrollY + innerHeight * 0.5).dataset.mode ?? 'stand';
+  };
 
   // Hero: the robot stands on its own with the trained policy; a push shows it catching itself.
   // fallenAt: when the robot was first seen on the floor (0 while standing), to stand it up again.

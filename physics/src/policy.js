@@ -136,6 +136,84 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
   let fellAt = null; // clip time of the fall, while an imitation policy lies on the floor
   let down = false; // fallen: the network is not deciding (see RECOVER_HEIGHT)
 
+  // Simulated HC-SR04 Ultrasonic (2-240 cm) + APDS-9960 IR Radar (0x9C register, 0-255) + 4-stage closed-loop dodge
+  // for Luigi's differential robot (luigi_lab3), matching the physical Arduino UNO firmware.
+  const SENSOR_ANGLES = [-0.42, -0.28, -0.14, 0, 0.14, 0.28, 0.42]; // ±24 deg ultrasonic/IR fan
+  const MAX_RAY_M = 2.2;
+  const DODGE_TRIGGER_CM = 38; // 38 cm threshold (matches 35 cm + chassis front overhang)
+  let dodge = { stage: 0, untilTime: 0, turnDir: 1 };
+
+  function scanWheeledSensors(sim) {
+    const { model: m, data: d, mujoco } = sim;
+    const { qpos } = d;
+    const rx = qpos[0];
+    const ry = qpos[1];
+    const rz = qpos[2];
+    const [qw, qx, qy, qz] = [qpos[3], qpos[4], qpos[5], qpos[6]];
+    const yaw = Math.atan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy * qy + qz * qz));
+    // Front sensor mount (HC-SR04 + APDS-9960) sits 0.155 m ahead of pelvis origin
+    const sx = rx + 0.155 * Math.cos(yaw);
+    const sy = ry + 0.155 * Math.sin(yaw);
+    const sz = rz + 0.015;
+    const T = mujoco.mjtGeom;
+
+    const rays = SENSOR_ANGLES.map((ang) => {
+      const a = yaw + ang;
+      const dx = Math.cos(a);
+      const dy = Math.sin(a);
+      let best = MAX_RAY_M;
+      for (let g = 0; g < m.ngeom; g++) {
+        if (m.geom_bodyid[g] !== 0) continue; // skip robot's own geoms
+        const gtype = m.geom_type[g];
+        if (gtype === T.mjGEOM_PLANE.value) continue; // skip floor
+        const gx = m.geom_pos[3 * g];
+        const gy = m.geom_pos[3 * g + 1];
+        const gz = m.geom_pos[3 * g + 2];
+        const s0 = m.geom_size[3 * g];
+        const s1 = m.geom_size[3 * g + 1];
+        const s2 = m.geom_size[3 * g + 2];
+        if (gtype === T.mjGEOM_CYLINDER.value || gtype === T.mjGEOM_SPHERE.value) {
+          if ( gz + s1 < 0.02) continue;
+          const ocx = gx - sx;
+          const ocy = gy - sy;
+          const proj = ocx * dx + ocy * dy;
+          if (proj <= 0 || proj - s0 >= best) continue;
+          const perp2 = ocx * ocx + ocy * ocy - proj * proj;
+          const r2 = (s0 + 0.03) * (s0 + 0.03);
+          if (perp2 <= r2) {
+            const hit = Math.max(0.03, proj - Math.sqrt(r2 - perp2));
+            if (hit < best) best = hit;
+          }
+        } else if (gtype === T.mjGEOM_BOX.value) {
+          if (gz + s2 < 0.02) continue;
+          const minX = gx - s0 - 0.025;
+          const maxX = gx + s0 + 0.025;
+          const minY = gy - s1 - 0.025;
+          const maxY = gy + s1 + 0.025;
+          const invDx = Math.abs(dx) > 1e-6 ? 1 / dx : 1e6;
+          const invDy = Math.abs(dy) > 1e-6 ? 1 / dy : 1e6;
+          const tx1 = (minX - sx) * invDx;
+          const tx2 = (maxX - sx) * invDx;
+          const ty1 = (minY - sy) * invDy;
+          const ty2 = (maxY - sy) * invDy;
+          const tmin = Math.max(Math.min(tx1, tx2), Math.min(ty1, ty2));
+          const tmax = Math.min(Math.max(tx1, tx2), Math.max(ty1, ty2));
+          if (tmax >= 0 && tmin <= tmax && tmin < best) {
+            best = Math.max(0.03, tmin);
+          }
+        }
+      }
+      return best;
+    });
+
+    const centerMinM = Math.min(rays[1], rays[2], rays[3], rays[4], rays[5]);
+    const distCm = Math.max(4, Math.min(220, Math.round(centerMinM * 100)));
+    const leftClearM = rays[4] + rays[5] + rays[6];
+    const rightClearM = rays[0] + rays[1] + rays[2];
+    const irProx = Math.max(12, Math.min(255, Math.round(18 + 235 * Math.pow(Math.max(0, 1 - centerMinM / 0.58), 2))));
+    return { sx, sy, sz, yaw, rays, distCm, irProx, leftClearM, rightClearM };
+  }
+
   // Starts the clip over at its end, or a moment after a fall. True if it did (sim.reset() was called).
   function startOver(sim, t) {
     const { qpos } = sim.data;
@@ -171,6 +249,9 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
     // it (MimicEnv.reset_at(0)); sim.reset() runs mj_forward after this.
     reset(sim) {
       down = false;
+      dodge = { stage: 0, untilTime: 0, turnDir: 1 };
+      if (!isWheeled) sim.sensorReadout = null;
+      else sim.sensorReadout = { ...scanWheeledSensors(sim), dodgeStage: 0 };
       if (!mimic) return void previous.set(standing);
       fellAt = null;
       const { data } = sim;
@@ -201,12 +282,62 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
       }
       if (down && qpos[2] < Math.max(fallHeight + 0.1, RECOVER_HEIGHT)) return;
       down = false;
-      if (isWheeled && (sim._serialCmd || sim._usbLocked)) {
-        const active = sim._serialCmd && (!sim._serialCmd.until || performance.now() < sim._serialCmd.until);
-        const sCtrl = active ? sim._serialCmd.ctrl : [0, 0];
-        if (!active) sim._serialCmd = null;
-        data.ctrl[0] = sCtrl[0];
-        data.ctrl[1] = sCtrl[1];
+      if (isWheeled) {
+        const sensor = scanWheeledSensors(sim);
+        if (sim._serialCmd || sim._usbLocked) {
+          const active = sim._serialCmd && (!sim._serialCmd.until || performance.now() < sim._serialCmd.until);
+          const sCtrl = active ? sim._serialCmd.ctrl : [0, 0];
+          if (!active) sim._serialCmd = null;
+          data.ctrl[0] = sCtrl[0];
+          data.ctrl[1] = sCtrl[1];
+          previous.set(data.ctrl);
+          sim.sensorReadout = { ...sensor, dodgeStage: 0 };
+          return;
+        }
+        const simTime = data.time;
+        // 4-stage closed-loop obstacle dodge (matches Arduino UNO firmware on real hardware)
+        if (dodge.stage === 0 && (sensor.distCm < DODGE_TRIGGER_CM || sensor.irProx > 105)) {
+          dodge.stage = 1; // Active brake
+          dodge.untilTime = simTime + 0.08;
+          dodge.turnDir = sensor.leftClearM >= sensor.rightClearM ? 1 : -1;
+        } else if (dodge.stage === 1 && simTime >= dodge.untilTime) {
+          dodge.stage = 2; // Reverse clearance
+          dodge.untilTime = simTime + 0.38;
+        } else if (dodge.stage === 2 && simTime >= dodge.untilTime) {
+          dodge.stage = 3; // 90 deg differential pivot
+          dodge.untilTime = simTime + 0.46;
+        } else if (dodge.stage === 3 && simTime >= dodge.untilTime) {
+          if (sensor.distCm < DODGE_TRIGGER_CM + 6) {
+            dodge.untilTime = simTime + 0.28; // keep pivoting until clear
+          } else {
+            dodge.stage = 0;
+          }
+        }
+        sim.sensorReadout = { ...sensor, dodgeStage: dodge.stage };
+        if (dodge.stage === 1) {
+          data.ctrl[0] = -20;
+          data.ctrl[1] = -20;
+          previous.set(data.ctrl);
+          return;
+        }
+        if (dodge.stage === 2) {
+          data.ctrl[0] = -14.5;
+          data.ctrl[1] = -14.5;
+          previous.set(data.ctrl);
+          return;
+        }
+        if (dodge.stage === 3) {
+          data.ctrl[0] = dodge.turnDir > 0 ? -14.5 : 14.5;
+          data.ctrl[1] = dodge.turnDir > 0 ? 14.5 : -14.5;
+          previous.set(data.ctrl);
+          return;
+        }
+        const result = await session.run({ [input]: new ort.Tensor('float32', observe(data, t), [1, obsDim]) });
+        const ctrl = result[output].data;
+        // Closed-loop forward cruise at 15.5 rad/s + ONNX residual + soft ultrasonic corridor centering
+        const corridorBias = Math.max(-3.5, Math.min(3.5, (sensor.leftClearM - sensor.rightClearM) * 1.6));
+        data.ctrl[0] = Math.max(-20, Math.min(20, 15.5 + (ctrl[0] || 0) * 0.25 - corridorBias));
+        data.ctrl[1] = Math.max(-20, Math.min(20, 15.5 + (ctrl[1] || 0) * 0.25 + corridorBias));
         previous.set(data.ctrl);
         return;
       }

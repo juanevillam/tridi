@@ -19,18 +19,19 @@ export const { T, t, A } = dict({
   // Top bar
   'nav.home': { es: 'Tridi, inicio', en: 'Tridi, home' },
   'nav.product': { es: 'Producto', en: 'Product' },
+  'nav.simulations': { es: 'Simulaciones', en: 'Simulations' },
   'nav.milestones': { es: 'Avances', en: 'Milestones' },
   'nav.try': { es: 'Probar', en: 'Try it' },
   'nav.tryLive': { es: 'Probar en vivo', en: 'Try it live' },
 
   // Hero
-  'hero.live': { es: 'Simulación en vivo · Unitree G1 · MuJoCo', en: 'Live simulation · Unitree G1 · MuJoCo' },
+  'hero.live': { es: 'Simulación en vivo · Physical AI · MuJoCo', en: 'Live simulation · Physical AI · MuJoCo' },
   'hero.title': { es: 'Robots que aprenden <em>de cualquier video</em>', en: 'Robots that learn <em>from any video</em>' },
   'hero.lede': {
-    es: 'Filma a una persona moviéndose. Tridi lo vuelve datos de entrenamiento: un humanoide practica en física real hasta no caerse.',
-    en: 'Film a person moving. Tridi turns it into training data: a humanoid practices the motion in real physics until it stops falling.',
+    es: 'Filma un movimiento o conecta tu hardware. Tridi entrena humanoides y cualquier robot físico en simulación real hasta transferir la política ONNX al mundo físico.',
+    en: 'Film a motion or bring your hardware. Tridi trains humanoids and any physical robot in real physics until the ONNX policy transfers to the real world.',
   },
-  'hero.ledeShort': { es: 'Cualquier video de una persona, convertido en datos para entrenar humanoides.', en: 'Any video of a person, turned into training data for humanoids.' },
+  'hero.ledeShort': { es: 'Políticas ONNX y datos entrenados en física real para humanoides y cualquier robot físico.', en: 'ONNX policies and training data in real physics for humanoids and any physical robot.' },
   'hero.how': { es: 'Cómo funciona', en: 'How it works' },
   'hero.step1': { es: 'Cualquier video', en: 'Any video' },
   'hero.step1Short': { es: 'Video', en: 'Video' },
@@ -112,9 +113,16 @@ export const { T, t, A } = dict({
 
   // Closing
   // One sentence per line (home.js keeps the <br> when it splits the words for the animation).
-  'close.manifesto': { es: 'El hardware ya existe.<br>Entrenamos su física y políticas.', en: 'Humanoids have the hardware.<br>We train the physics and policies.' },
-  'close.text': { es: 'Tridi convierte cualquier video humano en políticas de control y datos físicos listos para tu robot.', en: 'Tridi turns any human video into control policies and physics-corrected motion data for your robot.' },
+  'close.manifesto': { es: 'El hardware ya existe.<br>Entrenamos su física y políticas.', en: 'The hardware is here.<br>We train the physics and policies.' },
+  'close.text': {
+    es: 'Para humanoides y cualquier robot que interactúe con el mundo real: Tridi convierte video y simulación física en políticas de control ONNX listas para hardware.',
+    en: 'For humanoids and any robot interacting with the real world: Tridi turns video and physics simulation into hardware-ready ONNX control policies.',
+  },
   'close.tries': { es: 'Probar Tridi', en: 'Try Tridi' },
+  'try.sims': { es: 'Explora los robots, sensores y mundos en 3D', en: 'Explore the robots, sensors and 3D worlds' },
+  'try.simsShort': { es: 'Simulaciones 3D', en: '3D Simulations' },
+  'try.simsSub': { es: 'Unitree G1, H1 y Robot Luigi Lab 3', en: 'Unitree G1, H1 & Luigi Lab 3 Robot' },
+  'try.simsGo': { es: 'Abrir simulaciones →', en: 'Open simulations →' },
   'try.live': { es: 'Muévete y el robot te copia', en: 'Move and the robot copies you' },
   'try.liveShort': { es: 'Cámara en vivo', en: 'Live camera' },
   'try.liveGo': { es: 'Abrir la cámara →', en: 'Open the camera →' },
