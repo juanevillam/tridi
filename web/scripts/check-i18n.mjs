@@ -34,6 +34,7 @@ const STRING_MODULES = [
   '../src/strings-training.js',
   '../src/screens/strings/delivery.js',
   '../src/screens/strings/live.js',
+  '../src/screens/strings/milestones.js',
   '../src/screens/strings/net.js',
   '../src/screens/strings/phone.js',
   '../src/screens/strings/upload.js',

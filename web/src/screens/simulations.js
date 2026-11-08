@@ -142,9 +142,17 @@ export function mount(root, { api }, [clipId] = []) {
   // The physics sliders are open on wide screens; on phones they fold under "Ajustar la física"
   // (style.css hides the toggle on wide screens), so the scene and the clips come first.
   root.querySelector('.tune').open = !matchMedia('(max-width: 720px)').matches;
+  const isLuigiLink = clipId === 'luigi_lab3';
   const stage = mountStage(root);
   const trainBox = mountTrainBox(root.querySelector('.train-box'), api);
-  mountGallery(root, stage, clipId, trainBox.show, { hide: HIDDEN_CLIPS });
+  mountGallery(root, stage, isLuigiLink ? undefined : clipId, trainBox.show, { hide: HIDDEN_CLIPS });
+  if (isLuigiLink) {
+    const modelSel = root.querySelector('#robot-model');
+    if (modelSel) {
+      modelSel.value = 'luigi_lab3';
+      modelSel.dispatchEvent(new Event('change'));
+    }
+  }
   return () => {
     trainBox.dispose();
     stage.dispose();

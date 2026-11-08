@@ -19,6 +19,7 @@ export const { T, t, A } = dict({
   // Top bar
   'nav.home': { es: 'Tridi, inicio', en: 'Tridi, home' },
   'nav.product': { es: 'Producto', en: 'Product' },
+  'nav.milestones': { es: 'Avances', en: 'Milestones' },
   'nav.try': { es: 'Probar', en: 'Try it' },
   'nav.tryLive': { es: 'Probar en vivo', en: 'Try it live' },
 
@@ -140,6 +141,8 @@ export const { T, t, A } = dict({
   'track.nextShort': { es: 'Cualquier terreno', en: 'Any terrain' },
   'foot.madeAt': { es: 'Hecho en', en: 'Made at' },
   'foot.robot': { es: 'Robots', en: 'Robots' },
+  'foot.milestones': { es: 'Avances y casos reales', en: 'Milestones & Field Notes' },
+  'foot.milestonesLink': { es: 'Sim-to-Real físico + Platanus Hack 26 →', en: 'Physical Sim-to-Real + Platanus Hack 26 →' },
   'foot.code': { es: 'Código', en: 'Code' },
   'foot.repo': { es: 'Abierto en GitHub', en: 'Open on GitHub' },
 });
