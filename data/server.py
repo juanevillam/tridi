@@ -70,7 +70,7 @@ JANITOR_EVERY_S = 30
 # Override with TRIDI_CORS_ORIGINS (comma separated) or TRIDI_CORS_ORIGIN_REGEX.
 CORS_ORIGINS = os.environ.get(
     "TRIDI_CORS_ORIGINS",
-    "https://tridi-alpha.vercel.app,http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174",
+    "https://trytridi.com,https://www.trytridi.com,https://tridi-18p.pages.dev,https://tridi-alpha.vercel.app,http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174",
 ).split(",")
 CORS_ORIGIN_REGEX = os.environ.get(
     "TRIDI_CORS_ORIGIN_REGEX",
