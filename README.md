@@ -2,44 +2,44 @@
 
 <img src="./project-logo.png" alt="Tridi" width="120" />
 
-**Convertimos un video común en data para robots humanoides.**
+**Convertimos video humano en datos de entrenamiento y políticas listas para robots humanoides y físicos.**
 
-Grabas a una persona moviéndose con el celular. Un humanoide aprende a hacerlo igual, practicando en física real hasta no caerse.
+Grabas a una persona moviéndose con el celular. Un humanoide aprende a hacerlo igual practicando en física real (MuJoCo) hasta no caerse — y el mismo pipeline entrena y transfiere políticas ONNX Sim-to-Real a robots físicos reales.
 
-Repo privado de la empresa. Todo lo de la aplicación a Y Combinator vive en [`yc/`](yc/README.md).
+Repo privado de la empresa. Todo lo de la aplicación a Y Combinator vive en [`yc/`](yc/README.md) y la documentación técnica e infraestructura en [`docs/internal/`](docs/internal/README.md).
 
-👉 Demo en vivo: [tridi-alpha.vercel.app](https://tridi-alpha.vercel.app) · Pitch: [`docs/pitch/tridi-pitch.pdf`](docs/pitch/tridi-pitch.pdf)
+👉 **Producción:** [trytridi.com](https://trytridi.com) · **Hitos Sim-to-Real:** [trytridi.com/#/milestones](https://trytridi.com/#/milestones) · **Espejo legacy:** [tridi-alpha.vercel.app](https://tridi-alpha.vercel.app) · **Pitch:** [`docs/pitch/tridi-pitch.pdf`](docs/pitch/tridi-pitch.pdf)
 
 ## El problema
 
-ChatGPT se entrenó con todo internet. Los robots no tienen nada parecido: no existe un internet de datos de movimiento. Hoy, enseñarle un movimiento nuevo a un humanoide exige trajes de captura, un estudio y mucho tiempo, sobre pisos perfectos que en la calle no existen.
+ChatGPT se entrenó con todo internet. Los robots no tienen nada parecido: no existe un internet de datos de movimiento con fuerzas reales. Hoy, enseñarle un movimiento nuevo a un humanoide exige trajes de captura, teleoperación cara y estudios con pisos perfectos que en el mundo físico no existen.
 
 ## Qué hace Tridi
 
-- **Tridi Capture:** de un video de celular sacamos el esqueleto 3D de la persona (33 puntos, 30 veces por segundo) y lo pasamos a las 29 articulaciones del robot, con 3,2 cm de error.
-- **Tridi Gym:** si el robot solo copia el video, se cae. El video le dice qué hacer; la física le enseña cómo. Una red neuronal practica el movimiento millones de veces con física real, en cuatro ambientes imperfectos: acera, piedras, piso resbaloso y viento.
-- **Tridi Policy:** se entrega la data y el cerebro entrenado del robot, en ONNX, el formato que corre un robot.
+- **Tridi Capture 2.0:** de un video de celular o cámara en vivo sacamos el cuerpo 3D en coordenadas del mundo (`GVHMR` / SMPL-X, 33 puntos a 30 fps) más manos de 21 puntos (`WiLoR`, 5 dedos con $< 2\text{ cm}$ de error de punta) y lo retargeteamos a humanoides (`Unitree G1`, `Unitree H1`).
+- **Tridi Gym:** si el robot solo copia el video, se cae. El video le dice qué hacer; la física le enseña cómo. Una red neuronal practica el movimiento millones de veces en MuJoCo bajo gravedad, fricción, objetos, líquidos y empujones en cuatro terrenos (`plano`, `piedras`, `resbaloso`, `viento`).
+- **Tridi Policy & Sim-to-Real:** entrega el dataset físico (`PoseClip` + `RobotMotion` + rollouts) y la política entrenada en **ONNX** lista para correr a 50 Hz en el navegador (WASM) o transferir **zero-shot Sim-to-Real** a hardware físico real.
 
 ## Dónde estamos
 
-| Estado | Qué hace |
+| Estado | Qué hace hoy en producción ([`trytridi.com`](https://trytridi.com)) |
 | --- | --- |
-| **Hoy** | Se para y aguanta la mayoría de los empujones de 250 N |
-| **Entrenando** | Caminar como la persona del video (todavía no camina solo) |
-| **Lo que sigue** | Cualquier movimiento, en cualquier terreno, y probarlo en un G1 real |
+| **Equilibrio (`Stand v2`, 300M pasos)** | El Unitree G1 se mantiene de pie en los 4 terrenos y recupera **4,0 / 4 empujones de 250 N** (y hasta 320–350 N) con paso reactivo de Capture Point |
+| **Imitación v2 (9 políticas ONNX)** | Camina (`g1-walk`, `h1-walk`), corre (`g1-run`), salta (`g1-jacks`), baila (`g1-bailar`), saluda (`g1-saludar`), cuenta con los 5 dedos (`g1-dedos`), se sienta (`g1-sentarse`) e interactúa con objetos y agua |
+| **Sim-to-Real físico (`luigi_lab3`)** | Primer caso de estudio completo ([`#/milestones`](https://trytridi.com/#/milestones)): gemelo digital en MuJoCo desde planos CAD (`.stl`) + política PPO ONNX (17 KB) transferida zero-shot al robot físico real (Arduino UNO + L298N + HC-SR04 + 4× CNY70) y por WebSerial a 50 Hz |
 
-El detalle, sin inflar: [`yc/verdad-hoy.md`](yc/verdad-hoy.md).
+El detalle histórico sin inflar: [`yc/verdad-hoy.md`](yc/verdad-hoy.md) y [`docs/internal/yc-w27-reference.md`](docs/internal/yc-w27-reference.md).
 
 ## El repo
 
 | Carpeta | Qué es |
 | --- | --- |
-| [`data/`](data/README.md) | Video o cámara → esqueleto 3D de una persona (`PoseClip`), y el servidor de videos con su cola |
-| [`physics/`](physics/README.md) | Unitree G1 en MuJoCo (WebAssembly), retargeting, mundos y escenas |
-| [`training/`](training/README.md) | Entrenamiento con PPO, imitación, exportación a ONNX, rollouts y entrega |
-| [`web/`](web) | La app web: landing, Gym, Simulaciones, cámara en vivo, entrega |
-| [`docs/`](docs) | Estado, contrato entre partes, decisiones, bitácora, pitch |
-| [`yc/`](yc/README.md) | Aplicación a Y Combinator |
+| [`data/`](data/README.md) | Video o cámara → `PoseClip` v2 (`GVHMR + WiLoR`, cuerpo + manos de 21 puntos), relay WebSocket y servidor de video (`data/server.py`) |
+| [`physics/`](physics/README.md) | `Unitree G1`, `Unitree H1` y `luigi_lab3` en MuJoCo (WebAssembly), manos de 5 dedos, retargeting, mundos, objetos y líquidos |
+| [`training/`](training/README.md) | Entrenamiento con PPO (MJX / PyTorch), imitación DeepMimic, exportación a ONNX, rollouts, firmware Arduino y puente WebSerial |
+| [`web/`](web) | App web en producción (`trytridi.com`): Landing, Gym, Simulaciones, Hitos (`#/milestones`), En vivo, Teléfono por QR, Subir y Entrega |
+| [`docs/`](docs) | Estado, contrato entre partes, decisiones, bitácora, auditoría ([`audit-playbook.md`](docs/audit-playbook.md)) y manuales internos ([`docs/internal/`](docs/internal/README.md)) |
+| [`yc/`](yc/README.md) | Aplicación a Y Combinator Winter 2027 (enviada el 2 de noviembre de 2026) |
 
 Cómo trabajamos (ramas, `scripts/ship.sh`, bitácora): [`CONTRIBUTING.md`](CONTRIBUTING.md). Para agentes: [`AGENTS.md`](AGENTS.md).
 
