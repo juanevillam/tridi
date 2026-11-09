@@ -6,7 +6,9 @@
 
 Grabas a una persona moviéndose con el celular. Un humanoide aprende a hacerlo igual practicando en física real (MuJoCo) hasta no caerse — y el mismo pipeline entrena y transfiere políticas ONNX Sim-to-Real a robots físicos reales.
 
-Repo privado de la empresa. Todo lo de la aplicación a Y Combinator vive en [`yc/`](yc/README.md) y la documentación técnica e infraestructura en [`docs/internal/`](docs/internal/README.md).
+Repo privado de la empresa.
+- 🗺️ **Roadmap actual y división de tareas del equipo:** [`docs/ROADMAP.md`](docs/ROADMAP.md)
+- 📚 **Índice de documentación (para humanos):** [`docs/README.md`](docs/README.md) · **Manuales internos e infra:** [`docs/internal/`](docs/internal/README.md) · **YC W27:** [`yc/`](yc/README.md)
 
 👉 **Producción:** [trytridi.com](https://trytridi.com) · **Hitos Sim-to-Real:** [trytridi.com/#/milestones](https://trytridi.com/#/milestones) · **Espejo legacy:** [tridi-alpha.vercel.app](https://tridi-alpha.vercel.app) · **Pitch:** [`docs/pitch/tridi-pitch.pdf`](docs/pitch/tridi-pitch.pdf)
 

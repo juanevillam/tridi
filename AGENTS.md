@@ -16,6 +16,8 @@ Tridi was born at Platanus Hack 26 Caracas (October 23 to 25, 2026). This repo w
 
 | Need | Where |
 | --- | --- |
+| **Product Roadmap, Customer Strategy & Team Task Board (Nov 2026)** | [`docs/ROADMAP.md`](docs/ROADMAP.md), [`docs/plan-v3-assembler.md`](docs/plan-v3-assembler.md) |
+| **Human-friendly index of all `docs/`** | [`docs/README.md`](docs/README.md) |
 | What each area does and how to run it | `data/README.md`, `physics/README.md`, `training/README.md`, `web/` |
 | Where each part is now | [`docs/estado.md`](docs/estado.md), newest [`docs/bitacora/`](docs/bitacora) |
 | Shared formats between areas | [`docs/contrato.md`](docs/contrato.md) |
