@@ -54,25 +54,29 @@ Full detail in [`CONTRIBUTING.md`](CONTRIBUTING.md). What an agent must do:
 - **Stay in your owner's folder.** If you must touch another area, make it a separate small commit and tell the person so they can warn its owner.
 - **Shared contract** (message formats, types, data schema) lives in [`docs/contrato.md`](docs/contrato.md) and its types file. A contract change is its own commit, shipped before the code that uses it.
 
-## Session log (mandatory)
+## Session log & 2-Layer Documentation Auto-Sync (mandatory)
 
-Rules and template in [`docs/bitacora/README.md`](docs/bitacora/README.md).
+Rules and template in [`docs/bitacora/README.md`](docs/bitacora/README.md) and [`docs/README.md`](docs/README.md).
 
-- **One file per session, updated after every prompt** that changes code, docs or decisions. A `bitacora:` message at the start of each prompt names this session's file, or says there is none yet.
+- **One file per session in `docs/bitacora/`, updated after every prompt** that changes code, docs or decisions. A `bitacora:` message at the start of each prompt names this session's file, or says there is none yet.
 - Create it as `docs/bitacora/YYYY-MM-DD-HHMM-<person>-<topic>.md` with the `sesion:` id the hook gives you. Only ever edit this session's file.
 - Before finishing each reply, update it: what was done, what worked, what did not and why, decisions, what comes next. Commit it with the work (`docs(bitacora): ...` if alone).
-- When the session's work changes the big picture, update only this person's section of [`docs/estado.md`](docs/estado.md). Decisions that affect others also go to [`docs/decisiones/`](docs/decisiones); open questions to [`docs/preguntas-abiertas.md`](docs/preguntas-abiertas.md).
+- **2-Layer Documentation Auto-Sync (automatic before `scripts/ship.sh` or closing a milestone — never wait to be asked):**
+  Whenever a session completes or advances a task in [`docs/ROADMAP.md`](docs/ROADMAP.md) (`J-*`, `P-*`, `C-*`, `A-*`), adds a new physical robot/factory case (`luigi_lab4`, etc.), changes a JSON schema/contract, or modifies infrastructure (`trytridi.com` / Cloudflare / `data/server.py`) or Sim-to-Real architecture, the agent **MUST automatically update in the same branch before shipping**:
+  1. **Layer 1 (Human-First):** [`docs/ROADMAP.md`](docs/ROADMAP.md) and this person's section of [`docs/estado.md`](docs/estado.md) (plus [`docs/README.md`](docs/README.md) if a new active document is created). Decisions that affect others also go to [`docs/decisiones/`](docs/decisiones); open questions to [`docs/preguntas-abiertas.md`](docs/preguntas-abiertas.md).
+  2. **Layer 2 (Technical & Internal Manuals):** [`docs/internal/infra-and-security.md`](docs/internal/infra-and-security.md), [`docs/internal/architecture-and-sim2real.md`](docs/internal/architecture-and-sim2real.md), or [`docs/contrato.md`](docs/contrato.md) depending on the area touched.
+- **Public Mirror Boundary (`Torpass/tridi`):** [`docs/internal/`](docs/internal/README.md) and [`yc/`](yc/README.md) live exclusively in the private repo `juanevillam/tridi` and must **NEVER** be pushed to the public mirror `Torpass/tridi` (`tridi-alpha.vercel.app`).
 
 ## Team
 
 | Person | GitHub | Area | Folder |
 | --- | --- | --- | --- |
 | Juan (CTO) | @juanevillam | Data (video and camera → `PoseClip`, video server), training, infra/security, much of the web | `data/`, `training/`, `web/` |
-| Pastor | @torpass | Physics engine, robot, retargeting, 3D render, training | `physics/`, `training/` |
-| César | @cisorm | The web app | `web/` |
-| Ale | @alehernandezt | Strategy, pitch, YC application, customer conversations (does not code) | `docs/`, `yc/` |
+| Pastor (CEO) | @torpass | Physics engine, robot, retargeting, 3D render, hardware catalog, training | `physics/`, `training/` |
+| César (CIO/CTO) | @cisorm | The web app & Assembler screens | `web/` |
+| Ale (COO) | @alehernandezt | Strategy, industrial verticals, unit economics, YC application, customer conversations | `docs/`, `yc/` |
 
-Who are the founders on the YC application, and who is CEO, is still open: [`yc/fundadores.md`](yc/fundadores.md).
+Exact submitted YC W27 application and 25/25/25/25 equity split live in [`docs/internal/yc-w27-reference.md`](docs/internal/yc-w27-reference.md).
 
 ## Deploy
 
