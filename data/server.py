@@ -428,7 +428,7 @@ app.add_middleware(
 async def _security_headers(request: Request, call_next):
     res = await call_next(request)
     res.headers.setdefault("X-Content-Type-Options", "nosniff")
-    res.headers.setdefault("X-Frame-Options", "DENY")
+    res.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
     res.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     return res
 

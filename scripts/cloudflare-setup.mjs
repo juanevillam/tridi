@@ -96,7 +96,6 @@ async function main() {
     { type: 'CNAME', name: `www.${DOMAIN}`, content: PAGES_TARGET, ttl: 1, proxied: true },
     { type: 'TXT', name: DOMAIN, content: 'v=spf1 -all', ttl: 1, proxied: false },
     { type: 'TXT', name: `_dmarc.${DOMAIN}`, content: 'v=DMARC1; p=reject; sp=reject; adkim=s; aspf=s;', ttl: 1, proxied: false },
-    { type: 'TXT', name: `*._domainkey.${DOMAIN}`, content: 'v=DKIM1; p=', ttl: 1, proxied: false },
   ];
   for (const rec of records) {
     await upsertDnsRecord(zone.id, rec);
@@ -116,7 +115,7 @@ async function main() {
       {
         strict_transport_security: {
           enabled: true,
-          max_age: 63072000,
+          max_age: 31536000,
           include_subdomains: true,
           preload: true,
           nosniff: true,
