@@ -74,7 +74,7 @@ CORS_ORIGINS = os.environ.get(
 ).split(",")
 CORS_ORIGIN_REGEX = os.environ.get(
     "TRIDI_CORS_ORIGIN_REGEX",
-    r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$|^https://([a-z0-9-]+\.)*(tridi-alpha\.vercel\.app|tridi-[a-z0-9-]+\.vercel\.app|tridi\.(run|ai|dev|app|tech|xyz|com))$",
+    r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$|^https://([a-z0-9-]+\.)*([a-z0-9-]*tridi[a-z0-9-]*\.(com|run|ai|dev|app|tech|xyz|vercel\.app))$",
 )
 
 ID = re.compile(r"^[0-9a-f]{32}$")
