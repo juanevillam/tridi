@@ -82,6 +82,11 @@ html.is-landing.lenis body {
   display: block;
   opacity: 0;
   transition: opacity 1.2s;
+  cursor: grab !important;
+}
+
+.film > canvas:active {
+  cursor: grabbing !important;
 }
 
 .film.ready > canvas {
@@ -659,6 +664,10 @@ html.is-landing.lenis body {
   border-radius: var(--r-1);
   background: rgb(8 9 11 / 0.55);
   color: var(--fg-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .state i {
@@ -1784,16 +1793,16 @@ html.is-landing.lenis body {
     margin-top: var(--s-7);
   }
 
-  .milestones {
+  .landing .milestones {
     grid-template-columns: 1fr;
     gap: var(--s-3);
   }
 
-  .milestones li {
+  .landing .milestones li {
     padding: var(--s-4);
   }
 
-  .milestones b {
+  .landing .milestones b {
     font-size: 17px;
   }
 

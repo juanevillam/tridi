@@ -28,8 +28,10 @@
      - High-contrast badges (`.card-badge.trained` in `--signal` lime, `.card-badge.trainable` in `#fbbf24` amber) and `cursor: grab` on all 3D canvases.
    - **Unitree G1 Upright Walking (`physics/src/sim.js`, `physics/src/policy.js`):**
      - Increased pelvis orientation tracking stiffness (`kpRot = 420`, `kdRot = 48`) and isolated `waist_pitch_joint` (`index 14`) from out-of-distribution forward pitch residuals, reducing walking torso tilt from `32.8°` to `< 9°` while passing all 9 imitation checks in `check-mimic.mjs`.
-   - **Landing (`#/`, `web/src/screens/home.js`, `web/src/landing/landing.css`):**
-     - Click-and-drag 3D orbiting enabled on the background scene, `Try it live` smooth-scroll mode lock (`navFlight`), automatic restoration of `Unitree G1` when leaving `#/simulations`, GPU-composited `.try` cards without hover flicker, and generous spacing between `.tries` and `.footer`.
+   - **Landing (`#/`, `web/src/screens/home.js`, `web/src/landing/landing.css`, `web/src/landing/telemetry.js`):**
+     - Click-and-drag 3D orbiting enabled on the background scene (`cursor: grab !important` overriding `OrbitControls` inline `cursor: auto`), `Try it live` smooth-scroll mode lock (`navFlight`), safe restoration of `Unitree G1` and camera target when returning from `#/simulations/luigi_lab3` (guarding `dressTelemetry` while G1 reloads), GPU-composited `.try` cards without hover flicker, and generous spacing between `.tries` and `.footer`.
+   - **Production & Domain Readiness (`vercel.json`, `web/vercel.json`, `web/index.html`, `data/server.py`, `data/live/src/api.js`):**
+     - Synchronized immutable asset and media caching headers across root `vercel.json` and `web/vercel.json`, added OpenGraph/Twitter metadata and bilingual `#app-loading` in `web/index.html`, expanded `data/server.py` CORS (`127.0.0.1`, `localhost`, `tridi-alpha.vercel.app`, `tridi-*.vercel.app`, and `tridi.*` custom domains), and guarded `findApiUrl` in `data/live/src/api.js` with `checkApi(published)` so dead tunnel URLs never trigger console errors.
 
 ---
 

@@ -484,8 +484,13 @@ export function mount(root) {
     queue = queue
       .then(async () => {
         if (gone || !view || (level === id && view.sim?.policy?.id === id && view.sim?.policy?.robot === 'unitree_g1')) return;
+        const wasNonG1 = view.sim?.policy?.robot && view.sim.policy.robot !== 'unitree_g1';
         const { onnx, json } = policyUrls(id);
         await view.loadPolicy(onnx, json);
+        if (wasNonG1 && view.sim) {
+          const [px, py] = view.sim.bodyPosition('pelvis');
+          view.viewer.controls.target.set(px, view.viewer.targetHeight, -py);
+        }
         level = id;
       })
       .catch((error) => console.error(error));

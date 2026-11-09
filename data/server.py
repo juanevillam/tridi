@@ -66,11 +66,16 @@ KEEP_VIDEO_S = 10 * 60
 UPLOAD_TTL_S = 60 * 60
 JANITOR_EVERY_S = 30
 
-# Browsers on these origins may call the API: the deployed web and the Vite dev servers.
-# Override with TRIDI_CORS_ORIGINS (comma separated).
+# Browsers on these origins may call the API: the deployed web, custom domains, and local Vite servers.
+# Override with TRIDI_CORS_ORIGINS (comma separated) or TRIDI_CORS_ORIGIN_REGEX.
 CORS_ORIGINS = os.environ.get(
-    "TRIDI_CORS_ORIGINS", "https://tridi-alpha.vercel.app,http://localhost:5173,http://localhost:5174"
+    "TRIDI_CORS_ORIGINS",
+    "https://tridi-alpha.vercel.app,http://localhost:5173,http://localhost:5174,http://127.0.0.1:5173,http://127.0.0.1:5174",
 ).split(",")
+CORS_ORIGIN_REGEX = os.environ.get(
+    "TRIDI_CORS_ORIGIN_REGEX",
+    r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$|^https://([a-z0-9-]+\.)*(tridi-alpha\.vercel\.app|tridi-[a-z0-9-]+\.vercel\.app|tridi\.(run|ai|dev|app|tech|xyz|com))$",
+)
 
 ID = re.compile(r"^[0-9a-f]{32}$")
 CLIP_ID = re.compile(r"^clip_[A-Za-z0-9_-]+$")
@@ -377,7 +382,13 @@ def _unpack(upload: Upload, job_dir: Path, assembled: Path) -> list[Video]:
 
 
 app = FastAPI(title="Tridi data server")
-app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_origin_regex=CORS_ORIGIN_REGEX,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.include_router(relay.router)  # the phone as the live camera (docs/contrato.md)
 
 
