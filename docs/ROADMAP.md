@@ -20,22 +20,32 @@ Cualquier sistema robótico o línea de automatización física que tenga motore
 Llegarle mañana en frío a Tesla Optimus o Figure desde Venezuela sin un portafolio previo es casi imposible. En cambio, en nuestra propia ciudad y región **sí hay fábricas (empaquetadoras, alimentos, café), talleres de automatización, universidades y agencias de robótica** con máquinas reales. Si Tridi resuelve la simulación y calibración física de cualquier máquina o robot, podemos conseguir clientes y casos reales desde ahora mismo mientras avanzamos con YC.
 
 ```
-CANAL A — Video a Robot (Tridi Capture)          CANAL B — Tu Máquina/Robot y Código a Sim-to-Real (Tridi Assembler)
-  Subes un video humano (celular/cámara)           Subes el CAD de tu robot/celda (.stl/.step) + tu código (.ino/.py/PLC)
-                 │                                                                │
-                 ▼                                                                ▼
-   Esqueleto 3D + manos (GVHMR + WiLoR)             Gemelo digital MuJoCo calibrado con motores, sensores y tiempos reales
-                 └──────────────────────────────┬─────────────────────────────────┘
+CANAL A — De Videos de Internet a Habilidad General       CANAL B — Tu Máquina/Robot y Código a Sim-to-Real (Tridi Assembler)
+  100–10.000 videos de internet de una misma acción         Subes el CAD de tu robot/celda (.stl/.step) + tu código (.ino/.py/PLC)
+  (distintos ángulos, frenadas, esquives, tropiezos)                                       │
+                 │                                                                         ▼
+                 ▼                                           Gemelo digital MuJoCo calibrado con motores, sensores y tiempos reales
+   Extracción masiva 3D + manos (GVHMR + WiLoR)                                            │
+                 └──────────────────────────────┬──────────────────────────────────────────┘
                                                 ▼
-                              MOTOR TRIDI (MuJoCo + PPO/Imitación en GPU)
-                       Practica millones de ciclos con fricción, masa y perturbaciones
+                      MOTOR TRIDI (MuJoCo + Entrenamiento Multi-Clip en GPU)
+            Combina todos los videos + casos borde (obstáculo cruzándose, cambio de piso,
+            frenada de emergencia, motor/pata dañada) hasta consolidar 1 sola política robusta
                                                 │
                                                 ▼
                                      ENTREGA SIM-TO-REAL
-                   1. Política neuronal ligera (ONNX a 50 Hz) + Dataset físico
+                   1. Política neuronal generalista (ONNX a 50 Hz) + Dataset físico
                    2. Puente en vivo por WebSerial USB desde el navegador
                    3. Controlador / firmware nativo calibrado (.ino / C / Python) sin bloqueos
 ```
+
+### Por qué una habilidad real requiere Múltiples Videos de Internet + Casos Borde (y la diferencia entre Entorno Abierto vs. Fábrica)
+
+- **Escalar con videos de internet, no grabándonos nosotros:** Nosotros no podemos grabarnos 10.000 veces. La verdadera escala de Tridi está en tomar **cientos o miles de videos de internet** de una misma habilidad (ej. personas caminando en distintos ángulos, frenando porque alguien se atraviesa, esquivando un obstáculo, subiendo un desnivel) y entrenar **una sola política generalista** que combine todo ese conocimiento, sumándole en MuJoCo fallos extremos (¿qué pasa si se atraviesa algo de golpe?, ¿qué pasa si un motor pierde fuerza o se daña una pata?).
+- **Por qué hoy en 2026 las grandes empresas siguen usando teleoperación (control remoto) en humanoides, y dónde entra Tridi:**
+  - Soltar un humanoide de 50 kg con una red neuronal pura en un entorno libre lleno de gente todavía es peligroso si la red solo aprendió a caminar recto en un piso vacío. Por eso incluso los gigantes siguen teleoperando en demos públicas.
+  - **En humanoides (entorno abierto):** Tridi les resuelve justamente el entrenamiento en los miles de casos borde (frenar, esquivar, cojear si falla un actuador) que necesitan superar en simulación antes de apagar el control remoto.
+  - **En fábricas, empaquetadoras y almacenes (entorno controlado):** A diferencia de un humanoide en la calle, una línea de empaquetado o un robot de almacén opera en un espacio cerrado, predecible y seguro. Ahí nuestras políticas se pueden desplegar **100 % autónomas hoy mismo sin peligro**.
 
 ---
 
@@ -58,7 +68,7 @@ Igual que en la hackathon: **una sola persona por tarea** y cada área en sus pr
 | ID | Tarea | Archivos / Carpeta | Qué entrega |
 | --- | --- | --- | --- |
 | **J-1** | **Pulido visual de Landing, Simulaciones y `#/milestones`** | `web/src/screens/home.js`, `web/src/landing/`, `web/src/screens/milestones.js` | Refinar todos los detalles visuales en desktop y móvil (`trytridi.com`), animaciones, copy y dejar lista la estructura para sumar nuevos casos reales (robots móviles y celdas de fábrica). |
-| **J-2** | **Pipeline de entrenamiento acelerado en GPU Cloud** | `training/` | Montar el flujo para que los entrenamientos de políticas (tanto humanoides como robots/máquinas subidas por usuarios) corran a punta de GPU en la nube en **minutos en vez de horas** en local. |
+| **J-2** | **Pipeline en GPU Cloud + Entrenamiento Multi-Video con Casos Borde** | `data/`, `training/` | (1) Ingesta automática de lotes de videos de internet para una misma acción (sin depender de grabarnos nosotros) y (2) entrenamiento en GPU en la nube donde **múltiples clips + perturbaciones extremas** (obstáculo que se cruza, frenada en seco, falla parcial de un motor/pata) entrenan **una sola política robusta** en minutos. |
 | **J-3** | **Compilador automático `ONNX → C / Arduino (.ino)`** | `training/export_mcu.py` (nuevo) | Automatizar en un script lo que hicimos en el robot de Luigi: leer cualquier `policy.onnx` + el JSON de pines/motores del robot y generar automáticamente el archivo `.ino` / `.c` comentado, sin bloqueos (`ISR` en vez de `pulseIn`) y con compensación de zona muerta de PWM. |
 | **J-4** | **Entrenamiento de la policy `luigi-lab4.onnx` (Escaneo activo en movimiento)** | `training/luigi_lab4_env.py`, `training/policies/luigi-lab4.*` | Una vez esté listo el XML de `luigi_lab4` (`P-2`), entrenar la red de 50 Hz que coordina las 2 ruedas + el cuello servo SG90 para que el robot escanee a los lados **mientras avanza** (sin frenar 700 ms como hace el código original de Lab 4). |
 
