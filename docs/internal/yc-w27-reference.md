@@ -1,84 +1,198 @@
-# Manual Técnico Interno 3: Referencia de Aplicación a Y Combinator Winter 2027 (`yc/`)
+# Y Combinator Winter 2027 — Exact Submitted Application Reference
 
-> **CONFIDENCIAL / USO INTERNO (`juanevillam/tridi`)**
-> Estado de nuestra aplicación a **Y Combinator Winter 2027 (W27)**, qué quedó fijo en el formulario enviado vs. qué puede actualizarse, cómo están organizados los documentos en [`yc/`](../../yc/README.md), y qué avances nuevos tenemos listos para enviar como *Application Update* o mostrar en la entrevista.
-
----
-
-## 1. Cronograma y Estado de la Aplicación (YC W27)
-
-| Hito | Fecha / Estado | Detalle |
-| :--- | :--- | :--- |
-| **Origen del proyecto** | 23–25 de octubre de 2026 | Construido en 36 horas durante **Platanus Hack 26 Caracas** (151 commits del equipo). |
-| **Deadline on-time YC W27** | **2 de noviembre de 2026, 8:00 pm PT** | Aplicación enviada para el batch **Winter 2027** (enero–marzo 2027 en San Francisco). |
-| **Ventana de entrevistas** | Noviembre – inicios de diciembre de 2026 | Videollamada de ~10 minutos con partners de YC. |
-| **Fecha límite de respuesta YC** | **11 de diciembre de 2026** | Notificación final para aplicaciones enviadas a tiempo. |
-| **Servidor en vivo durante revisión** | Nov 3 – Dic 11, 2026 | La física y políticas preentrenadas corren solas en el navegador en **https://trytridi.com** y **https://tridi-alpha.vercel.app**; cuando la Mac de Juan tiene `./data/serve.sh` activo, también procesa subidas y entrenamientos en vivo. |
+> **INTERNAL & CONFIDENTIAL:** Exact record of the YC Winter 2027 application submitted by Tridi on **November 2, 2026** (before the 8:00 PM PT deadline). Company answers cannot be edited post-submission; founder profiles remain editable in the YC portal.
 
 ---
 
-## 2. Qué está congelado vs. Qué SÍ se puede actualizar en `apply.ycombinator.com`
+## 1. Founding Team & Equity Breakdown
 
-1. **Respuestas principales del formulario de empresa (`yc/aplicacion.md`) — Congeladas tras el envío:**
-   - Las respuestas del cuestionario de la compañía (*Company*, *Progress*, *Idea*, *Equity*, *Curious*) y los videos adjuntos (`yc/videos/intro.mp4` y `yc/videos/demo.mp4`) quedan registrados tal como se enviaron al cierre del deadline.
-2. **Perfiles individuales de cada fundador (*Founder Profile*) — Editables por cada uno:**
-   - Cada co-founder puede seguir editando y manteniendo al día su propio **Founder Profile** en [apply.ycombinator.com](https://apply.ycombinator.com) (Background, Work History, Education, LinkedIn, GitHub y textos personales). Por eso los perfiles personales no se congelan aquí.
-3. **Actualizaciones de progreso (*Application Updates*) en `apply.ycombinator.com` — Abiertas:**
-   - YC permite enviar actualizaciones cortas y medibles cuando hay avances reales después de enviar la aplicación.
+We submitted an **equal 25% split** among the four co-founders, vesting over **5 years (20% per year)**:
 
----
-
-## 3. Resumen de las Respuestas Base de la Aplicación ([`yc/aplicacion.md`](../../yc/aplicacion.md))
-
-Para que todo el equipo y sus agentes hablen el mismo idioma y conozcan la línea base que leyeron los partners de YC:
-
-- **One-liner (≤ 50 caracteres):**
-  > *"Turning everyday video into robot training data"* (47 caracteres).
-- **Qué hace Tridi (*What is your company going to make?*):**
-  - Convierte un video común de teléfono de una persona en datos de movimiento corregidos por física y políticas entrenadas (`ONNX`) para robots humanoides y físicos en tres pasos:
-    1. **Capture:** Seguimiento de una persona en el video, extracción del esqueleto 3D (33 puntos, 30 fps) y retargeting a las 29 articulaciones del Unitree G1 (`3,2 cm` de error mediano).
-    2. **Gym:** El robot practica ese movimiento millones de veces en física (MuJoCo) con aprendizaje por refuerzo (PPO), recibiendo empujones y variando piso, fricción, masa y motores hasta no caerse.
-    3. **Policy:** El cliente recibe la política entrenada (`265 KB ONNX` que corre a `50 Hz` en `< 1 ms`) y el dataset de movimiento corregido por física en los 4 mundos.
-  - Frase síntesis: *"The video says what to do; the simulation teaches how."*
-- **Quién construyó el código (*Who writes code?*):**
-  - 100 % construido por los fundadores en Platanus Hack 26 (151 commits en 36 horas) y continuado en `juanevillam/tridi`:
-    - **Juan (CTO):** Pipeline de video a esqueleto 3D (`data/`), pipeline de entrenamiento e imitación (`training/`), servidor de video, infraestructura/seguridad (`trytridi.com`) y gran parte de la web (`web/`).
-    - **Pastor:** Física en MuJoCo (`physics/`), modelo Unitree G1, retargeting, mundos y políticas RL (`training/`).
-    - **César:** Experiencia web de la simulación (`web/`).
-    - **Ale:** Estrategia, producto, pitch, relación con clientes y aplicación YC (`docs/`, `yc/`).
-- **Modelo de negocio (*How will you make money?*):**
-  - Cobro por habilidad entrenada (*per trained skill*: política ONNX + dataset corregido por física para el robot del cliente) y por volumen de datos de movimiento.
+| Founder | Title in YC Portal | Equity | Technical? | Exclusive 1-Yr Commitment? | Location | Links |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Pastor Jiménez** | CEO | 25% | Yes | Yes | Barquisimeto, VE | [LinkedIn](https://www.linkedin.com/in/pastor-jimenez) · [GitHub](https://github.com/Torpass) · [tripealo.app](https://tripealo.app) |
+| **Juan Villa** | CTO | 25% | Yes | Yes | Barquisimeto, VE | [LinkedIn](https://linkedin.com/in/juanevillam) · [GitHub](https://github.com/juanevillam) · [juanevillam.com](https://juanevillam.com) |
+| **César Martínez** | CTO (in profile) / CIO (in Equity section) | 25% | Yes | Yes | Barquisimeto, VE | [LinkedIn](https://www.linkedin.com/in/cesarmartinez-dev) · [GitHub](https://github.com/CisorM) · [cisorm.github.io](https://cisorm.github.io) |
+| **José Alejandro Hernández Torres** | COO | 25% | No | Yes | Barquisimeto, VE | [LinkedIn](https://www.linkedin.com/in/alehernandezt/en/) · [GitHub](https://github.com/AleHernandezt) · [alehernandezt.github.io](https://alehernandezt.github.io) |
 
 ---
 
-## 4. Qué Avanzó Tridi DESPUÉS de Enviar la Aplicación (Para el *Update* a YC y la Entrevista)
+## 2. Founder Profiles — Exact Accomplishment Answers
 
-Cuando YC pregunta en una actualización o al inicio de la entrevista **"What has changed since you applied?"**, estos son los **4 hechos verificables** construidos entre el 3 y el 9 de noviembre de 2026:
+### Pastor Jiménez (CEO)
+- **Non-computer system hack:**
+  > When I was about 14, Venezuela was in hyperinflation and a phone was out of reach for my family. I played Hypixel Skyblock, a Minecraft server, found a bug that let me duplicate in-game money, and sold those coins for dollars to players abroad. In practice, I had found a way to earn hard currency from a country where the local money was worthless. With it I bought my first phone and then my first computer, which is the one I learned to code on.
+- **Most impressive thing built/achieved:**
+  > I designed and built the agentic AI infrastructure at Binaural, Venezuela's #1 Odoo partner: MCP servers wired into the ERP and GitHub, a RAG over every project's docs and scope, and role-specific agents and skills. The whole technical and functional team uses it daily. It cut development cost and time by 73% in two months, and consultants can now generate, test and deploy their own Odoo modules.
 
-1. **Primer Caso Real Sim-to-Real Físico Completado (`luigi_lab3`, 7–8 de noviembre de 2026):**
-   - Al momento de enviar la aplicación, `yc/verdad-hoy.md` decía: *"Robot real: Nunca probado en un robot físico"*.
-   - **Hoy ya cerramos nuestro primer ciclo Sim-to-Real en hardware físico real:** modelamos en MuJoCo el robot diferencial de Luigi D'Aquaro a partir de sus 6 piezas CAD STL, entrenamos la política de navegación y evasión (`luigi-lab3.onnx`), la transpilamos a C nativo (`461 bytes` de RAM a `50 Hz` en un Arduino UNO ATmega328P), resolvimos en vivo los cuellos de botella de sensores reales (`ISR(PCINT1_vect)` no bloqueante para el ultrasonido `HC-SR04` y driver I2C de registros para el clon `APDS-9960 0x9E`) y el robot físico navegó y esquivó obstáculos en piso real sin chocar.
-   - Evidencia en vivo: **`https://trytridi.com/#/milestones`** y simulador interactivo en **`https://trytridi.com/#/simulations/luigi_lab3`**.
-2. **De 3,5 s a Clips Completos con Captura 2.0 y Manos de 5 Dedos (`GVHMR + WiLoR`):**
-   - Al enviar la aplicación, la caminata por imitación seguía `3,5 s` de `11,8 s` y no teníamos manos articuladas.
-   - Hoy tenemos **9 políticas completas publicadas en `training/policies/`** (`g1-walk` siguiendo `11,86 / 11,85 s` con 65 % de supervivencia a empujones de 250 N, `g1-run`, `g1-jacks`, `g1-saludar`, `g1-dedos`, `g1-bailar`, `g1-frente`, `g1-sentarse` y `h1-walk`), más manos diestras Inspire de 5 dedos con `< 2 cm` de error en puntas de dedos (`0,34 cm` contando del 1 al 5).
-3. **Política `Stand` v2 a 300 M de pasos en 4 mundos:**
-   - Escaló de `60 M` a **`300 M` de pasos** con término de Capture Point (`STANCE_V2`), aguantando `4,0 / 4` empujones de `250 N` y hasta `320–350 N` en los 4 terrenos (`plano`, `piedras`, `resbaloso`, `viento`).
-4. **Dominio Propio e Infraestructura en Producción (`https://trytridi.com`):**
-   - Desplegado en **https://trytridi.com** sobre Cloudflare Pages con seguridad completa de borde, bilingüe ES/EN en tiempo real sin recarga y sin bloqueo de despliegue para ningún co-founder.
+### Juan Villa (CTO)
+- **Non-computer system hack:**
+  > As a kid, I sold my grandmother’s brownies at my after-school study sessions. Instead of pitching anyone, I arrived first, sat in the front, and set the neat little basket under my seat. Classmates came to me, so I never had to sell. Out of about 10 kids, I’d sell all six or so brownies every time. My pay was a commission per sale or the crumbs, and I always took the crumbs. It taught me that the best sales channel is a product people notice and want.
+- **Most impressive thing built/achieved:**
+  > Working remotely from Venezuela, I built Crol ERP Móvil from scratch, design included: the mobile app of Crol, a Mexican cloud ERP. Businesses across Mexico now use it to sell on the road, issue CFDI e-invoices and manage collections.
+
+### César Martínez (CIO / CTO)
+- **Non-computer system hack:**
+  > After the June earthquake, information about donation drop-off centers in Barquisimeto was buried in thousands of Instagram and WhatsApp posts, so people didn't know what to bring or where to go. I repurposed my startup Tripealo's infrastructure into a dedicated section: we scraped and manually verified posts, registered 100+ collection centers, and tracked whether each one was still active in real time by following their Instagram and WhatsApp stories. That turned a chaotic social feed into a single reliable source. We then helped coordinate trucks to La Guaira and partnered with Fina and the centers to streamline logistics.
+- **Most impressive thing built/achieved:**
+  > I digitized my family's two-location electronics store: I built the system that now runs its inventory, sales, repairs and financing, while also managing sales there since 2022.
+
+### José Alejandro Hernández Torres (COO)
+- **Non-computer system hack:**
+  > when I was a 12 years, I find a way to organize local events in a park near my house. In this events, local entrepreneurs sell products and I receive 50$ for the stand that I made by myself. Using this method I paid my first laptop and paid my first English course.
+- **Most impressive thing built/achieved:**
+  > After this experience creating something from zero and start to earn money being the intermediate I decided to pivot this project. I found my-commerce. A marketplace that centralize this kind of local entrepreneurs in the same platform
 
 ---
 
-## 5. Mapa Completo de Archivos en [`yc/`](../../yc/README.md)
+## 3. Founders Section (Submitted Verbatim)
 
-| Archivo | Contenido |
-| :--- | :--- |
-| [`yc/README.md`](../../yc/README.md) | Índice general de la carpeta YC, fechas del batch W27 y reglas de estilo. |
-| [`yc/aplicacion.md`](../../yc/aplicacion.md) | Todas las preguntas del formulario de YC con las respuestas en inglés. |
-| [`yc/verdad-hoy.md`](../../yc/verdad-hoy.md) | Tabla de qué era verdad al corte del 27 de octubre vs. qué faltaba. |
-| [`yc/fundadores.md`](../../yc/fundadores.md) | Estructura de fundadores, roles y guía para los perfiles individuales. |
-| [`yc/narrativa.md`](../../yc/narrativa.md) | Tesis del problema, insight técnico, por qué ahora, mercado y modelo de negocio. |
-| [`yc/competidores.md`](../../yc/competidores.md) | Comparativa directa con startups de Physical AI y mocap (Asimov YC W26, Human Archive YC W26, Intelligence Factory YC S26, VideoMimic, Move.ai). |
-| [`yc/entrevista.md`](../../yc/entrevista.md) | Banco de preguntas duras para la entrevista de 10 minutos con partners de YC. |
-| [`yc/contexto-tecnico.md`](../../yc/contexto-tecnico.md) | Explicación de cada pieza técnica en palabras simples para defender en vivo. |
-| [`yc/investigacion/startups/`](../../yc/investigacion/startups/README.md) | Base de datos de 3.100+ startups aceptadas por YC (2022–2026) con foco en robótica y Latinoamérica. |
+### How long have the founders known one another and how did you meet? Have any of the founders not met in person?
+> Pastor and Juan went to school together, from primary through high school. By 2016–2017, when we were 13, we were already talking about technology and Bitcoin. Pastor met César and Ale at university. The three of them were a group of misfit hackers who got bored in class, so they started meeting to build things together. In October 2025, Pastor brought Juan in so the four of us could apply to the AlegrIA hackathon in Caracas, where Tripealo was born. Afterwards our paths split: Juan went on to cofound Salvalo, while Pastor, César and Ale kept building Tripealo. Platanus Hack 26 brought the four of us back together. We built Tridi there in 36 hours, and now the four of us are cofounding it. All four founders have met in person.
+
+### Who writes code, or does other technical work on your product? Was any of it done by a non-founder? Please explain.
+> All of it was written by the four founders; no non-founders contributed.
+> - Pastor Jiménez: physics simulation, motion retargeting, in-browser rendering and the training environment.
+> - Juan Villa: video-to-3D-pose pipeline, the video processing server and the training queue; co-owns policy training.
+> - César Martínez: the web app (live camera, upload, simulation viewer).
+> - José Alejandro Hernández: competitive research, product strategy and pitch.
+>
+> We use AI coding agents heavily (Claude Code), and we direct and review all of it.
+
+### Are you looking for a cofounder?
+> No.
+
+---
+
+## 4. Company Section (Submitted Verbatim)
+
+- **Company name:** `Tridi`
+- **Describe what your company does in 50 characters or less:**
+  `Human video into training data for humanoid robots`
+- **Company URL, if any:** `https://tridi-alpha.vercel.app` (and new production domain: `https://trytridi.com`)
+- **Please provide a link to the product, if any:** `https://tridi-alpha.vercel.app`
+
+### What is your company going to make? Please describe your product and what it does or will do.
+> Physical AI is the new sexy. LLMs were trained on the entire internet. Robots have nothing like that: human motion data is scarce, expensive and slow to collect. Today, teaching a humanoid a new motion means mocap suits, a studio or months of teleoperation, on perfect floors that don't exist outside the lab.
+>
+> Meanwhile there is an enormous amount of video of people moving. But video only shows where the joints went, not the physics behind it: gravity, balance, contact and friction. A robot that just copies the motion falls.
+>
+> Tridi turns any video into robot training data. You upload a clip or record with your phone. We find the person, even in a crowd, extract their 3D skeleton (33 points at 30 fps) and map it onto the robot's 29 joints. Then the robot practices that motion millions of times in a physics simulator (MuJoCo), with real gravity, contact and friction and under varied conditions, until it can do it without falling. Standing policies work today; learning to walk from video is what we're building now. The video says what to do; the simulation teaches how.
+>
+> Customers will get two things: a small trained policy (ONNX, ready to run on the robot) and the motion data corrected by physics, recorded across many conditions. We start with humanoid companies. The same simulator later serves any hardware company that needs data from its machines in conditions it can't reproduce in a lab.
+
+### Where do you live now, and where would the company be based after YC?
+> Barquisimeto, Venezuela / San Francisco, USA
+
+### Explain your decision regarding location.
+> We would be in San Francisco during YC, since the batch is in person, and stay in the Bay Area afterwards. Our customers (Figure, 1X, Tesla Optimus) and the real humanoid hardware we need to test our policies on are there, and we can't do that from Venezuela.
+
+---
+
+## 5. Progress Section (Submitted Verbatim)
+
+### How far along are you?
+> We have a working prototype, live and open source, built in 36 hours at Platanus Hack 26 (October 2026):
+> - Video to robot: from a phone video or a live camera, we pick one person out of several, extract their 3D motion and retarget it to a Unitree G1 humanoid with 3.2 cm median error.
+> - Physics training: a 265 KB neural policy controls all 29 motors, deciding every 20 ms in under 1 ms. Our standing policy (60M training steps on two MacBooks) withstands most 250 N pushes; untrained, the robot falls in about one second.
+> - Four test worlds (flat, rocks, slippery floor, wind) and a training queue that goes from uploaded video to retargeting, training and a downloadable dataset.
+> - Everything runs in the browser: anyone can push the robot at tridi-alpha.vercel.app.
+
+### How long have each of you been working on this? How much of that has been full-time? Please explain.
+> We started on October 23, 2026, at the hackathon, all four full-time for 36 hours.
+
+### What tech stack are you using, or planning to use, to build this product? Include AI models and AI coding tools you use.
+> - Physics: MuJoCo 3.16, in Python for training and compiled to WebAssembly in the browser. Robot: Unitree G1 model from MuJoCo Menagerie.
+> - Training: our own PPO implementation in PyTorch with a DeepMimic-style imitation reward, on Apple Silicon Macs. Policies export to ONNX.
+> - Video to 3D pose: Ultralytics YOLO pose + ByteTrack to pick and track one person, MediaPipe Pose for 3D landmarks, OpenCV, temporal smoothing (Savitzky-Golay, One Euro).
+> - Backend: FastAPI video server with chunked uploads and a training queue.
+> - Frontend: Vite, three.js, onnxruntime-web, MediaPipe in the browser, deployed on Vercel.
+> - AI coding tools: Claude Code.
+> - Next: GPU training in the cloud (MuJoCo MJX or Isaac Lab) to go from hours per clip to minutes.
+
+### Are people using your product?
+> No
+
+### When will you have a version people can use?
+> A public demo is live now at tridi-alpha.vercel.app: anyone can upload a video, watch the robot imitate it and push it. The version a humanoid company can use, a policy that follows a full clip, plus its physics-corrected dataset, is our next milestone.
+
+### Do you have revenue?
+> no
+
+### If you are applying with the same idea as a previous batch, did anything change? If you applied with a different idea, why did you pivot and what did you learn from the last idea?
+> This is our first application with Tridi. In 2024, Juan applied to YC with a different startup, Latydo, a telemedicine app for Venezuela, where he was tech lead. It wasn't accepted, and the team later stopped working together: it wasn't a good fit, and too many people had equity before anything was built. The lesson: don't give equity before you've built something and proven you work well together. For Tridi, the four of us had already built different products together.
+
+### If you have already participated or committed to participate in an incubator, "accelerator" or "pre-accelerator" program, please tell us about it.
+> We built Tridi in 36 hours at Platanus Hack 26 in Caracas, a hackathon run by Platanus with Slash, Anthropic, Yummy and Vercel. During the event we received mentorship on how to shape the product, but we are not in any program right now.
+
+---
+
+## 6. Idea Section (Submitted Verbatim)
+
+### Why did you pick this idea to work on? Do you have domain expertise in this area? How do you know people need what you’re making?
+> A year ago the question was how to turn a chatbot into an agent. Now the open question is how to make a neural network move a robot, and the bottleneck is data. Humanoid companies have bodies and models but no internet of motion to learn from.
+>
+> Domain expertise: Pastor builds AI systems that people rely on every day. At Binaural, Venezuela's #1 Odoo partner, he designed and built the company's agentic AI infrastructure: MCP servers wired into the ERP and GitHub, a RAG over every project's docs and scope, and role-specific agents and skills. The whole technical and functional team uses it daily, and it cut development cost and time by 73% in two months. For Tridi, Pastor and Juan wrote the simulation, the imitation reward and our own PPO training loop, and we trained our policies from scratch, with no pre-trained base model.
+>
+> How we know it's needed: in 2025 Tesla reportedly moved Optimus training away from motion-capture suits and teleoperation toward camera video, because teleoperation doesn't scale (Business Insider, August 2025). Startups like Asimov now exist just to collect human movement data for humanoids. But raw human video isn't robot data: a robot that copies it falls. Making motion physically possible for a specific robot, under real-world conditions, is a step we haven't seen sold as a product.
+>
+> We haven't sold to anyone yet. Our next step is talking to humanoid teams to find which motions and conditions they need first.
+
+### Who are your competitors? What do you understand about your business that they don’t?
+> - Data collection: motion-capture studios, in-house teleoperation teams and startups like Asimov that collect human movement data. Their data is human-shaped and slow to capture, and it still has to be adapted to each robot.
+> - Video-to-robot tools: Ultimate Bots Studio (free, browser-based) retargets phone video and evaluates it with a pre-trained control model. AgiBot LinkCraft does it only for AgiBot's own robot. Open-source tools like video2robot stop at retargeting.
+> - Research: VideoMimic (UC Berkeley) showed video-trained policies running on a real G1. It's a paper and a lab setup, not a product.
+>
+> What we understand: copying is not data. A human motion mapped onto a robot is only a copy of the movement: it ignores gravity, balance, contact and friction, so the robot falls. The value is in the correction: the robot learns the motion itself, in physics, under varied conditions. Others rent a pre-trained model or stop at the copy. We train a policy from each video and deliver the physics-corrected data, which is what a robot company can actually train on.
+
+### How do or will you make money? How much could you make?
+> We'll sell to humanoid robot companies: usage-based pricing per hour of physics-corrected motion data and per trained policy, plus annual contracts for teams that train on our platform continuously.
+>
+> Our rough estimate, still to be validated: ~50 well-funded humanoid companies × $300k–$1M a year each on motion data = $15M–$50M a year in the near term. The larger prize is every robot that ships: each new skill on each new body needs motion data. After humanoids, the same simulator serves any hardware company that needs data from its machines in conditions it can't reproduce in a lab.
+
+### If you had any other ideas you considered applying with, please list them.
+> Sombra: a live camera that turns a person's 3D skeleton into a robot copying them in real time. We dropped it because copying live doesn't teach the robot anything; Tridi grew out of it.
+
+---
+
+## 7. Equity & Curious Sections (Submitted Verbatim)
+
+### Have you formed ANY legal entity yet?
+> no
+
+### Planned equity ownership breakdown:
+> We plan an equal split between the four founders:
+>
+> Pastor Jiménez, CEO: 25%
+> Juan Villa, CTO: 25%
+> César Martínez, CIO: 25%
+> José Alejandro Hernández, COO: 25%
+>
+> Each founder's equity vests individually over 5 years, 20% per year, so it's earned by staying and building. There are no other stockholders or employees yet.
+
+### Have you taken any investment yet? / Are you currently fundraising?
+> no / no
+
+### What convinced you to apply to Y Combinator? Did someone encourage you to apply? Have you been to any YC events?
+> We built Tridi in 36 hours and want to find out, as fast as possible, whether humanoid companies will pay for it. Tridi is a global product: the motion data it produces could help define the next generation of AI, the kind that moves in the physical world. From Venezuela there's no realistic way to make that happen: our customers, the investors in this space and the robots we need to test on are all abroad. YC is our way in. It puts us next to the companies building robots, so we can validate the market with them, and next to founders who have taken deep tech from a prototype to customers. Victor Cárdenas and Vicente Zavarce encouraged us to apply when we met them at AlegrIA. We haven't been to any YC events.
+
+### How did you hear about Y Combinator?
+> Victor Cárdenas (cofounder of Slash, a YC alum) told us in person at the AlegrIA hackathon in Caracas last year that if we built a good company we should apply to YC. Vicente Zavarce (founder and CEO of Yummy, YC S21) told us the same on a call during the hackathon.
+
+### Batch Preference:
+> Winter 2027
+
+---
+
+## 8. Post-Submission Progress (Nov 2 – Nov 9, 2026 — For YC Interview)
+
+Everything below was built in the **7 days immediately after submitting the application** and is live on both **`https://trytridi.com`** and **`https://tridi-alpha.vercel.app`**:
+
+| Area | At Submission (Nov 2, 2026) | Today (Nov 9, 2026) |
+| --- | --- | --- |
+| **3D Pose Extraction** | MediaPipe 3D (33 landmarks, body only, root drift on jumps) | **Capture 2.0 (`GVHMR + WiLoR`)**: world-space SMPL-X + 21-keypoint 5-finger hands ($< 2\text{ cm}$ fingertip error: **0.34 cm** counting 1–5) + aerial flight preservation |
+| **Standing Balance Policy** | 60M steps (`g1-stand.onnx`), holds most 250 N pushes | **300M steps (`Stand v2`)** with pelvis velocity sensing + Capture Point stepping reward: holds **4.0 / 4 pushes at 250 N** and up to **320–350 N** across all 4 terrains |
+| **Imitation Policies** | Walk followed 3.5 s of 11.8 s | **All 9 policies complete 100% of their clips**: `g1-walk`, `g1-run`, `g1-jacks`, `g1-saludar`, `g1-dedos`, `g1-bailar`, `g1-frente`, `g1-sentarse`, and `h1-walk` |
+| **Robot Morphologies** | Unitree G1 only | **Unitree G1 (29 DOF + 5-finger hands)**, **Unitree H1 (19 DOF)**, and **`luigi_lab3` (differential mobile robot)** |
+| **Object & Liquid Physics** | Terrain only | Rigid body (`taza`, 0.35 kg) + fluid particles (`agua`) with dry grip ($\mu = 0.85$) vs soapy slip ($\mu = 0.12$) |
+| **Physical Sim-to-Real** | Simulation only | **Completed first physical Sim-to-Real transfer (`#/milestones`)**: CAD `.stl` → MuJoCo digital twin → PPO ONNX policy (17 KB) deployed zero-shot onto real hardware (Arduino UNO + L298N + HC-SR04 + APDS-9960) and live over WebSerial at 50 Hz |
