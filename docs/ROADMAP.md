@@ -5,28 +5,39 @@
 
 ---
 
-## 1. Qué es Tridi hoy: Dos entradas, un mismo motor físico
+## 1. La Visión General vs. Cómo lo bajamos a tierra (No un side project eterno)
 
-Empezamos en la hackathon convirtiendo **video humano** en políticas para humanoides (`Unitree G1` / `H1`). Pero al resolver el robot físico de Luigi descubrimos una segunda entrada igual de potente y mucho más inmediata comercialmente.
+**La visión general de Tridi:**  
+Cualquier sistema robótico o línea de automatización física que tenga motores/actuadores, sensores y tiempos reales puede ser simulado y entrenado por Tridi. Eso abarca **4 verticales reales**:
+
+1. **Robots móviles y logística de almacén (AMR / estilo robots de Amazon / `luigi_lab3` y `luigi_lab4`):** robots que navegan pisos reales, esquivan obstáculos dinámicos o mueven anaqueles y cargas de un punto a otro sin chocar ni frenarse por bloqueos de sensores.
+2. **Pipelines de fábricas, empaquetadoras y celdas automatizadas:** máquinas industriales con varios pasos secuenciales y tiempos cronometrados (cintas transportadoras, brazos posicionadores, llenado de envases y cierres sincronizados) donde hoy un pequeño cambio de fricción, peso o retardo de un sensor traba toda la línea.
+3. **Brazos robóticos y manipulación diestra:** agarre de objetos rígidos y líquidos (como nuestra prueba de la taza con agua en seco vs. jabonoso) para clasificación y ensamblaje.
+4. **Robots humanoides aprendiendo de video humano (`Tridi Capture` — `Unitree G1 / H1`):** convertir un video de celular en políticas de cuerpo completo y manos de 5 dedos.
+
+**Por qué esto nos permite volver a Tridi una empresa real desde ya (incluso estando en Venezuela):**  
+Si dependiéramos únicamente de venderle mañana a Tesla Optimus o Figure, Tridi corría el riesgo de quedarse como una demo bonita en el navegador. En cambio, al abrir el motor de Tridi a **cualquier hardware automatizable (rovers, brazos, líneas de empaquetado en fábricas locales o agencias de robótica)**:
+- En Barquisimeto y Venezuela **sí existen fábricas (alimentos, café, empaquetadoras, agroindustria) y laboratorios/integradores** con máquinas reales, sensores ópticos, motores y microcontroladores/PLCs.
+- Mientras aplicamos a YC con toda la potencia de Physical AI (humanoides + Sim-to-Real), aquí mismo podemos **aterrizar casos físicos reales en piso y en planta**.
 
 Hoy Tridi tiene **dos canales de entrada** que alimentan el **mismo motor de simulación y entrenamiento (MuJoCo + RL en GPU + Sim-to-Real)**:
 
 ```
-CANAL A — Video a Robot (Tridi Capture)          CANAL B — Tu Hardware y Código a Sim-to-Real (Tridi Assembler)
-  Subes un video humano (celular/cámara)           Subes el CAD de tu robot (.stl/.step/URDF) + tu código (.ino/.py)
+CANAL A — Video a Robot (Tridi Capture)          CANAL B — Tu Hardware/Planta y Código a Sim-to-Real (Tridi Assembler)
+  Subes un video humano (celular/cámara)           Subes el CAD de tu máquina/robot (.stl/.step) + tu código (.ino/.py/PLC)
                  │                                                                │
                  ▼                                                                ▼
-   Esqueleto 3D + manos (GVHMR + WiLoR)             Gemelo digital MuJoCo calibrado con tus motores y sensores reales
+   Esqueleto 3D + manos (GVHMR + WiLoR)             Gemelo digital MuJoCo calibrado con motores, sensores y tiempos reales
                  └──────────────────────────────┬─────────────────────────────────┘
                                                 ▼
                               MOTOR TRIDI (MuJoCo + PPO/Imitación en GPU)
-                       Practica millones de pasos con fricción, masa y perturbaciones
+                       Practica millones de ciclos con fricción, masa y perturbaciones
                                                 │
                                                 ▼
                                      ENTREGA SIM-TO-REAL
                    1. Política neuronal ligera (ONNX a 50 Hz) + Dataset físico
                    2. Puente en vivo por WebSerial USB desde el navegador
-                   3. Firmware nativo calibrado (.ino / C / Python) listo para flashear
+                   3. Firmware / controlador nativo calibrado (.ino / C / Python) sin bloqueos
 ```
 
 ---
@@ -57,7 +68,7 @@ Llegarle mañana en frío desde Venezuela a **Tesla Optimus** o **Figure** sin t
 | Escalón | Quién es el cliente | Qué problema le resolvemos hoy | Qué ganamos nosotros |
 | --- | --- | --- | --- |
 | **1. Corto plazo (Ahora mismo)**<br>Laboratorios universitarios, makers avanzados, estudios de mecatrónica y competencias | Estudiantes/profesores (como Luigi con Lab 3 y Lab 4) y equipos locales o remotos que ya tienen un robot armado (Arduino, ESP32, Raspberry, brazos SO-100, rovers) pero su código clásico falla en el piso real. | Nos pasan su CAD (`.stl`) + su código (`.ino`/`.py`) y les devolvemos el gemelo digital en MuJoCo + el código reentrenado con física real que sí funciona a la primera. | **Portafolio real de casos Sim-to-Real** en `#/milestones` + prueba de fuego para automatizar nuestros motores, sensores y compilador. |
-| **2. Mediano plazo**<br>Agencias de robótica, integradores B2B y startups de robots móviles/brazos | Empresas que arman robots de almacén (AMR), inspección, agro o que compran robots comerciales (`Unitree Go2`, brazos robóticos) y pierden semanas calibrando controladores PID/estado a mano para cada cliente. | Una plataforma web (`Tridi Assembler`) donde suben el CAD + componentes de su robot, entrenan en nuestras GPUs en minutos y descargan el controlador ONNX / C calibrado para su terreno. | **Primeros ingresos recurrentes (SaaS / pago por entrenamiento en GPU)** y validación con empresas reales. |
+| **2. Mediano plazo (Aterrizaje comercial real)**<br>Agencias de robótica, integradores B2B y **fábricas / líneas de empaquetado** | Empresas que arman robots de almacén (AMR estilo Amazon), brazos clasificadores o **plantas con líneas de empaquetado/cierre cronometrado** que pierden semanas calibrando tiempos, sensores y controladores a mano. | Una plataforma (`Tridi Assembler`) donde suben el CAD + componentes y tiempos de su máquina/robot, entrenamos la coordinación óptima en nuestras GPUs en minutos y les entregamos el controlador ONNX / C calibrado. | **Primeros clientes reales / ingresos B2B** y casos de estudio industriales en `#/milestones`. |
 | **3. Largo plazo (Meta YC)**<br>Empresas de Humanoides y Physical AI | Startups de humanoides y manipulación diestra (`Unitree G1/H1`, `1X`, `Figure`, laboratorios de RL). | Ya con un motor probado en decenas de robots físicos y un pipeline de entrenamiento masivo en GPU cloud, les vendemos **datos de movimiento corregidos por física (`Tridi Capture`)** y políticas entrenadas desde video humano. | **Contratos grandes de datos y políticas ($300k–$1M/año).** |
 
 ---

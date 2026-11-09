@@ -9,7 +9,11 @@ Talk to the person in Spanish. Code, commits and PRs in English. The repo's `AGE
 
 ## What Tridi is, in one breath
 
-Tridi turns an ordinary phone video of a person into training data and trained policies for humanoid robots (Unitree G1 in MuJoCo, PPO, ONNX). Born at Platanus Hack 26 Caracas (Oct 23-25, 2026). Now it is the team's company: private repo `juanevillam/tridi`, applying to **Y Combinator Winter 2027** (deadline Nov 2, 2026, 8pm PT) and to every batch in 2027. Everything YC lives in `yc/`.
+Tridi is a Physical AI platform (`https://trytridi.com`) with two input channels feeding one MuJoCo + GPU RL engine:
+1. **Tridi Capture (Video to Robot):** turns ordinary phone video into 3D body + 21-keypoint 5-finger hands (`GVHMR + WiLoR`) and trains humanoid policies (`Unitree G1`, `Unitree H1`).
+2. **Tridi Assembler (Hardware & Code to Sim-to-Real):** takes any physical robot or factory automation cell's CAD (`.stl`/`.step`/URDF) + existing code (`.ino`/`.py`), builds its calibrated MuJoCo digital twin, retrains its control policy at 50 Hz (`ONNX`), and compiles non-blocking native firmware (`.ino`/C) or drives it live over WebSerial (proven in `luigi_lab3` and next in `luigi_lab4`).
+
+Born at Platanus Hack 26 Caracas (Oct 23-25, 2026). Private company repo: `juanevillam/tridi` (deploys to `https://trytridi.com` on Cloudflare Pages); public YC mirror: `Torpass/tridi` (`https://tridi-alpha.vercel.app`).
 
 ## `/tridi setup`
 
@@ -27,8 +31,8 @@ Stop at the first failure and give the exact fix.
 
 Read, in order, and summarize in a few lines what changed and what is next for this person:
 
-1. `yc/README.md` (status table and dates) and `yc/plan-hasta-el-deadline.md`.
-2. `yc/verdad-hoy.md` (what works, what doesn't).
+1. `docs/ROADMAP.md` (current product vision, 4 verticals, customer ladder, and open task board for Juan, Pastor, César, and Ale) and `docs/README.md` (human index of active vs historical docs).
+2. `docs/internal/README.md` (internal manuals for `trytridi.com` Cloudflare infra/security, Capture 2.0 + Sim-to-Real architecture, and verbatim submitted YC W27 application in `docs/internal/yc-w27-reference.md`).
 3. `docs/estado.md` and the newest files in `docs/bitacora/`.
 4. `git log --oneline -15 origin/main`.
 
