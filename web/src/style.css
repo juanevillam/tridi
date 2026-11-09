@@ -1261,16 +1261,41 @@ select:disabled {
 
 .luigi-sim-panel {
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
-.luigi-sim-panel[hidden] {
-  display: none;
+.luigi-sim-panel[hidden],
+#gallery[hidden],
+#pick-heading[hidden],
+.grasp-box[hidden],
+.field[hidden],
+.mode[hidden],
+.mode-note[hidden],
+select[hidden] {
+  display: none !important;
 }
 
 .luigi-sim-head {
   display: grid;
-  gap: 8px;
+  gap: 6px;
+}
+
+.luigi-sim-head .card-badge {
+  justify-self: start;
+  width: fit-content;
+}
+
+.luigi-sim-head h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.luigi-sim-head .train-text {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
 }
 
 .luigi-telemetry-grid {
@@ -2033,7 +2058,8 @@ select optgroup {
 .milestones-lede {
   margin: 0;
   color: var(--muted);
-  max-width: 68ch;
+  max-width: none;
+  width: 100%;
 }
 
 .milestone-card {
@@ -2090,18 +2116,20 @@ select optgroup {
   margin: 0;
   color: var(--ink-soft);
   font-size: 16px;
-  line-height: 1.6;
-  max-width: 82ch;
+  line-height: 1.65;
+  max-width: none;
+  width: 100%;
 }
 
 .milestone-videos {
   display: grid;
   gap: var(--s-4);
   margin-top: var(--s-2);
+  align-items: stretch;
 }
 
 .milestone-videos.two-col {
-  grid-template-columns: 1.25fr 0.95fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .milestone-videos.one-col {
@@ -2134,7 +2162,14 @@ select optgroup {
   background: #000;
 }
 
+.milestone-videos.two-col .milestone-video-box video {
+  aspect-ratio: 3 / 4;
+  max-height: 520px;
+  object-fit: cover;
+}
+
 .milestone-video-box figcaption {
+  flex: 1;
   padding: 12px 14px;
   font-size: 13px;
   line-height: 1.45;

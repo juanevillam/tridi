@@ -36,6 +36,9 @@ export const CONDITIONS = [
 ];
 
 export function mount(root, { api }, [clipId] = []) {
+  const isLuigiLink = clipId === 'luigi_lab3';
+  const initRobot = isLuigiLink ? 'luigi_lab3' : 'unitree_g1';
+  const initPolicy = isLuigiLink ? 'luigi-lab3' : FINAL_LEVEL;
   root.innerHTML = `
     <section class="page sims">
       <header class="page-head">
@@ -44,7 +47,7 @@ export function mount(root, { api }, [clipId] = []) {
       </header>
       <div class="sims-grid">
         <div class="sims-main">
-          <div id="stage" data-show="both">
+          <div id="stage" data-show="${isLuigiLink ? 'robot' : 'both'}">
             <section class="pane" id="human-pane">
               <canvas id="human"></canvas>
               <p class="pane-label" id="human-label">${T('personLabel')}</p>
@@ -59,23 +62,23 @@ export function mount(root, { api }, [clipId] = []) {
                 <button id="reset" class="icon-btn" type="button" ${A({ 'aria-label': 'restart', title: 'restart' })}>${ICONS.restart}</button>
                 <button id="speed" class="icon-btn speed" type="button" ${A({ 'aria-label': 'speed', title: 'speedTitle' })}>1×</button>
                 <select id="show" ${A({ 'aria-label': 'what' })}>
-                  <option value="both" selected ${X('both')}>${t('both')}</option>
+                  <option value="both" ${isLuigiLink ? '' : 'selected'} ${X('both')}>${t('both')}</option>
                   <option value="human" ${X('onlyHuman')}>${t('onlyHuman')}</option>
-                  <option value="robot" ${X('onlyRobot')}>${t('onlyRobot')}</option>
+                  <option value="robot" ${isLuigiLink ? 'selected' : ''} ${X('onlyRobot')}>${t('onlyRobot')}</option>
                 </select>
               </div>
-              <div class="mode" role="group" ${A({ 'aria-label': 'how' })}>
+              <div class="mode" id="physics-mode-group" role="group" ${A({ 'aria-label': 'how' })}>
                 <button type="button" data-physics="on" aria-pressed="true">${T('physicsOn')}</button>
                 <button type="button" data-physics="off" aria-pressed="false">${T('physicsOff')}</button>
               </div>
-              <p class="mode-note">${T('modeNote')}</p>
+              <p class="mode-note" id="physics-mode-note">${T('modeNote')}</p>
             </section>
             <section class="control-group" aria-labelledby="ctl-world">
               <h3 id="ctl-world">${T('conditions')}</h3>
               <div class="fields">
                 <label class="field wide">${T('robotModel')}
                   <select id="robot-model">
-                    ${ROBOT_MODELS.map(({ id, label }) => option(id, robotName(id, label), id === 'unitree_g1' ? 'selected' : '')).join('')}
+                    ${ROBOT_MODELS.map(({ id, label }) => option(id, robotName(id, label), id === initRobot ? 'selected' : '')).join('')}
                   </select>
                 </label>
                 <label class="field">${T('world')}
@@ -89,25 +92,45 @@ export function mount(root, { api }, [clipId] = []) {
                     ${SCENES.map(({ id, title }) => option(id, sceneName(id, title))).join('')}
                   </select>
                 </label>
-                <label class="field wide">${T('trainedWith')}
+                <label class="field wide" id="policy-field">${T('trainedWith')}
                   <select id="policy">
-                    ${LEVELS.map(({ id, label }) => option(id, levelName(id, label), id === FINAL_LEVEL ? 'selected' : '')).join('')}
-                    ${IMITATIONS.length ? `<optgroup ${A({ label: 'imitates' })}>${IMITATIONS.map(({ id, label }) => option(id, levelName(id, label), 'disabled')).join('')}</optgroup>` : ''}
+                    ${LEVELS.map(({ id, label }) => option(id, levelName(id, label), id === initPolicy ? 'selected' : '')).join('')}
+                    ${IMITATIONS.length ? `<optgroup ${A({ label: 'imitates' })}>${IMITATIONS.map(({ id, label }) => option(id, levelName(id, label), id === initPolicy ? 'selected' : 'disabled')).join('')}</optgroup>` : ''}
                   </select>
                 </label>
               </div>
               <div class="grasp-box" id="arduino-box" hidden>
-                <p class="mode-note"><strong>Arduino UNO (Lab III · 9600 baud)</strong> — Gemelo digital en vivo por USB (<code>HC-SR04</code> + <code>APDS-9960</code> + <code>L298N</code>)</p>
+                <p class="mode-note">
+                  <span class="t" lang="es"><strong>Arduino UNO (Lab III · 9600 baud)</strong> — Gemelo digital en vivo por USB (<code>HC-SR04</code> + <code>APDS-9960</code> + <code>L298N</code>)</span>
+                  <span class="t" lang="en"><strong>Arduino UNO (Lab III · 9600 baud)</strong> — Live digital twin over USB (<code>HC-SR04</code> + <code>APDS-9960</code> + <code>L298N</code>)</span>
+                </p>
                 <div class="mode grasp-actions" role="group">
-                  <button type="button" id="arduino-connect" aria-pressed="false">🔌 Conectar Arduino USB</button>
-                  <button type="button" data-cmd="F">⬆️ Avanzar (F)</button>
-                  <button type="button" data-cmd="B">⬇️ Atrás (B)</button>
-                  <button type="button" data-cmd="L">⬅️ Giro Izq (L)</button>
-                  <button type="button" data-cmd="R">➡️ Giro Der (R)</button>
-                  <button type="button" data-cmd="S">⏹ Quieto (S)</button>
-                  <button type="button" data-cmd="AUTO">🤖 Patrulla ONNX</button>
+                  <button type="button" id="arduino-connect" aria-pressed="false">
+                    <span class="t" lang="es">🔌 Conectar USB</span><span class="t" lang="en">🔌 Connect USB</span>
+                  </button>
+                  <button type="button" data-cmd="F">
+                    <span class="t" lang="es">⬆️ Avanzar (F)</span><span class="t" lang="en">⬆️ Forward (F)</span>
+                  </button>
+                  <button type="button" data-cmd="B">
+                    <span class="t" lang="es">⬇️ Atrás (B)</span><span class="t" lang="en">⬇️ Reverse (B)</span>
+                  </button>
+                  <button type="button" data-cmd="L">
+                    <span class="t" lang="es">⬅️ Giro Izq (L)</span><span class="t" lang="en">⬅️ Left (L)</span>
+                  </button>
+                  <button type="button" data-cmd="R">
+                    <span class="t" lang="es">➡️ Giro Der (R)</span><span class="t" lang="en">➡️ Right (R)</span>
+                  </button>
+                  <button type="button" data-cmd="S">
+                    <span class="t" lang="es">⏹ Quieto (S)</span><span class="t" lang="en">⏹ Stop (S)</span>
+                  </button>
+                  <button type="button" data-cmd="AUTO">
+                    <span class="t" lang="es">🤖 Patrulla ONNX</span><span class="t" lang="en">🤖 ONNX Patrol</span>
+                  </button>
                 </div>
-                <p class="mode-note" id="arduino-status">Conecta el cable USB del Arduino UNO (en Chrome) para leer el HC-SR04 y el APDS-9960 en vivo dentro de MuJoCo.</p>
+                <p class="mode-note" id="arduino-status">
+                  <span class="t" lang="es">Conecta el cable USB del Arduino UNO (en Chrome) o usa los botones para comandar el robot en MuJoCo.</span>
+                  <span class="t" lang="en">Plug in the Arduino UNO USB cable (in Chrome) or use the buttons to command the robot in MuJoCo.</span>
+                </p>
               </div>
               <div class="grasp-box" id="grasp-box">
                 <p class="mode-note">${T('objectsHead')}</p>
@@ -138,13 +161,13 @@ export function mount(root, { api }, [clipId] = []) {
               <span class="card-badge trained"><span class="t" lang="es">Sim-to-Real · Lazo Cerrado</span><span class="t" lang="en">Sim-to-Real · Closed-Loop</span></span>
               <h2><span class="t" lang="es">Telemetría de Sensores en MuJoCo</span><span class="t" lang="en">Live Sensor Telemetry in MuJoCo</span></h2>
               <p class="train-text">
-                <span class="t" lang="es">El robot diferencial simula el cono ultrasónico <code>HC-SR04</code> (±24°), el radar IR <code>APDS-9960 (0x9C)</code>, el arnés de cables Dupont y colisiones sólidas en una arena de prueba de 3,4 m × 3,4 m.</span>
-                <span class="t" lang="en">The differential robot simulates the <code>HC-SR04</code> ultrasonic cone (±24°), the <code>APDS-9960 (0x9C)</code> IR radar, Dupont jumper harness, and solid collisions inside a 3.4 m × 3.4 m test arena.</span>
+                <span class="t" lang="es">El robot diferencial simula el cono ultrasónico <code>HC-SR04</code> (±24°), el radar IR <code>APDS-9960 (0x9C)</code>, el arnés de cables Dupont y colisiones sólidas en una arena de 3,4 m × 3,4 m.</span>
+                <span class="t" lang="en">The differential robot simulates the <code>HC-SR04</code> ultrasonic cone (±24°), the <code>APDS-9960 (0x9C)</code> IR radar, Dupont jumper harness, and solid collisions inside a 3.4 m × 3.4 m arena.</span>
               </p>
             </div>
             <div class="luigi-telemetry-grid">
               <div class="luigi-tel-card">
-                <span>HC-SR04 (Trig D9 / Echo D10)</span>
+                <span>HC-SR04 (Trig D9 / Echo A1)</span>
                 <strong id="sim-hcsr04">120 cm</strong>
               </div>
               <div class="luigi-tel-card">
@@ -152,12 +175,12 @@ export function mount(root, { api }, [clipId] = []) {
                 <strong id="sim-apds">18 / 255</strong>
               </div>
               <div class="luigi-tel-card">
-                <span>Puente H L298N (Izq / Der)</span>
+                <span><span class="t" lang="es">Puente H L298N (Izq / Der)</span><span class="t" lang="en">L298N H-Bridge (L / R)</span></span>
                 <strong id="sim-wheels">[15.5, 15.5] rad/s</strong>
               </div>
               <div class="luigi-tel-card">
-                <span>Estado Evasión (4 Etapas)</span>
-                <strong id="sim-dodge-state">Crucero ONNX (50 Hz)</strong>
+                <span><span class="t" lang="es">Estado de evasión (4 etapas)</span><span class="t" lang="en">Dodge state (4 stages)</span></span>
+                <strong id="sim-dodge-state"><span class="t" lang="es">Crucero ONNX (50 Hz)</span><span class="t" lang="en">ONNX Cruise (50 Hz)</span></strong>
               </div>
             </div>
             <div class="train-actions-row">
@@ -178,17 +201,9 @@ export function mount(root, { api }, [clipId] = []) {
   // The physics sliders are open on wide screens; on phones they fold under "Ajustar la física"
   // (style.css hides the toggle on wide screens), so the scene and the clips come first.
   root.querySelector('.tune').open = !matchMedia('(max-width: 720px)').matches;
-  const isLuigiLink = clipId === 'luigi_lab3';
-  const stage = mountStage(root);
+  const stage = mountStage(root, { initialRobot: initRobot });
   const trainBox = mountTrainBox(root.querySelector('.train-box'), api);
   mountGallery(root, stage, isLuigiLink ? undefined : clipId, trainBox.show, { hide: HIDDEN_CLIPS });
-  if (isLuigiLink) {
-    const modelSel = root.querySelector('#robot-model');
-    if (modelSel) {
-      modelSel.value = 'luigi_lab3';
-      modelSel.dispatchEvent(new Event('change'));
-    }
-  }
   return () => {
     trainBox.dispose();
     stage.dispose();

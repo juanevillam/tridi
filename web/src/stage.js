@@ -41,7 +41,7 @@ const MAX_FRAME_S = 1 / 30;
 /**
  * @param root  element holding the stage markup of screens/simulations.js
  */
-export function mountStage(root) {
+export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
   const $ = (id) => root.querySelector(`#${id}`);
   const skeleton = new SkeletonView($('human'));
   const label = root.querySelector('.robot-pane .pane-label');
@@ -54,8 +54,8 @@ export function mountStage(root) {
   });
   let playing = true;
   let speed = 1;
-  let level = $('policy').value;
-  let robotModel = $('robot-model')?.value ?? 'unitree_g1';
+  let robotModel = initialRobot;
+  let level = initialRobot === 'luigi_lab3' ? 'luigi-lab3' : $('policy').value;
   let current = null; // { clip, title }: what the gallery selected
   let motion = null; // the RobotMotion of `current`
   let copying = false; // the robot is playing `motion`
@@ -130,6 +130,7 @@ export function mountStage(root) {
   }
 
   let last = performance.now();
+  let lastDodgeStage = -1;
   let frameId = requestAnimationFrame(function frame(now) {
     const wall = Math.min(MAX_FRAME_S, Math.max(0, (now - last) / 1000));
     last = now;
@@ -152,14 +153,16 @@ export function mountStage(root) {
         const c1 = (robot.view.sim.data.ctrl[1] ?? 0).toFixed(1);
         elWh.textContent = `[${c0}, ${c1}] rad/s`;
       }
-      if (elSt) {
+      if (elSt && sr.dodgeStage !== lastDodgeStage) {
+        lastDodgeStage = sr.dodgeStage;
         const stages = [
-          'Crucero ONNX (50 Hz)',
-          '1/4 · Freno Activo (-20 rad/s)',
-          '2/4 · Reversa de Despeje',
-          '3/4 · Giro Diferencial 90°',
+          { es: 'Crucero ONNX (50 Hz)', en: 'ONNX Cruise (50 Hz)' },
+          { es: '1/4 · Freno activo (-20 rad/s)', en: '1/4 · Active brake (-20 rad/s)' },
+          { es: '2/4 · Reversa de despeje', en: '2/4 · Reverse clearance' },
+          { es: '3/4 · Giro diferencial 90°', en: '3/4 · 90° differential pivot' },
         ];
-        elSt.textContent = stages[sr.dodgeStage] ?? stages[0];
+        const stObj = stages[sr.dodgeStage] ?? stages[0];
+        elSt.innerHTML = `<span class="t" lang="es">${stObj.es}</span><span class="t" lang="en">${stObj.en}</span>`;
         elSt.style.color = sr.dodgeStage > 0 ? '#ff6a3d' : '#c8ff2e';
       }
     }
@@ -173,11 +176,19 @@ export function mountStage(root) {
     if ($('arduino-box')) $('arduino-box').hidden = !isLuigi;
     if ($('grasp-box')) $('grasp-box').hidden = isLuigi;
     if ($('place-field')) $('place-field').hidden = isLuigi;
+    if ($('policy-field')) $('policy-field').hidden = isLuigi;
+    if ($('show')) $('show').hidden = isLuigi;
+    if ($('physics-mode-group')) $('physics-mode-group').hidden = isLuigi;
+    if ($('physics-mode-note')) $('physics-mode-note').hidden = isLuigi;
     if ($('luigi-sim-panel')) $('luigi-sim-panel').hidden = !isLuigi;
     if ($('pick-heading')) $('pick-heading').hidden = isLuigi;
     if ($('gallery')) $('gallery').hidden = isLuigi;
     const tBox = root.querySelector('.train-box');
     if (tBox) tBox.hidden = isLuigi || !current;
+    if (isLuigi && $('stage')) {
+      $('stage').dataset.show = 'robot';
+      if ($('show')) $('show').value = 'robot';
+    }
   }
 
   // Shows the current clip on the robot. Its RobotMotion comes from the saved ones if there is one;
@@ -336,6 +347,10 @@ export function mountStage(root) {
     refreshLook();
     view.setSpeed(speed);
     if (!playing) view.pause();
+    if (robotModel === 'luigi_lab3') {
+      await loadLevel('luigi-lab3');
+      return;
+    }
     await loadLevel(FINAL_LEVEL); // standing with its policy: physics from the first frame
     if (current) await physicsFor(current.clip);
     copyCurrent(); // the puppet reference, ready for the "sin física" mode
@@ -378,11 +393,11 @@ export function mountStage(root) {
   let onnxPatrolTimer = null;
   let lastHwDistCm = 999;
   const CMD_SPECS = {
-    F: { ctrl: [15.5, 15.5], ms: 1500, label: 'F · Avanzar (PWM 190, 1.5 s)' },
-    B: { ctrl: [-12.5, -12.5], ms: 1000, label: 'B · Retroceder (PWM 150, 1.0 s)' },
-    L: { ctrl: [-13.0, 13.0], ms: 450, label: 'L · Giro Izquierda (PWM 160, 0.45 s)' },
-    R: { ctrl: [13.0, -13.0], ms: 450, label: 'R · Giro Derecha (PWM 160, 0.45 s)' },
-    S: { ctrl: [0, 0], ms: 2000, label: 'S · Detenido (Modo Manual / Espera)' },
+    F: { ctrl: [15.5, 15.5], ms: 1500, es: 'F · Avanzar (PWM 190, 1,5 s)', en: 'F · Forward (PWM 190, 1.5 s)' },
+    B: { ctrl: [-12.5, -12.5], ms: 1000, es: 'B · Retroceder (PWM 150, 1,0 s)', en: 'B · Reverse (PWM 150, 1.0 s)' },
+    L: { ctrl: [-13.0, 13.0], ms: 450, es: 'L · Giro Izquierda (PWM 160, 0,45 s)', en: 'L · Turn Left (PWM 160, 0.45 s)' },
+    R: { ctrl: [13.0, -13.0], ms: 450, es: 'R · Giro Derecha (PWM 160, 0,45 s)', en: 'R · Turn Right (PWM 160, 0.45 s)' },
+    S: { ctrl: [0, 0], ms: 2000, es: 'S · Detenido (Modo Manual)', en: 'S · Stopped (Manual Mode)' },
   };
   function stopOnnxPatrolStream() {
     if (onnxPatrolTimer) {
@@ -406,7 +421,7 @@ export function mountStage(root) {
         sim.data.ctrl[1] = -6.0;
         if (serialWriter) serialWriter.write(new TextEncoder().encode('B')).catch(() => {});
         if (st) {
-          st.innerHTML = `🤖 <strong>ONNX + HC-SR04 Físico (${lastHwDistCm} cm &lt; 22 cm)</strong> → ⚠️ Evasión neuronal: <strong>Reversa + Giro (B)</strong>`;
+          st.innerHTML = `<span class="t" lang="es">🤖 <strong>ONNX + HC-SR04 Físico (${lastHwDistCm} cm &lt; 22 cm)</strong> → ⚠️ Evasión: <strong>Reversa + Giro (B)</strong></span><span class="t" lang="en">🤖 <strong>ONNX + Physical HC-SR04 (${lastHwDistCm} cm &lt; 22 cm)</strong> → ⚠️ Dodge: <strong>Reverse + Turn (B)</strong></span>`;
         }
         return;
       }
@@ -423,8 +438,8 @@ export function mountStage(root) {
         serialWriter.write(new TextEncoder().encode(hwCmd)).catch(() => {});
       }
       if (st) {
-        const distInfo = lastHwDistCm < 900 ? ` · HC-SR04 real: <strong>${lastHwDistCm} cm</strong>` : '';
-        st.innerHTML = `🤖 <strong>Red Neuronal ONNX al volante</strong> → Ruedas: <code>[${cL.toFixed(1)}, ${cR.toFixed(1)}] rad/s</code> → Arduino USB: <strong>${hwCmd}</strong>${distInfo}`;
+        const distInfo = lastHwDistCm < 900 ? ` · HC-SR04: <strong>${lastHwDistCm} cm</strong>` : '';
+        st.innerHTML = `<span class="t" lang="es">🤖 <strong>Red ONNX al volante</strong> → Ruedas: <code>[${cL.toFixed(1)}, ${cR.toFixed(1)}] rad/s</code> → USB: <strong>${hwCmd}</strong>${distInfo}</span><span class="t" lang="en">🤖 <strong>ONNX Policy driving</strong> → Wheels: <code>[${cL.toFixed(1)}, ${cR.toFixed(1)}] rad/s</code> → USB: <strong>${hwCmd}</strong>${distInfo}</span>`;
       }
     }, 320);
   }
@@ -459,8 +474,9 @@ export function mountStage(root) {
     const st = $('arduino-status');
     if (st) {
       const distTxt = distCm !== null ? ` · HC-SR04: <strong>${distCm} cm</strong>` : '';
-      const safeTxt = safety ? ' · ⚠️ <strong>SEGURIDAD (&lt;20 cm)</strong>' : '';
-      st.innerHTML = `${fromHw ? '🔌 Arduino UNO en vivo' : '🎮 Modo Gestos / USB'}: <strong>${spec.label}</strong>${distTxt}${safeTxt}`;
+      const safeEs = safety ? ' · ⚠️ <strong>SEGURIDAD (&lt;20 cm)</strong>' : '';
+      const safeEn = safety ? ' · ⚠️ <strong>SAFETY (&lt;20 cm)</strong>' : '';
+      st.innerHTML = `<span class="t" lang="es">${fromHw ? '🔌 Arduino UNO en vivo' : '🎮 Comando manual'}: <strong>${spec.es}</strong>${distTxt}${safeEs}</span><span class="t" lang="en">${fromHw ? '🔌 Live Arduino UNO' : '🎮 Manual command'}: <strong>${spec.en}</strong>${distTxt}${safeEn}</span>`;
     }
     if (!fromHw && serialWriter) {
       serialWriter.write(new TextEncoder().encode(cmd)).catch(() => {});
@@ -473,7 +489,9 @@ export function mountStage(root) {
     $('arduino-connect').onclick = async () => {
       const st = $('arduino-status');
       if (!('serial' in navigator)) {
-        if (st) st.textContent = 'Abre este link en Google Chrome para usar WebSerial con el cable USB del Arduino.';
+        if (st) {
+          st.innerHTML = `<span class="t" lang="es">Abre este link en Google Chrome para usar WebSerial con el cable USB del Arduino.</span><span class="t" lang="en">Open this page in Google Chrome to use WebSerial with the Arduino USB cable.</span>`;
+        }
         return;
       }
       try {
@@ -485,8 +503,10 @@ export function mountStage(root) {
           robot.view.reset();
         }
         $('arduino-connect').setAttribute('aria-pressed', 'true');
-        $('arduino-connect').textContent = '✅ Arduino UNO Conectado (9600 baud)';
-        if (st) st.textContent = 'Conectado a 9600 baud. Pasa la mano frente al APDS-9960 o acerca un objeto al HC-SR04.';
+        $('arduino-connect').innerHTML = `<span class="t" lang="es">✅ USB Conectado (9600)</span><span class="t" lang="en">✅ USB Connected (9600)</span>`;
+        if (st) {
+          st.innerHTML = `<span class="t" lang="es">Conectado a 9600 baud. Pasa la mano frente al APDS-9960 o acerca un objeto al HC-SR04.</span><span class="t" lang="en">Connected at 9600 baud. Wave your hand over the APDS-9960 or bring an object near the HC-SR04.</span>`;
+        }
         if (port.writable) serialWriter = port.writable.getWriter();
         const reader = port.readable.getReader();
         const decoder = new TextDecoder();
