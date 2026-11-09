@@ -2,6 +2,7 @@
 
 **Last updated:** 2026-11-09  
 **Active branch:** `juan/experimental`  
+**Internal technical manuals:** [`docs/internal/README.md`](docs/internal/README.md)  
 **Quality playbook:** [`docs/audit-playbook.md`](docs/audit-playbook.md) | **Skill:** `.claude/skills/tridi-quality/SKILL.md`
 
 ---

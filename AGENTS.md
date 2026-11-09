@@ -26,6 +26,7 @@ Tridi was born at Platanus Hack 26 Caracas (October 23 to 25, 2026). This repo w
 | Startups YC accepted, by batch, and what we learn from them | [`yc/investigacion/startups/`](yc/investigacion/startups/README.md) |
 | Market research for robot data | [`yc/investigacion/mercado-robotica.md`](yc/investigacion/mercado-robotica.md) |
 | Web & Physics Quality Audit Playbook | [`docs/audit-playbook.md`](docs/audit-playbook.md), [`.claude/skills/tridi-quality/SKILL.md`](.claude/skills/tridi-quality/SKILL.md) |
+| Internal Engineering, Infra, Security & YC Manuals | [`docs/internal/README.md`](docs/internal/README.md) (`infra-and-security.md`, `architecture-and-sim2real.md`, `yc-w27-reference.md`) |
 | Session Handoff Summary | [`CONTEXT.md`](CONTEXT.md) |
 
 ## Remotes
@@ -64,7 +65,7 @@ Rules and template in [`docs/bitacora/README.md`](docs/bitacora/README.md).
 
 | Person | GitHub | Area | Folder |
 | --- | --- | --- | --- |
-| Juan | @juanevillam | Data (video and camera → `PoseClip`, video server), training, much of the web | `data/`, `training/` |
+| Juan (CTO) | @juanevillam | Data (video and camera → `PoseClip`, video server), training, infra/security, much of the web | `data/`, `training/`, `web/` |
 | Pastor | @torpass | Physics engine, robot, retargeting, 3D render, training | `physics/`, `training/` |
 | César | @cisorm | The web app | `web/` |
 | Ale | @alehernandezt | Strategy, pitch, YC application, customer conversations (does not code) | `docs/`, `yc/` |
@@ -73,7 +74,8 @@ Who are the founders on the YC application, and who is CEO, is still open: [`yc/
 
 ## Deploy
 
-The live demo, https://tridi-alpha.vercel.app (Vercel project `tridi`, Pastor's account), still deploys from the public mirror [`Torpass/tridi`](https://github.com/Torpass/tridi) of the frozen hackathon repo: it stays up as it is, and nothing in this repo changes it. Moving deploys to this repo is a pending decision ([`yc/legal-y-equity.md`](yc/legal-y-equity.md#deploy)).
+- **Production (`https://trytridi.com`):** Deployed on Cloudflare Pages (project `tridi`, `tridi-18p.pages.dev`) and automated via [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) so any teammate can push and deploy without Vercel Hobby seat restrictions. Full DNS, Cloudflare security, HSTS, DMARC/SPF, and deploy instructions live in [`docs/internal/infra-and-security.md`](docs/internal/infra-and-security.md).
+- **Legacy hackathon mirror (`https://tridi-alpha.vercel.app`):** Deploys from the public mirror [`Torpass/tridi`](https://github.com/Torpass/tridi) of the frozen hackathon repo and stays up for backward compatibility with older links.
 
 - **Video server:** `data/server.py` runs on Juan's Mac behind a Cloudflare tunnel (`data/serve.sh`); it writes the tunnel's changing URL to a gist that the web reads, so the web's address never changes (`?api=` still overrides it). It keeps only PoseClips, never videos. Detail in [`docs/decisiones/2026-10-24-servidor-de-video-en-la-mac.md`](docs/decisiones/2026-10-24-servidor-de-video-en-la-mac.md).
 
