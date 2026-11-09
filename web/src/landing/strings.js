@@ -147,8 +147,10 @@ export const { T, t, A } = dict({
   'track.next': { es: 'Lo que viene', en: 'What’s next' },
   'track.nextWhat': { es: 'Cualquier movimiento, en cualquier terreno', en: 'Any motion, on any terrain' },
   'track.nextShort': { es: 'Cualquier terreno', en: 'Any terrain' },
-  'foot.madeAt': { es: 'Origen', en: 'Origin' },
+  'foot.madeAt': { es: 'Hecho en', en: 'Made at' },
   'foot.robot': { es: 'Robots', en: 'Robots' },
   'foot.milestones': { es: 'Avances y casos reales', en: 'Milestones & Field Notes' },
   'foot.milestonesLink': { es: 'Sim-to-Real físico + Platanus Hack 26 →', en: 'Physical Sim-to-Real + Platanus Hack 26 →' },
+  'foot.code': { es: 'Código', en: 'Code' },
+  'foot.repo': { es: 'Abierto en GitHub', en: 'Open on GitHub' },
 });
