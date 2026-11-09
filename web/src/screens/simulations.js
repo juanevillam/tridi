@@ -99,39 +99,6 @@ export function mount(root, { api }, [clipId] = []) {
                   </select>
                 </label>
               </div>
-              <div class="grasp-box" id="arduino-box" hidden>
-                <p class="mode-note">
-                  <span class="t" lang="es"><strong>Arduino UNO (Lab III · 9600 baud)</strong> — Gemelo digital en vivo por USB (<code>HC-SR04</code> + <code>APDS-9960</code> + <code>L298N</code>)</span>
-                  <span class="t" lang="en"><strong>Arduino UNO (Lab III · 9600 baud)</strong> — Live digital twin over USB (<code>HC-SR04</code> + <code>APDS-9960</code> + <code>L298N</code>)</span>
-                </p>
-                <div class="mode grasp-actions" role="group">
-                  <button type="button" id="arduino-connect" aria-pressed="false">
-                    <span class="t" lang="es">🔌 Conectar USB</span><span class="t" lang="en">🔌 Connect USB</span>
-                  </button>
-                  <button type="button" data-cmd="F">
-                    <span class="t" lang="es">⬆️ Avanzar (F)</span><span class="t" lang="en">⬆️ Forward (F)</span>
-                  </button>
-                  <button type="button" data-cmd="B">
-                    <span class="t" lang="es">⬇️ Atrás (B)</span><span class="t" lang="en">⬇️ Reverse (B)</span>
-                  </button>
-                  <button type="button" data-cmd="L">
-                    <span class="t" lang="es">⬅️ Giro Izq (L)</span><span class="t" lang="en">⬅️ Left (L)</span>
-                  </button>
-                  <button type="button" data-cmd="R">
-                    <span class="t" lang="es">➡️ Giro Der (R)</span><span class="t" lang="en">➡️ Right (R)</span>
-                  </button>
-                  <button type="button" data-cmd="S">
-                    <span class="t" lang="es">⏹ Quieto (S)</span><span class="t" lang="en">⏹ Stop (S)</span>
-                  </button>
-                  <button type="button" data-cmd="AUTO">
-                    <span class="t" lang="es">🤖 Patrulla ONNX</span><span class="t" lang="en">🤖 ONNX Patrol</span>
-                  </button>
-                </div>
-                <p class="mode-note" id="arduino-status">
-                  <span class="t" lang="es">Conecta el cable USB del Arduino UNO (en Chrome) o usa los botones para comandar el robot en MuJoCo.</span>
-                  <span class="t" lang="en">Plug in the Arduino UNO USB cable (in Chrome) or use the buttons to command the robot in MuJoCo.</span>
-                </p>
-              </div>
               <div class="grasp-box" id="grasp-box">
                 <p class="mode-note">${T('objectsHead')}</p>
                 <div class="mode grasp-actions" role="group" ${A({ 'aria-label': 'objectsHead' })}>
@@ -182,6 +149,33 @@ export function mount(root, { api }, [clipId] = []) {
                 <span><span class="t" lang="es">Estado de evasión (4 etapas)</span><span class="t" lang="en">Dodge state (4 stages)</span></span>
                 <strong id="sim-dodge-state"><span class="t" lang="es">Crucero ONNX (50 Hz)</span><span class="t" lang="en">ONNX Cruise (50 Hz)</span></strong>
               </div>
+            </div>
+            <div class="luigi-drive-box" id="arduino-box">
+              <span class="luigi-drive-label"><span class="t" lang="es">Control de Marcha y Política ONNX</span><span class="t" lang="en">Drive &amp; ONNX Policy Control</span></span>
+              <div class="luigi-drive-grid" role="group">
+                <button type="button" class="luigi-cmd-btn" data-cmd="AUTO" aria-pressed="true">
+                  <span class="t" lang="es">🤖 Patrulla ONNX</span><span class="t" lang="en">🤖 ONNX Patrol</span>
+                </button>
+                <button type="button" class="luigi-cmd-btn" data-cmd="F" aria-pressed="false">
+                  <span class="t" lang="es">⬆️ Avanzar</span><span class="t" lang="en">⬆️ Forward</span>
+                </button>
+                <button type="button" class="luigi-cmd-btn" data-cmd="B" aria-pressed="false">
+                  <span class="t" lang="es">⬇️ Reversa</span><span class="t" lang="en">⬇️ Reverse</span>
+                </button>
+                <button type="button" class="luigi-cmd-btn" data-cmd="L" aria-pressed="false">
+                  <span class="t" lang="es">⬅️ Giro Izq</span><span class="t" lang="en">⬅️ Turn Left</span>
+                </button>
+                <button type="button" class="luigi-cmd-btn" data-cmd="R" aria-pressed="false">
+                  <span class="t" lang="es">➡️ Giro Der</span><span class="t" lang="en">➡️ Turn Right</span>
+                </button>
+                <button type="button" class="luigi-cmd-btn" data-cmd="S" aria-pressed="false">
+                  <span class="t" lang="es">⏹ Detener</span><span class="t" lang="en">⏹ Stop</span>
+                </button>
+              </div>
+              <p class="mode-note" id="arduino-status">
+                <span class="t" lang="es">Modo activo: <strong>Crucero autónomo ONNX (50 Hz) + evasión en 4 etapas</strong>.</span>
+                <span class="t" lang="en">Active mode: <strong>Autonomous 50 Hz ONNX cruise + 4-stage obstacle evasion</strong>.</span>
+              </p>
             </div>
             <div class="train-actions-row">
               <button type="button" class="button primary" id="luigi-reset-arena">

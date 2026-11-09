@@ -21,7 +21,16 @@ export function mount(root) {
         ${langSwitch()}
       </header>
 
-      <article class="milestone-card" id="sim-to-real">
+      <div class="milestone-tabs" role="tablist">
+        <button type="button" class="milestone-tab" role="tab" data-tab="sim-to-real" aria-selected="true">
+          ${T('tabSim2Real')}
+        </button>
+        <button type="button" class="milestone-tab" role="tab" data-tab="platanus-hack" aria-selected="false">
+          ${T('tabHackathon')}
+        </button>
+      </div>
+
+      <article class="milestone-card" id="sim-to-real" data-panel="sim-to-real">
         <div class="milestone-meta">
           <span class="milestone-badge signal">${T('m2.badge')}</span>
           <a class="button primary milestone-cta" href="#/simulations/luigi_lab3">${T('m2.ctaSim')}</a>
@@ -37,9 +46,29 @@ export function mount(root) {
           </figure>
           <figure class="milestone-video-box">
             <div class="milestone-video-head">${T('m2.vidHwLabel')}</div>
-            <video src="${MEDIA}luigi-hardware.mp4" autoplay muted loop playsinline controls preload="metadata"></video>
+            <video src="${MEDIA}luigi-hardware.mp4" controls playsinline preload="metadata"></video>
             <figcaption>${T('m2.vidHwCap')}</figcaption>
           </figure>
+        </div>
+
+        <h3 class="milestone-subhead">${T('m2.stepsTitle')}</h3>
+        <div class="milestone-steps-grid">
+          <div class="milestone-step">
+            <h4>${T('m2.s1.title')}</h4>
+            <p>${T('m2.s1.body')}</p>
+          </div>
+          <div class="milestone-step">
+            <h4>${T('m2.s2.title')}</h4>
+            <p>${T('m2.s2.body')}</p>
+          </div>
+          <div class="milestone-step">
+            <h4>${T('m2.s3.title')}</h4>
+            <p>${T('m2.s3.body')}</p>
+          </div>
+          <div class="milestone-step">
+            <h4>${T('m2.s4.title')}</h4>
+            <p>${T('m2.s4.body')}</p>
+          </div>
         </div>
 
         <h3 class="milestone-subhead">${T('m2.galleryTitle')}</h3>
@@ -75,29 +104,9 @@ export function mount(root) {
             <figcaption>${T('m2.g6.cap')}</figcaption>
           </figure>
         </div>
-
-        <h3 class="milestone-subhead">${T('m2.stepsTitle')}</h3>
-        <div class="milestone-steps-grid">
-          <div class="milestone-step">
-            <h4>${T('m2.s1.title')}</h4>
-            <p>${T('m2.s1.body')}</p>
-          </div>
-          <div class="milestone-step">
-            <h4>${T('m2.s2.title')}</h4>
-            <p>${T('m2.s2.body')}</p>
-          </div>
-          <div class="milestone-step">
-            <h4>${T('m2.s3.title')}</h4>
-            <p>${T('m2.s3.body')}</p>
-          </div>
-          <div class="milestone-step">
-            <h4>${T('m2.s4.title')}</h4>
-            <p>${T('m2.s4.body')}</p>
-          </div>
-        </div>
       </article>
 
-      <article class="milestone-card" id="platanus-hack">
+      <article class="milestone-card" id="platanus-hack" data-panel="platanus-hack" hidden>
         <div class="milestone-meta">
           <span class="milestone-badge">${T('m1.badge')}</span>
         </div>
@@ -130,4 +139,18 @@ export function mount(root) {
       </article>
     </section>
   `;
+
+  const tabs = [...root.querySelectorAll('.milestone-tab')];
+  const panels = [...root.querySelectorAll('[data-panel]')];
+  const selectTab = (id) => {
+    tabs.forEach((btn) => btn.setAttribute('aria-selected', String(btn.dataset.tab === id)));
+    panels.forEach((panel) => {
+      const active = panel.dataset.panel === id;
+      panel.hidden = !active;
+      if (!active) panel.querySelectorAll('video').forEach((v) => v.pause());
+    });
+  };
+  tabs.forEach((btn) => {
+    btn.onclick = () => selectTab(btn.dataset.tab);
+  });
 }

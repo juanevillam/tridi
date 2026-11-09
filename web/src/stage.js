@@ -157,9 +157,9 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
         lastDodgeStage = sr.dodgeStage;
         const stages = [
           { es: 'Crucero ONNX (50 Hz)', en: 'ONNX Cruise (50 Hz)' },
-          { es: '1/4 · Freno activo (-20 rad/s)', en: '1/4 · Active brake (-20 rad/s)' },
-          { es: '2/4 · Reversa de despeje', en: '2/4 · Reverse clearance' },
-          { es: '3/4 · Giro diferencial 90°', en: '3/4 · 90° differential pivot' },
+          { es: '1/4 · Freno (-20 rad/s)', en: '1/4 · Brake (-20 rad/s)' },
+          { es: '2/4 · Reversa despeje', en: '2/4 · Reverse clear' },
+          { es: '3/4 · Giro 90°', en: '3/4 · 90° Pivot' },
         ];
         const stObj = stages[sr.dodgeStage] ?? stages[0];
         elSt.innerHTML = `<span class="t" lang="es">${stObj.es}</span><span class="t" lang="en">${stObj.en}</span>`;
@@ -252,15 +252,18 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
           (await savedMotion(motionId)) ??
           (imitation.motion ? await savedMotion(imitation.motion) : null));
       await view.loadPolicy(onnx, json, imitation && !isLuigi ? { motion: learned } : {});
+      const [px, py] = view.sim.bodyPosition('pelvis');
       if (isLuigi) {
         view.viewer.targetHeight = 0.09;
         view.viewer.controls.minDistance = 0.25;
-        view.viewer.camera.position.set(1.05, 0.72, -0.95);
+        view.viewer.controls.target.set(px, 0.09, -py);
+        view.viewer.camera.position.set(px + 1.05, 0.72, -py - 0.95);
         view.viewer.controls.update();
-      } else if (robotModel === 'luigi_lab3') {
+      } else {
         view.viewer.targetHeight = 0.75;
         view.viewer.controls.minDistance = 0.65;
-        view.viewer.camera.position.set(2.6, 1.5, -1.6);
+        view.viewer.controls.target.set(px, 0.75, -py);
+        view.viewer.camera.position.set(px + 2.6, 1.5, -py - 1.6);
         view.viewer.controls.update();
       }
       if (learned?.qpos?.length) {
@@ -483,7 +486,10 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     }
   }
   root.querySelectorAll('#arduino-box [data-cmd]').forEach((btn) => {
-    btn.onclick = () => applyArduinoCmd(btn.dataset.cmd, false);
+    btn.onclick = () => {
+      root.querySelectorAll('#arduino-box [data-cmd]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+      applyArduinoCmd(btn.dataset.cmd, false);
+    };
   });
   if ($('arduino-connect')) {
     $('arduino-connect').onclick = async () => {
@@ -677,6 +683,16 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
         robot.view.sim._serialCmd = null;
       }
       robot.view?.reset();
+      if (robot.view?.viewer) {
+        const [px, py] = robot.view.sim.bodyPosition('pelvis');
+        robot.view.viewer.targetHeight = 0.09;
+        robot.view.viewer.controls.target.set(px, 0.09, -py);
+        robot.view.viewer.camera.position.set(px + 1.05, 0.72, -py - 0.95);
+        robot.view.viewer.controls.update();
+      }
+      root.querySelectorAll('#arduino-box [data-cmd]').forEach((b) => {
+        b.setAttribute('aria-pressed', String(b.dataset.cmd === 'AUTO'));
+      });
     };
   }
   if ($('luigi-back-g1')) {

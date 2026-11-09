@@ -318,8 +318,8 @@ export class Simulation {
       ey = -ey;
       ez = -ez;
     }
-    const kpRot = 175 * scale;
-    const kdRot = 24 * scale;
+    const kpRot = 420 * scale;
+    const kdRot = 48 * scale;
     data.qfrc_applied[3] = kpRot * (2 * ex) - kdRot * qvel[3];
     data.qfrc_applied[4] = kpRot * (2 * ey) - kdRot * qvel[4];
     data.qfrc_applied[5] = kpRot * (2 * ez) - kdRot * qvel[5];

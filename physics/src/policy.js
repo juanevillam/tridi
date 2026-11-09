@@ -346,13 +346,16 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
       previous.set(ctrl);
       if (mimic && sim._inAdvance && !sim.pushUntil) {
         // Blend the clean reference joints with the ONNX reflex residual: 6% residual when upright
-        // so full-amplitude human motion is preserved without 50 Hz motor chatter, ramping to
-        // 100% policy recovery reflex as the torso tilts, with a 1-step exponential smoothing filter.
+        // so full-amplitude human motion is preserved without 50 Hz motor chatter, while keeping
+        // the waist (joints 12..14 on G1) upright and free of out-of-distribution forward lean.
         const next = reference.sample(t + CONTROL_DT);
-        const reflex = Math.min(1, Math.max(0.06, (1 - upright - 0.02) / 0.18));
+        const reflex = Math.min(0.22, Math.max(0.05, (1 - upright - 0.04) / 0.25));
         for (let i = 0; i < nu; i++) {
           const refJ = next.q[7 + i];
-          const target = refJ + reflex * (ctrl[i] - refJ);
+          const w = i >= 12 && i <= 14 ? 0.03 : reflex;
+          // Counteract gravity droop on G1 waist_pitch_joint (index 14) so the torso stays vertical
+          const uprightBias = i === 14 && nu === 29 ? -0.06 : 0;
+          const target = refJ + uprightBias + w * (ctrl[i] - refJ);
           data.ctrl[i] = 0.55 * target + 0.45 * data.ctrl[i];
         }
       } else {

@@ -25,6 +25,8 @@ Tridi was born at Platanus Hack 26 Caracas (October 23 to 25, 2026). This repo w
 | Competitors and look-alikes, with direct links | [`yc/competidores.md`](yc/competidores.md) |
 | Startups YC accepted, by batch, and what we learn from them | [`yc/investigacion/startups/`](yc/investigacion/startups/README.md) |
 | Market research for robot data | [`yc/investigacion/mercado-robotica.md`](yc/investigacion/mercado-robotica.md) |
+| Web & Physics Quality Audit Playbook | [`docs/audit-playbook.md`](docs/audit-playbook.md), [`.claude/skills/tridi-quality/SKILL.md`](.claude/skills/tridi-quality/SKILL.md) |
+| Session Handoff Summary | [`CONTEXT.md`](CONTEXT.md) |
 
 ## Remotes
 
@@ -79,3 +81,4 @@ The live demo, https://tridi-alpha.vercel.app (Vercel project `tridi`, Pastor's 
 
 - Code, commits and PRs in English. Docs and texts for the team in Spanish.
 - Every long operation shows its progress; main buttons stay visible without scrolling.
+- Whenever touching `web/` or `physics/`, follow [`docs/audit-playbook.md`](docs/audit-playbook.md) (`/tridi-craft-audit`, `/tridi-ux-audit`) and run `npm --prefix physics run check && npm --prefix web run check && npm --prefix web run build` before finishing.

@@ -1160,7 +1160,7 @@ html.is-landing.lenis body {
 
 .closing {
   position: relative;
-  min-height: 175svh;
+  min-height: 192svh;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -1312,14 +1312,15 @@ html.is-landing.lenis body {
   background: rgb(241 243 238 / 0.04);
   color: var(--fg);
   text-decoration: none;
-  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  transition: border-color 0.16s ease, background-color 0.16s ease;
 }
 
 .try:hover,
 .try:focus-visible {
   border-color: var(--signal);
-  background: rgb(200 255 46 / 0.08);
-  box-shadow: 0 12px 32px -16px rgb(200 255 46 / 0.28);
+  background-color: rgb(200 255 46 / 0.08);
 }
 
 .try-icon {
@@ -1380,12 +1381,11 @@ html.is-landing.lenis body {
   gap: 56px;
   width: 100%;
   max-width: 1200px;
-  margin: clamp(96px, 14vw, 180px) auto 0;
-  padding: 36px 28px 40px;
-  border-top: 2px solid var(--signal);
+  margin: clamp(160px, 22vh, 260px) auto 0;
+  padding: 28px 28px 40px;
+  border-top: 0;
   border-radius: var(--r-2) var(--r-2) 0 0;
   background: linear-gradient(180deg, rgb(8 9 11 / 0.92), rgb(8 9 11 / 0.98));
-  box-shadow: 0 -24px 64px rgb(0 0 0 / 0.85);
 }
 
 .footer > p {
@@ -1400,6 +1400,8 @@ html.is-landing.lenis body {
   align-items: flex-end;
   justify-content: space-between;
   gap: 24px;
+  padding-top: 28px;
+  border-top: 1px solid var(--line-dark);
 }
 
 .wordmark.big {

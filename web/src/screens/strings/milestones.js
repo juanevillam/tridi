@@ -11,6 +11,14 @@ export const { T, t, A } = dict({
     es: 'De las 48 horas en Platanus Hack 26 Caracas al primer robot físico controlado en el suelo por una política entrenada en Tridi.',
     en: 'From 48 hours at Platanus Hack 26 Caracas to the first physical robot driven on the floor by a policy trained in Tridi.',
   },
+  tabSim2Real: {
+    es: '02 · Caso Real Sim-to-Real (Nov 2026)',
+    en: '02 · Physical Sim-to-Real Case (Nov 2026)',
+  },
+  tabHackathon: {
+    es: '01 · Origen en Platanus Hack 26 (Oct 2026)',
+    en: '01 · Platanus Hack 26 Origin (Oct 2026)',
+  },
 
   // Milestone 02 — Sim-to-Real with Luigi's robot
   'm2.badge': { es: 'Hito 02 · Noviembre 2026 · Primer Sim-to-Real físico', en: 'Milestone 02 · November 2026 · First physical Sim-to-Real' },
@@ -31,8 +39,8 @@ export const { T, t, A } = dict({
     en: 'Unplugged from any computer, the robot executes Tridi’s smooth 50 Hz differential curves and dodges shoes, furniture, the couch and floor cables without a single collision.',
   },
   'm2.vidHwLabel': {
-    es: 'El hardware por dentro · Chasis STL + Arduino UNO + L298N + Radar IR 0x9E',
-    en: 'Inside the hardware · 3D-printed STL chassis + Arduino UNO + L298N + 0x9E IR Radar',
+    es: 'Inspección del hardware (1:29) · Chasis STL + Arduino UNO + L298N + Radar IR 0x9E',
+    en: 'Inside the hardware (1:29) · 3D-printed STL chassis + Arduino UNO + L298N + 0x9E IR Radar',
   },
   'm2.vidHwCap': {
     es: 'Dos motores TT con reductora (200 RPM, llantas de TPU), batería 2S 18650 (7,4 V), puente H L298N, ultrasónico HC-SR04 y sensor óptico I2C APDS-9960.',
