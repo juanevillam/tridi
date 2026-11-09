@@ -31,7 +31,6 @@ gsap.registerPlugin(ScrollTrigger);
 
 export const title = '';
 
-const REPO = 'https://github.com/platanus-hack/platanus-hack-26-ve-team-26';
 // The walk of Capture: the clip extracted from this very video (data/samples/mixkit-4855.mp4,
 // re-encoded small into public/media). Clip and video start together and last the same 11.8 s.
 // Capture 2.0's walk (GVHMR, data/capture2): the same Mixkit video and frames as the MediaPipe one it
@@ -271,7 +270,6 @@ export function mount(root) {
             <div><dt>${T('foot.madeAt')}</dt><dd>Platanus Hack 26, Caracas</dd></div>
             <div><dt>${T('foot.robot')}</dt><dd>Unitree G1 · Unitree H1 · Luigi Lab 3 (Sim-to-Real)</dd></div>
             <div><dt>${T('foot.milestones')}</dt><dd><a href="#/milestones" data-warm="milestones">${T('foot.milestonesLink')}</a></dd></div>
-            <div><dt>${T('foot.code')}</dt><dd><a href="${REPO}" target="_blank" rel="noopener">${T('foot.repo')}</a></dd></div>
           </dl>
         </div>
       </footer>
