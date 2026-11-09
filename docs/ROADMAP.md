@@ -1,30 +1,27 @@
-# Roadmap de Producto y División de Tareas — Tridi (Noviembre 2026)
+# Plan de Producto y Pipeline de Tareas — Tridi (Noviembre 2026)
 
-> **Para leer en 3 minutos (Juan, Pastor, César y Ale):**  
-> Hacia dónde va Tridi como producto real, qué hicimos exactamente en el caso de Luigi, quiénes son nuestros clientes alcanzables paso a paso (sin depender de que Tesla o Figure nos respondan mañana) y la tabla de tareas abierta para dividirnos el trabajo.
+> **Propuesta inicial para iterar en equipo (Juan, Pastor, César y Ale):**  
+> Este documento reúne las ideas que hemos hablado por voz y chat para bajar Tridi a tierra como un producto real.  
+> **Cómo usamos este archivo:** Igual que hicimos en Platanus Hack, **cada tarea tiene un único dueño y toca archivos separados** para que nadie pise el código de otro y las IAs de cada uno sepan exactamente qué construir. **Nada está escrito en piedra:** pásenle este archivo a su IA, véanlo y si alguien quiere cambiar, sumar o intercambiar una tarea, lo ajustamos entre todos.
 
 ---
 
-## 1. La Visión General vs. Cómo lo bajamos a tierra (No un side project eterno)
+## 1. La Visión General vs. Cómo bajamos Tridi a tierra hoy
 
-**La visión general de Tridi:**  
-Cualquier sistema robótico o línea de automatización física que tenga motores/actuadores, sensores y tiempos reales puede ser simulado y entrenado por Tridi. Eso abarca **4 verticales reales**:
+**La visión general:**  
+Cualquier sistema robótico o línea de automatización física que tenga motores/actuadores, sensores y tiempos reales puede ser simulado y entrenado por Tridi. Eso nos abre **4 verticales claras**:
 
-1. **Robots móviles y logística de almacén (AMR / estilo robots de Amazon / `luigi_lab3` y `luigi_lab4`):** robots que navegan pisos reales, esquivan obstáculos dinámicos o mueven anaqueles y cargas de un punto a otro sin chocar ni frenarse por bloqueos de sensores.
-2. **Pipelines de fábricas, empaquetadoras y celdas automatizadas:** máquinas industriales con varios pasos secuenciales y tiempos cronometrados (cintas transportadoras, brazos posicionadores, llenado de envases y cierres sincronizados) donde hoy un pequeño cambio de fricción, peso o retardo de un sensor traba toda la línea.
-3. **Brazos robóticos y manipulación diestra:** agarre de objetos rígidos y líquidos (como nuestra prueba de la taza con agua en seco vs. jabonoso) para clasificación y ensamblaje.
+1. **Robots móviles y logística de almacén (AMR / estilo robots de Amazon que mueven anaqueles / rovers como los de Luigi):** robots que navegan pisos reales, esquivan obstáculos o mueven estantes y cargas de un punto a otro sin chocar ni frenarse por bloqueos de sensores.
+2. **Pipelines de fábricas, empaquetadoras y líneas cronometradas:** celdas industriales con varios pasos secuenciales (cintas transportadoras, brazos posicionadores, llenado y cierres en tiempos exactos) donde hoy un pequeño cambio de fricción, peso o retardo de un sensor traba toda la línea.
+3. **Brazos robóticos y manipulación:** agarre de objetos rígidos y líquidos (como nuestra prueba de la taza con agua en seco vs. jabonoso) para clasificación y empaque.
 4. **Robots humanoides aprendiendo de video humano (`Tridi Capture` — `Unitree G1 / H1`):** convertir un video de celular en políticas de cuerpo completo y manos de 5 dedos.
 
-**Por qué esto nos permite volver a Tridi una empresa real desde ya (incluso estando en Venezuela):**  
-Si dependiéramos únicamente de venderle mañana a Tesla Optimus o Figure, Tridi corría el riesgo de quedarse como una demo bonita en el navegador. En cambio, al abrir el motor de Tridi a **cualquier hardware automatizable (rovers, brazos, líneas de empaquetado en fábricas locales o agencias de robótica)**:
-- En Barquisimeto y Venezuela **sí existen fábricas (alimentos, café, empaquetadoras, agroindustria) y laboratorios/integradores** con máquinas reales, sensores ópticos, motores y microcontroladores/PLCs.
-- Mientras aplicamos a YC con toda la potencia de Physical AI (humanoides + Sim-to-Real), aquí mismo podemos **aterrizar casos físicos reales en piso y en planta**.
-
-Hoy Tridi tiene **dos canales de entrada** que alimentan el **mismo motor de simulación y entrenamiento (MuJoCo + RL en GPU + Sim-to-Real)**:
+**Por qué esto vuelve a Tridi un negocio viable desde ya (y no un side project eterno):**  
+Llegarle mañana en frío a Tesla Optimus o Figure desde Venezuela sin un portafolio previo es casi imposible. En cambio, en nuestra propia ciudad y región **sí hay fábricas (empaquetadoras, alimentos, café), talleres de automatización, universidades y agencias de robótica** con máquinas reales. Si Tridi resuelve la simulación y calibración física de cualquier máquina o robot, podemos conseguir clientes y casos reales desde ahora mismo mientras avanzamos con YC.
 
 ```
-CANAL A — Video a Robot (Tridi Capture)          CANAL B — Tu Hardware/Planta y Código a Sim-to-Real (Tridi Assembler)
-  Subes un video humano (celular/cámara)           Subes el CAD de tu máquina/robot (.stl/.step) + tu código (.ino/.py/PLC)
+CANAL A — Video a Robot (Tridi Capture)          CANAL B — Tu Máquina/Robot y Código a Sim-to-Real (Tridi Assembler)
+  Subes un video humano (celular/cámara)           Subes el CAD de tu robot/celda (.stl/.step) + tu código (.ino/.py/PLC)
                  │                                                                │
                  ▼                                                                ▼
    Esqueleto 3D + manos (GVHMR + WiLoR)             Gemelo digital MuJoCo calibrado con motores, sensores y tiempos reales
@@ -37,74 +34,75 @@ CANAL A — Video a Robot (Tridi Capture)          CANAL B — Tu Hardware/Plant
                                      ENTREGA SIM-TO-REAL
                    1. Política neuronal ligera (ONNX a 50 Hz) + Dataset físico
                    2. Puente en vivo por WebSerial USB desde el navegador
-                   3. Firmware / controlador nativo calibrado (.ino / C / Python) sin bloqueos
+                   3. Controlador / firmware nativo calibrado (.ino / C / Python) sin bloqueos
 ```
 
 ---
 
 ## 2. Qué hicimos exactamente con el robot de Luigi (`luigi_lab3`)
 
-Para que todos lo expliquemos igual (a clientes, jueces de YC o agencias de robótica):
+Para que todos tengamos claro el flujo técnico que queremos automatizar en la web:
 
-1. **Qué nos entregó Luigi:**
-   - Sus **6 piezas CAD (`.stl`)** diseñadas para impresión 3D (chasis, soportes de motores TT, patín delantero, bandeja de protoboard, rines y llantas de TPU).
-   - Su **programa original en Arduino (`robot_gestos_original.ino`)**, donde él ya había programado los movimientos que quería que hiciera el robot (avanzar con dos motores diferenciales en un puente H `L298N`, medir distancia con un ultrasónico `HC-SR04` y detectar obstáculos/gestos con un sensor óptico `APDS-9960`).
-2. **Por qué el robot de Luigi no funcionaba bien en el mundo físico con su código original:**
-   - **Problema físico 1 (Fricción y zona muerta):** En el piso real, las llantas de TPU con motores TT no se mueven con `PWM < 115`; el código clásico no compensaba esa zona muerta ni la inercia al frenar.
-   - **Problema físico 2 (`pulseIn` bloqueante):** Cuando el `HC-SR04` no veía eco cercano, bloqueaba el procesador del Arduino por **47,1 ms**, dejando al robot ciego y sin control mientras rodaba.
-   - **Problema físico 3 (Clon de hardware `0x9E`):** Su sensor `APDS-9960` físico tenía `Chip ID = 0x9E`; la librería estándar de SparkFun lo rechazaba y apagaba el sensor en silencio.
-3. **Qué hizo Tridi:**
-   - Armamos su **gemelo digital exacto en MuJoCo (`luigi.xml`)** con sus 6 mallas `.stl`, masas reales, llantas de TPU y rayos de sensores.
-   - **Tomamos la lógica y los movimientos que él ya había programado** y los reentrenamos en simulación con nuestra política a **50 Hz (`luigi-lab3.onnx`)**, enseñándole a hacer curvas diferenciales suaves y una maniobra de esquive en 4 fases (freno activo en seco `-230 PWM` → reversa → giro de 90° → verificación de despeje).
-   - **Transpilamos esa red neuronal y la calibración física de vuelta a su Arduino (`robot_gestos.ino`)** cabiendo en solo **461 bytes de RAM (22 % del Arduino UNO)**, reemplazando `pulseIn()` por una interrupción de hardware (`ISR(PCINT1_vect)` de `0,01 ms`) y leyendo el radar IR `0x9E` directo por registros I2C a `40 Hz`.
-   - **Resultado:** El robot físico salió rodando a la primera por el piso de la sala esquivando zapatos, muebles, sofá y cables sin chocar ni una sola vez (videos en [`trytridi.com/#/milestones`](https://trytridi.com/#/milestones)).
+1. **Lo que ya tenía Luigi:** Su robot armado con **6 piezas CAD (`.stl`)** y su **programa en Arduino (`robot_gestos_original.ino`)** con los movimientos que él había programado (avanzar con dos motores en un puente H `L298N`, medir distancia con el ultrasónico `HC-SR04` y usar el sensor óptico `APDS-9960`).
+2. **Por qué fallaba en el piso real:** Las llantas de TPU no vencían la fricción estática con `PWM < 115`, el comando `pulseIn()` congelaba el procesador por `47,1 ms` en cada lectura sin eco, y la librería estándar apagaba su sensor `APDS-9960` porque era un clon con `Chip ID = 0x9E`.
+3. **Lo que hizo Tridi:** Conectamos sus piezas `.stl` a nuestra simulación en MuJoCo (`luigi.xml`), **reentrenamos en física real los mismos movimientos que él quería hacer** con una política a **50 Hz (`luigi-lab3.onnx`)** y le devolvimos el programa calibrado para su Arduino (`robot_gestos.ino`, ocupando solo 461 bytes de RAM, con interrupción `PCINT1` no bloqueante y radar IR directo a 40 Hz).
 
 ---
 
-## 3. Quiénes son nuestros clientes reales (Escalera de Mercado)
+## 3. Pipeline de Tareas (1 Tarea = 1 Persona, sin pisarnos archivos)
 
-Llegarle mañana en frío desde Venezuela a **Tesla Optimus** o **Figure** sin tener antes un portafolio de hardware físico es casi imposible. Por eso nuestra estrategia comercial va de menor a mayor fricción en **3 escalones**:
+Igual que en la hackathon: **una sola persona por tarea** y cada área en sus propios archivos/carpetas. Si alguien quiere intercambiar una tarea con otro o proponer una distinta después de analizarlo con su IA, lo cambiamos aquí.
 
-| Escalón | Quién es el cliente | Qué problema le resolvemos hoy | Qué ganamos nosotros |
+### 🟧 Juan (`web/` visual & landing, `training/` GPU & compiladorMCU, `data/`)
+
+| ID | Tarea | Archivos / Carpeta | Qué entrega |
 | --- | --- | --- | --- |
-| **1. Corto plazo (Ahora mismo)**<br>Laboratorios universitarios, makers avanzados, estudios de mecatrónica y competencias | Estudiantes/profesores (como Luigi con Lab 3 y Lab 4) y equipos locales o remotos que ya tienen un robot armado (Arduino, ESP32, Raspberry, brazos SO-100, rovers) pero su código clásico falla en el piso real. | Nos pasan su CAD (`.stl`) + su código (`.ino`/`.py`) y les devolvemos el gemelo digital en MuJoCo + el código reentrenado con física real que sí funciona a la primera. | **Portafolio real de casos Sim-to-Real** en `#/milestones` + prueba de fuego para automatizar nuestros motores, sensores y compilador. |
-| **2. Mediano plazo (Aterrizaje comercial real)**<br>Agencias de robótica, integradores B2B y **fábricas / líneas de empaquetado** | Empresas que arman robots de almacén (AMR estilo Amazon), brazos clasificadores o **plantas con líneas de empaquetado/cierre cronometrado** que pierden semanas calibrando tiempos, sensores y controladores a mano. | Una plataforma (`Tridi Assembler`) donde suben el CAD + componentes y tiempos de su máquina/robot, entrenamos la coordinación óptima en nuestras GPUs en minutos y les entregamos el controlador ONNX / C calibrado. | **Primeros clientes reales / ingresos B2B** y casos de estudio industriales en `#/milestones`. |
-| **3. Largo plazo (Meta YC)**<br>Empresas de Humanoides y Physical AI | Startups de humanoides y manipulación diestra (`Unitree G1/H1`, `1X`, `Figure`, laboratorios de RL). | Ya con un motor probado en decenas de robots físicos y un pipeline de entrenamiento masivo en GPU cloud, les vendemos **datos de movimiento corregidos por física (`Tridi Capture`)** y políticas entrenadas desde video humano. | **Contratos grandes de datos y políticas ($300k–$1M/año).** |
+| **J-1** | **Pulido visual de Landing, Simulaciones y `#/milestones`** | `web/src/screens/home.js`, `web/src/landing/`, `web/src/screens/milestones.js` | Refinar todos los detalles visuales en desktop y móvil (`trytridi.com`), animaciones, copy y dejar lista la estructura para sumar nuevos casos reales (robots móviles y celdas de fábrica). |
+| **J-2** | **Pipeline de entrenamiento acelerado en GPU Cloud** | `training/` | Montar el flujo para que los entrenamientos de políticas (tanto humanoides como robots/máquinas subidas por usuarios) corran a punta de GPU en la nube en **minutos en vez de horas** en local. |
+| **J-3** | **Compilador automático `ONNX → C / Arduino (.ino)`** | `training/export_mcu.py` (nuevo) | Automatizar en un script lo que hicimos en el robot de Luigi: leer cualquier `policy.onnx` + el JSON de pines/motores del robot y generar automáticamente el archivo `.ino` / `.c` comentado, sin bloqueos (`ISR` en vez de `pulseIn`) y con compensación de zona muerta de PWM. |
+| **J-4** | **Entrenamiento de la policy `luigi-lab4.onnx` (Escaneo activo en movimiento)** | `training/luigi_lab4_env.py`, `training/policies/luigi-lab4.*` | Una vez esté listo el XML de `luigi_lab4` (`P-2`), entrenar la red de 50 Hz que coordina las 2 ruedas + el cuello servo SG90 para que el robot escanee a los lados **mientras avanza** (sin frenar 700 ms como hace el código original de Lab 4). |
 
 ---
 
-## 4. Cómo nos dividimos las tareas (Próximos Días)
+### 🟦 Pastor (`physics/` motor y catálogo de hardware, backend/sistema del Assembler)
 
-> **Cómo funciona esta tabla:** Cada tarea tiene un **Responsable ideal** según el área que más domina cada uno, pero **cualquiera puede tomar o apoyar en cualquier tarea**. Solo avisen en el grupo cuál agarran y trabajen en su rama (`<nombre>/<tema>`).
+| ID | Tarea | Archivos / Carpeta | Qué entrega |
+| --- | --- | --- | --- |
+| **P-1** | **Catálogo de Componentes de Hardware (`physics/components/`)** | `physics/components/` (nuevo) | Definir el sistema y esquemas JSON de piezas físicas reutilizables: motores (`TT 200 RPM`, `NEMA 17`, servos `SG90`), sensores (`HC-SR04`, `APDS-9960`, `CNY70`, sensores ópticos de línea/planta), drivers (`L298N`) y microcontroladores (`Arduino UNO`, `ESP32` con sus reglas de pines y timers). |
+| **P-2** | **Gemelo Digital MuJoCo de `luigi_lab4` (Robot con cuello servo SG90)** | `physics/models/luigi_lab4/luigi_lab4.xml`, `physics/src/` | Usando las 7 mallas `.stl` que ya están en `physics/models/luigi_lab4/assets/`, armar el modelo MuJoCo con la nueva articulación revoluta de la cabeza (`7_cabeza_sensor_servo.stl`, `0°–180°`) y el sensor ultrasónico que gira junto con el cuello. |
+| **P-3** | **Motor del `Assembler`: Generador automático de MuJoCo XML desde piezas subidas** | `physics/src/assembler.js` (nuevo), `data/server.py` | La lógica de sistema de la idea de Pastor: recibir un `.zip` con mallas `.stl` + la configuración de qué componente es cada pieza (del catálogo `P-1`) o el `.ino` del usuario, y generar automáticamente el `robot.xml` funcional en MuJoCo. |
+| **P-4** | **Escena de prueba de Celda Industrial / Empaquetadora en MuJoCo** | `physics/worlds/` o `physics/models/factory_cell/` | Prototipo físico en MuJoCo de un pipeline de fábrica o almacén (ej. cinta + actuador posicionador + cierre cronometrado, o robot móvil llevando un anaquel) para demostrar que el mismo motor entrena automatización industrial. |
 
-### A. Producto Web, Pulido y Flujo "Subir tu Robot" (`web/`)
+---
 
-| ID | Tarea | Qué hay que hacer concreto | Ideal | Quién más puede |
-| --- | --- | --- | --- | --- |
-| **W-1** | **Pulido continuo de Landing y `#/milestones`** | Revisar detalles visuales en desktop y móvil (`trytridi.com`), fluidez de scroll, textos ES/EN y agregar la pestaña o sección del nuevo caso `luigi_lab4` cuando salga del piso. | **Juan** | César |
-| **W-2** | **Prototipo de `Tridi Assembler` (`#/assembler` en la web)** | Crear la pantalla donde un usuario sube un `.zip` con sus piezas `.stl` y su código opcional (`.ino`/`.py`): mostrar las mallas 3D en el navegador y un formulario interactivo que pregunte qué motores, sensores y pines usa cada pieza. | **César / Pastor** | Juan |
-| **W-3** | **Selector de modo de entrega en `#/delivery` (Política Neuronal vs Código Explicable)** | En la pantalla de entrega de un robot físico, permitir descargar tanto el `.onnx` puro como el `.ino` comentado paso a paso (para que un estudiante o ingeniero de una agencia entienda cada bloque de código). | **César** | Juan, Pastor |
+### 🟩 César (`web/src/screens/` — Pantallas de aplicación aisladas de la landing)
 
-### B. Física, Gemelos Digitales y Catálogo de Componentes (`physics/`)
+| ID | Tarea | Archivos / Carpeta | Qué entrega |
+| --- | --- | --- | --- |
+| **C-1** | **Pantalla Web del `Tridi Assembler` (`#/assembler`)** | `web/src/screens/assembler.js`, `web/src/screens/strings/assembler.js` (nuevos) | Interfaz self-serve donde el usuario sube su `.zip` (`.stl` + `.ino` opcional), previsualiza las piezas 3D y selecciona en cada pieza qué motor, sensor y pines usa (leyendo el catálogo `P-1` de Pastor) para lanzar la simulación. |
+| **C-2** | **Mejora de `#/delivery`: Descarga Dual (ONNX + Código Nativo Explicable)** | `web/src/screens/delivery.js`, `web/src/screens/strings/delivery.js` | Agregar en la pantalla de entrega de robots físicos la pestaña para ver y descargar el código `.ino` / C generado por `J-3`, con explicación bloque por bloque para que cualquier ingeniero o estudiante entienda qué hace cada parte. |
+| **C-3** | **Selector de vertical en `#/simulations` (Humanoides · Rovers · Fábrica)** | `web/src/screens/simulations.js`, `web/src/stage.js` | Organizar el selector de modelos en Simulaciones por categoría (`Humanoides: G1 / H1`, `Robots Móviles: Luigi Lab 3 / Lab 4`, `Industrial`) para que no quede como una lista plana cuando sumemos más máquinas. |
 
-| ID | Tarea | Qué hay que hacer concreto | Ideal | Quién más puede |
-| --- | --- | --- | --- | --- |
-| **P-1** | **Gemelo Digital de `luigi_lab4` (Robot con cuello servo SG90)** | Ya están los 7 archivos `.stl` y el `.ino` en [`physics/models/luigi_lab4/`](../physics/models/luigi_lab4). Armar `luigi_lab4.xml` en MuJoCo agregando la articulación revoluta de la cabeza (`7_cabeza_sensor_servo.stl`, giro `0°–180°`) y el rayo del `HC-SR04` que gira con el cuello. | **Pastor** | Juan |
-| **P-2** | **Catálogo JSON de Componentes de Hardware (`physics/components/`)** | Estandarizar en archivos JSON los parámetros físicos que ya calibramos a mano: motores (`TT 200 RPM` con zona muerta `PWM 115`, `SG90 servo`), sensores (`HC-SR04` con cono y alcance, `APDS-9960`, `CNY70`), drivers (`L298N`) y microcontroladores (`Arduino UNO` con sus reglas de pines/timers). | **Pastor / Juan** | César |
-| **P-3** | **Generador automático de `.xml` MuJoCo desde mallas subidas** | Script/módulo que tome las piezas `.stl` subidas en el Assembler + las respuestas del usuario sobre motores/sensores y genere automáticamente el `robot.xml` listo para simular en `physics/`. | **Pastor** | Juan |
+---
 
-### C. Entrenamiento en GPU y Compilador Sim-to-Real (`training/`, `data/`)
+### 🟨 Ale (`docs/`, `yc/` — Lógica de Negocio, Economía de Planta y Clientes Reales)
 
-| ID | Tarea | Qué hay que hacer concreto | Ideal | Quién más puede |
-| --- | --- | --- | --- | --- |
-| **T-1** | **Reentrenar el movimiento de `luigi_lab4` (Escaneo activo sin frenar)** | En el código original de Luigi (`LAB4_Robot_Explorador_Autonomo.ino`), el robot tiene que **frenar en seco y quedarse quieto 700 ms** cada vez que mueve el cuello para mirar a los lados. Entrenar `luigi-lab4.onnx` para que escanee con el cuello en movimiento y generar su `.ino` no bloqueante (usando `INT1` en el pin `D3` y cuidando que `<Servo.h>` desactiva el PWM en `D9/D10`). | **Juan / Pastor** | — |
-| **T-2** | **Pipeline de entrenamiento rápido en GPU Cloud (MJX / PyTorch CUDA)** | Preparar un script/notebook reproducible para correr `training/` en una GPU en la nube (RunPod / Modal / Colab GPU) de modo que entrenar una política nueva tome **minutos en vez de horas** en nuestras Macs. | **Juan** | Pastor |
-| **T-3** | **Transpilador automático `ONNX` → C / Arduino (`.ino`)** | Convertir lo que hicimos en `robot_gestos.ino` en un script automático (`training/export_arduino.py`) que lea cualquier `policy.onnx` pequeña + el mapa de pines del robot y escupa el archivo `.ino` listo para compilar en Arduino IDE. | **Juan** | Pastor |
+| ID | Tarea | Archivos / Carpeta | Qué entrega |
+| --- | --- | --- | --- |
+| **A-1** | **Arquitectura de Casos Industriales (Fábricas, Empaquetadoras y Almacenes)** | `docs/verticales-industriales.md` (nuevo) | Traducir cómo funciona una línea real (empaquetadora con pasos cronometrados, embotelladora o robots de almacén) a especificaciones concretas para nosotros: qué pasos tiene el ciclo, dónde se traba hoy por culpa de `delays` fijos o sensores, y qué métrica (cajas/minuto, % de merma) le importa al dueño de la fábrica. |
+| **A-2** | **Unit Economics y Modelo de Precios de Tridi (B2B / Agencias / Fábricas)** | `docs/unit-economics.md` (nuevo) | Definir la estructura financiera del producto: cuánto nos cuesta una corrida de GPU en la nube vs. cómo cobramos en cada escalón (cobro por robot/celda calibrada en el Assembler, membresía para agencias de robótica, contratos de datos para humanoides). |
+| **A-3** | **Directorio y Contacto de Primeros Clientes / Robots Reales (Pipeline Comercial)** | `docs/clientes-potenciales.md` (nuevo) | Lista accionable de: (1) 5 equipos/laboratorios con robots físicos listos para meter en `#/milestones` ya mismo, (2) 10 agencias/integradores de robótica y (3) 5 plantas/empaquetadoras locales donde podamos ver una línea real en persona, más el mensaje corto de entrada con `trytridi.com/#/milestones`. |
+| **A-4** | **Narrativa de Evolución Post-YC y Guion de Casos Reales** | `yc/entrevista.md` | Actualizar la preparación de entrevista de YC W27 con nuestra evolución desde el 2 de noviembre: cómo pasamos de "solo video para humanoides" a resolver Sim-to-Real físico en hardware real (`luigi_lab3`, `luigi_lab4`, `Tridi Assembler` y automatización industrial). |
 
-### D. Casos Reales, Clientes y Estrategia (`docs/`, `yc/`)
+---
 
-| ID | Tarea | Qué hay que hacer concreto | Ideal | Quién más puede |
-| --- | --- | --- | --- | --- |
-| **G-1** | **Probar `luigi_lab4` en el robot físico real y grabar el caso #2** | Cargar el nuevo `.ino` entrenado por Tridi en el robot naranja de Lab 4, grabarlo en el piso superando al código original y subirlo a `#/milestones`. | **Ale + Juan + Pastor** | César |
-| **G-2** | **Conseguir los siguientes 2–3 robots físicos para el portafolio** | Contactar compañeros de electrónica/mecatrónica, laboratorios de universidades o agencias locales que tengan un robot móvil, brazo robótico o cuadrúpedo para pasarlos por Tridi y sumar casos reales distintos en `#/milestones`. | **Ale** | Todo el equipo |
-| **G-3** | **Preparación de entrevista YC W27 y contacto con agencias de robótica** | Repasar [`docs/internal/yc-w27-reference.md`](internal/yc-w27-reference.md) y armar una lista de 15–20 startups/agencias pequeñas de robótica a las que podamos mostrarles el caso Sim-to-Real de `trytridi.com/#/milestones`. | **Ale / Pastor** | Juan, César |
+## 4. Cómo analizar este plan con tu IA (Prompt para el equipo)
+
+Cuando hagas `git pull` en `main`, pásale este prompt a tu agente (Claude Code / Antigravity / Cursor):
+
+```text
+Lee `docs/ROADMAP.md`, `docs/README.md` y `docs/internal/README.md`.
+Soy [Pastor / César / Ale / Juan]. Hazme un resumen de:
+1. Cómo quedó planteada la visión de Tridi (los 2 canales de entrada y las 4 verticales, incluyendo robots móviles y líneas de fábricas/empaquetadoras).
+2. Cuáles son mis tareas asignadas (`P-*`, `C-*`, `A-*` o `J-*`), qué archivos exactos me toca crear o editar para no chocar con los demás, y dime qué ideas o mejoras le propondrías tú a este plan antes de empezar a programar.
+```
