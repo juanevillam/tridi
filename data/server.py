@@ -105,6 +105,15 @@ DATA_STAGE_S = 60  # retarget + dataset rollout + delivery (~2 s), a rough estim
 TRAIN_POLL_S = 2
 UPLOAD_EXTS = VIDEO_EXTS | {".zip"}
 
+# Abuse & disk caps (same model as sound-shaper's media-worker, without requiring Firebase):
+# 16 unfinished uploads * 60 MB = < 1 GB disk at any time; 8 queued video jobs max; 20 write
+# requests/min per IP (POST /uploads, /clips, /clips/*/train) behind the Cloudflare tunnel.
+MAX_ACTIVE_UPLOADS = int(os.environ.get("TRIDI_MAX_ACTIVE_UPLOADS", 16))
+MAX_PENDING_JOBS = int(os.environ.get("TRIDI_MAX_PENDING_JOBS", 8))
+WRITE_RATE_PER_MIN = int(os.environ.get("TRIDI_WRITE_RATE_PER_MIN", 20))
+WRITE_WINDOW_S = 60.0
+_write_hits: dict[str, list[float]] = {}
+
 # The files of a delivery (docs/contrato.md, "La entrega de un clip"): only these names are served.
 DELIVERY_FILES = {
     "delivery.json": "application/json", "replay.json": "application/json", "policy.json": "application/json",
@@ -338,7 +347,31 @@ def sweep(now: float) -> None:
         if now - up.touched > UPLOAD_TTL_S:
             shutil.rmtree(up.dir, ignore_errors=True)
             uploads.pop(up.id, None)
+    with lock:
+        for ip in list(_write_hits):
+            _write_hits[ip] = [t for t in _write_hits[ip] if now - t < WRITE_WINDOW_S]
+            if not _write_hits[ip]:
+                del _write_hits[ip]
     relay.sweep(now)  # phone camera sessions without traffic
+
+
+def _check_write_rate(request: Request) -> None:
+    """Per-IP sliding window on write endpoints (CF-Connecting-IP from Cloudflare tunnel, else socket IP).
+    Localhost and testclient are exempt so automated checks can run back-to-back."""
+    ip = (
+        request.headers.get("cf-connecting-ip")
+        or (request.client.host if request.client else "unknown")
+    ).strip()
+    if ip in ("127.0.0.1", "::1", "localhost", "testclient"):
+        return
+    now = time.time()
+    with lock:
+        hits = [t for t in _write_hits.get(ip, []) if now - t < WRITE_WINDOW_S]
+        if len(hits) >= WRITE_RATE_PER_MIN:
+            _write_hits[ip] = hits
+            raise HTTPException(429, f"demasiadas solicitudes seguidas ({WRITE_RATE_PER_MIN}/min): espera un minuto")
+        hits.append(now)
+        _write_hits[ip] = hits
 
 
 def _enqueue(job: Job, only: int | None = None) -> None:
@@ -389,6 +422,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def _security_headers(request: Request, call_next):
+    res = await call_next(request)
+    res.headers.setdefault("X-Content-Type-Options", "nosniff")
+    res.headers.setdefault("X-Frame-Options", "DENY")
+    res.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    return res
+
+
 app.include_router(relay.router)  # the phone as the live camera (docs/contrato.md)
 
 
@@ -408,7 +452,10 @@ def health() -> dict:
 
 
 @app.post("/uploads", status_code=201)
-def create_upload(body: NewUpload) -> dict:
+def create_upload(body: NewUpload, request: Request) -> dict:
+    _check_write_rate(request)
+    if len(uploads) >= MAX_ACTIVE_UPLOADS:
+        raise HTTPException(429, f"hay {MAX_ACTIVE_UPLOADS} subidas en curso: intenta en un minuto")
     ext = Path(body.filename).suffix.lower()
     if ext not in UPLOAD_EXTS:
         raise HTTPException(415, f"tipo no soportado ({ext or 'sin extensión'}): sube {', '.join(sorted(UPLOAD_EXTS))}")
@@ -456,6 +503,9 @@ def get_upload(upload_id: str) -> dict:
 @app.post("/uploads/{upload_id}/complete", status_code=202)
 def complete_upload(upload_id: str) -> dict:
     up: Upload = _get(uploads, upload_id, "la subida")
+    with lock:
+        if len(pending) >= MAX_PENDING_JOBS:
+            raise HTTPException(429, f"la cola de videos está llena ({MAX_PENDING_JOBS} en espera): intenta en un momento")
     missing = sorted(set(range(up.total_chunks)) - up.received)
     if missing:
         raise HTTPException(409, f"faltan {len(missing)} pedazos, el primero es el {missing[0]}")
@@ -579,6 +629,7 @@ def _clip_path(clip_id: str) -> Path:
 
 @app.post("/clips", status_code=201)
 async def post_clip(request: Request) -> dict:
+    _check_write_rate(request)
     body = bytearray()
     async for part in request.stream():
         body += part
@@ -899,7 +950,8 @@ def _position_eta(t: Train) -> tuple[int, float]:
 
 
 @app.post("/clips/{clip_id}/train", status_code=202)
-def train_clip(clip_id: str) -> dict:
+def train_clip(clip_id: str, request: Request) -> dict:
+    _check_write_rate(request)
     path = _clip_path(clip_id)
     with lock:
         existing = train_by_clip.get(clip_id)
