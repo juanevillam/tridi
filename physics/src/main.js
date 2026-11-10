@@ -13,6 +13,14 @@ import {
   validateHardwarePinout,
 } from './index.js';
 import lab4SketchText from '../models/luigi_lab4/firmware/LAB4_Robot_Explorador_Autonomo.ino?raw';
+import lab4OnnxUrl from '../../training/policies/luigi-lab4.onnx?url';
+import lab4JsonUrl from '../../training/policies/luigi-lab4.json?url';
+import lab3OnnxUrl from '../../training/policies/luigi-lab3.onnx?url';
+import lab3JsonUrl from '../../training/policies/luigi-lab3.json?url';
+import factoryOnnxUrl from '../../training/policies/factory-cell.onnx?url';
+import factoryJsonUrl from '../../training/policies/factory-cell.json?url';
+import g1OnnxUrl from '../../training/policies/g1-stand.onnx?url';
+import g1JsonUrl from '../../training/policies/g1-stand.json?url';
 
 const $ = (id) => document.getElementById(id);
 
@@ -460,21 +468,32 @@ async function start() {
   };
 
   // ============================================================================
-  // TAB 3: PHYSICAL ARENA SIMULATOR (P-2 & P-4)
+  // TAB 3: PHYSICAL ARENA SIMULATOR (P-2 & P-4 + J-4 ONNX POLICIES)
   // ============================================================================
-  function openArenaTab(sceneFile = currentArenaScene) {
+  async function openArenaTab(sceneFile = currentArenaScene) {
     clearLoop();
     currentArenaScene = sceneFile;
     for (const card of $('arena-models-list').querySelectorAll('.item-card')) {
       card.classList.toggle('active', card.dataset.scene === sceneFile);
     }
 
-    view.sim.load(sceneFile, 'home');
-    view.viewer.rebuild();
-
     const isLab4 = sceneFile.startsWith('luigi_lab4/');
     const isLab3 = sceneFile.startsWith('luigi_lab3/');
     const isFactory = sceneFile.startsWith('factory_cell/');
+
+    // Load the real 50 Hz ONNX policy (or scene + policy) so raycasting & closed-loop control run live
+    if (isLab4) {
+      await view.loadPolicy(lab4OnnxUrl, lab4JsonUrl);
+    } else if (isLab3) {
+      await view.loadPolicy(lab3OnnxUrl, lab3JsonUrl);
+    } else if (isFactory) {
+      await view.loadPolicy(factoryOnnxUrl, factoryJsonUrl);
+    } else {
+      await view.loadPolicy(g1OnnxUrl, g1JsonUrl);
+    }
+
+    view.sim._usbLocked = !arenaAutoMode;
+    view.sim._serialCmd = null;
 
     if (isLab4 || isLab3) {
       view.viewer.targetHeight = 0.12;
@@ -485,8 +504,8 @@ async function start() {
       $('lbl-m2').innerHTML = 'Cuello Servo SG90 (grados): <span id="val-m2">0°</span>';
       $('box-m2').hidden = !isLab4;
       $('stage-title').textContent = isLab4
-        ? 'Simulación en Arena: Luigi Lab 4 (Escaneo Activo SG90 en Movimiento)'
-        : 'Simulación en Arena: Luigi Lab 3 (Explorador con Ultrasonido Fijo)';
+        ? 'Simulación en Arena: Luigi Lab 4 · Política ONNX (luigi-lab4.onnx, 50 Hz)'
+        : 'Simulación en Arena: Luigi Lab 3 · Política ONNX (luigi-lab3.onnx, 50 Hz)';
     } else if (isFactory) {
       view.viewer.targetHeight = 0.35;
       view.viewer.camera.position.set(1.55, 0.95, -1.25);
@@ -500,39 +519,26 @@ async function start() {
       view.viewer.targetHeight = 0.75;
       view.viewer.camera.position.set(2.4, 1.4, -1.6);
       view.viewer.controls.target.set(0, 0.75, 0);
-      $('stage-title').textContent = 'Simulación en Arena: Unitree G1 (29 DOF)';
+      $('stage-title').textContent = 'Simulación en Arena: Unitree G1 (29 DOF · g1-stand.onnx)';
     }
     view.viewer.controls.update();
 
     loopTimer = setInterval(() => {
-      const t = view.sim.data.time;
       const { qpos, qvel, ctrl } = view.sim.data;
 
       if (isLab4 || isLab3) {
-        if (arenaAutoMode) {
-          ctrl[0] = 13.0 + 3.5 * Math.sin(t * 0.9);
-          ctrl[1] = 13.0 - 3.5 * Math.sin(t * 0.9);
-          if (isLab4 && view.sim.model.nu >= 3) {
-            ctrl[2] = 1.15 * Math.sin(t * 2.8); // ±66 deg continuous SG90 neck scan
-          }
-        }
-        const [qw, qx, qy, qz] = [qpos[3], qpos[4], qpos[5], qpos[6]];
-        const bodyYaw = Math.atan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy * qy + qz * qz));
+        const sr = view.sim.sensorReadout || { distCm: 92, irProx: 18, dodgeStage: 0 };
         const neckYaw = isLab4 && view.sim.model.nq >= 10 ? qpos[9] : 0;
-        const yaw = bodyYaw + neckYaw;
-        const off = isLab4 ? 0.18 : 0.155;
-        view.sim.sensorReadout = {
-          sx: qpos[0] + off * Math.cos(bodyYaw),
-          sy: qpos[1] + off * Math.sin(bodyYaw),
-          sz: qpos[2] + 0.015,
-          yaw,
-          rays: [0.85, 0.95, 1.05, 1.1, 1.05, 0.95, 0.85],
-          distCm: 92,
-          dodgeStage: 0,
-        };
+        const dodgeLabels = [
+          'Crucero ONNX (50 Hz)',
+          '1/4 · Freno activo (-20 rad/s)',
+          '2/4 · Reversa despeje',
+          '3/4 · Giro diferencial 90°',
+        ];
 
         $('arena-telemetry').innerHTML = `
           <table class="mini-table">
+            <tr><td>Política activa:</td><td><strong><code>${isLab4 ? 'luigi-lab4.onnx' : 'luigi-lab3.onnx'}</code> (50 Hz)</strong></td></tr>
             <tr><td>Posición X, Y chasis:</td><td><strong>${qpos[0].toFixed(2)} m, ${qpos[1].toFixed(2)} m</strong></td></tr>
             <tr><td>Vel. Rueda Izq (ENA D5):</td><td><code>${qvel[6].toFixed(1)} rad/s</code> (cmd: ${ctrl[0].toFixed(1)})</td></tr>
             <tr><td>Vel. Rueda Der (ENB D6):</td><td><code>${qvel[7].toFixed(1)} rad/s</code> (cmd: ${ctrl[1].toFixed(1)})</td></tr>
@@ -542,51 +548,73 @@ async function start() {
                     90 +
                     (neckYaw * 180) / Math.PI
                   ).toFixed(0)}°)</td></tr>`
-                : ''
+                : `<tr><td>Radar IR APDS-9960 (0x9C):</td><td><strong>${sr.irProx ?? 18} / 255</strong></td></tr>`
             }
-            <tr><td>Radar Ultrasónico (ECHO D3):</td><td><strong>92 cm</strong> (ISR no bloqueante)</td></tr>
+            <tr><td>Radar Ultrasónico (ECHO):</td><td><strong>${sr.distCm} cm</strong> (Raycast MuJoCo)</td></tr>
+            <tr><td>Estado de evasión:</td><td><strong>${dodgeLabels[sr.dodgeStage] || dodgeLabels[0]}</strong></td></tr>
           </table>
         `;
         $('arena-explanation').innerHTML = isLab4
-          ? `<div class="spec-ok"><strong>¿Qué demuestra Luigi Lab 4 (P-2)?</strong><br/>En el código original con <code>delay(350)</code>, el robot tenía que frenar en seco cada vez que movía el servo SG90. Aquí el cuello <code>7_cabeza_sensor_servo.stl</code> barre de -66° a +66° de forma continua mientras las dos ruedas mantienen tracción diferencial a 50 Hz.</div>`
-          : `<div class="spec-ok"><strong>Luigi Lab 3:</strong> Exploración con cono ultrasónico fijo al frente y compensación de zona muerta PWM ≥ 115.</div>`;
+          ? `<div class="spec-ok"><strong>¿Qué demuestra Luigi Lab 4 (P-2 + J-4)?</strong><br/>En el código original con <code>delay(350)</code>, el robot tenía que frenar en seco 700 ms cada vez que movía el servo SG90. Con <code>luigi-lab4.onnx</code>, el cuello <code>7_cabeza_sensor_servo.stl</code> barre de forma continua mientras las dos ruedas mantienen tracción diferencial y esquivan las paredes a 50 Hz.</div>`
+          : `<div class="spec-ok"><strong>Luigi Lab 3:</strong> Exploración con cono ultrasónico fijo al frente, radar IR APDS-9960 (0x9E) y compensación de zona muerta PWM ≥ 115.</div>`;
       } else if (isFactory) {
-        const phase = t % 4.0;
-        let stageName = '1. Alimentando caja en cinta';
-        if (arenaAutoMode) {
-          if (phase < 1.4) {
-            ctrl[0] = 0.55;
-            ctrl[1] = 0.0;
-            ctrl[2] = 0.0;
-            stageName = '1. Alimentando caja hacia estación de sellado';
-          } else if (phase < 2.6) {
-            ctrl[0] = 0.55;
-            ctrl[1] = 0.15;
-            ctrl[2] = 0.14;
-            stageName = '2. Alineación neumática + Sellado térmico vertical';
-          } else if (phase < 3.5) {
-            ctrl[0] = 0.92;
-            ctrl[1] = 0.0;
-            ctrl[2] = 0.0;
-            stageName = '3. Despacho de caja sellada a sensor de salida';
-          } else {
-            ctrl[0] = -0.10;
-            ctrl[1] = 0.0;
-            ctrl[2] = 0.0;
-            stageName = '4. Retorno de portador para siguiente ciclo';
-          }
-        } else {
-          stageName = 'Control manual por sliders activo';
-        }
+        const fr = view.sim.factoryReadout || {
+          feedMm: Math.round((qpos[7] ?? 0) * 1000),
+          pusherMm: Math.round((qpos[8] ?? 0) * 1000),
+          sealerMm: Math.round((qpos[9] ?? 0) * 1000),
+          sensorEntry: false,
+          sensorSealer: false,
+          sensorExit: false,
+          stage: 0,
+          crushed: false,
+          fixedPlcMode: false,
+        };
+        const stageNames = [
+          '1. Alimentando caja hacia estación de sellado',
+          '2. Sensor óptico OK → Alineación neumática + Sellado',
+          '3. Despacho de caja sellada a sensor de salida',
+          '4. Retorno de portador para siguiente ciclo',
+          '⚠️ FALLO PLC TIMER FIJO: Prensa baja sobre caja desfasada (Merma)',
+        ];
+        const stageName = arenaAutoMode ? stageNames[fr.stage] || stageNames[0] : 'Control manual por sliders activo';
         $('arena-telemetry').innerHTML = `
           <table class="mini-table">
-            <tr><td>Etapa del ciclo:</td><td><strong>${stageName}</strong></td></tr>
-            <tr><td>Cinta Transportadora:</td><td><code>${(qpos[7] * 1000).toFixed(0)} mm</code> (meta: ${(ctrl[0] * 1000).toFixed(0)} mm)</td></tr>
-            <tr><td>Pistón Alineador Lateral:</td><td><code>${(qpos[8] * 1000).toFixed(0)} mm</code> (meta: ${(ctrl[1] * 1000).toFixed(0)} mm)</td></tr>
-            <tr><td>Prensa Selladora Vertical:</td><td><code>${(qpos[9] * 1000).toFixed(0)} mm</code> (meta: ${(ctrl[2] * 1000).toFixed(0)} mm)</td></tr>
+            <tr><td>Etapa del ciclo:</td><td><strong style="color:${fr.crushed ? '#ff5252' : 'inherit'}">${stageName}</strong></td></tr>
+            <tr><td>Cinta Transportadora:</td><td><code>${fr.feedMm} mm</code> (meta: ${(ctrl[0] * 1000).toFixed(0)} mm)</td></tr>
+            <tr><td>Pistón Alineador Lateral:</td><td><code>${fr.pusherMm} mm</code> (meta: ${(ctrl[1] * 1000).toFixed(0)} mm)</td></tr>
+            <tr><td>Prensa Selladora Vertical:</td><td><code>${fr.sealerMm} mm</code> (meta: ${(ctrl[2] * 1000).toFixed(0)} mm)</td></tr>
+            <tr><td>Sensores Ópticos CNY70:</td><td>
+              Entrada: <strong>${fr.sensorEntry ? '🟢 ON' : '⚪ OFF'}</strong> ·
+              Sellado: <strong>${fr.sensorSealer ? '🟢 ON' : '⚪ OFF'}</strong> ·
+              Salida: <strong>${fr.sensorExit ? '🟢 ON' : '⚪ OFF'}</strong>
+            </td></tr>
+          </table>
+          <div style="margin-top:8px">
+            <button id="toggle-plc-fault" class="secondary-btn" type="button">
+              ${
+                view.sim._factoryFixedTimerMode
+                  ? '✅ Volver a Política Tridi Guiada por Sensores (0% Merma)'
+                  : '⚠️ Simular Fallo de PLC con Timer Fijo (Resbalón en Cinta)'
+              }
+            </button>
+          </div>
+        `;
+        const btnFault = $('toggle-plc-fault');
+        if (btnFault) {
+          btnFault.onclick = () => {
+            view.sim._factoryFixedTimerMode = !view.sim._factoryFixedTimerMode;
+          };
+        }
+        $('arena-explanation').innerHTML = `<div class="spec-ok"><strong>¿Qué demuestra la Celda Industrial (P-4)?</strong><br/>En una empaquetadora real, si una caja resbala en la cinta y el PLC baja la selladora con un <code>timer</code> fijo, aplasta el envase (merma). En MuJoCo entrenamos el ciclo coordinando los 3 actuadores con los sensores ópticos de entrada, sellado y salida.</div>`;
+      } else {
+        $('arena-telemetry').innerHTML = `
+          <table class="mini-table">
+            <tr><td>Política activa:</td><td><strong><code>g1-stand.onnx</code> (300 M pasos, 50 Hz)</strong></td></tr>
+            <tr><td>Altura pelvis Z:</td><td><strong>${qpos[2].toFixed(3)} m</strong></td></tr>
+            <tr><td>Actuadores activos:</td><td><code>29 DOF</code></td></tr>
           </table>
         `;
-        $('arena-explanation').innerHTML = `<div class="spec-ok"><strong>¿Qué demuestra la Celda Industrial (P-4)?</strong><br/>En una empaquetadora real, si una caja resbala en la cinta y el PLC baja la selladora con un <code>timer</code> fijo, aplasta el envase (merma). En MuJoCo entrenamos el ciclo coordinando los 3 actuadores con los sensores ópticos de entrada, sellado y salida.</div>`;
+        $('arena-explanation').innerHTML = `<div class="spec-ok"><strong>Unitree G1 (29 DOF):</strong> Usa el botón <strong>💥 Empujar</strong> para aplicar un impulso de 250 N y ver cómo recupera el equilibrio en tiempo real.</div>`;
       }
     }, 30);
   }
@@ -597,6 +625,8 @@ async function start() {
 
   $('arena-mode-auto').onclick = () => {
     arenaAutoMode = true;
+    view.sim._usbLocked = false;
+    view.sim._serialCmd = null;
     $('arena-mode-auto').classList.add('on');
     $('arena-mode-manual').classList.remove('on');
     $('manual-sliders').hidden = true;
@@ -604,13 +634,16 @@ async function start() {
 
   $('arena-mode-manual').onclick = () => {
     arenaAutoMode = false;
+    view.sim._usbLocked = true;
     $('arena-mode-manual').classList.add('on');
     $('arena-mode-auto').classList.remove('on');
     $('manual-sliders').hidden = false;
+    updateManualControls();
   };
 
   function updateManualControls() {
     arenaAutoMode = false;
+    view.sim._usbLocked = true;
     $('arena-mode-manual').classList.add('on');
     $('arena-mode-auto').classList.remove('on');
     const isFactory = currentArenaScene.startsWith('factory_cell/');
@@ -622,6 +655,7 @@ async function start() {
       ctrl[0] = ((r0 + 1) / 2) * 0.95;
       ctrl[1] = ((r1 + 1) / 2) * 0.20;
       ctrl[2] = ((r2 + 1) / 2) * 0.16;
+      view.sim._serialCmd = { ctrl: [ctrl[0], ctrl[1], ctrl[2]], until: 0 };
       $('val-m0').textContent = `${(ctrl[0] * 1000).toFixed(0)} mm`;
       $('val-m1').textContent = `${(ctrl[1] * 1000).toFixed(0)} mm`;
       $('val-m2').textContent = `${(ctrl[2] * 1000).toFixed(0)} mm`;
@@ -629,6 +663,7 @@ async function start() {
       ctrl[0] = r0 * 20.94;
       ctrl[1] = r1 * 20.94;
       if (view.sim.model.nu >= 3) ctrl[2] = r2 * 1.5708;
+      view.sim._serialCmd = { ctrl: [ctrl[0], ctrl[1], ctrl[2] ?? 0], until: 0 };
       $('val-m0').textContent = `${ctrl[0].toFixed(1)}`;
       $('val-m1').textContent = `${ctrl[1].toFixed(1)}`;
       $('val-m2').textContent = `${((r2 * 1.5708 * 180) / Math.PI).toFixed(0)}°`;

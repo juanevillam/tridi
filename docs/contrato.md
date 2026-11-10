@@ -493,7 +493,8 @@ Clips (y, cuando existan, políticas) ya hechos que la web muestra siempre, tamb
 
 Fuente de verdad compartida en `physics/components/catalog.json` (exportada en JS por `physics/components/index.js` y `physics/src/index.js`, y servida en Python por `data/server.py`):
 
-- **Categorías (`buckets`):** `mcus` (`arduino_uno`, `esp32_devkit_v1`, `plc_s7_1200`), `drivers` (`l298n`, `tb6612fng`), `actuators` (`tt_gearmotor_200rpm`, `sg90_servo`, `nema17_stepper`, `pneumatic_pusher_linear`), `sensors` (`hcsr04_ultrasonic`, `apds9960_optical`, `cny70_ir_reflective`), `structures` (`wheel_tt_65mm_tpu`, `caster_front_patin`) y `presets` (`luigi_lab3`, `luigi_lab4`).
+- **Categorías (`buckets`):** `mcus` (`arduino_uno`, `esp32_devkit_v1`, `plc_s7_1200`), `drivers` (`l298n`, `tb6612fng`), `actuators` (`tt_gearmotor_200rpm`, `sg90_servo`, `nema17_stepper`, `pneumatic_pusher_linear`), `sensors` (`hcsr04_ultrasonic`, `apds9960_optical`, `cny70_ir_reflective`), `structures` (`wheel_tt_65mm_tpu`, `caster_front_patin`) y `presets` (`luigi_lab3`, `luigi_lab4`, `factory_cell`).
+- **Modelos 3D aislados de previsualización (`physics/models/components/*.xml`):** los **14 componentes** del catálogo cuentan con su propia escena MuJoCo 3D independiente (`nq=1, nu=1`, eje articulado interactivo y geometría física/PCB realista) generada y verificada por `physics/scripts/sync-hardware-catalog.py` y `physics/scripts/check-assembler.mjs`.
 - **Esquema de cada componente:**
   - `id` (snake_case), `name`, `category`.
   - `mujoco`: parámetros físicos directos para generar el MJCF (`joint_type`, `axis`, `range_rad`, `damping`, `armature`, `actuator_type`, `kp`/`kv`, `ctrlrange`, `forcerange`, `mass_kg`, `size_m`, `rgba`).

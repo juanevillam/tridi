@@ -56,11 +56,11 @@ assert(roles.some((r) => r.role === 'servo_turret'), 'expected 7_cabeza_sensor_s
 
 // 3. P-1 3D Component Previews + P-2: Load standalone 3D component XMLs and luigi_lab4/scene.xml in MuJoCo WASM
 const { sim } = await loadG1Node();
-for (const compId of ['sg90_servo', 'tt_gearmotor_200rpm', 'hcsr04_ultrasonic', 'nema17_stepper', 'pneumatic_pusher_linear', 'arduino_uno', 'l298n', 'wheel_tt_65mm_tpu']) {
-  const mjcf = getComponent(compId)?.preview_mjcf;
-  assert(Boolean(mjcf), `missing preview_mjcf on ${compId}`);
+for (const comp of allComponents) {
+  const mjcf = comp.preview_mjcf;
+  assert(Boolean(mjcf), `missing preview_mjcf on ${comp.id}`);
   sim.load(mjcf, 'home');
-  assert(sim.model.nq === 1 && sim.model.nu === 1, `3D component preview ${mjcf} expected nq=1 nu=1`);
+  assert(sim.model.nq === 1 && sim.model.nu === 1, `3D component preview ${mjcf} (${comp.id}) expected nq=1 nu=1`);
 }
 sim.load('luigi_lab4/scene.xml', 'home');
 assert(sim.model.nq === 10 && sim.model.nu === 3, `luigi_lab4 expected nq=10 nu=3, got nq=${sim.model.nq} nu=${sim.model.nu}`);
@@ -104,9 +104,20 @@ sim.load('luigi_lab4/assembled_scene.xml', 'home');
 assert(sim.model.nq === 10 && sim.model.nu === 3, 'assembled_lab4 XML failed nq=10 nu=3 check');
 console.log(`P-1 & P-3 assembler: ${allComponents.length} catalog components, parsed LAB4 .ino (${parsedIno.bottlenecks.length} bottlenecks), compiled valid MuJoCo XML`);
 
-// 4. P-4: Load factory_cell/scene.xml in MuJoCo WASM and test timed conveyor + pusher + sealer
+// 4. P-4: Load factory_cell/scene.xml in MuJoCo WASM and test timed conveyor + pusher + sealer + factory-cell.onnx policy
 sim.load('factory_cell/scene.xml', 'home');
 assert(sim.model.nq === 10 && sim.model.nu === 3, `factory_cell expected nq=10 nu=3, got nq=${sim.model.nq} nu=${sim.model.nu}`);
+const factoryMeta = JSON.parse(readFileSync(new URL('../../training/policies/factory-cell.json', import.meta.url), 'utf8'));
+const factoryOnnx = new Uint8Array(readFileSync(new URL('../../training/policies/factory-cell.onnx', import.meta.url)));
+const factoryPolicy = await createPolicy(ort, sim, factoryOnnx, factoryMeta);
+sim.policy = factoryPolicy;
+sim.reset();
+for (let i = 0; i < 45; i++) await sim.advance(1 / 60);
+assert(Boolean(sim.factoryReadout) && sim.factoryReadout.feedMm > 150, 'factory-cell.onnx policy did not populate factoryReadout');
+sim.policy = null;
+factoryPolicy.dispose();
+
+sim.reset();
 sim.data.ctrl[0] = 0.55; // advance package along conveyor
 sim.data.ctrl[1] = 0.14; // extend pneumatic pusher gate
 sim.data.ctrl[2] = 0.12; // lower vertical sealer press
