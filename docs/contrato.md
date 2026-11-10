@@ -488,3 +488,16 @@ Clips (y, cuando existan, políticas) ya hechos que la web muestra siempre, tamb
 - **Los archivos** se quedan donde los deja su dueño: `data/clips/*.json` (Juan) y `web/clips/*.json` (sintéticos para pruebas). La web los empaqueta al compilar; no se copian.
 - **Agregar uno:** dejar el `PoseClip` en `data/clips/` y sumar una entrada a la lista. Si la entrada nombra un clip que no existe, la web la salta y avisa en la consola.
 - **Políticas:** cuando `training/` tenga la primera, cada entrada suma `"policy"` con el id de su `policy.json`. *(2026-10-24)* Para una precargada es su política de imitación (`task: "mimic"`), salida del mismo flujo que un video de usuario.
+
+## Catálogo de Componentes de Hardware y Motor del Assembler *(2026-11-10)*
+
+Fuente de verdad compartida en `physics/components/catalog.json` (exportada en JS por `physics/components/index.js` y `physics/src/index.js`, y servida en Python por `data/server.py`):
+
+- **Categorías (`buckets`):** `mcus` (`arduino_uno`, `esp32_devkit_v1`, `plc_s7_1200`), `drivers` (`l298n`, `tb6612fng`), `actuators` (`tt_gearmotor_200rpm`, `sg90_servo`, `nema17_stepper`, `pneumatic_pusher_linear`), `sensors` (`hcsr04_ultrasonic`, `apds9960_optical`, `cny70_ir_reflective`), `structures` (`wheel_tt_65mm_tpu`, `caster_front_patin`) y `presets` (`luigi_lab3`, `luigi_lab4`).
+- **Esquema de cada componente:**
+  - `id` (snake_case), `name`, `category`.
+  - `mujoco`: parámetros físicos directos para generar el MJCF (`joint_type`, `axis`, `range_rad`, `damping`, `armature`, `actuator_type`, `kp`/`kv`, `ctrlrange`, `forcerange`, `mass_kg`, `size_m`, `rgba`).
+  - `mcu`: restricciones electrónicas y de firmware (`required_pins`, `deadzone_pwm`, `max_pwm`, `locks_timer_on_arduino_uno`, `disables_pwm_pins_on_arduino_uno`, `blocking_pulsein_timeout_ms`).
+- **Endpoints en `data/server.py`:**
+  - `GET /components` → devuelve el catálogo completo combinando `physics/components/catalog.json` con los componentes personalizados registrados en `data/components/custom.json`.
+  - `POST /components` → valida (`id`, `name`, `category`, `mujoco`) y registra un componente nuevo en `data/components/custom.json` (`201 Created`).

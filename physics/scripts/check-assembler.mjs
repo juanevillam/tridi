@@ -1,0 +1,107 @@
+// Headless verification of Tasks P-1 (Hardware Catalog & CRUD), P-2 (luigi_lab4 MuJoCo Digital Twin),
+// P-3 (Assembler .ino parser + MJCF generator), and P-4 (Industrial Factory Cell in MuJoCo).
+import { readFileSync } from 'node:fs';
+import {
+  getComponent,
+  getPreset,
+  listComponents,
+  registerComponent,
+  removeComponent,
+  validateHardwarePinout,
+} from '../components/index.js';
+import { classifyStlMeshes, generateMujocoXml, parseArduinoSketch } from '../src/assembler.js';
+import { loadG1Node } from './node-model.mjs';
+
+const failures = [];
+const assert = (cond, msg) => {
+  if (!cond) failures.push(msg);
+};
+
+// 1. P-1: Hardware Component Catalog, CRUD & Timer/Pin Guardrails
+const allComponents = listComponents();
+assert(allComponents.length >= 10, `expected >= 10 catalog components, got ${allComponents.length}`);
+assert(getComponent('sg90_servo')?.mujoco?.kp === 4.5, 'sg90_servo kp should be 4.5');
+assert(getComponent('sg90_servo')?.mcu?.upstream_pins?.length === 3, 'sg90_servo should have 3 Wokwi upstream pins');
+assert(getComponent('arduino_uno')?.mcu?.upstream_pins?.length >= 20, 'arduino_uno should have Wokwi upstream pins');
+assert(getComponent('tt_gearmotor_200rpm')?.mcu?.deadzone_pwm === 115, 'tt_gearmotor_200rpm deadzone_pwm should be 115');
+
+const custom = registerComponent({
+  id: 'custom_tof_vl53l1x',
+  name: 'VL53L1X Long-Range Laser ToF (4m)',
+  category: 'distance_sensor',
+  mujoco: { sensor_type: 'rangefinder', max_range_m: 4.0, mass_kg: 0.002 },
+  mcu: { bus: 'I2C', i2c_address: '0x29' },
+});
+assert(custom.bucket === 'sensors' && getComponent('custom_tof_vl53l1x')?.name.includes('VL53L1X'), 'CRUD registerComponent failed');
+assert(removeComponent('custom_tof_vl53l1x') && !getComponent('custom_tof_vl53l1x'), 'CRUD removeComponent failed');
+
+const lab4Preset = getPreset('luigi_lab4');
+const validLab4 = validateHardwarePinout('arduino_uno', lab4Preset.pinout);
+assert(validLab4.valid && validLab4.interruptMode === 'INT1_hardware_isr', `luigi_lab4 pinout should be valid with INT1_hardware_isr: ${JSON.stringify(validLab4)}`);
+
+const badTimer1 = validateHardwarePinout('arduino_uno', { ...lab4Preset.pinout, ENA: 10, SERVO: 9 });
+assert(!badTimer1.valid && badTimer1.errors.some((e) => e.includes('Timer1 conflict')), 'expected Timer1 conflict when ENA=10 and SERVO=9');
+
+// 2. P-3: Parse real Luigi Lab 4 Arduino sketch & generate MuJoCo XML
+const lab4InoPath = new URL('../models/luigi_lab4/firmware/LAB4_Robot_Explorador_Autonomo.ino', import.meta.url).pathname;
+const parsedIno = parseArduinoSketch(readFileSync(lab4InoPath, 'utf8'));
+assert(parsedIno.hasServo && parsedIno.pinout.SERVO === 9, `expected SERVO=9 from LAB4 .ino, got ${parsedIno.pinout.SERVO}`);
+assert(parsedIno.pinout.ENA === 5 && parsedIno.pinout.ENB === 6 && parsedIno.pinout.ECHO === 3, `unexpected LAB4 pinout: ${JSON.stringify(parsedIno.pinout)}`);
+assert(parsedIno.bottlenecks.length >= 2, 'expected pulseIn and delay bottlenecks detected in LAB4 .ino');
+
+const roles = classifyStlMeshes(['1_chasis_robot.stl', '5_rin_x2.stl', '6_llanta_x2_TPU.stl', '7_cabeza_sensor_servo.stl']);
+assert(roles.some((r) => r.role === 'servo_turret'), 'expected 7_cabeza_sensor_servo.stl classified as servo_turret');
+
+// 3. P-1 3D Component Previews + P-2: Load standalone 3D component XMLs and luigi_lab4/scene.xml in MuJoCo WASM
+const { sim } = await loadG1Node();
+for (const compId of ['sg90_servo', 'tt_gearmotor_200rpm', 'hcsr04_ultrasonic', 'nema17_stepper', 'pneumatic_pusher_linear', 'arduino_uno', 'l298n', 'wheel_tt_65mm_tpu']) {
+  const mjcf = getComponent(compId)?.preview_mjcf;
+  assert(Boolean(mjcf), `missing preview_mjcf on ${compId}`);
+  sim.load(mjcf, 'home');
+  assert(sim.model.nq === 1 && sim.model.nu === 1, `3D component preview ${mjcf} expected nq=1 nu=1`);
+}
+sim.load('luigi_lab4/scene.xml', 'home');
+assert(sim.model.nq === 10 && sim.model.nu === 3, `luigi_lab4 expected nq=10 nu=3, got nq=${sim.model.nq} nu=${sim.model.nu}`);
+
+sim.data.ctrl[0] = 15.0;
+sim.data.ctrl[1] = 15.0;
+sim.data.ctrl[2] = 1.1; // +63 deg left neck sweep
+for (let i = 0; i < 30; i++) await sim.advance(1 / 60);
+const xAfterForward = sim.data.qpos[0];
+const neckLeft = sim.data.qpos[9];
+
+sim.data.ctrl[2] = -1.1; // -63 deg right neck sweep
+for (let i = 0; i < 30; i++) await sim.advance(1 / 60);
+const neckRight = sim.data.qpos[9];
+
+assert(xAfterForward > 0.05, `luigi_lab4 did not drive forward (x=${xAfterForward.toFixed(3)} m)`);
+assert(neckLeft > 0.45 && neckRight < -0.45, `luigi_lab4 SG90 neck did not sweep (left=${neckLeft.toFixed(2)} rad, right=${neckRight.toFixed(2)} rad)`);
+console.log(`P-2 luigi_lab4: drove x=${xAfterForward.toFixed(3)} m, neck swept +${(neckLeft * 180 / Math.PI).toFixed(1)}° to ${(neckRight * 180 / Math.PI).toFixed(1)}°`);
+
+// Verify P-3 generated XML loads into MuJoCo WASM using the luigi_lab4 mesh assets
+const assembled = generateMujocoXml({ preset: 'luigi_lab4', modelName: 'assembled_lab4' });
+sim.files['luigi_lab4/assembled_lab4.xml'] = new TextEncoder().encode(assembled.robotXml);
+sim.files['luigi_lab4/assembled_scene.xml'] = new TextEncoder().encode(assembled.sceneXml);
+sim.load('luigi_lab4/assembled_scene.xml', 'home');
+assert(sim.model.nq === 10 && sim.model.nu === 3, 'assembled_lab4 XML failed nq=10 nu=3 check');
+console.log(`P-1 & P-3 assembler: ${allComponents.length} catalog components, parsed LAB4 .ino (${parsedIno.bottlenecks.length} bottlenecks), compiled valid MuJoCo XML`);
+
+// 4. P-4: Load factory_cell/scene.xml in MuJoCo WASM and test timed conveyor + pusher + sealer
+sim.load('factory_cell/scene.xml', 'home');
+assert(sim.model.nq === 10 && sim.model.nu === 3, `factory_cell expected nq=10 nu=3, got nq=${sim.model.nq} nu=${sim.model.nu}`);
+sim.data.ctrl[0] = 0.55; // advance package along conveyor
+sim.data.ctrl[1] = 0.14; // extend pneumatic pusher gate
+sim.data.ctrl[2] = 0.12; // lower vertical sealer press
+for (let i = 0; i < 45; i++) await sim.advance(1 / 60);
+const feedPos = sim.data.qpos[7];
+const pusherPos = sim.data.qpos[8];
+const sealerPos = sim.data.qpos[9];
+assert(feedPos > 0.25 && pusherPos > 0.08 && sealerPos > 0.06, `factory_cell actuators did not reach targets (${feedPos.toFixed(2)}, ${pusherPos.toFixed(2)}, ${sealerPos.toFixed(2)})`);
+console.log(`P-4 factory_cell: conveyor=${feedPos.toFixed(2)} m, pusher=${pusherPos.toFixed(2)} m, sealer=${sealerPos.toFixed(2)} m`);
+
+sim.delete();
+if (failures.length) {
+  console.error(`check-assembler failed: ${failures.join('; ')}`);
+  process.exit(1);
+}
+console.log('check-assembler passed');
