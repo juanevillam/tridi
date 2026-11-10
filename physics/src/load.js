@@ -22,6 +22,16 @@ const LUIGI_FILES = import.meta.glob('../models/luigi_lab3/**/*.{xml,STL,stl}', 
   import: 'default',
   eager: true,
 });
+const LUIGI_LAB4_FILES = import.meta.glob('../models/luigi_lab4/**/*.{xml,STL,stl}', {
+  query: '?url',
+  import: 'default',
+  eager: true,
+});
+const FACTORY_CELL_FILES = import.meta.glob('../models/factory_cell/**/*.{xml,STL,stl}', {
+  query: '?url',
+  import: 'default',
+  eager: true,
+});
 
 /**
  * @param onProgress called with { done, total, bytes } as each file arrives
@@ -32,6 +42,8 @@ export async function loadG1(onProgress = () => {}) {
     ...Object.entries(G1_FILES).map(([path, url]) => [path.slice(G1_ROOT.length), url]),
     ...Object.entries(H1_FILES).map(([path, url]) => [path.slice(H1_ROOT.length), url]),
     ...Object.entries(LUIGI_FILES).map(([path, url]) => [path.slice(H1_ROOT.length), url]),
+    ...Object.entries(LUIGI_LAB4_FILES).map(([path, url]) => [path.slice(H1_ROOT.length), url]),
+    ...Object.entries(FACTORY_CELL_FILES).map(([path, url]) => [path.slice(H1_ROOT.length), url]),
   ];
   const progress = { done: 0, total: entries.length + 1, bytes: 0 };
   const advance = (bytes = 0) => {

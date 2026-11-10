@@ -16,7 +16,7 @@ const HOME_KEY = 'home';
 const ANG_VEL_SCALE = 0.25;
 const JOINT_VEL_SCALE = 0.05;
 const ACTION_SCALE = 0.25; // one unit of action is 0.25 rad from the standing pose
-const SUPPORTED_ROBOTS = new Set(['unitree_g1', 'unitree_h1', 'luigi_lab3']);
+const SUPPORTED_ROBOTS = new Set(['unitree_g1', 'unitree_h1', 'luigi_lab3', 'luigi_lab4', 'factory_cell']);
 const standObsDim = (nu, senseVelocity = false) => 3 + 3 + nu + nu + nu + (senseVelocity ? 3 : 0);
 // Imitation adds the reference 20 ms ahead (joints, pelvis velocity, pelvis height), for each
 // look-ahead instant of policy.json its joints and pelvis position, and optionally (sense_velocity)
@@ -65,8 +65,9 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
   const minRefZ = mimic && motion.qpos?.length ? Math.min(...motion.qpos.map((r) => r[2])) : FALL_HEIGHT;
   // Deep squats and sitting down lower the pelvis to 0.32-0.44 m while upright, below the 0.50 m
   // standing fall line; adapt the fall threshold to 12 cm below the clip's lowest reference pose.
-  const isWheeled = meta.robot === 'luigi_lab3';
-  const fallHeight = isWheeled ? 0.02 : mimic ? Math.min(FALL_HEIGHT, minRefZ - 0.12) : FALL_HEIGHT;
+  const isWheeled = meta.robot === 'luigi_lab3' || meta.robot === 'luigi_lab4';
+  const isIndustrial = meta.robot === 'factory_cell';
+  const fallHeight = isWheeled || isIndustrial ? 0.02 : mimic ? Math.min(FALL_HEIGHT, minRefZ - 0.12) : FALL_HEIGHT;
   const session = await ort.InferenceSession.create(onnx, { executionProviders: ['wasm'] });
   const [input] = session.inputNames;
   const [output] = session.outputNames;
@@ -150,10 +151,13 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
     const ry = qpos[1];
     const rz = qpos[2];
     const [qw, qx, qy, qz] = [qpos[3], qpos[4], qpos[5], qpos[6]];
-    const yaw = Math.atan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy * qy + qz * qz));
-    // Front sensor mount (HC-SR04 + APDS-9960) sits 0.155 m ahead of pelvis origin
-    const sx = rx + 0.155 * Math.cos(yaw);
-    const sy = ry + 0.155 * Math.sin(yaw);
+    const bodyYaw = Math.atan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy * qy + qz * qz));
+    // On luigi_lab4, qpos[9] is the SG90 neck servo angle (-pi/2..+pi/2 rad) rotating the HC-SR04 turret
+    const neckAngle = m.nq >= 10 ? qpos[9] : 0;
+    const yaw = bodyYaw + neckAngle;
+    const mountOffset = m.nq >= 10 ? 0.180 : 0.155;
+    const sx = rx + mountOffset * Math.cos(bodyYaw);
+    const sy = ry + mountOffset * Math.sin(bodyYaw);
     const sz = rz + 0.015;
     const T = mujoco.mjtGeom;
 
@@ -317,18 +321,21 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
         if (dodge.stage === 1) {
           data.ctrl[0] = -20;
           data.ctrl[1] = -20;
+          if (nu >= 3) data.ctrl[2] = -1.25; // sweep SG90 neck right (-72 deg) to scan clearance
           previous.set(data.ctrl);
           return;
         }
         if (dodge.stage === 2) {
           data.ctrl[0] = -14.5;
           data.ctrl[1] = -14.5;
+          if (nu >= 3) data.ctrl[2] = 1.25; // sweep SG90 neck left (+72 deg) while reversing
           previous.set(data.ctrl);
           return;
         }
         if (dodge.stage === 3) {
           data.ctrl[0] = dodge.turnDir > 0 ? -14.5 : 14.5;
           data.ctrl[1] = dodge.turnDir > 0 ? 14.5 : -14.5;
+          if (nu >= 3) data.ctrl[2] = 0; // return SG90 neck to 0 rad (90 deg front)
           previous.set(data.ctrl);
           return;
         }
@@ -338,6 +345,10 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
         const corridorBias = Math.max(-3.5, Math.min(3.5, (sensor.leftClearM - sensor.rightClearM) * 1.6));
         data.ctrl[0] = Math.max(-20, Math.min(20, 15.5 + (ctrl[0] || 0) * 0.25 - corridorBias));
         data.ctrl[1] = Math.max(-20, Math.min(20, 15.5 + (ctrl[1] || 0) * 0.25 + corridorBias));
+        if (nu >= 3) {
+          // Active SG90 neck radar oscillation while moving (no blocking delay(350))
+          data.ctrl[2] = Math.max(-1.57, Math.min(1.57, 0.65 * Math.sin(simTime * 3.0) + (ctrl[2] || 0) * 0.15));
+        }
         previous.set(data.ctrl);
         return;
       }
