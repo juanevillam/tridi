@@ -25,7 +25,8 @@
 ## Verificación
 
 - `npm --prefix physics run check` → **100 % verde** (incluyendo la verificación en `check-assembler.mjs` de las 14 escenas 3D de componentes y de `factory-cell.onnx`).
-- `npm --prefix web run check && npm --prefix web run build` → **100 % verde** (`585 keys` ES/EN verificadas, build de producción en `855 ms`).
+- `npm --prefix web run check && npm --prefix web run build` → **100 % verde** (`585 keys` ES/EN verificadas, build de producción en `587 ms`).
+- **Fix de navegación entre links `#/simulations/<robot>` y deploy en vivo a `trytridi.com`:** corregida la condición de carrera en `stage.js`/`robot-host.js` al cambiar entre `#/simulations/luigi_lab3`, `#/simulations/luigi_lab4` y `#/simulations/factory_cell`, excluida la calle hueca del G1 (`looks/index.js`) en los 3 modelos, agregados botones de cambio rápido en `#luigi-sim-panel` y desplegado directamente a producción en Cloudflare Pages (`https://trytridi.com`).
 
 ## Qué sigue
 

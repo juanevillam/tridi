@@ -131,12 +131,23 @@ export function mount(root, { api }, [clipId] = []) {
         <aside class="sims-list">
           <section class="luigi-sim-panel" id="luigi-sim-panel" hidden>
             <div class="luigi-sim-head">
-              <span class="card-badge trained"><span class="t" lang="es">Sim-to-Real · Lazo Cerrado</span><span class="t" lang="en">Sim-to-Real · Closed-Loop</span></span>
+              <span class="card-badge trained" id="luigi-sim-badge"><span class="t" lang="es">Sim-to-Real · Lazo Cerrado</span><span class="t" lang="en">Sim-to-Real · Closed-Loop</span></span>
               <h2 id="luigi-sim-title"><span class="t" lang="es">Telemetría de Sensores en MuJoCo</span><span class="t" lang="en">Live Sensor Telemetry in MuJoCo</span></h2>
               <p class="train-text" id="luigi-sim-desc">
                 <span class="t" lang="es">El robot diferencial simula el cono ultrasónico <code>HC-SR04</code> (±24°), el radar IR <code>APDS-9960 (0x9C)</code>, el cuello móvil <code>SG90</code> y colisiones sólidas en una arena de 3,4 m × 3,4 m.</span>
                 <span class="t" lang="en">The differential robot simulates the <code>HC-SR04</code> ultrasonic cone (±24°), the <code>APDS-9960 (0x9C)</code> IR radar, the <code>SG90</code> pan neck, and solid collisions inside a 3.4 m × 3.4 m arena.</span>
               </p>
+              <div class="mode" id="custom-robot-tabs" role="group" style="margin-top:8px">
+                <button type="button" data-quick-robot="luigi_lab3" aria-pressed="false">
+                  <span class="t" lang="es">Lab 3 (Chasis Negro)</span><span class="t" lang="en">Lab 3 (Black Chassis)</span>
+                </button>
+                <button type="button" data-quick-robot="luigi_lab4" aria-pressed="false">
+                  <span class="t" lang="es">Lab 4 (Radar SG90)</span><span class="t" lang="en">Lab 4 (SG90 Radar)</span>
+                </button>
+                <button type="button" data-quick-robot="factory_cell" aria-pressed="false">
+                  <span class="t" lang="es">Celda Industrial</span><span class="t" lang="en">Factory Cell</span>
+                </button>
+              </div>
             </div>
             <div class="luigi-telemetry-grid">
               <div class="luigi-tel-card">
