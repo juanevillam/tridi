@@ -118,3 +118,20 @@ Documentado en [`docs/audit-playbook.md`](../audit-playbook.md) y en el skill [`
   1. **Resolución y muestreo multi-clip (`resolve_clips` + `clip_fail_ema`):** acepta un alias (`all-walks` con los 5 clips balanceados de caminata, `all-g1`), lista separada por comas (`caminar,frente,saludar`) o carpeta de `.json`. Mantiene una media móvil exponencial de fallos por clip (`clip_fail_ema`) y muestrea cada episodio con probabilidad $p_i \propto 0{,}30/N + 0{,}70 \cdot \text{fail\_ema}_i$ para concentrar los pasos de GPU en los clips donde el robot aún cae.
   2. **Inyección de falla parcial de actuador (`--fault-prob`, ej. `0.25`):** al iniciar un episodio, con probabilidad `fault_prob`, elige al azar un motor de las piernas (`hip`, `knee`, `ankle`, `wheel`) y degrada su ganancia y torque máximo (`actuator_gainprm`, `actuator_biasprm`, `actuator_forcerange`) por un factor uniforme en `[0.35, 0.75]`.
   3. **Frenada de emergencia por obstáculo (`--sudden-stop-prob`, ej. `0.20`):** programa un instante aleatorio dentro del episodio donde el tiempo de referencia `self.t` se congela durante `50–100 pasos` (`1,0–2,0 s` a `50 Hz`) y la referencia exige velocidad lineal/angular cero y postura erguida antes de reanudar la marcha.
+
+---
+
+## 8. Catálogo de Hardware (`P-1`), Gemelo `luigi_lab4` (`P-2`), Motor del Assembler (`P-3`) y Celda Industrial (`P-4`)
+
+1. **Catálogo de Componentes de Hardware (`physics/components/catalog.json` + `physics/components/index.js`):**
+   - Une en una sola fuente de verdad los parámetros físicos de MuJoCo (`mujoco`: `joint_type`, `damping`, `armature`, `kp`/`kv`, `ctrlrange`, `forcerange`, `mass_kg`, conos de rayos) y las restricciones eléctricas del microcontrolador (`mcu`: `deadzone_pwm: 115`, conflicto `Timer1` de `<Servo.h>` que inhabilita PWM en `D9/D10` en ATmega328P, e interrupciones externas `INT0/INT1` en `D2/D3` vs `PCINT`).
+   - Expone CRUD en runtime (`listComponents`, `getComponent`, `getPreset`, `registerComponent`, `removeComponent`, `validateHardwarePinout`) y endpoints REST `GET /components` y `POST /components` en `data/server.py`.
+2. **Gemelo Digital `luigi_lab4` (`physics/models/luigi_lab4/luigi_lab4.xml` y `scene.xml`):**
+   - Modelo MuJoCo (`nq = 10`, `nu = 3`) con las 7 mallas `.stl` de Laboratorio IV.
+   - Orden de articulaciones alineado con `<actuator>`: `qpos[7]` = `left_wheel_joint` (`ctrl[0]`), `qpos[8]` = `right_wheel_joint` (`ctrl[1]`), `qpos[9]` = `neck_servo_joint` (`ctrl[2]`, rango `[-1.5708, 1.5708] rad`).
+   - En `physics/src/policy.js`, `scanWheeledSensors()` suma `qpos[9]` al ángulo de barrido del cono ultrasónico para que los 7 rayos de `RobotView` giren en vivo junto con la cabeza `7_cabeza_sensor_servo.stl`.
+3. **Motor del `Tridi Assembler` (`physics/src/assembler.js`):**
+   - `parseArduinoSketch(code)` extrae determinísticamente pines (`ENA`, `ENB`, `IN1..IN4`, `TRIG`, `ECHO`, `SERVO`), periféricos (`<Servo.h>`, `HC-SR04`, `APDS-9960`) y cuellos de botella bloqueantes (`pulseIn` de `47,1 ms` y `delay()`).
+   - `classifyStlMeshes(files)` y `generateMujocoXml(config)` generan `robotXml` y `sceneXml` listos para cargar en MuJoCo WASM (`sim.files`).
+4. **Celda Industrial de Empaque (`physics/models/factory_cell/factory_cell.xml` y `scene.xml`):**
+   - Escena industrial en MuJoCo (`nq = 10`, `nu = 3`) con cinta transportadora (`conveyor_feed_joint`), cilindro neumático desviador (`pusher_slide_joint`), cabezal sellador vertical (`sealer_press_joint`) y sensores ópticos de línea.
