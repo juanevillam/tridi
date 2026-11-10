@@ -57,8 +57,18 @@ export function onRobotProgress(listener) {
 export function attachRobot(pane) {
   pane.prepend(canvas);
   let attached = true;
-  const handed = loadRobot().then((loaded) => {
+  const handed = loadRobot().then(async (loaded) => {
     if (!attached) return null;
+    const onSims = /^#\/(simulations|simulaciones)(\/|$)/.test(location.hash);
+    if (!onSims && loaded.sim?.policy?.robot && loaded.sim.policy.robot !== 'unitree_g1') {
+      try {
+        const { onnx, json } = policyUrls(FINAL_LEVEL);
+        await loaded.loadPolicy(onnx, json);
+      } catch (error) {
+        console.error(error);
+      }
+      if (!attached) return null;
+    }
     loaded.stop(); // ends a clip or a camera copy and stands the robot up
     loaded.setSpeed(1);
     loaded.play();

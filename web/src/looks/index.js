@@ -16,9 +16,10 @@ import { dressWet } from './wet.js';
  * the walk along +x, Simulaciones along -z (MuJoCo +y). Its shops stand on the robot's right.
  */
 function dressSidewalk(view) {
-  // Luigi's differential robot has its own physical 3.4m x 3.4m obstacle arena in luigi_lab3/scene.xml;
-  // do not place the 88m hollow Kenney street over it.
-  if (view.sim?.policy?.robot === 'luigi_lab3') {
+  // Custom arenas (Luigi Lab 3/4 and Factory Cell) have their own physical 3.4m x 3.4m floor and obstacles;
+  // do not place the 88m hollow Kenney street over them.
+  const robot = view.sim?.policy?.robot;
+  if (robot === 'luigi_lab3' || robot === 'luigi_lab4' || robot === 'factory_cell') {
     return { update() {}, undo() {} };
   }
   const { scene, renderer } = view.viewer;

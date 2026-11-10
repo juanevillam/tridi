@@ -216,13 +216,47 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       if ($('show')) $('show').value = 'robot';
     }
     lastDodgeStage = -1;
+    root.querySelectorAll('[data-quick-robot]').forEach((btn) => {
+      btn.setAttribute('aria-pressed', String(btn.dataset.quickRobot === robotModel));
+    });
     if (robotModel === 'luigi_lab4') {
+      if ($('luigi-sim-badge')) {
+        $('luigi-sim-badge').innerHTML = '<span class="t" lang="es">Lab IV · Radar Servo SG90 Activo (50 Hz)</span><span class="t" lang="en">Lab IV · Active SG90 Servo Radar (50 Hz)</span>';
+      }
+      if ($('luigi-sim-title')) {
+        $('luigi-sim-title').innerHTML = '<span class="t" lang="es">Luigi Lab 4 · Cuello Móvil SG90 + HC-SR04</span><span class="t" lang="en">Luigi Lab 4 · SG90 Pan Neck + HC-SR04</span>';
+      }
+      if ($('luigi-sim-desc')) {
+        $('luigi-sim-desc').innerHTML = '<span class="t" lang="es">Chasis naranja extendido (180 mm, 7 STLs) con torreta móvil <code>7_cabeza_sensor_servo.stl</code> sobre servo <code>SG90</code> (±63°): barre izquierda-centro-derecha en movimiento continuo a 50 Hz sin frenar el robot.</span><span class="t" lang="en">Extended orange chassis (180 mm, 7 STLs) with pan turret <code>7_cabeza_sensor_servo.stl</code> on an <code>SG90</code> servo (±63°): sweeps left-center-right while driving at 50 Hz without stopping.</span>';
+      }
       if ($('sim-label-1')) $('sim-label-1').textContent = 'HC-SR04 en Torreta (D7 / D4)';
       if ($('sim-label-2')) $('sim-label-2').textContent = 'Cuello Servo SG90 (Pin D13)';
+      if ($('sim-label-3')) $('sim-label-3').innerHTML = '<span class="t" lang="es">Puente H L298N (ENA D5 / ENB D6)</span><span class="t" lang="en">L298N H-Bridge (ENA D5 / ENB D6)</span>';
+      if ($('sim-label-4')) $('sim-label-4').innerHTML = '<span class="t" lang="es">Evasión continua (Lab 4)</span><span class="t" lang="en">Continuous dodge (Lab 4)</span>';
     } else if (robotModel === 'luigi_lab3') {
+      if ($('luigi-sim-badge')) {
+        $('luigi-sim-badge').innerHTML = '<span class="t" lang="es">Lab III · Sim-to-Real Físico (50 Hz)</span><span class="t" lang="en">Lab III · Physical Sim-to-Real (50 Hz)</span>';
+      }
+      if ($('luigi-sim-title')) {
+        $('luigi-sim-title').innerHTML = '<span class="t" lang="es">Luigi Lab 3 · HC-SR04 Fijo + Radar IR APDS-9960</span><span class="t" lang="en">Luigi Lab 3 · Fixed HC-SR04 + APDS-9960 IR Radar</span>';
+      }
+      if ($('luigi-sim-desc')) {
+        $('luigi-sim-desc').innerHTML = '<span class="t" lang="es">Chasis negro mate (150 mm, 6 STLs) con ultrasónico frontal fijo <code>HC-SR04</code>, radar infrarrojo <code>APDS-9960 (0x9E)</code> sobre soporte superior y arnés Dupont completo.</span><span class="t" lang="en">Matte-black chassis (150 mm, 6 STLs) with fixed front <code>HC-SR04</code>, overhead <code>APDS-9960 (0x9E)</code> IR radar, and full Dupont wire harness.</span>';
+      }
       if ($('sim-label-1')) $('sim-label-1').textContent = 'HC-SR04 (Trig D9 / Echo A1)';
       if ($('sim-label-2')) $('sim-label-2').textContent = 'APDS-9960 IR (Reg 0x9C)';
+      if ($('sim-label-3')) $('sim-label-3').innerHTML = '<span class="t" lang="es">Puente H L298N (Izq / Der)</span><span class="t" lang="en">L298N H-Bridge (L / R)</span>';
+      if ($('sim-label-4')) $('sim-label-4').innerHTML = '<span class="t" lang="es">Estado de evasión (4 etapas)</span><span class="t" lang="en">Dodge state (4 stages)</span>';
     } else if (robotModel === 'factory_cell') {
+      if ($('luigi-sim-badge')) {
+        $('luigi-sim-badge').innerHTML = '<span class="t" lang="es">Automatización Industrial · PLC S7-1200</span><span class="t" lang="en">Industrial Automation · S7-1200 PLC</span>';
+      }
+      if ($('luigi-sim-title')) {
+        $('luigi-sim-title').innerHTML = '<span class="t" lang="es">Celda de Empaquetado · Cinta + Pistón + Prensa</span><span class="t" lang="en">Packaging Cell · Conveyor + Pusher + Sealer</span>';
+      }
+      if ($('luigi-sim-desc')) {
+        $('luigi-sim-desc').innerHTML = '<span class="t" lang="es">Línea industrial de 3 ejes coordinados por barreras ópticas (<code>Entrada</code>, <code>Sellado</code>, <code>Salida</code>). Prueba el botón de falla abajo para ver cómo un PLC por timer aplasta cajas cuando patina la cinta.</span><span class="t" lang="en">3-axis industrial packaging line gated by optical sensors (<code>Entry</code>, <code>Sealer</code>, <code>Exit</code>). Toggle the fault button below to see how a fixed-timer PLC crushes boxes under belt slip.</span>';
+      }
       if ($('sim-label-1')) $('sim-label-1').textContent = 'Cinta + Pistón (mm)';
       if ($('sim-label-2')) $('sim-label-2').textContent = 'Prensa + Sensores Ópticos';
       if ($('sim-label-3')) $('sim-label-3').innerHTML = '<span class="t" lang="es">Ciclos / Merma</span><span class="t" lang="en">Cycles / Waste</span>';
@@ -234,7 +268,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
   // otherwise it is computed in slices, with its progress on the label, so the page keeps working.
   async function copyCurrent() {
     const view = robot.view;
-    if (!view || !current) return;
+    if (!view || !current || isCustomRobot()) return;
     const { clip } = current;
     if (!motions.has(clip.id)) {
       const saved = await savedMotion(clip.id);
@@ -392,16 +426,27 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
 
   robot.ready.then(async (view) => {
     if (!view) return;
-    refreshLook();
     view.setSpeed(speed);
     if (!playing) view.pause();
     if (isCustomRobot()) {
       await loadLevel(CUSTOM_ROBOT_POLICY[robotModel]);
       return;
     }
+    refreshLook();
     await loadLevel(FINAL_LEVEL); // standing with its policy: physics from the first frame
     if (current) await physicsFor(current.clip);
     copyCurrent(); // the puppet reference, ready for the "sin física" mode
+  });
+
+  root.querySelectorAll('[data-quick-robot]').forEach((btn) => {
+    btn.onclick = () => {
+      const nextRobot = btn.dataset.quickRobot;
+      if ($('robot-model') && nextRobot) {
+        $('robot-model').value = nextRobot;
+        $('robot-model').dispatchEvent(new Event('change'));
+        history.replaceState(null, '', `#/simulations/${nextRobot}`);
+      }
+    };
   });
 
   $('show').onchange = (event) => ($('stage').dataset.show = event.target.value);
@@ -806,16 +851,12 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
         }
         view.viewer.targetHeight = 0.75;
         view.viewer.controls.minDistance = 0.65;
-        const restoreRobot =
-          view.sim?.policy?.robot && view.sim.policy.robot !== 'unitree_g1'
-            ? (() => {
-                const { onnx, json } = policyUrls(FINAL_LEVEL);
-                return view.loadPolicy(onnx, json);
-              })()
-            : Promise.resolve();
-        restoreRobot
-          .then(() => (view.world() && view.world().id !== 'plano' ? view.setWorld(WORLDS.find((world) => world.id === 'plano')) : null))
-          .then(() => view.scene() && view.setScene(null));
+        if (view.world() && view.world().id !== 'plano') {
+          view.setWorld(WORLDS.find((world) => world.id === 'plano'));
+        }
+        if (view.scene()) {
+          view.setScene(null);
+        }
       }
       robot.dispose();
     },
