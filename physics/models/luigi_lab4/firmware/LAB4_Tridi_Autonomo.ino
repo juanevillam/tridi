@@ -1,6 +1,6 @@
 // ============================================================================
 // TRIDI MCU COMPILER (export_mcu.py) — Luigi Lab 4 (Autonomous Explorer + SG90 Servo Radar Neck on D9)
-// Origen ONNX: luigi-lab3.onnx (paridad numérica vs onnxruntime: max_diff = 1.91e-06)
+// Origen ONNX: luigi-lab4.onnx (paridad numérica vs onnxruntime: max_diff = 1.19e-07)
 // Guardrails de Hardware Verificados:
 //   - Timer1 Guardrail PASS: Servo on D9 uses Timer1 while ENA=D5, ENB=D6 use Timer0 PWM (no timer collision).
 //   - Non-blocking Radar State Machine: replaced blocking `myServo.write() + delay(350)` with asynchronous 50 Hz servo sweep (`radarTick()`).
@@ -44,96 +44,118 @@ const float STOP_DIST_CM = 25.0f;
 const float CLEAR_DIST_CM = 32.0f;
 
 // --- Pesos y constantes extraídos automáticamente del grafo ONNX ---
-#define TRIDI_OBS_DIM 15
-#define TRIDI_ACT_DIM 2
-static const float w_low[2] = { -20.9400005f, -20.9400005f };
-static const float w_high[2] = { 20.9400005f, 20.9400005f };
-static const float w_l_th_weight[15] = { 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.1100000f, 0.1100000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f };
+#define TRIDI_OBS_DIM 18
+#define TRIDI_ACT_DIM 3
+static const float w_w_sin[3] = { -1.7730608f, 1.6110165f, 0.4493130f };
+static const float w_w_stab[3] = { -2.3813238f, 2.3830349f, 0.3734572f };
+static const float w_w_stall[3] = { 3.8000000f, 3.8000000f, 0.0000000f };
+static const float w_w_neck_sin[3] = { 0.3991691f, -0.3056586f, 0.7369397f };
+static const float w_low[3] = { -20.0000000f, -20.0000000f, -1.5707999f };
+static const float w_high[3] = { 20.0000000f, 20.0000000f, 1.5707999f };
+static const float w_l_th_weight[18] = { 0.0000000f, 0.0000000f, 0.3500000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0550000f, 0.0550000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f };
 static const float w_l_th_bias[1] = { 0.0000000f };
-static const float w_l_wz_weight[15] = { 0.0000000f, 0.0000000f, -6.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, -2.5000000f, 0.0000000f };
-static const float w_l_vx_weight[15] = { 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0200000f, 0.0200000f, -8.0000000f, 0.0000000f, 0.0000000f };
-static const float w_l_vx_bias[1] = { -1.1000000f };
-static const float w_m_cos_weight[2] = { 4.0000000f, 4.0000000f };
-static const float w_m_cos_bias[2] = { 12.5000000f, 12.5000000f };
-static const float w_onnx__MatMul_33[2] = { -7.5000000f, 7.5000000f };
-static const float w_onnx__MatMul_34[2] = { -1.0000000f, 1.0000000f };
-static const float w_onnx__MatMul_35[2] = { -18.0000000f, -6.0000000f };
+static const float w_l_wz_weight[18] = { 0.0000000f, 0.0000000f, -0.8500000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.1500000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, -0.6000000f, 0.0000000f };
+static const float w_l_vx_weight[18] = { 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0800000f, 0.0800000f, 0.0000000f, -1.6500000f, 0.0000000f, 0.0000000f };
+static const float w_l_vx_bias[1] = { 0.4200000f };
+static const float w_l_neck_weight[18] = { 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.1400000f, 0.1400000f, -0.3500000f, 0.0000000f, 0.0000000f, -0.2000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f, 0.0000000f };
+static const float w_m_cos_weight[3] = { 1.3980531f, -1.3791908f, 0.1578013f };
+static const float w_m_cos_bias[3] = { 15.8000002f, 15.8000002f, 0.0000000f };
 
 // Forward pass compilado directamente desde el grafo ONNX (0 asignaciones dinámicas, O(1) SRAM)
 static inline void tridi_policy_forward(const float* obs, float* ctrl) {
-  float t_1_l_th_Gemm_output_0[1];
+  float t_2_l_th_Gemm_output_0[1];
   for (int i = 0; i < 1; ++i) {
     float acc = w_l_th_bias[i];
-    for (int j = 0; j < 15; ++j) {
-      acc += obs[j] * w_l_th_weight[i * 15 + j];
+    for (int j = 0; j < 18; ++j) {
+      acc += obs[j] * w_l_th_weight[i * 18 + j];
     }
-    t_1_l_th_Gemm_output_0[i] = acc;
+    t_2_l_th_Gemm_output_0[i] = acc;
   }
-  float t_2_l_wz_Gemm_output_0[1];
+  float t_3_l_wz_Gemm_output_0[1];
   for (int i = 0; i < 1; ++i) {
     float acc = w_l_th_bias[i];
-    for (int j = 0; j < 15; ++j) {
-      acc += obs[j] * w_l_wz_weight[i * 15 + j];
+    for (int j = 0; j < 18; ++j) {
+      acc += obs[j] * w_l_wz_weight[i * 18 + j];
     }
-    t_2_l_wz_Gemm_output_0[i] = acc;
+    t_3_l_wz_Gemm_output_0[i] = acc;
   }
-  float t_3_l_vx_Gemm_output_0[1];
+  float t_4_l_vx_Gemm_output_0[1];
   for (int i = 0; i < 1; ++i) {
     float acc = w_l_vx_bias[i];
-    for (int j = 0; j < 15; ++j) {
-      acc += obs[j] * w_l_vx_weight[i * 15 + j];
+    for (int j = 0; j < 18; ++j) {
+      acc += obs[j] * w_l_vx_weight[i * 18 + j];
     }
-    t_3_l_vx_Gemm_output_0[i] = acc;
+    t_4_l_vx_Gemm_output_0[i] = acc;
   }
-  float t_4_Tanh_output_0[1];
-  for (int i = 0; i < 1; ++i) { t_4_Tanh_output_0[i] = tanhf(t_3_l_vx_Gemm_output_0[i]); }
-  float t_5_Relu_output_0[1];
-  for (int i = 0; i < 1; ++i) { t_5_Relu_output_0[i] = ((t_4_Tanh_output_0[i] > 0.0f) ? t_4_Tanh_output_0[i] : 0.0f); }
-  float t_6_Cos_output_0[1];
-  for (int i = 0; i < 1; ++i) { t_6_Cos_output_0[i] = cosf(t_1_l_th_Gemm_output_0[i]); }
-  float t_7_m_cos_Gemm_output_0[2];
-  for (int i = 0; i < 2; ++i) {
+  float t_5_Tanh_output_0[1];
+  for (int i = 0; i < 1; ++i) { t_5_Tanh_output_0[i] = tanhf(t_4_l_vx_Gemm_output_0[i]); }
+  float t_6_Relu_output_0[1];
+  for (int i = 0; i < 1; ++i) { t_6_Relu_output_0[i] = ((t_5_Tanh_output_0[i] > 0.0f) ? t_5_Tanh_output_0[i] : 0.0f); }
+  float t_7_l_neck_Gemm_output_0[1];
+  for (int i = 0; i < 1; ++i) {
+    float acc = w_l_th_bias[i];
+    for (int j = 0; j < 18; ++j) {
+      acc += obs[j] * w_l_neck_weight[i * 18 + j];
+    }
+    t_7_l_neck_Gemm_output_0[i] = acc;
+  }
+  float t_8_Cos_output_0[1];
+  for (int i = 0; i < 1; ++i) { t_8_Cos_output_0[i] = cosf(t_2_l_th_Gemm_output_0[i]); }
+  float t_9_m_cos_Gemm_output_0[3];
+  for (int i = 0; i < 3; ++i) {
     float acc = w_m_cos_bias[i];
     for (int j = 0; j < 1; ++j) {
-      acc += t_6_Cos_output_0[j] * w_m_cos_weight[i * 1 + j];
+      acc += t_8_Cos_output_0[j] * w_m_cos_weight[i * 1 + j];
     }
-    t_7_m_cos_Gemm_output_0[i] = acc;
+    t_9_m_cos_Gemm_output_0[i] = acc;
   }
-  float t_8_Sin_output_0[1];
-  for (int i = 0; i < 1; ++i) { t_8_Sin_output_0[i] = sinf(t_1_l_th_Gemm_output_0[i]); }
-  float t_9_m_sin_MatMul_output_0[2];
-  for (int i = 0; i < 2; ++i) {
+  float t_10_Sin_output_0[1];
+  for (int i = 0; i < 1; ++i) { t_10_Sin_output_0[i] = sinf(t_2_l_th_Gemm_output_0[i]); }
+  float t_11_MatMul_output_0[3];
+  for (int i = 0; i < 3; ++i) {
     float acc = 0.0f;
     for (int j = 0; j < 1; ++j) {
-      acc += t_8_Sin_output_0[j] * w_onnx__MatMul_33[j * 2 + i];
+      acc += t_10_Sin_output_0[j] * w_w_sin[j * 3 + i];
     }
-    t_9_m_sin_MatMul_output_0[i] = acc;
+    t_11_MatMul_output_0[i] = acc;
   }
-  float t_10_Add_output_0[2];
-  for (int i = 0; i < 2; ++i) { t_10_Add_output_0[i] = (t_7_m_cos_Gemm_output_0[i] + t_9_m_sin_MatMul_output_0[i]); }
-  float t_11_m_stab_MatMul_output_0[2];
-  for (int i = 0; i < 2; ++i) {
+  float t_12_Add_output_0[3];
+  for (int i = 0; i < 3; ++i) { t_12_Add_output_0[i] = (t_9_m_cos_Gemm_output_0[i] + t_11_MatMul_output_0[i]); }
+  float t_13_MatMul_1_output_0[3];
+  for (int i = 0; i < 3; ++i) {
     float acc = 0.0f;
     for (int j = 0; j < 1; ++j) {
-      acc += t_2_l_wz_Gemm_output_0[j] * w_onnx__MatMul_34[j * 2 + i];
+      acc += t_3_l_wz_Gemm_output_0[j] * w_w_stab[j * 3 + i];
     }
-    t_11_m_stab_MatMul_output_0[i] = acc;
+    t_13_MatMul_1_output_0[i] = acc;
   }
-  float t_12_Add_1_output_0[2];
-  for (int i = 0; i < 2; ++i) { t_12_Add_1_output_0[i] = (t_10_Add_output_0[i] + t_11_m_stab_MatMul_output_0[i]); }
-  float t_13_m_stall_MatMul_output_0[2];
-  for (int i = 0; i < 2; ++i) {
+  float t_14_MatMul_2_output_0[3];
+  for (int i = 0; i < 3; ++i) {
     float acc = 0.0f;
     for (int j = 0; j < 1; ++j) {
-      acc += t_5_Relu_output_0[j] * w_onnx__MatMul_35[j * 2 + i];
+      acc += t_6_Relu_output_0[j] * w_w_stall[j * 3 + i];
     }
-    t_13_m_stall_MatMul_output_0[i] = acc;
+    t_14_MatMul_2_output_0[i] = acc;
   }
-  float t_14_Add_2_output_0[2];
-  for (int i = 0; i < 2; ++i) { t_14_Add_2_output_0[i] = (t_12_Add_1_output_0[i] + t_13_m_stall_MatMul_output_0[i]); }
-  float t_15_Max_output_0[2];
-  for (int i = 0; i < 2; ++i) { t_15_Max_output_0[i] = ((t_14_Add_2_output_0[i] > w_low[i]) ? t_14_Add_2_output_0[i] : w_low[i]); }
-  for (int i = 0; i < 2; ++i) { ctrl[i] = ((t_15_Max_output_0[i] < w_high[i]) ? t_15_Max_output_0[i] : w_high[i]); }
+  float t_15_Sin_1_output_0[1];
+  for (int i = 0; i < 1; ++i) { t_15_Sin_1_output_0[i] = sinf(t_7_l_neck_Gemm_output_0[i]); }
+  float t_16_MatMul_3_output_0[3];
+  for (int i = 0; i < 3; ++i) {
+    float acc = 0.0f;
+    for (int j = 0; j < 1; ++j) {
+      acc += t_15_Sin_1_output_0[j] * w_w_neck_sin[j * 3 + i];
+    }
+    t_16_MatMul_3_output_0[i] = acc;
+  }
+  float t_17_Add_1_output_0[3];
+  for (int i = 0; i < 3; ++i) { t_17_Add_1_output_0[i] = (t_12_Add_output_0[i] + t_13_MatMul_1_output_0[i]); }
+  float t_18_Add_2_output_0[3];
+  for (int i = 0; i < 3; ++i) { t_18_Add_2_output_0[i] = (t_17_Add_1_output_0[i] + t_14_MatMul_2_output_0[i]); }
+  float t_19_Add_3_output_0[3];
+  for (int i = 0; i < 3; ++i) { t_19_Add_3_output_0[i] = (t_18_Add_2_output_0[i] + t_16_MatMul_3_output_0[i]); }
+  float t_20_Max_output_0[3];
+  for (int i = 0; i < 3; ++i) { t_20_Max_output_0[i] = ((t_19_Add_3_output_0[i] > w_low[i]) ? t_19_Add_3_output_0[i] : w_low[i]); }
+  for (int i = 0; i < 3; ++i) { ctrl[i] = ((t_20_Max_output_0[i] < w_high[i]) ? t_20_Max_output_0[i] : w_high[i]); }
 }
 
 // Medición ultrasónica NO BLOQUEANTE por interrupción externa (D3 -> INT1)
@@ -264,7 +286,7 @@ void loop() {
   if (nowMs - lastControlMs >= CONTROL_MS) {
     lastControlMs = nowMs;
 
-    // Construir vector de observación de 15 dimensiones idéntico a MuJoCo / Web
+    // Construir vector de observación de 18 dimensiones idéntico a MuJoCo / Web
     float obs[TRIDI_OBS_DIM];
     for (int i = 0; i < TRIDI_OBS_DIM; ++i) obs[i] = 0.0f;
 
@@ -280,12 +302,14 @@ void loop() {
     obs[2] = sinf(estYawRad * 0.5f);      // qpos quat_z (heading)
     obs[6] = prevCtrl[0] * 0.0200f;   // wheel_l angle delta
     obs[7] = prevCtrl[1] * 0.0200f;   // wheel_r angle delta
-    obs[8] = estVxMS;                     // linear velocity vx (m/s)
-    obs[10] = estYawRateRadS;             // yaw rate wz (rad/s)
-    obs[11] = prevCtrl[0];                // wheel_l vel (rad/s)
-    obs[12] = prevCtrl[1];                // wheel_r vel (rad/s)
-    obs[13] = prevCtrl[0];                // prev_ctrl_l
-    obs[14] = prevCtrl[1];                // prev_ctrl_r
+    obs[8] = prevCtrl[2];                 // neck_servo angle (rad)
+    obs[9] = prevCtrl[0] * 0.05f;         // wheel_l vel scaled
+    obs[10] = prevCtrl[1] * 0.05f;        // wheel_r vel scaled
+    obs[12] = prevCtrl[0] * 4.0f;         // prev_ctrl_l scaled
+    obs[13] = prevCtrl[1] * 4.0f;         // prev_ctrl_r scaled
+    obs[14] = prevCtrl[2] * 4.0f;         // prev_ctrl_neck scaled
+    obs[15] = estVxMS;                    // linear velocity vx (m/s)
+    obs[17] = estYawRateRadS;             // yaw rate wz (rad/s)
 
     float ctrl[TRIDI_ACT_DIM];
     tridi_policy_forward(obs, ctrl);
@@ -299,6 +323,10 @@ void loop() {
       // Avance crucero asistido por la política neuronal
       ctrl[0] = 0.65f * MAX_RADS + 0.35f * ctrl[0];
       ctrl[1] = 0.65f * MAX_RADS + 0.35f * ctrl[1];
+      if (radarPhase == 0) {
+        int neckDeg = constrain(90 + (int)(ctrl[2] * 38.0f), 25, 155);
+        neckServo.write(neckDeg);
+      }
     }
 
     setMotorsRadS(ctrl[0], ctrl[1]);
@@ -306,6 +334,7 @@ void loop() {
     // Actualizar odometría interna para el siguiente paso de 20 ms
     prevCtrl[0] = ctrl[0];
     prevCtrl[1] = ctrl[1];
+    prevCtrl[2] = ctrl[2];
     estVxMS = 0.033f * 0.5f * (ctrl[0] + ctrl[1]);
     estYawRateRadS = 0.033f * (ctrl[1] - ctrl[0]) / 0.135f;
   }

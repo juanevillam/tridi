@@ -31,5 +31,5 @@
 
 ## Qué sigue
 
-- Juan ya tiene desbloqueado `physics/models/luigi_lab4/scene.xml` (`nq=10, nu=3`) para entrenar `luigi-lab4.onnx` (`J-4`).
-- César ya puede importar `HARDWARE_CATALOG`, `listComponents`, `registerComponent`, `validateHardwarePinout`, `parseArduinoSketch` y `generateMujocoXml` desde `physics` para construir la pantalla `#/assembler` (`C-1`) y el selector de verticales (`C-3`).
+- **Actualización (`J-4` completado en la misma sesión):** tras hacer `scripts/ship.sh` de `P-1..P-4` a `main`, se construyó `training/luigi_lab4_env.py`, se entrenó y exportó `training/policies/luigi-lab4.onnx` (`obs_dim=18, nu=3`, 2.353 bytes, `neck_sweep_span_deg = 96.06°`), se verificó en `physics/scripts/check-assembler.mjs` con `onnx-lite.js` y se compiló en `physics/models/luigi_lab4/firmware/LAB4_Tridi_Autonomo.ino` mediante `training/export_mcu.py --preset luigi_lab4`.
+- César ya puede importar `HARDWARE_CATALOG`, `listComponents`, `registerComponent`, `validateHardwarePinout`, `parseArduinoSketch`, `generateMujocoXml` y `luigi-lab4.onnx` para construir la pantalla `#/assembler` (`C-1`), la descarga dual en `#/delivery` (`C-2`) y el selector de verticales (`C-3`).
