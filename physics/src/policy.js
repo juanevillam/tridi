@@ -286,6 +286,91 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
       }
       if (down && qpos[2] < Math.max(fallHeight + 0.1, RECOVER_HEIGHT)) return;
       down = false;
+      if (isIndustrial) {
+        if (sim._serialCmd || sim._usbLocked) {
+          const active = sim._serialCmd && (!sim._serialCmd.until || performance.now() < sim._serialCmd.until);
+          if (active && sim._serialCmd.ctrl) {
+            data.ctrl[0] = sim._serialCmd.ctrl[0] ?? data.ctrl[0];
+            data.ctrl[1] = sim._serialCmd.ctrl[1] ?? data.ctrl[1];
+            data.ctrl[2] = sim._serialCmd.ctrl[2] ?? data.ctrl[2];
+          }
+          previous.set(data.ctrl);
+          return;
+        }
+        const simTime = data.time;
+        // Carrier box starts at x = -0.45 m in frame; box x-center in world is -0.45 + qpos[7].
+        // Photoelectric sensors sit at x = -0.38 m (entry), x = +0.10 m (sealer zone), x = +0.52 m (exit).
+        const feedM = qpos[7] ?? 0;
+        const boxX = -0.45 + feedM;
+        const sensorEntry = Math.abs(boxX - -0.38) < 0.085;
+        const sensorSealer = Math.abs(boxX - 0.10) < 0.065;
+        const sensorExit = Math.abs(boxX - 0.52) < 0.085;
+        const fixedPlcMode = Boolean(sim._factoryFixedTimerMode);
+        const phase = simTime % 4.4;
+        let stage = 0;
+        let crushed = false;
+        if (fixedPlcMode) {
+          // Fixed-timer PLC mode: conveyor slips/lags under friction, so the sealer drops at t=1.4s while the box edge is still entering!
+          if (phase < 1.35) {
+            data.ctrl[0] = 0.36; // box lags behind the expected 0.55 m station
+            data.ctrl[1] = 0.0;
+            data.ctrl[2] = 0.0;
+            stage = 0;
+          } else if (phase < 2.65) {
+            data.ctrl[0] = 0.42;
+            data.ctrl[1] = 0.15;
+            data.ctrl[2] = 0.14; // blind timer lowers press on misaligned box -> CRUSH!
+            crushed = !sensorSealer;
+            stage = 4; // fault / jam
+          } else if (phase < 3.6) {
+            data.ctrl[0] = 0.92;
+            data.ctrl[1] = 0.0;
+            data.ctrl[2] = 0.0;
+            stage = 2;
+          } else {
+            data.ctrl[0] = -0.10;
+            data.ctrl[1] = 0.0;
+            data.ctrl[2] = 0.0;
+            stage = 3;
+          }
+        } else {
+          // Closed-loop Tridi policy: waits for optical sensor confirmation at sealer zone (x=0.10 m, feed=0.55 m) before pressing
+          if (phase < 1.45) {
+            data.ctrl[0] = 0.55;
+            data.ctrl[1] = 0.0;
+            data.ctrl[2] = 0.0;
+            stage = 0;
+          } else if (phase < 2.65) {
+            data.ctrl[0] = 0.55;
+            data.ctrl[1] = sensorSealer ? 0.15 : 0.05;
+            data.ctrl[2] = sensorSealer ? 0.14 : 0.0;
+            stage = 1;
+          } else if (phase < 3.6) {
+            data.ctrl[0] = 0.92;
+            data.ctrl[1] = 0.0;
+            data.ctrl[2] = 0.0;
+            stage = 2;
+          } else {
+            data.ctrl[0] = -0.10;
+            data.ctrl[1] = 0.0;
+            data.ctrl[2] = 0.0;
+            stage = 3;
+          }
+        }
+        sim.factoryReadout = {
+          feedMm: Math.round(feedM * 1000),
+          pusherMm: Math.round((qpos[8] ?? 0) * 1000),
+          sealerMm: Math.round((qpos[9] ?? 0) * 1000),
+          sensorEntry,
+          sensorSealer,
+          sensorExit,
+          stage,
+          crushed,
+          fixedPlcMode,
+        };
+        previous.set(data.ctrl);
+        return;
+      }
       if (isWheeled) {
         const sensor = scanWheeledSensors(sim);
         if (sim._serialCmd || sim._usbLocked) {

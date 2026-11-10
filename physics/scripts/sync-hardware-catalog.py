@@ -290,6 +290,184 @@ STANDALONE_COMPONENT_XMLS: dict[str, str] = {
     <key name="stand" qpos="0" ctrl="0"/>
   </keyframe>
 </mujoco>""",
+    "esp32_devkit_v1": """<mujoco model="component_esp32_devkit_v1">
+  <compiler angle="radian"/>
+  <option timestep="0.002" gravity="0 0 -9.81"/>
+  <worldbody>
+    <light pos="0.4 -0.4 0.6" dir="-0.5 0.5 -0.7"/>
+    <geom name="floor" type="plane" size="0.5 0.5 0.01" rgba="0.12 0.16 0.22 1" contype="0" conaffinity="0"/>
+    <body name="pelvis" pos="0 0 0.045">
+      <body name="torso_link" pos="0 0 0.02"/>
+      <body name="board_turntable" pos="0 0 0">
+        <inertial pos="0 0 0" mass="0.015" diaginertia="0.0001 0.0001 0.0001"/>
+        <joint name="demo_joint" type="hinge" axis="0 0 1" range="-3.14 3.14" damping="0.05" armature="0.002"/>
+        <!-- Matte dark ESP32 DevKit V1 PCB (55 x 28 mm, scaled 2x for 3D inspection) -->
+        <geom name="esp32_pcb" type="box" pos="0 0 0" size="0.055 0.028 0.0028" group="2" rgba="0.10 0.12 0.15 1"/>
+        <geom name="wroom32_shield" type="box" pos="0.018 0 0.006" size="0.018 0.016 0.0032" group="2" rgba="0.82 0.84 0.88 1"/>
+        <geom name="pcb_antenna" type="box" pos="0.044 0 0.003" size="0.008 0.016 0.001" group="2" rgba="0.85 0.72 0.22 1"/>
+        <geom name="micro_usb" type="box" pos="-0.052 0 0.005" size="0.006 0.008 0.003" group="2" rgba="0.78 0.80 0.84 1"/>
+        <geom name="cp2102_uart" type="box" pos="-0.026 0 0.004" size="0.006 0.006 0.0015" group="2" rgba="0.08 0.08 0.10 1"/>
+        <geom name="btn_en" type="cylinder" pos="-0.042 0.018 0.005" size="0.0035 0.0025" group="2" rgba="0.85 0.85 0.85 1"/>
+        <geom name="btn_boot" type="cylinder" pos="-0.042 -0.018 0.005" size="0.0035 0.0025" group="2" rgba="0.85 0.85 0.85 1"/>
+        <geom name="hdr_left" type="box" pos="-0.004 0.024 0.006" size="0.046 0.0025 0.004" group="2" rgba="0.12 0.12 0.14 1"/>
+        <geom name="hdr_right" type="box" pos="-0.004 -0.024 0.006" size="0.046 0.0025 0.004" group="2" rgba="0.12 0.12 0.14 1"/>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <position name="demo_actuator" joint="demo_joint" kp="3.0" ctrlrange="-3.14 3.14" ctrllimited="true"/>
+  </actuator>
+  <keyframe>
+    <key name="home" qpos="0" ctrl="0"/>
+    <key name="stand" qpos="0" ctrl="0"/>
+  </keyframe>
+</mujoco>""",
+    "plc_s7_1200": """<mujoco model="component_plc_s7_1200">
+  <compiler angle="radian"/>
+  <option timestep="0.002" gravity="0 0 -9.81"/>
+  <worldbody>
+    <light pos="0.4 -0.4 0.6" dir="-0.5 0.5 -0.7"/>
+    <geom name="floor" type="plane" size="0.5 0.5 0.01" rgba="0.12 0.16 0.22 1" contype="0" conaffinity="0"/>
+    <body name="pelvis" pos="0 0 0.075">
+      <body name="torso_link" pos="0 0 0.02"/>
+      <body name="board_turntable" pos="0 0 0">
+        <inertial pos="0 0 0" mass="0.38" diaginertia="0.001 0.001 0.001"/>
+        <joint name="demo_joint" type="hinge" axis="0 0 1" range="-3.14 3.14" damping="0.08" armature="0.004"/>
+        <!-- DIN-rail Industrial PLC Housing (24V DC DI/DO + PROFINET RJ45) -->
+        <geom name="din_rail" type="box" pos="-0.038 0 0" size="0.005 0.095 0.018" group="2" rgba="0.72 0.75 0.80 1"/>
+        <geom name="plc_body" type="box" pos="0 0 0" size="0.036 0.065 0.052" group="2" rgba="0.22 0.27 0.32 1"/>
+        <geom name="plc_faceplate" type="box" pos="0.034 0 0" size="0.005 0.062 0.046" group="2" rgba="0.28 0.34 0.40 1"/>
+        <geom name="plc_teal_strip" type="box" pos="0.0395 0 0.018" size="0.001 0.060 0.006" group="2" rgba="0.00 0.62 0.65 1"/>
+        <geom name="led_run" type="sphere" pos="0.040 0.042 0.004" size="0.0035" group="2" rgba="0.18 0.92 0.38 1"/>
+        <geom name="led_diag" type="sphere" pos="0.040 0.032 0.004" size="0.0035" group="2" rgba="0.98 0.75 0.12 1"/>
+        <geom name="rj45_port" type="box" pos="0.018 -0.032 -0.048" size="0.012 0.012 0.010" group="2" rgba="0.78 0.80 0.84 1"/>
+        <geom name="terminal_top" type="box" pos="0.012 0 0.055" size="0.015 0.055 0.006" group="2" rgba="0.14 0.16 0.18 1"/>
+        <geom name="terminal_bot" type="box" pos="0.012 0 -0.055" size="0.015 0.055 0.006" group="2" rgba="0.14 0.16 0.18 1"/>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <position name="demo_actuator" joint="demo_joint" kp="3.5" ctrlrange="-3.14 3.14" ctrllimited="true"/>
+  </actuator>
+  <keyframe>
+    <key name="home" qpos="0" ctrl="0"/>
+    <key name="stand" qpos="0" ctrl="0"/>
+  </keyframe>
+</mujoco>""",
+    "tb6612fng": """<mujoco model="component_tb6612fng">
+  <compiler angle="radian"/>
+  <option timestep="0.002" gravity="0 0 -9.81"/>
+  <worldbody>
+    <light pos="0.4 -0.4 0.6" dir="-0.5 0.5 -0.7"/>
+    <geom name="floor" type="plane" size="0.5 0.5 0.01" rgba="0.12 0.16 0.22 1" contype="0" conaffinity="0"/>
+    <body name="pelvis" pos="0 0 0.045">
+      <body name="torso_link" pos="0 0 0.02"/>
+      <body name="board_turntable" pos="0 0 0">
+        <inertial pos="0 0 0" mass="0.006" diaginertia="0.0001 0.0001 0.0001"/>
+        <joint name="demo_joint" type="hinge" axis="0 0 1" range="-3.14 3.14" damping="0.05" armature="0.002"/>
+        <!-- Compact red/crimson TB6612FNG Dual MOSFET Breakout (20 x 20 mm, scaled 2.5x) -->
+        <geom name="tb_pcb" type="box" pos="0 0 0" size="0.038 0.038 0.0028" group="2" rgba="0.78 0.10 0.16 1"/>
+        <geom name="ssop24_ic" type="box" pos="0 0 0.005" size="0.016 0.012 0.0025" group="2" rgba="0.10 0.11 0.14 1"/>
+        <geom name="smd_cap_1" type="box" pos="-0.020 0.012 0.005" size="0.005 0.003 0.0025" group="2" rgba="0.82 0.68 0.32 1"/>
+        <geom name="smd_cap_2" type="box" pos="-0.020 -0.012 0.005" size="0.005 0.003 0.0025" group="2" rgba="0.82 0.68 0.32 1"/>
+        <geom name="pins_left" type="box" pos="0 0.032 -0.008" size="0.032 0.0025 0.009" group="2" rgba="0.90 0.76 0.20 1"/>
+        <geom name="pins_right" type="box" pos="0 -0.032 -0.008" size="0.032 0.0025 0.009" group="2" rgba="0.90 0.76 0.20 1"/>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <position name="demo_actuator" joint="demo_joint" kp="3.0" ctrlrange="-3.14 3.14" ctrllimited="true"/>
+  </actuator>
+  <keyframe>
+    <key name="home" qpos="0" ctrl="0"/>
+    <key name="stand" qpos="0" ctrl="0"/>
+  </keyframe>
+</mujoco>""",
+    "apds9960_optical": """<mujoco model="component_apds9960_optical">
+  <compiler angle="radian"/>
+  <option timestep="0.002" gravity="0 0 -9.81"/>
+  <worldbody>
+    <light pos="0.4 -0.4 0.6" dir="-0.5 0.5 -0.7"/>
+    <geom name="floor" type="plane" size="0.5 0.5 0.01" rgba="0.12 0.16 0.22 1" contype="0" conaffinity="0"/>
+    <body name="pelvis" pos="0 0 0.065">
+      <body name="torso_link" pos="0 0 0.02"/>
+      <body name="sensor_turret" pos="0 0 0">
+        <inertial pos="0 0 0" mass="0.005" diaginertia="0.0001 0.0001 0.0001"/>
+        <joint name="demo_joint" type="hinge" axis="0 0 1" range="-1.2 1.2" damping="0.05" armature="0.002"/>
+        <!-- Purple GY-9960 / APDS-9960 I2C Breakout (0x39, IR Proximity Reg 0x9C) -->
+        <geom name="apds_pcb" type="box" pos="0 0 0" size="0.004 0.042 0.032" group="2" rgba="0.48 0.14 0.62 1"/>
+        <geom name="apds_die_package" type="box" pos="0.006 0 0.004" size="0.0035 0.014 0.010" group="2" rgba="0.12 0.12 0.15 1"/>
+        <geom name="ir_led_aperture" type="cylinder" pos="0.0095 0.005 0.004" quat="0.7071068 0 0.7071068 0" size="0.0035 0.001" group="2" rgba="0.88 0.18 0.35 1"/>
+        <geom name="photodiode_window" type="cylinder" pos="0.0095 -0.005 0.004" quat="0.7071068 0 0.7071068 0" size="0.0035 0.001" group="2" rgba="0.20 0.75 0.95 1"/>
+        <geom name="i2c_header" type="box" pos="0 0 -0.036" size="0.003 0.028 0.008" group="2" rgba="0.90 0.76 0.20 1"/>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <position name="demo_actuator" joint="demo_joint" kp="4.0" ctrlrange="-1.2 1.2" ctrllimited="true"/>
+  </actuator>
+  <keyframe>
+    <key name="home" qpos="0" ctrl="0"/>
+    <key name="stand" qpos="0" ctrl="0"/>
+  </keyframe>
+</mujoco>""",
+    "cny70_ir_reflective": """<mujoco model="component_cny70_ir_reflective">
+  <compiler angle="radian"/>
+  <option timestep="0.002" gravity="0 0 -9.81"/>
+  <worldbody>
+    <light pos="0.4 -0.4 0.6" dir="-0.5 0.5 -0.7"/>
+    <geom name="floor" type="plane" size="0.5 0.5 0.01" rgba="0.12 0.16 0.22 1" contype="0" conaffinity="0"/>
+    <body name="pelvis" pos="0 0 0.065">
+      <body name="torso_link" pos="0 0 0.02"/>
+      <body name="sensor_turret" pos="0 0 0">
+        <inertial pos="0 0 0" mass="0.004" diaginertia="0.0001 0.0001 0.0001"/>
+        <joint name="demo_joint" type="hinge" axis="0 0 1" range="-1.2 1.2" damping="0.05" armature="0.002"/>
+        <!-- Cube CNY70 Reflective Optical Sensor (7x7x6 mm, scaled 4x for inspection) -->
+        <geom name="cny70_housing" type="box" pos="0 0 0" size="0.016 0.018 0.018" group="2" rgba="0.12 0.13 0.16 1"/>
+        <geom name="emitter_eye" type="cylinder" pos="0.0165 0.007 0" quat="0.7071068 0 0.7071068 0" size="0.0055 0.002" group="2" rgba="0.28 0.55 0.92 1"/>
+        <geom name="detector_eye" type="cylinder" pos="0.0165 -0.007 0" quat="0.7071068 0 0.7071068 0" size="0.0055 0.002" group="2" rgba="0.18 0.18 0.24 1"/>
+        <geom name="lead_1" type="cylinder" pos="-0.008 0.008 -0.028" size="0.0015 0.012" group="2" rgba="0.82 0.84 0.88 1"/>
+        <geom name="lead_2" type="cylinder" pos="-0.008 -0.008 -0.028" size="0.0015 0.012" group="2" rgba="0.82 0.84 0.88 1"/>
+        <geom name="lead_3" type="cylinder" pos="0.008 0.008 -0.028" size="0.0015 0.012" group="2" rgba="0.82 0.84 0.88 1"/>
+        <geom name="lead_4" type="cylinder" pos="0.008 -0.008 -0.028" size="0.0015 0.012" group="2" rgba="0.82 0.84 0.88 1"/>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <position name="demo_actuator" joint="demo_joint" kp="4.0" ctrlrange="-1.2 1.2" ctrllimited="true"/>
+  </actuator>
+  <keyframe>
+    <key name="home" qpos="0" ctrl="0"/>
+    <key name="stand" qpos="0" ctrl="0"/>
+  </keyframe>
+</mujoco>""",
+    "caster_front_patin": """<mujoco model="component_caster_front_patin">
+  <compiler angle="radian" meshdir="../luigi_lab4/assets"/>
+  <option timestep="0.002" gravity="0 0 -9.81"/>
+  <asset>
+    <mesh name="patin_mesh" file="3_patin_delantero.stl" scale="0.002 0.002 0.002"/>
+  </asset>
+  <worldbody>
+    <light pos="0.4 -0.4 0.6" dir="-0.5 0.5 -0.7"/>
+    <geom name="floor" type="plane" size="0.5 0.5 0.01" rgba="0.12 0.16 0.22 1" contype="0" conaffinity="0"/>
+    <body name="pelvis" pos="0 0 0.065">
+      <body name="torso_link" pos="0 0 0.02"/>
+      <body name="caster_turntable" pos="0 0 0">
+        <inertial pos="0 0 0" mass="0.02" diaginertia="0.0001 0.0001 0.0001"/>
+        <joint name="demo_joint" type="hinge" axis="0 0 1" range="-3.14 3.14" damping="0.04" armature="0.002"/>
+        <geom name="patin_visual" type="mesh" mesh="patin_mesh" pos="0.276 0 0.02" quat="0 0 1 0" group="2" rgba="0.95 0.45 0.10 1"/>
+        <geom name="contact_ball" type="sphere" pos="0 0 -0.038" size="0.020" group="2" rgba="0.82 0.85 0.90 0.85"/>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <position name="demo_actuator" joint="demo_joint" kp="3.0" ctrlrange="-3.14 3.14" ctrllimited="true"/>
+  </actuator>
+  <keyframe>
+    <key name="home" qpos="0" ctrl="0"/>
+    <key name="stand" qpos="0" ctrl="0"/>
+  </keyframe>
+</mujoco>""",
 }
 
 
@@ -321,20 +499,6 @@ def main() -> None:
             if comp_id in catalog.get(bucket, {}):
                 catalog[bucket][comp_id]["preview_mjcf"] = f"components/{comp_id}.xml"
         print(f"  [3d-xml] wrote {xml_path.relative_to(ROOT)}")
-
-    # Ensure every remaining catalog item also points to a valid 3D preview_mjcf
-    fallbacks = {
-        "esp32_devkit_v1": "components/arduino_uno.xml",
-        "plc_s7_1200": "components/l298n.xml",
-        "tb6612fng": "components/l298n.xml",
-        "apds9960_optical": "components/hcsr04_ultrasonic.xml",
-        "cny70_ir_reflective": "components/hcsr04_ultrasonic.xml",
-        "caster_front_patin": "components/wheel_tt_65mm_tpu.xml",
-    }
-    for comp_id, fb_mjcf in fallbacks.items():
-        for bucket in ("mcus", "drivers", "actuators", "sensors", "structures"):
-            if comp_id in catalog.get(bucket, {}):
-                catalog[bucket][comp_id].setdefault("preview_mjcf", fb_mjcf)
 
     CATALOG_JSON.write_text(json.dumps(catalog, indent=2, ensure_ascii=False) + "\n")
     print(f"Done. Updated {CATALOG_JSON.relative_to(ROOT)} and {len(STANDALONE_COMPONENT_XMLS)} 3D component scenes.")

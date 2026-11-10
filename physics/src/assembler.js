@@ -22,9 +22,20 @@ export function parseArduinoSketch(source = '') {
     return null;
   };
 
-  const hasServo = /#include\s*<\s*Servo\.h\s*>/i.test(clean) || /\bServo\s+\w+/i.test(clean);
+  const hasServo = /#include\s*<\s*(?:ESP32)?Servo\.h\s*>/i.test(clean) || /\bServo\s+\w+/i.test(clean);
   const hasApds = /APDS9960|0x39|0x9C/i.test(clean);
   const hasUltrasonic = /pulseIn|TRIG|ECHO|HC-?SR04/i.test(text);
+  const hasStepper = /STEP|DIR|Stepper|AccelStepper|NEMA/i.test(clean);
+  const hasReflectiveIr = /CNY70|LINE_SENSOR|IR_OUT/i.test(clean);
+
+  // Detect target MCU board from ESP32 / PLC / Arduino idioms
+  const isEsp32 = /ledcAttach|ledcWrite|ESP32|WiFi\.h/i.test(clean);
+  const isPlc = /CONVEYOR_PTO|VALVE_PUSHER|VALVE_SEALER|PLC_S7/i.test(clean);
+  const board = isPlc ? 'plc_s7_1200' : isEsp32 ? 'esp32_devkit_v1' : 'arduino_uno';
+
+  // Detect motor driver topology (TB6612FNG uses PWMA/AIN1/STBY; L298N uses ENA/IN1/ENB)
+  const isTb6612 = /\b(?:PWMA|AIN1|STBY)\b/.test(clean) && !/\bENA\b/.test(clean);
+  const driver = isTb6612 ? 'tb6612fng' : 'l298n';
 
   let servoPin = findPinConst(['PIN_SERVO', 'SERVO_PIN', 'SERVO']);
   if (servoPin === null && hasServo) {
@@ -34,8 +45,8 @@ export function parseArduinoSketch(source = '') {
 
   const pinout = {
     ENA: findPinConst(['ENA', 'PIN_ENA', 'PWM_IZQ', 'PWMA']),
-    IN1: findPinConst(['IN1', 'PIN_IN1', 'AIN1']),
-    IN2: findPinConst(['IN2', 'PIN_IN2', 'AIN2']),
+    IN1: findPinConst(['IN1', 'PIN_IN1', 'AIN1', 'STEP']),
+    IN2: findPinConst(['IN2', 'PIN_IN2', 'AIN2', 'DIR']),
     ENB: findPinConst(['ENB', 'PIN_ENB', 'PWM_DER', 'PWMB']),
     IN3: findPinConst(['IN3', 'PIN_IN3', 'BIN1']),
     IN4: findPinConst(['IN4', 'PIN_IN4', 'BIN2']),
@@ -70,21 +81,23 @@ export function parseArduinoSketch(source = '') {
     });
   }
 
-  const actuators = ['tt_gearmotor_200rpm', 'tt_gearmotor_200rpm'];
+  const actuators = hasStepper ? ['nema17_stepper', 'nema17_stepper'] : ['tt_gearmotor_200rpm', 'tt_gearmotor_200rpm'];
   if (hasServo) actuators.push('sg90_servo');
 
   const sensors = [];
   if (hasUltrasonic) sensors.push('hcsr04_ultrasonic');
   if (hasApds) sensors.push('apds9960_optical');
+  if (hasReflectiveIr) sensors.push('cny70_ir_reflective');
 
-  const validation = validateHardwarePinout('arduino_uno', pinout);
+  const validation = validateHardwarePinout(board, pinout);
 
   return {
-    board: 'arduino_uno',
-    driver: 'l298n',
+    board,
+    driver,
     hasServo,
     hasUltrasonic,
     hasApds,
+    hasStepper,
     pinout,
     actuators,
     sensors,
@@ -102,6 +115,15 @@ export function classifyStlMeshes(meshFiles = []) {
     const lower = file.toLowerCase();
     if (/cabeza|servo|turret|neck|cuello/.test(lower)) {
       return { file, role: 'servo_turret', joint: 'neck_servo_joint', componentId: 'sg90_servo' };
+    }
+    if (/piston|pusher|empujador|cilindro/.test(lower)) {
+      return { file, role: 'linear_pusher', joint: 'pusher_slide_joint', componentId: 'pneumatic_pusher_linear' };
+    }
+    if (/sealer|selladora|prensa|press/.test(lower)) {
+      return { file, role: 'sealer_press', joint: 'sealer_press_joint', componentId: 'pneumatic_pusher_linear' };
+    }
+    if (/conveyor|cinta|banda|carrier/.test(lower)) {
+      return { file, role: 'conveyor_carrier', joint: 'conveyor_feed_joint', componentId: 'nema17_stepper' };
     }
     if (/llanta|tire|tpu/.test(lower)) {
       return { file, role: 'wheel_tire', joint: 'wheel_hinge', componentId: 'wheel_tt_65mm_tpu' };

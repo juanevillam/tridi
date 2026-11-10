@@ -469,7 +469,7 @@
           }
         ]
       },
-      "preview_mjcf": "components/arduino_uno.xml"
+      "preview_mjcf": "components/esp32_devkit_v1.xml"
     },
     "plc_s7_1200": {
       "id": "plc_s7_1200",
@@ -529,7 +529,7 @@
           1.0
         ]
       },
-      "preview_mjcf": "components/l298n.xml"
+      "preview_mjcf": "components/plc_s7_1200.xml"
     }
   },
   "drivers": {
@@ -602,7 +602,7 @@
           1.0
         ]
       },
-      "preview_mjcf": "components/l298n.xml"
+      "preview_mjcf": "components/tb6612fng.xml"
     }
   },
   "actuators": {
@@ -937,7 +937,7 @@
         ],
         "reason": "Clone GY-9960 modules return Chip ID 0x9E at register 0x92 and get rejected by stock SparkFun_APDS9960.h unless read via raw Wire I2C."
       },
-      "preview_mjcf": "components/hcsr04_ultrasonic.xml"
+      "preview_mjcf": "components/apds9960_optical.xml"
     },
     "cny70_ir_reflective": {
       "id": "cny70_ir_reflective",
@@ -965,7 +965,7 @@
         ],
         "response_time_ms": 0.5
       },
-      "preview_mjcf": "components/hcsr04_ultrasonic.xml"
+      "preview_mjcf": "components/cny70_ir_reflective.xml"
     }
   },
   "structures": {
@@ -1003,7 +1003,7 @@
           0.001
         ]
       },
-      "preview_mjcf": "components/wheel_tt_65mm_tpu.xml"
+      "preview_mjcf": "components/caster_front_patin.xml"
     }
   },
   "presets": {
@@ -1033,6 +1033,31 @@
         "apds9960_optical"
       ]
     },
+    "factory_cell": {
+      "id": "factory_cell",
+      "name": "Industrial Packaging Cell (Timed Conveyor + Pneumatic Pusher + Heat Sealer)",
+      "board": "plc_s7_1200",
+      "driver": "l298n",
+      "mjcf": "factory_cell/scene.xml",
+      "pinout": {
+        "CONVEYOR_PTO": 0,
+        "VALVE_PUSHER": 1,
+        "VALVE_SEALER": 2,
+        "SENSOR_ENTRY": 3,
+        "SENSOR_SEALER": 4,
+        "SENSOR_EXIT": 5
+      },
+      "actuators": [
+        "nema17_stepper",
+        "pneumatic_pusher_linear",
+        "pneumatic_pusher_linear"
+      ],
+      "sensors": [
+        "cny70_ir_reflective",
+        "cny70_ir_reflective",
+        "cny70_ir_reflective"
+      ]
+    },
     "luigi_lab4": {
       "id": "luigi_lab4",
       "name": "Luigi Lab 4 (Autonomous Explorer + SG90 Servo Radar Neck on D9)",
@@ -1060,7 +1085,7 @@
       ]
     }
   },
-  "synced_at": "2026-11-10T04:44:25.274096+00:00",
+  "synced_at": "2026-11-10T07:28:47.010310+00:00",
   "upstream_sources": [
     {
       "repo": "wokwi/wokwi-elements",
