@@ -87,3 +87,34 @@ Documentado en [`docs/audit-playbook.md`](../audit-playbook.md) y en el skill [`
    - `CLS = 0 px` en tarjetas de telemetría (`.luigi-tel-card` con altura fija `62px` y `font-variant-numeric: tabular-nums`) y píldora de velocidad (`#speed` `68px`).
    - Alturas de columnas alineadas al píxel tanto a `100 %` como a `67 %` de zoom.
    - Todos los `<canvas>` 3D interactivos con `cursor: grab !important` en reposo y `cursor: grabbing !important` al arrastrar.
+
+---
+
+## 6. Compilador Automático `ONNX → C / Arduino (.ino)` (`training/export_mcu.py`, Tarea `J-3`)
+
+- **Ejecución:**
+  ```bash
+  uv run --project training python -m training.export_mcu --preset luigi_lab4
+  uv run --project training python -m training.export_mcu --preset luigi_lab3
+  ```
+- **Qué hace internamente:**
+  1. Lee cualquier grafo `.onnx` de Tridi (`Identity`, `Constant`, `Gemm`, `MatMul`, `Add`, `Sub`, `Mul`, `Div`, `Max`, `Min`, `Tanh`, `Relu`, `Elu`, `Sin`, `Cos`, `Clip`, `Slice`), extrae sus tensores como arreglos `static const float` y emite `tridi_policy_forward(const float* obs, float* ctrl)` en C99 sin memoria dinámica (`O(1)` SRAM).
+  2. **Paridad numérica verificada:** antes de escribir el `.ino`, evalúa el grafo compilado contra `onnxruntime` sobre entradas aleatorias y verifica `max_abs_diff < 1e-5` (probado con `clang -O2`: `0.00e+00` en `luigi-lab3.onnx`, `1.19e-06` en `g1-stand.onnx` y `5.96e-07` en `g1-walk.onnx`).
+  3. **Guardrails automáticos de hardware (`validate_hardware`):**
+     - **Conflicto `Timer1` (`<Servo.h>` vs `D9/D10`):** en ATmega328P (`arduino_uno`), `<Servo.h>` secuestra `Timer1` e inhabilita `analogWrite()` en `D9` y `D10`. Si `servo_pin` está activo y `ENA` o `ENB` usa `D9`/`D10`, aborta con error explícito y exige mover `ENA/ENB` a `D5/D6` (`Timer0`), tal como hace el preset `luigi_lab4` (`ENA=5, ENB=6, SERVO=9`).
+     - **Ultrasonido por interrupción de hardware (cero `pulseIn()`):** si `ECHO` está en `D2/D3` (`luigi_lab4`, `ECHO=3`), emite `attachInterrupt(digitalPinToInterrupt(PIN_ECHO), echoISR, CHANGE)` (`INT1`); si está en `A0..A5` (`luigi_lab3`, `ECHO=A1`), emite `ISR(PCINT1_vect)`.
+     - **Barrido radar asíncrono del servo SG90 (`luigi_lab4`):** reemplaza `myServo.write(ang); delay(350);` por una máquina de estados a `50 Hz` (`RADAR_ANGLES = {90, 25, 90, 155}` cada `180 ms`) que actualiza `clearanceLeftCm`, `clearanceCenterCm` y `clearanceRightCm` mientras el robot sigue ejecutando la red neuronal cada `20 ms`.
+
+---
+
+## 7. Entrenamiento Multi-Video + Casos Borde y GPU Cloud (`training/multiclip.py`, Tarea `J-2`)
+
+- **Verificación rápida y lanzamiento:**
+  ```bash
+  uv run --project training python -m training.multiclip --verify --clips all-walks
+  ./training/cloud_gpu.sh walk-multiclip-v1 all-walks 50000000
+  ```
+- **Capacidades en `G1Env` (`training/env.py`) y `MimicEnv` (`training/imitate.py`):**
+  1. **Resolución y muestreo multi-clip (`resolve_clips` + `clip_fail_ema`):** acepta un alias (`all-walks` con los 5 clips balanceados de caminata, `all-g1`), lista separada por comas (`caminar,frente,saludar`) o carpeta de `.json`. Mantiene una media móvil exponencial de fallos por clip (`clip_fail_ema`) y muestrea cada episodio con probabilidad $p_i \propto 0{,}30/N + 0{,}70 \cdot \text{fail\_ema}_i$ para concentrar los pasos de GPU en los clips donde el robot aún cae.
+  2. **Inyección de falla parcial de actuador (`--fault-prob`, ej. `0.25`):** al iniciar un episodio, con probabilidad `fault_prob`, elige al azar un motor de las piernas (`hip`, `knee`, `ankle`, `wheel`) y degrada su ganancia y torque máximo (`actuator_gainprm`, `actuator_biasprm`, `actuator_forcerange`) por un factor uniforme en `[0.35, 0.75]`.
+  3. **Frenada de emergencia por obstáculo (`--sudden-stop-prob`, ej. `0.20`):** programa un instante aleatorio dentro del episodio donde el tiempo de referencia `self.t` se congela durante `50–100 pasos` (`1,0–2,0 s` a `50 Hz`) y la referencia exige velocidad lineal/angular cero y postura erguida antes de reanudar la marcha.
