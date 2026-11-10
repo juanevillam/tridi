@@ -24,6 +24,10 @@
 ## Qué funcionó y qué se ajustó
 
 - Al correr por primera vez `check-assembler.mjs` en MuJoCo WASM, detectamos que si `head_neck_link` se declaraba antes de `left_wheel_link` en `<worldbody>`, el cuello quedaba en `qpos[7]` mientras su actuador estaba en `ctrl[2]`. Reordenar `head_neck_link` después de `right_wheel_link` dejó alineados `qpos[7..9]` con `ctrl[0..2]` tanto para el control directo como para `observeStand()` en `policy.js`.
+- Tras revisar la primera versión del visor local, Pastor señaló que ver los componentes solo como tarjetas de texto dentro del visor del G1 no permitía entender el catálogo ni el Assembler. Se construyó `physics/scripts/sync-hardware-catalog.py` (que sincroniza los mapas de pines desde `wokwi/wokwi-elements` y genera 8 escenas 3D aisladas en `physics/models/components/*.xml`) y se rediseñó `physics/index.html` como **Tridi Hardware Studio** en **3 pestañas dedicadas**:
+  1. **Catálogo 3D de Componentes (`P-1`):** muestra cada componente aislado en 3D con control de su eje/cono ultrasónico, pines reales de Wokwi, parámetros MuJoCo y formulario CRUD.
+  2. **Ensamblador Paso a Paso (`P-3`):** muestra las 7 mallas `.stl` de Luigi Lab 4 con slider de **Vista Explosionada 3D (`0%–100%`)**, resaltado individual de piezas en 3D y análisis determinista de `LAB4_Robot_Explorador_Autonomo.ino`.
+  3. **Simulador en Arena (`P-2 / P-4`):** permite alternar entre modo autónomo y control manual por sliders de cada actuador en `Luigi Lab 4` y `Celda Industrial`.
 
 ## Qué sigue
 

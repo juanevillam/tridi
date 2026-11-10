@@ -9,6 +9,7 @@ const H1_DIR = new URL('../models/unitree_h1/', import.meta.url).pathname;
 const LUIGI_LAB3_DIR = new URL('../models/luigi_lab3/', import.meta.url).pathname;
 const LUIGI_LAB4_DIR = new URL('../models/luigi_lab4/', import.meta.url).pathname;
 const FACTORY_CELL_DIR = new URL('../models/factory_cell/', import.meta.url).pathname;
+const COMPONENTS_DIR = new URL('../models/components/', import.meta.url).pathname;
 
 function readTree(dir, prefix = '') {
   const files = {};
@@ -29,6 +30,7 @@ export async function loadG1Node() {
     ...readTree(LUIGI_LAB3_DIR, 'luigi_lab3/'),
     ...readTree(LUIGI_LAB4_DIR, 'luigi_lab4/'),
     ...readTree(FACTORY_CELL_DIR, 'factory_cell/'),
+    ...readTree(COMPONENTS_DIR, 'components/'),
   };
   return { mujoco, sim: new Simulation(mujoco, files, 'scene.xml', 'stand') };
 }

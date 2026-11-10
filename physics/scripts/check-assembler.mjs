@@ -21,6 +21,8 @@ const assert = (cond, msg) => {
 const allComponents = listComponents();
 assert(allComponents.length >= 10, `expected >= 10 catalog components, got ${allComponents.length}`);
 assert(getComponent('sg90_servo')?.mujoco?.kp === 4.5, 'sg90_servo kp should be 4.5');
+assert(getComponent('sg90_servo')?.mcu?.upstream_pins?.length === 3, 'sg90_servo should have 3 Wokwi upstream pins');
+assert(getComponent('arduino_uno')?.mcu?.upstream_pins?.length >= 20, 'arduino_uno should have Wokwi upstream pins');
 assert(getComponent('tt_gearmotor_200rpm')?.mcu?.deadzone_pwm === 115, 'tt_gearmotor_200rpm deadzone_pwm should be 115');
 
 const custom = registerComponent({
@@ -50,8 +52,14 @@ assert(parsedIno.bottlenecks.length >= 2, 'expected pulseIn and delay bottleneck
 const roles = classifyStlMeshes(['1_chasis_robot.stl', '5_rin_x2.stl', '6_llanta_x2_TPU.stl', '7_cabeza_sensor_servo.stl']);
 assert(roles.some((r) => r.role === 'servo_turret'), 'expected 7_cabeza_sensor_servo.stl classified as servo_turret');
 
-// 3. P-2: Load luigi_lab4/scene.xml in MuJoCo WASM and test wheels + SG90 neck sweep
+// 3. P-1 3D Component Previews + P-2: Load standalone 3D component XMLs and luigi_lab4/scene.xml in MuJoCo WASM
 const { sim } = await loadG1Node();
+for (const compId of ['sg90_servo', 'tt_gearmotor_200rpm', 'hcsr04_ultrasonic', 'nema17_stepper', 'pneumatic_pusher_linear', 'arduino_uno', 'l298n', 'wheel_tt_65mm_tpu']) {
+  const mjcf = getComponent(compId)?.preview_mjcf;
+  assert(Boolean(mjcf), `missing preview_mjcf on ${compId}`);
+  sim.load(mjcf, 'home');
+  assert(sim.model.nq === 1 && sim.model.nu === 1, `3D component preview ${mjcf} expected nq=1 nu=1`);
+}
 sim.load('luigi_lab4/scene.xml', 'home');
 assert(sim.model.nq === 10 && sim.model.nu === 3, `luigi_lab4 expected nq=10 nu=3, got nq=${sim.model.nq} nu=${sim.model.nu}`);
 
