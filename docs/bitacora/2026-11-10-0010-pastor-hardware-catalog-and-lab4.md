@@ -17,8 +17,9 @@
    - Se implementaron `classifyStlMeshes()` y `generateMujocoXml()` para generar `robot.xml` y `scene.xml` válidos en MuJoCo WASM desde piezas `.stl` + selección de componentes del catálogo `P-1`.
 4. **`P-4` — Escena de Celda Industrial / Empaquetadora (`physics/models/factory_cell/factory_cell.xml` y `scene.xml`):**
    - Se construyó una celda industrial en MuJoCo (`nq = 10, nu = 3`) con cinta transportadora (`conveyor_feed_joint`), cilindro neumático desviador (`pusher_slide_joint`), prensa selladora vertical cronometrada (`sealer_press_joint`) y sensores ópticos de línea.
-5. **Verificación automática (`physics/scripts/check-assembler.mjs`):**
+5. **Verificación automática (`physics/scripts/check-assembler.mjs`) y visor local (`physics/index.html`):**
    - Se agregó `check-assembler.mjs` a `npm --prefix physics run check` y se corrieron todos los checks (`npm --prefix physics run check && npm --prefix web run check && npm --prefix web run build`) pasando con 0 errores.
+   - Se actualizó el sandbox de desarrollo de `physics/` (`physics/index.html`, `physics/src/main.js`, `physics/src/style.css`) con selector en vivo entre `Unitree G1`, `Luigi Lab 4 (P-2)`, `Celda Industrial (P-4)` y `Luigi Lab 3`, más un drawer interactivo para probar el CRUD del catálogo (`P-1`) y la compilación `.ino + .stl -> MuJoCo XML` (`P-3`).
 
 ## Qué funcionó y qué se ajustó
 
