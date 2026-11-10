@@ -10,6 +10,8 @@ import {
   validateHardwarePinout,
 } from '../components/index.js';
 import { classifyStlMeshes, generateMujocoXml, parseArduinoSketch } from '../src/assembler.js';
+import * as ort from '../src/onnx-lite.js';
+import { createPolicy } from '../src/policy.js';
 import { loadG1Node } from './node-model.mjs';
 
 const failures = [];
@@ -77,6 +79,22 @@ const neckRight = sim.data.qpos[9];
 assert(xAfterForward > 0.05, `luigi_lab4 did not drive forward (x=${xAfterForward.toFixed(3)} m)`);
 assert(neckLeft > 0.45 && neckRight < -0.45, `luigi_lab4 SG90 neck did not sweep (left=${neckLeft.toFixed(2)} rad, right=${neckRight.toFixed(2)} rad)`);
 console.log(`P-2 luigi_lab4: drove x=${xAfterForward.toFixed(3)} m, neck swept +${(neckLeft * 180 / Math.PI).toFixed(1)}° to ${(neckRight * 180 / Math.PI).toFixed(1)}°`);
+
+// 3b. J-4: Verify trained luigi-lab4.onnx policy (obs_dim=18, nu=3) runs in onnx-lite.js + policy.js
+const lab4MetaPath = new URL('../../training/policies/luigi-lab4.json', import.meta.url);
+const lab4OnnxPath = new URL('../../training/policies/luigi-lab4.onnx', import.meta.url);
+const lab4Meta = JSON.parse(readFileSync(lab4MetaPath, 'utf8'));
+const lab4Onnx = new Uint8Array(readFileSync(lab4OnnxPath));
+sim.load('luigi_lab4/scene.xml', 'home');
+const lab4Policy = await createPolicy(ort, sim, lab4Onnx, lab4Meta);
+sim.policy = lab4Policy;
+sim.reset();
+for (let i = 0; i < 45; i++) await sim.advance(1 / 60);
+assert(sim.data.qpos[0] > 0.05, `luigi-lab4.onnx policy did not advance robot (x=${sim.data.qpos[0].toFixed(3)} m)`);
+assert(Boolean(sim.sensorReadout) && sim.sensorReadout.distCm > 0, 'luigi-lab4.onnx policy did not populate sensorReadout');
+console.log(`J-4 luigi-lab4.onnx: drove x=${sim.data.qpos[0].toFixed(3)} m at 50 Hz (obs_dim=${lab4Meta.obs_dim}, nu=${lab4Meta.nu})`);
+sim.policy = null;
+lab4Policy.dispose();
 
 // Verify P-3 generated XML loads into MuJoCo WASM using the luigi_lab4 mesh assets
 const assembled = generateMujocoXml({ preset: 'luigi_lab4', modelName: 'assembled_lab4' });

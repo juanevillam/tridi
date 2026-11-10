@@ -135,3 +135,5 @@ Documentado en [`docs/audit-playbook.md`](../audit-playbook.md) y en el skill [`
    - `classifyStlMeshes(files)` y `generateMujocoXml(config)` generan `robotXml` y `sceneXml` listos para cargar en MuJoCo WASM (`sim.files`).
 4. **Celda Industrial de Empaque (`physics/models/factory_cell/factory_cell.xml` y `scene.xml`):**
    - Escena industrial en MuJoCo (`nq = 10`, `nu = 3`) con cinta transportadora (`conveyor_feed_joint`), cilindro neumático desviador (`pusher_slide_joint`), cabezal sellador vertical (`sealer_press_joint`) y sensores ópticos de línea.
+7. **Entrenamiento de `luigi-lab4.onnx` (`J-4` — `training/luigi_lab4_env.py`, `training/policies/luigi-lab4.onnx`):**
+   - Entorno MuJoCo a 50 Hz (`obs_dim = 18`, `nu = 3`) y política ONNX (`2.353 bytes`, `max_diff = 0.00e+00` vs PyTorch/ONNXRuntime) que coordina las 2 ruedas diferenciales y el barrido activo del cuello servo SG90 (`96,06°` de amplitud en movimiento), compilada en `physics/models/luigi_lab4/firmware/LAB4_Tridi_Autonomo.ino` mediante `training/export_mcu.py --preset luigi_lab4`.

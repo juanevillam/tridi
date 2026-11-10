@@ -524,6 +524,39 @@ ISR(PCINT1_vect) {{
         else ""
     )
 
+    obs_populate = (
+        f"""    obs[2] = sinf(estYawRad * 0.5f);      // qpos quat_z (heading)
+    obs[6] = prevCtrl[0] * {dt_s:.4f}f;   // wheel_l angle delta
+    obs[7] = prevCtrl[1] * {dt_s:.4f}f;   // wheel_r angle delta
+    obs[8] = prevCtrl[2];                 // neck_servo angle (rad)
+    obs[9] = prevCtrl[0] * 0.05f;         // wheel_l vel scaled
+    obs[10] = prevCtrl[1] * 0.05f;        // wheel_r vel scaled
+    obs[12] = prevCtrl[0] * 4.0f;         // prev_ctrl_l scaled
+    obs[13] = prevCtrl[1] * 4.0f;         // prev_ctrl_r scaled
+    obs[14] = prevCtrl[2] * 4.0f;         // prev_ctrl_neck scaled
+    obs[15] = estVxMS;                    // linear velocity vx (m/s)
+    obs[17] = estYawRateRadS;             // yaw rate wz (rad/s)"""
+        if obs_dim >= 18 and act_dim >= 3
+        else f"""    obs[2] = sinf(estYawRad * 0.5f);      // qpos quat_z (heading)
+    obs[6] = prevCtrl[0] * {dt_s:.4f}f;   // wheel_l angle delta
+    obs[7] = prevCtrl[1] * {dt_s:.4f}f;   // wheel_r angle delta
+    obs[8] = estVxMS;                     // linear velocity vx (m/s)
+    obs[10] = estYawRateRadS;             // yaw rate wz (rad/s)
+    obs[11] = prevCtrl[0];                // wheel_l vel (rad/s)
+    obs[12] = prevCtrl[1];                // wheel_r vel (rad/s)
+    obs[13] = prevCtrl[0];                // prev_ctrl_l
+    obs[14] = prevCtrl[1];                // prev_ctrl_r"""
+    )
+
+    neck_cruise_update = (
+        "\n      if (radarPhase == 0) {\n"
+        "        int neckDeg = constrain(90 + (int)(ctrl[2] * 38.0f), 25, 155);\n"
+        "        neckServo.write(neckDeg);\n"
+        "      }"
+        if cfg.servo_pin is not None and act_dim >= 3
+        else ""
+    )
+    prev_neck_update = "\n    prevCtrl[2] = ctrl[2];" if act_dim >= 3 else ""
     mitigations_comment = "\n".join(f"//   - {m}" for m in report.Mitigations)
 
     return f"""// ============================================================================
@@ -683,15 +716,7 @@ void loop() {{
     if (estYawRad > 3.14159f) estYawRad -= 6.28318f;
     if (estYawRad < -3.14159f) estYawRad += 6.28318f;
 
-    obs[2] = sinf(estYawRad * 0.5f);      // qpos quat_z (heading)
-    obs[6] = prevCtrl[0] * {dt_s:.4f}f;   // wheel_l angle delta
-    obs[7] = prevCtrl[1] * {dt_s:.4f}f;   // wheel_r angle delta
-    obs[8] = estVxMS;                     // linear velocity vx (m/s)
-    obs[10] = estYawRateRadS;             // yaw rate wz (rad/s)
-    obs[11] = prevCtrl[0];                // wheel_l vel (rad/s)
-    obs[12] = prevCtrl[1];                // wheel_r vel (rad/s)
-    obs[13] = prevCtrl[0];                // prev_ctrl_l
-    obs[14] = prevCtrl[1];                // prev_ctrl_r
+{obs_populate}
 
     float ctrl[TRIDI_ACT_DIM];
     tridi_policy_forward(obs, ctrl);
@@ -704,14 +729,14 @@ void loop() {{
     }} else if (filteredDistCm >= CLEAR_DIST_CM) {{
       // Avance crucero asistido por la política neuronal
       ctrl[0] = 0.65f * MAX_RADS + 0.35f * ctrl[0];
-      ctrl[1] = 0.65f * MAX_RADS + 0.35f * ctrl[1];
+      ctrl[1] = 0.65f * MAX_RADS + 0.35f * ctrl[1];{neck_cruise_update}
     }}
 
     setMotorsRadS(ctrl[0], ctrl[1]);
 
     // Actualizar odometría interna para el siguiente paso de 20 ms
     prevCtrl[0] = ctrl[0];
-    prevCtrl[1] = ctrl[1];
+    prevCtrl[1] = ctrl[1];{prev_neck_update}
     estVxMS = 0.033f * 0.5f * (ctrl[0] + ctrl[1]);
     estYawRateRadS = 0.033f * (ctrl[1] - ctrl[0]) / 0.135f;
   }}
@@ -723,11 +748,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--preset", choices=sorted(PRESETS.keys()), default="luigi_lab4",
                         help="Hardware preset to compile for (default: luigi_lab4)")
-    parser.add_argument("--onnx", type=Path, default=DEFAULT_ONNX,
-                        help="Path to the .onnx policy file")
+    parser.add_argument("--onnx", type=Path, default=None,
+                        help="Path to the .onnx policy file (defaults to luigi-lab4.onnx or luigi-lab3.onnx)")
     parser.add_argument("--out", type=Path, default=None,
                         help="Output .ino file path (defaults to the preset's firmware folder)")
     args = parser.parse_args()
+
+    onnx_path = args.onnx
+    if onnx_path is None:
+        lab4_onnx = Path(__file__).resolve().parent / "policies" / "luigi-lab4.onnx"
+        onnx_path = lab4_onnx if (args.preset == "luigi_lab4" and lab4_onnx.exists()) else DEFAULT_ONNX
 
     cfg = PRESETS[args.preset]
     report = validate_hardware(cfg)
@@ -736,7 +766,7 @@ def main() -> None:
             print(f"[ERROR] {err}")
         raise SystemExit(1)
 
-    ino_code = generate_ino(cfg, args.onnx, report)
+    ino_code = generate_ino(cfg, onnx_path, report)
     if args.out is None:
         if args.preset == "luigi_lab4":
             out_path = ROOT / "physics" / "models" / "luigi_lab4" / "firmware" / "LAB4_Tridi_Autonomo.ino"
@@ -747,7 +777,7 @@ def main() -> None:
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(ino_code)
-    print(f"Compiled {args.onnx.name} -> {out_path.relative_to(ROOT)} ({len(ino_code.splitlines())} lines)")
+    print(f"Compiled {onnx_path.name} -> {out_path.relative_to(ROOT)} ({len(ino_code.splitlines())} lines)")
     for m in report.Mitigations:
         print(f"  [OK] {m}")
 
