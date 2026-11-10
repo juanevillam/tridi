@@ -34,6 +34,8 @@ export function mount(root) {
         <div class="milestone-meta">
           <span class="milestone-badge signal">${T('m2.badge')}</span>
           <a class="button primary milestone-cta" href="#/simulations/luigi_lab3">${T('m2.ctaSim')}</a>
+          <a class="button milestone-cta" href="#/simulations/luigi_lab4">${T('m2.ctaLab4')}</a>
+          <a class="button milestone-cta" href="#/simulations/factory_cell">${T('m2.ctaCell')}</a>
         </div>
         <h2>${T('m2.title')}</h2>
         <p class="milestone-intro">${T('m2.intro')}</p>

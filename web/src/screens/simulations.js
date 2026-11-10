@@ -35,10 +35,16 @@ export const CONDITIONS = [
   { key: 'motor_scale', label: 'motor_scale', min: 0.7, max: 1.2, step: 0.05 },
 ];
 
+const DIRECT_ROBOTS = {
+  luigi_lab3: 'luigi-lab3',
+  luigi_lab4: 'luigi-lab4',
+  factory_cell: 'factory-cell',
+};
+
 export function mount(root, { api }, [clipId] = []) {
-  const isLuigiLink = clipId === 'luigi_lab3';
-  const initRobot = isLuigiLink ? 'luigi_lab3' : 'unitree_g1';
-  const initPolicy = isLuigiLink ? 'luigi-lab3' : FINAL_LEVEL;
+  const isCustomRobotLink = Boolean(DIRECT_ROBOTS[clipId]);
+  const initRobot = isCustomRobotLink ? clipId : 'unitree_g1';
+  const initPolicy = DIRECT_ROBOTS[clipId] ?? FINAL_LEVEL;
   root.innerHTML = `
     <section class="page sims">
       <header class="page-head">
@@ -47,7 +53,7 @@ export function mount(root, { api }, [clipId] = []) {
       </header>
       <div class="sims-grid">
         <div class="sims-main">
-          <div id="stage" data-show="${isLuigiLink ? 'robot' : 'both'}">
+          <div id="stage" data-show="${isCustomRobotLink ? 'robot' : 'both'}">
             <section class="pane" id="human-pane">
               <canvas id="human"></canvas>
               <p class="pane-label" id="human-label">${T('personLabel')}</p>
@@ -62,9 +68,9 @@ export function mount(root, { api }, [clipId] = []) {
                 <button id="reset" class="icon-btn" type="button" ${A({ 'aria-label': 'restart', title: 'restart' })}>${ICONS.restart}</button>
                 <button id="speed" class="icon-btn speed" type="button" ${A({ 'aria-label': 'speed', title: 'speedTitle' })}>1×</button>
                 <select id="show" ${A({ 'aria-label': 'what' })}>
-                  <option value="both" ${isLuigiLink ? '' : 'selected'} ${X('both')}>${t('both')}</option>
+                  <option value="both" ${isCustomRobotLink ? '' : 'selected'} ${X('both')}>${t('both')}</option>
                   <option value="human" ${X('onlyHuman')}>${t('onlyHuman')}</option>
-                  <option value="robot" ${isLuigiLink ? 'selected' : ''} ${X('onlyRobot')}>${t('onlyRobot')}</option>
+                  <option value="robot" ${isCustomRobotLink ? 'selected' : ''} ${X('onlyRobot')}>${t('onlyRobot')}</option>
                 </select>
               </div>
               <div class="mode" id="physics-mode-group" role="group" ${A({ 'aria-label': 'how' })}>
@@ -126,29 +132,35 @@ export function mount(root, { api }, [clipId] = []) {
           <section class="luigi-sim-panel" id="luigi-sim-panel" hidden>
             <div class="luigi-sim-head">
               <span class="card-badge trained"><span class="t" lang="es">Sim-to-Real · Lazo Cerrado</span><span class="t" lang="en">Sim-to-Real · Closed-Loop</span></span>
-              <h2><span class="t" lang="es">Telemetría de Sensores en MuJoCo</span><span class="t" lang="en">Live Sensor Telemetry in MuJoCo</span></h2>
-              <p class="train-text">
-                <span class="t" lang="es">El robot diferencial simula el cono ultrasónico <code>HC-SR04</code> (±24°), el radar IR <code>APDS-9960 (0x9C)</code>, el arnés de cables Dupont y colisiones sólidas en una arena de 3,4 m × 3,4 m.</span>
-                <span class="t" lang="en">The differential robot simulates the <code>HC-SR04</code> ultrasonic cone (±24°), the <code>APDS-9960 (0x9C)</code> IR radar, Dupont jumper harness, and solid collisions inside a 3.4 m × 3.4 m arena.</span>
+              <h2 id="luigi-sim-title"><span class="t" lang="es">Telemetría de Sensores en MuJoCo</span><span class="t" lang="en">Live Sensor Telemetry in MuJoCo</span></h2>
+              <p class="train-text" id="luigi-sim-desc">
+                <span class="t" lang="es">El robot diferencial simula el cono ultrasónico <code>HC-SR04</code> (±24°), el radar IR <code>APDS-9960 (0x9C)</code>, el cuello móvil <code>SG90</code> y colisiones sólidas en una arena de 3,4 m × 3,4 m.</span>
+                <span class="t" lang="en">The differential robot simulates the <code>HC-SR04</code> ultrasonic cone (±24°), the <code>APDS-9960 (0x9C)</code> IR radar, the <code>SG90</code> pan neck, and solid collisions inside a 3.4 m × 3.4 m arena.</span>
               </p>
             </div>
             <div class="luigi-telemetry-grid">
               <div class="luigi-tel-card">
-                <span>HC-SR04 (Trig D9 / Echo A1)</span>
+                <span id="sim-label-1">HC-SR04 (Trig D9 / Echo A1)</span>
                 <strong id="sim-hcsr04">120 cm</strong>
               </div>
               <div class="luigi-tel-card">
-                <span>APDS-9960 IR (Reg 0x9C)</span>
+                <span id="sim-label-2">APDS-9960 IR (Reg 0x9C)</span>
                 <strong id="sim-apds">18 / 255</strong>
               </div>
               <div class="luigi-tel-card">
-                <span><span class="t" lang="es">Puente H L298N (Izq / Der)</span><span class="t" lang="en">L298N H-Bridge (L / R)</span></span>
+                <span id="sim-label-3"><span class="t" lang="es">Puente H L298N (Izq / Der)</span><span class="t" lang="en">L298N H-Bridge (L / R)</span></span>
                 <strong id="sim-wheels">[15.5, 15.5] rad/s</strong>
               </div>
               <div class="luigi-tel-card">
-                <span><span class="t" lang="es">Estado de evasión (4 etapas)</span><span class="t" lang="en">Dodge state (4 stages)</span></span>
+                <span id="sim-label-4"><span class="t" lang="es">Estado de evasión (4 etapas)</span><span class="t" lang="en">Dodge state (4 stages)</span></span>
                 <strong id="sim-dodge-state"><span class="t" lang="es">Crucero ONNX (50 Hz)</span><span class="t" lang="en">ONNX Cruise (50 Hz)</span></strong>
               </div>
+            </div>
+            <div class="luigi-drive-box" id="factory-fault-box" hidden>
+              <span class="luigi-drive-label"><span class="t" lang="es">Prueba de Falla Mecánica (Fricción de Cinta)</span><span class="t" lang="en">Mechanical Fault Test (Conveyor Belt Slip)</span></span>
+              <button type="button" class="button" id="factory-fault-btn" style="width:100%;margin-top:6px">
+                <span class="t" lang="es">⚠️ Simular PLC ciego por timer (aplasta cajas si patina la cinta)</span><span class="t" lang="en">⚠️ Simulate blind fixed-timer PLC (crushes boxes on belt slip)</span>
+              </button>
             </div>
             <div class="luigi-drive-box" id="arduino-box">
               <span class="luigi-drive-label"><span class="t" lang="es">Control de Marcha y Política ONNX</span><span class="t" lang="en">Drive &amp; ONNX Policy Control</span></span>
@@ -197,7 +209,7 @@ export function mount(root, { api }, [clipId] = []) {
   root.querySelector('.tune').open = !matchMedia('(max-width: 720px)').matches;
   const stage = mountStage(root, { initialRobot: initRobot });
   const trainBox = mountTrainBox(root.querySelector('.train-box'), api);
-  mountGallery(root, stage, isLuigiLink ? undefined : clipId, trainBox.show, { hide: HIDDEN_CLIPS });
+  mountGallery(root, stage, isCustomRobotLink ? undefined : clipId, trainBox.show, { hide: HIDDEN_CLIPS });
   return () => {
     trainBox.dispose();
     stage.dispose();

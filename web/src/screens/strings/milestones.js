@@ -46,7 +46,9 @@ export const { T, t, A } = dict({
     es: 'Dos motores TT con reductora (200 RPM, llantas de TPU), batería 2S 18650 (7,4 V), puente H L298N, ultrasónico HC-SR04 y sensor óptico I2C APDS-9960.',
     en: 'Dual TT gearmotors (200 RPM, TPU tires), 2S 18650 battery pack (7.4 V), L298N H-bridge, HC-SR04 ultrasonic sensor and APDS-9960 I2C optical sensor.',
   },
-  'm2.ctaSim': { es: 'Abrir el robot de Luigi en Simulaciones →', en: 'Open Luigi’s robot in Simulations →' },
+  'm2.ctaSim': { es: 'Abrir Luigi Lab 3 →', en: 'Open Luigi Lab 3 →' },
+  'm2.ctaLab4': { es: 'Abrir Luigi Lab 4 (Radar SG90) →', en: 'Open Luigi Lab 4 (SG90 Radar) →' },
+  'm2.ctaCell': { es: 'Abrir Celda Industrial →', en: 'Open Industrial Cell →' },
 
   'm2.galleryTitle': {
     es: 'Arquitectura física: del diseño paramétrico al montaje real',

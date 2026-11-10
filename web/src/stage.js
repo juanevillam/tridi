@@ -52,10 +52,16 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       setRobotLabel();
     },
   });
+  const CUSTOM_ROBOT_POLICY = {
+    luigi_lab3: 'luigi-lab3',
+    luigi_lab4: 'luigi-lab4',
+    factory_cell: 'factory-cell',
+  };
+  const isCustomRobot = (r = robotModel) => Boolean(CUSTOM_ROBOT_POLICY[r]);
   let playing = true;
   let speed = 1;
   let robotModel = initialRobot;
-  let level = initialRobot === 'luigi_lab3' ? 'luigi-lab3' : $('policy').value;
+  let level = CUSTOM_ROBOT_POLICY[initialRobot] ?? $('policy').value;
   let current = null; // { clip, title }: what the gallery selected
   let motion = null; // the RobotMotion of `current`
   let copying = false; // the robot is playing `motion`
@@ -76,11 +82,11 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
 
   // A clip moves with physics only if a policy learned it (an imitation); any other clip is shown
   // as before, the robot replaying its movement without physics.
-  const withPhysics = () => physics && (robotModel === 'luigi_lab3' || imitationFor(current?.clip) !== null);
+  const withPhysics = () => physics && (isCustomRobot() || imitationFor(current?.clip) !== null);
 
   // After any change (checkpoint, world, place): the puppet replay unless the clip moves with physics.
   function resume() {
-    if (robotModel === 'luigi_lab3') {
+    if (isCustomRobot()) {
       copying = false;
       setRobotLabel();
       return;
@@ -96,7 +102,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
 
   // With physics, a clip with an imitation policy is shown with it.
   function physicsFor(clip) {
-    if (robotModel === 'luigi_lab3') return resume();
+    if (isCustomRobot()) return resume();
     const imitation = imitationFor(clip);
     if (physics && imitation && (level !== imitation.id || loadedClipId !== clip?.id)) {
       $('policy').value = imitation.id;
@@ -136,18 +142,22 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     last = now;
     // Imitating, the robot's physics sets the time and the skeleton follows it. Otherwise the
     // skeleton's clock is the stage's and the robot follows it, so the two never drift apart.
-    if (imitating() && robotModel !== 'luigi_lab3' && robot.view) skeleton.time = robot.view.clipTime();
+    if (imitating() && !isCustomRobot() && robot.view) skeleton.time = robot.view.clipTime();
     else if (playing) skeleton.advance(wall * speed);
     if (copying && robot.view) robot.view.seek(skeleton.time);
     look?.update(wall);
-    if (robotModel === 'luigi_lab3' && robot.view?.sim?.sensorReadout) {
+    if ((robotModel === 'luigi_lab3' || robotModel === 'luigi_lab4') && robot.view?.sim?.sensorReadout) {
       const sr = robot.view.sim.sensorReadout;
       const elHc = $('sim-hcsr04');
       const elApds = $('sim-apds');
       const elWh = $('sim-wheels');
       const elSt = $('sim-dodge-state');
       if (elHc) elHc.textContent = `${sr.distCm} cm`;
-      if (elApds) elApds.textContent = `${sr.irProx} / 255`;
+      if (elApds) {
+        elApds.textContent = robotModel === 'luigi_lab4'
+          ? `${sr.neckDeg >= 0 ? '+' : ''}${sr.neckDeg.toFixed(1)}°`
+          : `${sr.irProx} / 255`;
+      }
       if (elWh) {
         const c0 = (robot.view.sim.data.ctrl[0] ?? 0).toFixed(1);
         const c1 = (robot.view.sim.data.ctrl[1] ?? 0).toFixed(1);
@@ -156,14 +166,27 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       if (elSt && sr.dodgeStage !== lastDodgeStage) {
         lastDodgeStage = sr.dodgeStage;
         const stages = [
-          { es: 'Crucero ONNX (50 Hz)', en: 'ONNX Cruise (50 Hz)' },
+          { es: robotModel === 'luigi_lab4' ? 'Escaneo activo SG90 (50 Hz)' : 'Crucero ONNX (50 Hz)', en: robotModel === 'luigi_lab4' ? 'Active SG90 sweep (50 Hz)' : 'ONNX Cruise (50 Hz)' },
           { es: '1/4 · Freno (-20 rad/s)', en: '1/4 · Brake (-20 rad/s)' },
           { es: '2/4 · Reversa despeje', en: '2/4 · Reverse clear' },
-          { es: '3/4 · Giro 90°', en: '3/4 · 90° Pivot' },
+          { es: '3/4 · Giro hacia lado libre', en: '3/4 · Pivot to clear side' },
         ];
         const stObj = stages[sr.dodgeStage] ?? stages[0];
         elSt.innerHTML = `<span class="t" lang="es">${stObj.es}</span><span class="t" lang="en">${stObj.en}</span>`;
         elSt.style.color = sr.dodgeStage > 0 ? '#ff6a3d' : '#c8ff2e';
+      }
+    } else if (robotModel === 'factory_cell' && robot.view?.sim?.factoryReadout) {
+      const fr = robot.view.sim.factoryReadout;
+      const elHc = $('sim-hcsr04');
+      const elApds = $('sim-apds');
+      const elWh = $('sim-wheels');
+      const elSt = $('sim-dodge-state');
+      if (elHc) elHc.textContent = `C:${fr.conveyorMm} · P:${fr.pusherMm} mm`;
+      if (elApds) elApds.textContent = `${fr.sealerMm} mm · [E:${fr.sensorEntry ? 1 : 0} S:${fr.sensorSealer ? 1 : 0} X:${fr.sensorExit ? 1 : 0}]`;
+      if (elWh) elWh.textContent = `${fr.completedCycles} ok · ${fr.crushedCount} aplastadas`;
+      if (elSt) {
+        elSt.textContent = fr.modeLabel;
+        elSt.style.color = fr.crushedBox ? '#ff6a3d' : '#c8ff2e';
       }
     }
     overlay.sync(skeleton.time, playing, speed);
@@ -172,22 +195,38 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
   });
 
   function syncRobotDependentUI() {
-    const isLuigi = robotModel === 'luigi_lab3';
-    if ($('arduino-box')) $('arduino-box').hidden = !isLuigi;
-    if ($('grasp-box')) $('grasp-box').hidden = isLuigi;
-    if ($('place-field')) $('place-field').hidden = isLuigi;
-    if ($('policy-field')) $('policy-field').hidden = isLuigi;
-    if ($('show')) $('show').hidden = isLuigi;
-    if ($('physics-mode-group')) $('physics-mode-group').hidden = isLuigi;
-    if ($('physics-mode-note')) $('physics-mode-note').hidden = isLuigi;
-    if ($('luigi-sim-panel')) $('luigi-sim-panel').hidden = !isLuigi;
-    if ($('pick-heading')) $('pick-heading').hidden = isLuigi;
-    if ($('gallery')) $('gallery').hidden = isLuigi;
+    const custom = isCustomRobot();
+    const isRover = robotModel === 'luigi_lab3' || robotModel === 'luigi_lab4';
+    const isCell = robotModel === 'factory_cell';
+    if ($('arduino-box')) $('arduino-box').hidden = !isRover;
+    if ($('factory-fault-box')) $('factory-fault-box').hidden = !isCell;
+    if ($('grasp-box')) $('grasp-box').hidden = custom;
+    if ($('place-field')) $('place-field').hidden = custom;
+    if ($('policy-field')) $('policy-field').hidden = custom;
+    if ($('show')) $('show').hidden = custom;
+    if ($('physics-mode-group')) $('physics-mode-group').hidden = custom;
+    if ($('physics-mode-note')) $('physics-mode-note').hidden = custom;
+    if ($('luigi-sim-panel')) $('luigi-sim-panel').hidden = !custom;
+    if ($('pick-heading')) $('pick-heading').hidden = custom;
+    if ($('gallery')) $('gallery').hidden = custom;
     const tBox = root.querySelector('.train-box');
-    if (tBox) tBox.hidden = isLuigi || !current;
-    if (isLuigi && $('stage')) {
+    if (tBox) tBox.hidden = custom || !current;
+    if (custom && $('stage')) {
       $('stage').dataset.show = 'robot';
       if ($('show')) $('show').value = 'robot';
+    }
+    lastDodgeStage = -1;
+    if (robotModel === 'luigi_lab4') {
+      if ($('sim-label-1')) $('sim-label-1').textContent = 'HC-SR04 en Torreta (D7 / D4)';
+      if ($('sim-label-2')) $('sim-label-2').textContent = 'Cuello Servo SG90 (Pin D13)';
+    } else if (robotModel === 'luigi_lab3') {
+      if ($('sim-label-1')) $('sim-label-1').textContent = 'HC-SR04 (Trig D9 / Echo A1)';
+      if ($('sim-label-2')) $('sim-label-2').textContent = 'APDS-9960 IR (Reg 0x9C)';
+    } else if (robotModel === 'factory_cell') {
+      if ($('sim-label-1')) $('sim-label-1').textContent = 'Cinta + Pistón (mm)';
+      if ($('sim-label-2')) $('sim-label-2').textContent = 'Prensa + Sensores Ópticos';
+      if ($('sim-label-3')) $('sim-label-3').innerHTML = '<span class="t" lang="es">Ciclos / Merma</span><span class="t" lang="en">Cycles / Waste</span>';
+      if ($('sim-label-4')) $('sim-label-4').innerHTML = '<span class="t" lang="es">Controlador PLC S7-1200</span><span class="t" lang="en">S7-1200 PLC Controller</span>';
     }
   }
 
@@ -220,7 +259,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
   }
 
   function startMotion() {
-    if (!robot.view || !motion || imitating() || robotModel === 'luigi_lab3') return;
+    if (!robot.view || !motion || imitating() || isCustomRobot()) return;
     robot.view.playClip(motion);
     robot.view.seek(skeleton.time);
     copying = true;
@@ -238,22 +277,28 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       const { onnx, json } = policyUrls(id);
       // An imitation policy also needs the RobotMotion of the clip it learned.
       const imitation = imitationOf(id);
-      const isLuigi = imitation?.robot === 'luigi_lab3';
+      const isCustom = isCustomRobot(imitation?.robot);
       const activeClipId = current?.clip?.id;
       const clipBalancedId =
-        imitation && !isLuigi && activeClipId && (imitation.robot ?? 'unitree_g1') === 'unitree_g1' && matchesImitation(imitation, activeClipId)
+        imitation && !isCustom && activeClipId && (imitation.robot ?? 'unitree_g1') === 'unitree_g1' && matchesImitation(imitation, activeClipId)
           ? `${activeClipId}-balanced`
           : null;
       const motionId = clipBalancedId ?? imitation?.motion ?? imitation?.clip;
       const learned =
         imitation &&
-        !isLuigi &&
+        !isCustom &&
         (motions.get(motionId) ??
           (await savedMotion(motionId)) ??
           (imitation.motion ? await savedMotion(imitation.motion) : null));
-      await view.loadPolicy(onnx, json, imitation && !isLuigi ? { motion: learned } : {});
+      await view.loadPolicy(onnx, json, imitation && !isCustom ? { motion: learned } : {});
       const [px, py] = view.sim.bodyPosition('pelvis');
-      if (isLuigi) {
+      if (imitation?.robot === 'factory_cell') {
+        view.viewer.targetHeight = 0.35;
+        view.viewer.controls.minDistance = 0.35;
+        view.viewer.controls.target.set(px, 0.35, -py);
+        view.viewer.camera.position.set(px + 1.15, 0.85, -py - 1.10);
+        view.viewer.controls.update();
+      } else if (isCustom) {
         view.viewer.targetHeight = 0.09;
         view.viewer.controls.minDistance = 0.25;
         view.viewer.controls.target.set(px, 0.09, -py);
@@ -271,7 +316,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
         const dy = Math.abs(learned.qpos.at(-1)[1] - learned.qpos[0][1]);
         if (dx + dy > 0.4) view._streetAlongX = dx > dy;
       }
-      syncSitChair(view, !isLuigi && activeClipId === 'clip_sentarse-02-gvhmr');
+      syncSitChair(view, !isCustom && activeClipId === 'clip_sentarse-02-gvhmr');
       level = id;
       loadedClipId = imitation ? (activeClipId ?? imitation.clip) : null;
       robotModel = imitation?.robot ?? 'unitree_g1';
@@ -288,7 +333,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       root.querySelector('.push').disabled = !robot.view; // never before the robot is there
     }
     // The user may have picked another clip while it loaded: an imitation is only for its own clip.
-    if (imitating() && robotModel !== 'unitree_h1' && robotModel !== 'luigi_lab3' && !matchesImitation(imitationOf(level), current?.clip.id)) {
+    if (imitating() && robotModel !== 'unitree_h1' && !isCustomRobot() && !matchesImitation(imitationOf(level), current?.clip.id)) {
       $('policy').value = FINAL_LEVEL;
       return loadLevel(FINAL_LEVEL);
     }
@@ -350,8 +395,8 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     refreshLook();
     view.setSpeed(speed);
     if (!playing) view.pause();
-    if (robotModel === 'luigi_lab3') {
-      await loadLevel('luigi-lab3');
+    if (isCustomRobot()) {
+      await loadLevel(CUSTOM_ROBOT_POLICY[robotModel]);
       return;
     }
     await loadLevel(FINAL_LEVEL); // standing with its policy: physics from the first frame
@@ -365,14 +410,14 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
   if ($('robot-model')) {
     $('robot-model').onchange = async (event) => {
       robotModel = event.target.value;
-      if (robotModel === 'unitree_h1' || robotModel === 'luigi_lab3') {
+      if (robotModel === 'unitree_h1' || isCustomRobot()) {
         const customIm = IMITATIONS.find((im) => im.robot === robotModel);
         if (customIm) {
           const opt = $('policy').querySelector(`option[value="${customIm.id}"]`);
           if (opt) opt.disabled = false;
           $('policy').value = customIm.id;
           physics = true;
-          if (robotModel === 'luigi_lab3' && $('show')) {
+          if (isCustomRobot() && $('show')) {
             $('show').value = 'robot';
             $('stage').dataset.show = 'robot';
           }
@@ -668,12 +713,23 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
   function offerImitations(clip) {
     for (const imitation of IMITATIONS) {
       const option = $('policy').querySelector(`option[value="${imitation.id}"]`);
-      if (option) option.disabled = imitation.robot !== 'unitree_h1' && imitation.robot !== 'luigi_lab3' && !matchesImitation(imitation, clip.id);
+      if (option) option.disabled = imitation.robot !== 'unitree_h1' && !isCustomRobot(imitation.robot) && !matchesImitation(imitation, clip.id);
     }
-    if (imitating() && robotModel !== 'unitree_h1' && robotModel !== 'luigi_lab3' && !matchesImitation(imitationOf(level), clip.id)) {
+    if (imitating() && robotModel !== 'unitree_h1' && !isCustomRobot() && !matchesImitation(imitationOf(level), clip.id)) {
       $('policy').value = FINAL_LEVEL;
       loadLevel(FINAL_LEVEL);
     }
+  }
+
+  if ($('factory-fault-btn')) {
+    $('factory-fault-btn').onclick = () => {
+      const sim = robot.view?.sim;
+      if (!sim) return;
+      sim._factoryFixedTimerMode = !sim._factoryFixedTimerMode;
+      $('factory-fault-btn').innerHTML = sim._factoryFixedTimerMode
+        ? `<span class="t" lang="es">✅ Volver a Política Tridi Sensor-Gated (0 % merma)</span><span class="t" lang="en">✅ Return to Tridi Sensor-Gated Policy (0% waste)</span>`
+        : `<span class="t" lang="es">⚠️ Simular PLC ciego por timer (aplasta cajas si patina la cinta)</span><span class="t" lang="en">⚠️ Simulate blind fixed-timer PLC (crushes boxes on belt slip)</span>`;
+    };
   }
 
   if ($('luigi-reset-arena')) {
@@ -681,12 +737,15 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       if (robot.view?.sim) {
         robot.view.sim._usbLocked = false;
         robot.view.sim._serialCmd = null;
+        robot.view.sim._factoryCrushedCount = 0;
+        robot.view.sim._factoryCycles = 0;
       }
       robot.view?.reset();
       if (robot.view?.viewer) {
         const [px, py] = robot.view.sim.bodyPosition('pelvis');
-        robot.view.viewer.targetHeight = 0.09;
-        robot.view.viewer.controls.target.set(px, 0.09, -py);
+        const h = robotModel === 'factory_cell' ? 0.35 : 0.09;
+        robot.view.viewer.targetHeight = h;
+        robot.view.viewer.controls.target.set(px, h, -py);
         robot.view.viewer.camera.position.set(px + 1.05, 0.72, -py - 0.95);
         robot.view.viewer.controls.update();
       }
