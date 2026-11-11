@@ -35,6 +35,7 @@ Antes de enviar, abrir el formulario real: YC cambia preguntas entre batches. La
 | [`otras-ideas.md`](otras-ideas.md) | Sálvalo, Tripealo y las ideas de Platanus: cómo contarlas sin que parezca falta de foco |
 | [`../docs/pitch/tridi-pitch.pdf`](../docs/pitch/tridi-pitch.pdf) | El pitch que presentamos (4 slides), base del video y la entrevista |
 | [`investigacion/startups/`](investigacion/startups/README.md) | **Quién entró a YC** (2022-2026, 3.100+ startups): robótica e IA física, Latinoamérica, aplicaciones y videos públicos, y qué cambiar en la nuestra |
+| [`investigacion/voces/`](investigacion/voces/README.md) | **Voces**: transcripciones de referentes hablando de robots (Elon sobre Optimus, …) y qué aplica a Tridi |
 | [`recursos.md`](recursos.md) | Lecturas obligatorias de YC y enlaces |
 | [`aplicaciones/`](aplicaciones) | Copia exacta de lo enviado en cada batch, con la fecha y el resultado |
 
