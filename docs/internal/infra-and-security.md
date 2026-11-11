@@ -130,6 +130,7 @@ Ambos archivos están sincronizados para que cualquier despliegue sirva exactame
   *(Permite únicamente el acceso a la cámara web en el propio origen `trytridi.com` para la captura de pose en vivo, y bloquea en el navegador micrófono, geolocalización, pagos y WebUSB).*
 - `/assets/*`: `Cache-Control: public, max-age=31536000, immutable` (archivos con hash de Vite).
 - `/media/*`: `Cache-Control: public, max-age=604800, stale-while-revalidate=86400` (videos `.mp4` e imágenes de `#/milestones`).
+- `/og.png`: imagen Open Graph (`1200 × 627`, [`web/public/og.png`](../../web/public/og.png)) con el hero real de la landing (regenerable con `bash web/scripts/render-og.sh`), declarada en [`web/index.html`](../../web/index.html) (`og:image`, `og:image:width`, `og:image:height`, `twitter:image`) para que LinkedIn, X y mensajería carguen la miniatura automáticamente al compartir `https://trytridi.com`.
 
 ### 6.2 Cómo desplegar a `https://trytridi.com`
 
