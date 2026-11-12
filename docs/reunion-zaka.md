@@ -54,15 +54,22 @@ En la entrevista que transcribimos ([`yc/investigacion/voces/2026-02-elon-musk-o
     3. **Sensor apagado en silencio:** El sensor óptico era un lote alternativo (`Chip ID 0x9E`) y la librería oficial lo rechazaba.
   - Con el simulador y nuestro compilador a C (`50 Hz`, sin bloqueos), el robot físico salió andando y esquivando todo en la sala a la primera.
 
-### Paso 2 — La Celda de Empaque en MuJoCo (1 min)
+### Paso 2 — La Línea Industrial de 4 Estaciones en MuJoCo (2 min)
 - **Mostrar en pantalla [`trytridi.com/#/simulations/factory_cell`](https://trytridi.com/#/simulations/factory_cell):**
-  - Es una celda de empaquetado con **cinta transportadora, pistón neumático, prensa selladora vertical y 3 fotoceldas** (comparando qué pasa cuando la cinta patina con un timer fijo vs. el control sincronizado por sensores con `0 %` de cajas aplastadas).
+  - Construimos una línea **PackML / ISA-88 de 4 estaciones** inspirada directamente en el catálogo de integraciones de ZAKA:
+    1. **Estación 1 — Dosificación y Pesaje Dinámico (`PE-01` en `x = -0,38 m`):** Tolva de entrada inoxidable, plataforma de celda de carga tipo *Rice Lake* y primera barrera fotocelda emisora/receptora.
+    2. **Estación 2 — Alineación Neumática y Visión (`x = -0,08 m`):** Cilindro neumático lateral tipo *Festo* con manifold y cámara cenital tipo *Cognex In-Sight* con anillo de iluminación.
+    3. **Estación 3 — Prensa Termoselladora / Tapadora + Torre Andon (`PE-02` en `x = +0,10 m`):** Pórtico industrial con actuador vertical, semáforo de estado `PackML` (`Verde / Ámbar / Rojo`) y barrera óptica de confirmación de posición antes del descenso.
+    4. **Estación 4 — Rampa de Descarga, Paletizado y Gabinete NEMA 12 (`PE-03` en `x = +0,52..1,18 m`):** Rampa de salida hacia Euro-Palet con lotes apilados y tablero de control lateral (`PLC Rockwell / Siemens` + variador `VFD` + pantalla `HMI` + paro de emergencia).
+  - **Qué demostrar en vivo con los botones del panel derecho:**
+    - **Cambio de Formato HMI (`250 g` / `500 g` / `1 kg`):** Al cambiar el formato en pantalla, cambia la geometría e inercia de la caja en 3D y el simulador escupe al instante la **receta pre-calibrada para el PLC** (`VFD Hz`, `Rampa de aceleración en s`, `Carrera de pistón en mm`, `Profundidad de prensa en mm` y `Tiempo de sellado Dwell en ms`).
+    - **Stress-Test de Patinaje de Banda (`28 %` de desgaste mecánico):** Mostrar cómo un programa de PLC por timer fijo aplasta el envase cuando la banda patina, mientras que el lazo cerrado validado en MuJoCo compensa el retardo esperando la confirmación física de `PE-02` (`0 %` de merma).
   - **Hacerle la pregunta abierta de frente:**
-    > *"Usted que monta líneas PackML de verdad desde hace 20 años: ¿cómo ve esto? ¿Dónde sí tiene sentido algo así en las plantas de acá y dónde estamos pelando bola?"*
+    > *"Usted que monta líneas PackML de verdad desde hace 22 años: ¿cómo ve esto? ¿Dónde sí tiene sentido algo así en las plantas de acá y dónde estamos pelando bola?"*
 
 ---
 
-## 4. Qué Validar con el Sr. José (Las 3 Hipótesis de Planta + Los Cruces con Nuestro Repo)
+## 4. Qué Validar con el Sr. José (Las 3 Hipótesis de Planta + Los 4 Cruces Técnicos a Fondo)
 
 ### A. Las 3 Hipótesis de Dolor en Planta (Pastor)
 
@@ -75,23 +82,119 @@ En la entrevista que transcribimos ([`yc/investigacion/voces/2026-02-elon-musk-o
 
 ---
 
-### B. Cruce Directo entre lo que Vende ZAKA (`/servicios` y `/clientes`) y lo que Ya Construimos en el Repo (Juan)
+### B. Cruce Técnico a Fondo entre lo que Vende ZAKA (`/servicios` y `/clientes`) y Nuestro Repo (Juan)
 
-1. **Servicio 06 de ZAKA (Retrofit de máquinas viejas) × `Tridi Assembler`:**
-   - **El contexto:** ZAKA hace mucho retrofit de extrusoras de plástico y empaquetadoras con controladores obsoletos donde ya no hay planos y la mecánica tiene desgaste y juego.
-   - **👉 Qué validar con él:** Cuando le cambian el PLC o meten variadores nuevos (`PowerFlex` / `Sinamics`) a una máquina vieja, ¿cómo calculan hoy las rampas y tiempos sin arriesgarse a romper algo en el arranque? Ahí un gemelo físico en MuJoCo les permite estresar la máquina vieja en simulación antes del día de parada.
-2. **"Cambios de formato parametrizados desde HMI" (`ISA-88` / `PackML`) × Nuestra Matriz de Escenarios (`#/delivery`):**
-   - **El contexto:** En su página de Alimentos y Bebidas destacan que hacen cambios de formato desde el HMI (ej. pasar de empaque de `250 g` a `1 kg` sin reprogramar desde cero).
-   - **👉 Qué validar con él:** Igual que en `#/delivery` probamos al robot con distintos pesos, fricciones y fuerzas, Tridi puede simular la línea con 10 formatos de envase distintos y exportar la **tabla de recetas pre-calibrada para `FactoryTalk View` o `WinCC`**. ¿Cuánto tiempo pierden hoy en planta afinando cada receta nueva a ojo?
-3. **El puente real entre Simulación y PLC × Evolución de nuestro compilador `J-3` (`training/export_mcu.py`):**
-   - **El contexto:** En industria pesada nadie va a meter una red neuronal `.onnx` como caja negra a controlar una prensa. Pero nosotros ya construimos `export_mcu.py`, que traduce la política entrenada en MuJoCo a C99 determinista sin bloqueos.
-   - **👉 Qué validar con él:** Si en vez de exportar a C de Arduino, exportamos la lógica validada en MuJoCo a **Texto Estructurado (`ST` / `SCL` bajo norma `IEC 61131-3`)** o como un bloque de función (**`AOI` para Rockwell `Studio 5000` / `FB` para Siemens `TIA Portal`**), ¿eso sí entraría directo en el flujo de trabajo de los ingenieros de ZAKA?
-4. **Fin de línea manual e inspección visual (Servicio 01 de ZAKA) × `Tridi Capture` (con el cuidado de Ale de posicionarlo 100 % como herramienta para que ZAKA venda más proyectos):**
-   - **El contexto:** Antes de hablar de humanoides carísimos, las plantas de alimentos en Barquisimeto siguen teniendo cuellos de botella en final de línea (encajonado, paletizado, inspección con cámaras Cognex).
-   - **👉 Qué validar con él (sin que suene a que Tridi automatiza por su cuenta):** Cuando ZAKA visita una planta para proponerles un proyecto de automatización en fin de línea, ¿en qué partes ven más cuellos de botella hoy donde a los ingenieros de ZAKA les serviría tener visión/medición por cámara o simular en 3D la solución que ZAKA les va a instalar?
+#### 1. Servicio 06 de ZAKA (Retrofit de máquinas viejas) × `Tridi Assembler` (Modelado de Juego Mecánico y Rampas VFD)
+- **El problema físico real en planta:** ZAKA hace retrofit de extrusoras de plástico, mezcladoras y empaquetadoras de los años 80/90 cuyos controladores murieron, donde ya no existen planos originales y los reductores/correas tienen desgaste (*backlash*, holgura mecánica y fricción asimétrica). Cuando se instala un variador moderno (`Allen-Bradley PowerFlex 525/753` o `Siemens Sinamics G120`), una rampa de aceleración/desaceleración muy agresiva genera picos de torque mecánico, golpe de ariete o resonancia que parte ejes o quema fusibles el día del arranque.
+- **Cómo lo resuelve Tridi técnicamente:**
+  - En MuJoCo modelamos la inercia rotacional reflejada al eje del motor ($J_{\text{eq}} = J_m + J_{\text{carga}} / i^2$), el coeficiente de fricción estática/viscosa (`damping`, `frictionloss`, `armature`) y el patinaje de banda.
+  - Antes de energizar el tablero en planta, corremos un barrido de estrés en el gemelo físico y entregamos los parámetros exactos del variador:
+    - **Tiempo de Rampa de Aceleración (`P041 Accel Time 1` en PowerFlex / `p1120` en Sinamics)** y **Curva S (`S-Curve %`)** que garantizan que el torque pico nunca supere el límite mecánico del eje viejo.
+- **👉 Qué preguntarle al Sr. José:**
+  > *"Cuando le cambian el PLC o meten variadores nuevos (`PowerFlex` / `Sinamics`) a una máquina vieja sin planos, ¿cómo calculan hoy las rampas y tiempos sin arriesgarse a golpear la transmisión en el arranque?"*
+
+#### 2. "Cambios de formato parametrizados desde HMI" (`ISA-88` / `PackML`) × Nuestra Matriz de Escenarios (`#/delivery` + `factory_cell`)
+- **El problema físico real en planta:** En su vertical de Alimentos y Bebidas, ZAKA implementa cambios de formato desde el HMI (`FactoryTalk View` / `WinCC` / `InTouch`) para que el operador cambie de `250 g` a `500 g` o `1 kg` sin reprogramar el PLC. Sin embargo, cada formato nuevo cambia el centro de masa, la fricción con las barandas y la inercia de frenado: afinar a ojo cada receta nueva en piso de planta consume horas de paro y cientos de envases perdidos en pruebas.
+- **Cómo lo resuelve Tridi técnicamente:**
+  - Exactamente igual que en [`trytridi.com/#/delivery`](https://trytridi.com/#/delivery) corremos una matriz de 32 episodios variando masa (`×0,80..×1,25`), fricción (`0,25..1,00`) y perturbaciones, Tridi simula los distintos formatos de envase en `factory_cell` y exporta la **Tabla de Recetas Deterministas (`UDT_Recipe_Format`)** lista para importar en `.CSV` o `OPC-UA` al HMI:
+
+| Parámetro de Receta PLC / HMI (`UDT_FormatRecipe`) | Formato `250 g` (Alta vel.) | Formato `500 g` (Estándar) | Formato `1 kg` (Alta inercia) | Registro destino típico (`Rockwell` / `Siemens`) |
+| --- | --- | --- | --- | --- |
+| **Frecuencia Variador Cinta (`VFD_Freq_Hz`)** | `58,5 Hz` | `50,0 Hz` | `41,5 Hz` | `PowerFlex CmdFreq` / `Sinamics p1082` |
+| **Rampa Aceleración / Frenado (`VFD_Ramp_s`)** | `0,24 s` | `0,35 s` | `0,52 s` | `P041/P042` / `p1120/p1121` |
+| **Carrera Cilindro Alineador (`Pusher_Stroke_mm`)** | `155 mm` | `145 mm` | `132 mm` | `Festo Servo/Prop Valve Setpoint` |
+| **Cota Prensa Selladora (`Sealer_Depth_mm`)** | `115 mm` | `138 mm` | `152 mm` | `Kinetix Axis Position` / `TO_PositioningAxis` |
+| **Tiempo de Presión / Sellado (`Sealer_Dwell_ms`)** | `420 ms` | `550 ms` | `680 ms` | `TON_SealerDwell.PT` |
+| **Ventana de Validación Óptica (`PE02_Debounce_ms`)** | `18 ms` | `25 ms` | `35 ms` | `TON_PE02_Confirm.PT` |
+
+- **👉 Qué preguntarle al Sr. José:**
+  > *"Cuando una planta mete un envase nuevo o cambia el gramaje, ¿cuánto tiempo y cuánta merma les toma hoy afinar en vivo la tabla de recetas del HMI para que no se caigan ni se aplasten los envases?"*
+
+#### 3. El Puente Real entre Simulación y PLC × Evolución de Nuestro Compilador `J-3` (`training/export_mcu.py` → `IEC 61131-3 ST / SCL`)
+- **El problema de ingeniería:** Ningún gerente de planta ni integrador serio va a meter una red neuronal `.onnx` como caja negra ni un script de Python con recolección de basura a comandar una prensa industrial de 80 N o un motor de 50 HP. El PLC requiere **tiempo de ciclo determinista (`scan time` de `2 ms` a `20 ms`), sin memoria dinámica, auditable línea por línea y con enclaves (*interlocks*) de seguridad cableados**.
+- **Cómo lo resuelve Tridi técnicamente:**
+  - En el Caso Luigi ([`docs/caso-luigi-sim2real.md`](caso-luigi-sim2real.md)) ya construimos [`training/export_mcu.py`](../training/export_mcu.py), que toma una política validada en MuJoCo y la transpila a **C99 estático (`461 bytes` de RAM, `< 0,4 ms` de ejecución, cero `malloc`)**.
+  - Para integradores industriales como ZAKA, ese mismo compilador puede escupir un **Bloque de Función determinista en Texto Estructurado (`IEC 61131-3 Structured Text` — `SCL` en Siemens `TIA Portal` o `AOI` en Rockwell `Studio 5000`)**, donde la lógica validada en MuJoCo corre rodeada por un **Enclave de Seguridad Determinista (*Safety Wrapper*)**:
+
+```iecst
+(* Bloque generado por Tridi Compiler para Siemens TIA Portal (SCL) / Rockwell Studio 5000 (ST) *)
+FUNCTION_BLOCK "FB_TridiPackML_Sealer"
+VAR_INPUT
+    xEStop_OK        : BOOL;   (* Enclave físico de parada de emergencia (Canal doble) *)
+    xPE01_Entry      : BOOL;   (* Fotocelda entrada / pesaje (x = -380 mm) *)
+    xPE02_SealerZone : BOOL;   (* Fotocelda confirmación zona prensa (x = +100 mm) *)
+    xPE03_Exit       : BOOL;   (* Fotocelda salida a palet (x = +520 mm) *)
+    rBeltPos_mm      : REAL;   (* Posición estimada por encoder / integrador VFD *)
+    stRecipe         : "UDT_FormatRecipe"; (* Receta activa desde HMI: 250g / 500g / 1kg *)
+END_VAR
+VAR_OUTPUT
+    rVFD_SpeedRef_Hz : REAL;   (* Consigna hacia PowerFlex 525 / Sinamics G120 *)
+    rPusher_Ref_mm   : REAL;   (* Consigna cilindro alineador Festo *)
+    rSealer_Ref_mm   : REAL;   (* Consigna prensa vertical *)
+    ePackML_State    : INT;    (* 10=EXECUTE, 20=HOLDING, 30=HELD/FAULT *)
+END_VAR
+BEGIN
+    (* 1. HARD SAFETY INTERLOCK: El PLC manda siempre sobre cualquier consigna *)
+    IF NOT #xEStop_OK THEN
+        #rVFD_SpeedRef_Hz := 0.0;
+        #rPusher_Ref_mm   := 0.0;
+        #rSealer_Ref_mm   := 0.0;
+        #ePackML_State    := 30; (* PACKML_ABORTED / HELD *)
+        RETURN;
+    END_IF;
+
+    (* 2. LAZO CERRADO VALIDADO EN MUJOCO: Compensa patinaje de banda esperando PE-02 *)
+    IF #xPE02_SealerZone THEN
+        #rVFD_SpeedRef_Hz := #stRecipe.VFD_Freq_Hz;
+        #rPusher_Ref_mm   := #stRecipe.Pusher_Stroke_mm;
+        #rSealer_Ref_mm   := #stRecipe.Sealer_Depth_mm;
+        #ePackML_State    := 10; (* PACKML_EXECUTE_SEAL *)
+    ELSE
+        (* Si la banda patina, pre-alinea guías a 40 mm y retiene la prensa arriba (0 mm) *)
+        #rVFD_SpeedRef_Hz := #stRecipe.VFD_Freq_Hz;
+        #rPusher_Ref_mm   := 40.0;
+        #rSealer_Ref_mm   := 0.0;
+        #ePackML_State    := 10;
+    END_IF;
+END_FUNCTION_BLOCK
+```
+
+- **Arquitectura de Despliegue en 3 Niveles (Sin tocar la seguridad de la planta):**
+
+```mermaid
+flowchart LR
+    subgraph PISO["1. Piso de Planta (Intocable · ZAKA)"]
+        PLC["PLC Rockwell CompactLogix / Siemens S7-1500<br/>(Scan determinista 5-20 ms + Safety Interlocks)"]
+        VFD["Variadores PowerFlex / Sinamics + Neumática Festo"]
+        SENS["Fotoceldas PE1..PE3 + Celda Rice Lake + Cognex"]
+        SENS --> PLC --> VFD
+    end
+
+    subgraph PUENTE["2. Puente Industrial Estándar"]
+        OPC["OPC-UA / Modbus TCP / EtherNet/IP<br/>(Lectura de telemetría o carga de Recetas CSV)"]
+    end
+
+    subgraph TRIDI["3. Gemelo Físico Tridi (MuJoCo 50 Hz)"]
+        SIM["Simulador Físico 3D de la Línea (CAD STL + Fricción/Inercia)"]
+        OUT1["Modo A (Offline): Tabla de Recetas HMI + Rampas VFD"]
+        OUT2["Modo B (Código): Bloque ST/SCL (AOI / FB) auditable"]
+        OUT3["Modo C (Shadow Mode): Gemelo leyendo PLC en vivo sin escribir"]
+        SIM --> OUT1 & OUT2 & OUT3
+    end
+
+    PLC <--> OPC <--> TRIDI
+```
+
+- **👉 Qué preguntarle al Sr. José:**
+  > *"Si el simulador de Tridi le entrega a los ingenieros de ZAKA la tabla de recetas pre-calibrada o un bloque `AOI` / `SCL` estándar que ellos mismos revisan y cargan en `Studio 5000` o `TIA Portal` — o corre en 'modo sombra' leyendo por `Modbus TCP` / `OPC-UA` sin tocar el control —, ¿eso calza limpio con las normas de las plantas acá?"*
+
+#### 4. Fin de Línea Manual e Inspección Visual (Servicio 01 de ZAKA) × `Tridi Capture` (100 % como herramienta comercial y técnica para ZAKA)
+- **El contexto:** En alimentos y empaque en Venezuela, el final de línea (encajonado manual, paletizado mixto, control de calidad visual con cámaras **Cognex**) suele ser donde más cuellos de botella y lesiones ergonómicas ocurren.
+- **👉 Qué validar con él (posicionándolo siempre para que ZAKA venda más proyectos):**
+  > *"Cuando ustedes visitan una planta para levantar un proyecto nuevo de fin de línea o inspección con cámaras Cognex, ¿les serviría grabar un video rápido de la operación actual y poder mostrarle al dueño de la planta una simulación física 3D de cómo va a quedar la celda automatizada por ZAKA antes de que les aprueben el presupuesto?"*
 
 ---
 
-## 5. El Cierre Perfecto para Mañana (Sin venderle nada)
+## 5. El Cierre Perfecto para Hoy (Sin venderle nada)
 
-Preguntarle si en la oficina de ZAKA acá en Barquisimeto tienen algún **banco de pruebas / maqueta con PLC**, o algún equipo de un cliente de confianza donde nos dejen ir un día con ellos a tomar medidas y armar juntos nuestro **primer caso de estudio industrial real en `#/milestones`** (igual que hicimos con el rover de Luigi, cero costo para ellos y dejándoles el gemelo 3D a ZAKA).
+Preguntarle si en la oficina de ZAKA acá en Barquisimeto tienen algún **banco de pruebas / maqueta con PLC (`Allen-Bradley` o `Siemens`)**, o algún equipo real donde nos dejen ir una tarde con ellos a tomar medidas, conectarnos en modo lectura (`Modbus TCP` / `OPC-UA` / `Serial`) y armar juntos nuestro **primer caso de estudio industrial en [`trytridi.com/#/milestones`](https://trytridi.com/#/milestones)** — cero costo para ellos, dándole todo el crédito de ingeniería industrial a ZAKA y dejándoles el gemelo 3D listo para mostrar a sus clientes.

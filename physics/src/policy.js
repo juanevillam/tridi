@@ -298,31 +298,45 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
           return;
         }
         const simTime = data.time;
+        // Multi-station PackML packaging line (Infeed Weigher -> Cognex Vision & Festo Pusher -> Vertical Sealer -> Palletizer)
+        // Supports ISA-88 / PackML HMI format recipes: '250g' (fast, compact), '500g' (standard), '1000g' (heavy inertia).
+        const formatId = sim._factoryFormat || '500g';
+        const FORMAT_RECIPES = {
+          '250g': { cycleS: 3.6, vfdHz: 58.5, sealerTarget: 0.115, pusherTarget: 0.155, dwellMs: 420, label: '250 g · 58,5 Hz' },
+          '500g': { cycleS: 4.4, vfdHz: 50.0, sealerTarget: 0.138, pusherTarget: 0.145, dwellMs: 550, label: '500 g · 50,0 Hz' },
+          '1000g': { cycleS: 5.2, vfdHz: 41.5, sealerTarget: 0.152, pusherTarget: 0.132, dwellMs: 680, label: '1 kg · 41,5 Hz' },
+        };
+        const recipe = FORMAT_RECIPES[formatId] || FORMAT_RECIPES['500g'];
         // Carrier box starts at x = -0.45 m in frame; box x-center in world is -0.45 + qpos[7].
-        // Photoelectric sensors sit at x = -0.38 m (entry), x = +0.10 m (sealer zone), x = +0.52 m (exit).
+        // Photoelectric sensors sit at x = -0.38 m (PE-01 entry/weigh), x = +0.10 m (PE-02 sealer zone), x = +0.52 m (PE-03 exit/pallet).
         const feedM = qpos[7] ?? 0;
         const boxX = -0.45 + feedM;
-        const sensorEntry = Math.abs(boxX - -0.38) < 0.085;
-        const sensorSealer = Math.abs(boxX - 0.10) < 0.065;
-        const sensorExit = Math.abs(boxX - 0.52) < 0.085;
+        const sensorEntry = Math.abs(boxX - -0.38) < 0.095;
+        const sensorSealer = Math.abs(boxX - 0.10) < 0.075;
+        const sensorExit = Math.abs(boxX - 0.52) < 0.095;
         const fixedPlcMode = Boolean(sim._factoryFixedTimerMode);
-        const phase = simTime % 4.4;
+        const cycleIdx = Math.floor(simTime / recipe.cycleS);
+        const phase = simTime % recipe.cycleS;
+        const p1 = recipe.cycleS * 0.33;
+        const p2 = recipe.cycleS * 0.60;
+        const p3 = recipe.cycleS * 0.82;
         let stage = 0;
         let crushed = false;
         if (fixedPlcMode) {
-          // Fixed-timer PLC mode: conveyor slips/lags under friction, so the sealer drops at t=1.4s while the box edge is still entering!
-          if (phase < 1.35) {
-            data.ctrl[0] = 0.36; // box lags behind the expected 0.55 m station
+          // Fixed-timer PLC mode under 28% conveyor belt slip / heavy format inertia:
+          // The box lags at feed=0.38 m while the blind timer lowers the sealer press at t=p1 -> CRUSH!
+          if (phase < p1) {
+            data.ctrl[0] = 0.36; // box lags behind the 0.55 m sealer station due to belt slip
             data.ctrl[1] = 0.0;
             data.ctrl[2] = 0.0;
             stage = 0;
-          } else if (phase < 2.65) {
-            data.ctrl[0] = 0.42;
-            data.ctrl[1] = 0.15;
-            data.ctrl[2] = 0.14; // blind timer lowers press on misaligned box -> CRUSH!
+          } else if (phase < p2) {
+            data.ctrl[0] = 0.41;
+            data.ctrl[1] = recipe.pusherTarget;
+            data.ctrl[2] = recipe.sealerTarget; // blind timer lowers press on misaligned box -> CRUSH!
             crushed = !sensorSealer;
-            stage = 4; // fault / jam
-          } else if (phase < 3.6) {
+            stage = 4; // PackML HELD / FAULT
+          } else if (phase < p3) {
             data.ctrl[0] = 0.92;
             data.ctrl[1] = 0.0;
             data.ctrl[2] = 0.0;
@@ -334,18 +348,18 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
             stage = 3;
           }
         } else {
-          // Closed-loop Tridi policy: waits for optical sensor confirmation at sealer zone (x=0.10 m, feed=0.55 m) before pressing
-          if (phase < 1.45) {
+          // Closed-loop Tridi policy: compensates VFD ramp & waits for PE-02 optical confirmation at x=0.10 m (feed=0.55 m)
+          if (phase < p1) {
             data.ctrl[0] = 0.55;
-            data.ctrl[1] = 0.0;
+            data.ctrl[1] = 0.04; // pre-align guide rail
             data.ctrl[2] = 0.0;
             stage = 0;
-          } else if (phase < 2.65) {
+          } else if (phase < p2) {
             data.ctrl[0] = 0.55;
-            data.ctrl[1] = sensorSealer ? 0.15 : 0.05;
-            data.ctrl[2] = sensorSealer ? 0.14 : 0.0;
+            data.ctrl[1] = sensorSealer ? recipe.pusherTarget : 0.05;
+            data.ctrl[2] = sensorSealer ? recipe.sealerTarget : 0.0;
             stage = 1;
-          } else if (phase < 3.6) {
+          } else if (phase < p3) {
             data.ctrl[0] = 0.92;
             data.ctrl[1] = 0.0;
             data.ctrl[2] = 0.0;
@@ -357,15 +371,43 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
             stage = 3;
           }
         }
+        if (sim._lastFactoryCycleIdx !== cycleIdx) {
+          if (sim._lastFactoryCycleIdx !== undefined) {
+            if (fixedPlcMode) {
+              sim._factoryCrushedCount = (sim._factoryCrushedCount || 0) + 1;
+            } else {
+              sim._factoryCycles = (sim._factoryCycles || 0) + 1;
+            }
+          }
+          sim._lastFactoryCycleIdx = cycleIdx;
+        }
+        const feedMm = Math.round(feedM * 1000);
+        const pusherMm = Math.round((qpos[8] ?? 0) * 1000);
+        const sealerMm = Math.round((qpos[9] ?? 0) * 1000);
+        const stageNames = [
+          `EXECUTE · Pesaje y Avance (${recipe.label})`,
+          `EXECUTE · Sellado y Visión (${recipe.dwellMs} ms)`,
+          `EXECUTE · Descarga a Palet`,
+          `EXECUTE · Retorno de Ciclo`,
+          `HELD · COLISIÓN PRENSA (Patinaje 28%)`,
+        ];
         sim.factoryReadout = {
-          feedMm: Math.round(feedM * 1000),
-          pusherMm: Math.round((qpos[8] ?? 0) * 1000),
-          sealerMm: Math.round((qpos[9] ?? 0) * 1000),
+          feedMm,
+          conveyorMm: feedMm,
+          pusherMm,
+          sealerMm,
+          vfdHz: fixedPlcMode ? (recipe.vfdHz * 0.72).toFixed(1) : recipe.vfdHz.toFixed(1),
+          formatId,
+          recipe,
           sensorEntry,
           sensorSealer,
           sensorExit,
           stage,
           crushed,
+          crushedBox: crushed,
+          completedCycles: sim._factoryCycles || 0,
+          crushedCount: sim._factoryCrushedCount || 0,
+          modeLabel: stageNames[stage] || stageNames[0],
           fixedPlcMode,
         };
         previous.set(data.ctrl);
