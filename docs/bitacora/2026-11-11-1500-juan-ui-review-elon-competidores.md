@@ -59,5 +59,26 @@
   - Delimitados `Cocina` (20 objetos) y `Depósito` (16 objetos) con muros perimetrales bajos (`pared`), plantas, bancos, estanterías y cajas sobre piso, y compactados los escenarios de `Piso resbaloso`, `Piedras` y `Viento`.
 - **Footer de la landing (`web/src/screens/home.js`):** Actualizados los enlaces del equipo a los perfiles de LinkedIn (`pastor-jimenez`, `juanevillam`, `cesarmartinez-dev`, `alehernandezt`).
 
+---
+
+## Actualización (2026-11-12 03:05) · Layout 2 columnas sin espacio muerto, `0.5×` en 1 línea, silla/fregadero 3D, `Running` 1.56 Hz, `#/delivery` (9 entregas + PiP + README) y `PhotoViewer` en `#/milestones`
+
+- **Botón `0.5×` y layout de 2 columnas (`Playback` + `Conditions`) en todos los robots (`web/src/style.css`, `web/src/stage.js`):**
+  - Añadido `white-space: nowrap` y `padding: 0 14px` a `.icon-btn.speed` para que `0.5×` nunca se parta en dos filas.
+  - Mantenido el layout de 2 columnas (`Playback` a la izquierda + `Conditions` a la derecha) en todos los robots (`Unitree G1`, `Unitree H1`, `Rover Luigi v1`, `Rover Luigi v2`, `Celda Industrial`), ocultando únicamente `#physics-mode`, `#physics-hint` y `#speed` en los robots custom.
+  - Añadido `align-items: start` en `.controls-bar`, `.dl-more` y `.sims-layout`, eliminando todo el espacio vertical muerto en `Playback` y `Files you take away`.
+  - Rediseñado el encabezado del sidebar `Pick a motion` (`#pick-heading` y `.gallery-section-head`) con indicador luminoso `--signal`, tarjeta sutil y contador moderno, y unificados los botones `.back` y `.dl-back`.
+- **Videos fuente faltantes + mejora de `Running`, `Sitting down` y `Washing dishes` (`web/public/media/clips/`, `web/src/video-overlay.js`, `web/clips/clip_correr-perfil-gvhmr.json`, `data/clips/clip_2026-10-23_correr-perfil_01.json`, `training/references/clip_correr-perfil-gvhmr-balanced.json`, `web/src/props.js`, `web/src/stage.js`):**
+  - Codificados e integrados los videos PiP faltantes para `Walking away` (`clip_caminar-01-gvhmr.mp4`), `Group dance` (`clip_bailar-grupo-02-gvhmr.mp4`) y `Washing dishes` (`clip_lavar-04-gvhmr.mp4`), y reemplazado `Running` (`clip_correr-perfil-gvhmr.mp4`) con una toma cercana clara.
+  - Corregida la cadencia de `Running`: antes tenía `1` solo ciclo en `3.84 s` (`0.26 Hz`, cámara lenta irreal); ahora ejecuta `6` ciclos completos de zancada atlética en `3.84 s` (`1.56 Hz` = `187 pasos/min`) con progresión hacia adelante de `1.45 m/s`, pasando `check-retarget` y `check-mimic` (`3.8 s / 3.8 s`).
+  - Reemplazado el banco de parque en `Sitting down` por la silla real con respaldo (`furniture/chair.glb`) orientada detrás del robot (`z = 0.43 m`), y añadido el módulo `syncWashSink` (`furniture/kitchenCabinet.glb` + bacha de acero inoxidable + agua jabonosa + grifo + platos) justo bajo las manos del robot al activar `Washing dishes` en `Cocina`.
+- **`#/delivery` — 9 entregas empaquetadas, versión/pasos claros, video fuente PiP y `README` sin espacio muerto (`data/deliveries/*`, `web/src/screens/delivery.js`, `web/src/screens/delivery.css`):**
+  - Empaquetadas las **9 entregas completas** en `data/deliveries/` (`Walking · v2 GVHMR · 50M steps`, `Running · v2 GVHMR · 50M steps`, `Walking toward camera · v2 GVHMR · 50M steps`, `Dancing · v2 GVHMR · 50M steps`, `Jumping jacks · v2 GVHMR · 50M steps`, `Sitting down · v2 GVHMR · 50M steps`, `Gestures · v2 GVHMR · 50M steps`, `Counting with fingers · v2 GVHMR · 50M steps`, y `Walking · v1 MediaPipe · 20M steps` para comparar v1 vs v2).
+  - Añadido recuadro Picture-in-Picture (`.dl-source-pip`) con el video original sincronizado dentro del visor 3D de `#/delivery`, y rediseñada la sección `README` (`.dl-guide-body` y `.dl-formats` en grilla de 2 columnas de tarjetas) sin espacio muerto horizontal ni vertical.
+- **`#/milestones` — Visor `PhotoViewer` a pantalla completa y chips unificados (`web/src/screens/milestones.js`, `web/src/screens/strings/milestones.js`, `web/src/style.css`):**
+  - Reemplazado el lightbox por el visor `<dialog class="photo-viewer">` con transición `450ms cubic-bezier(0.22, 1, 0.36, 1)`, escenario `3:2` con fondo desenfocado `.fill`, doble `.layer` con cross-fade y botones circulares fijos en el viewport (`.v-close`, `.v-prev`, `.v-next`) que nunca cambian de posición entre fotos horizontales y verticales.
+  - Unificados los chips de `Milestone 01` y `Milestone 02` (`.milestone-badge.signal` en una sola línea) y ajustado el subtítulo principal para que entre limpio en una línea.
+
+
 
 
