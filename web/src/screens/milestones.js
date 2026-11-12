@@ -151,6 +151,10 @@ export function mount(root) {
       <article class="milestone-card" id="platanus-hack" data-panel="platanus-hack" hidden>
         <div class="milestone-meta">
           <span class="milestone-badge signal">${T('m1.badge')}</span>
+          <div class="milestone-cta-row">
+            <a class="button primary milestone-cta" href="#/simulations">${T('m1.ctaSims')}</a>
+            <a class="button milestone-cta" href="#/delivery">${T('m1.ctaDelivery')}</a>
+          </div>
         </div>
         <h2>${T('m1.title')}</h2>
         <p class="milestone-intro">${T('m1.intro')}</p>

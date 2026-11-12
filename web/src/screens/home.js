@@ -116,11 +116,12 @@ export function mount(root) {
         <a href="#capture">Capture</a>
         <a href="#gym">Gym</a>
         <a href="#policy">Policy</a>
+        <i class="topnav-sep" aria-hidden="true"></i>
         <a href="#/simulations" data-warm="simulations">${T('nav.simulations')}</a>
         <a href="#/milestones" data-warm="milestones">${T('nav.milestones')}</a>
       </nav>
       ${langSwitch()}
-      <a class="btn btn-signal btn-small" href="#try"><span class="only-wide">${T('nav.tryLive')}</span><span class="only-narrow">${T('nav.try')}</span></a>
+      <a class="btn btn-signal btn-small" href="#/simulations" data-warm="simulations"><span class="only-wide">${T('nav.tryLive')}</span><span class="only-narrow">${T('nav.try')}</span></a>
     </header>
 
     <section class="chapter hero" id="home" data-shot="hero" data-mode="stand">

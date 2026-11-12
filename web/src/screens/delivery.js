@@ -250,6 +250,7 @@ function showDelivery(root, { manifest: m, source, url }, signal) {
   });
   const switcherOptions = bundledManifests.some((b) => b.clip_id === m.clip_id) ? bundledManifests : [m, ...bundledManifests];
   const sourceVideo = VIDEOS[m.clip_id] ?? null;
+  const sourceVideoUrl = sourceVideo?.video ? `${import.meta.env.BASE_URL}${sourceVideo.video}` : null;
 
   // The status line, put together in each language.
   const statusIn = (l) => [
@@ -298,13 +299,13 @@ function showDelivery(root, { manifest: m, source, url }, signal) {
             <div class="dl-boot">${loader()}<i class="dl-meter"><b class="dl-boot-fill"></b></i><span class="dl-boot-text">${T('booting')}</span></div>
             <p class="dl-hud dl-hud-left"><span class="dl-hud-ep">—</span><span class="dl-hud-state"></span></p>
             <p class="dl-hud dl-hud-right"><span class="dl-feet" ${A({ title: 'feetTitle' })}><i data-foot="left"></i>${T('footLeft')} <i data-foot="right"></i>${T('footRight')}</span><span class="dl-hud-t">t ${num(0, 2)} s</span></p>
-            ${sourceVideo ? `
-            <div class="dl-source-pip" title="${esc(sourceVideo.label)}">
+            ${sourceVideoUrl ? `
+            <div class="dl-source-pip" title="Click to expand/collapse source video">
               <div class="dl-source-head">
                 <span class="dl-source-dot"></span>
                 <span class="dl-source-tag">${langSpans({ es: 'Video original', en: 'Source video' })}</span>
               </div>
-              <video class="dl-source-video" src="${esc(sourceVideo.src)}" muted loop playsinline preload="metadata"></video>
+              <video class="dl-source-video" src="${esc(sourceVideoUrl)}" autoplay muted loop playsinline preload="auto"></video>
             </div>` : ''}
             <p class="dl-hud dl-hud-note"><span>${T('hudNote')}</span></p>
           </div>
@@ -856,6 +857,9 @@ function showDelivery(root, { manifest: m, source, url }, signal) {
   const feet = { left: $('[data-foot="left"]'), right: $('[data-foot="right"]') };
   const pipBox = $('.dl-source-pip');
   const pipVideo = $('.dl-source-video');
+  if (pipVideo) {
+    pipVideo.play().catch(() => {});
+  }
   if (pipBox) {
     pipBox.onclick = (e) => {
       e.stopPropagation();

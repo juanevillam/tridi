@@ -81,7 +81,22 @@
 - **Estándares de UI/UX, tokens de movimiento, Liquid Glass y SquashPressable (`docs/audit-playbook.md`, `.claude/skills/tridi-quality/SKILL.md`, `web/src/style.css`, `web/src/screens/delivery.css`):**
   - Incorporados en `:root` y en el playbook de auditoría la escalera cuantizada de tiempos (`--beat: 600ms`, `--dur-micro: 150ms`, `--dur-quick: 300ms`, `--dur-turn: 450ms`, `--dur-settle: 600ms`, `--ease: cubic-bezier(0.16, 1, 0.3, 1)`, `--hover`), la jerarquía de 4 tintas (`--ink`, `--ink-body`, `--ink-soft`, `--muted`), el borde especular Liquid Glass (`--lg-blur`, `--lg-rim`) en los overlays flotantes, el feedback táctil `:active` (`scale(0.97)` en tarjetas/pills y `scale(0.92)` en botones circulares de icono) y la regla de cero referencias al portafolio personal dentro del repo de Tridi.
 
+---
 
+## Actualización (2026-11-12 03:50) · Cero CLS en `#/delivery` y `#/milestones`, caminata erguida con física, limpieza de escenas y lightbox ajustado
 
-
+- **`#/delivery` — Cero CLS en encabezado, video fuente PiP visible y chevron estable en hover (`web/src/screens/delivery.js`, `web/src/screens/delivery.css`, `web/src/style.css`):**
+  - Fijado el ancho de `.dl-name` (`240px`, una línea con `text-overflow: ellipsis`), `.dl-switcher` (`276px`) y las columnas de `.dl-meta` (`158px`, `84px`, `132px`, `148px`) para eliminar cualquier salto horizontal o vertical al cambiar entre clips largos (`CONTAR CON LOS DEDOS`, `WALKING TOWARD CAMERA`) y cortos (`CAMINAR`).
+  - Corregido el origen del video en `.dl-source-pip` (`VIDEOS[m.clip_id].video` con `import.meta.env.BASE_URL`, `autoplay` y `.play()` al montar) para que el video original se reproduzca inmediatamente en `#/delivery`.
+  - Cambiado `background:` por `background-color:` en `select` y `select:hover:not(:disabled)` (`web/src/style.css`) y en `.dl-switcher` para que el chevron SVG personalizado nunca desaparezca al hacer hover.
+- **Caminata erguida con física en Unitree G1 (`physics/src/sim.js`, `physics/src/policy.js`):**
+  - Diagnosticada en Node con MuJoCo WASM la causa de la inclinación hacia adelante ("paso de Michael Jackson"): en apoyo monopodal la pelvis caía `5–9 cm` (`0.690 m` vs `0.782 m`), haciendo que el pie de balanceo rozara el piso en `t = 1.24 s` y frenara el muslo mientras la pelvis seguía avanzando (`pTilt = 9.2°`, `tTilt = 17°–20°`).
+  - Aumentado el soporte vertical en `_stepMimicBalance()` (`310 * scale + kpZ * (q[2] + 0.014 - qpos[2])` con `kpZ = 2200 * motor`, `kdZ = 145 * motor` y `kpRot = 520 * scale`) y añadida amortiguación en velocidad de cintura (`-0.12 * qvel` en `waist_roll` y `waist_pitch`) en `policy.js`, reduciendo `pTilt` a `0.4°–1.7°` y `tTilt` a `0.9°–4.8°`.
+- **Escenas `Cocina` y `Depósito` más amplias y cero fuga de objetos entre rutas (`physics/scenes/cocina.json`, `physics/scenes/deposito.json`, `web/src/props.js`, `web/src/stage.js`, `web/src/robot-host.js`):**
+  - Ampliados los perímetros de `Cocina` (`7,4 m × 7,4 m`) y `Depósito` (`7,6 m × 7,6 m`), bajados los muretes perimetrales a `0,55 m` y aclarado el material de `pared` (`#6e6a63`) para que nunca tapen la cámara ni se vean negros.
+  - Añadido `clearStageProps(view)` con guardas asíncronas (`wantChair`, `wantSink`) e invocado tanto en `stage.dispose()` como en `attachRobot()` cuando no se está en `#/simulations`, garantizando que la silla de `Sitting down` o el fregadero de `Washing dishes` jamás aparezcan en la landing (`#/`) ni en `#/live`.
+- **Navbar de la landing, tabs en 1 línea y `PhotoViewer` sin esquinas negras en `#/milestones` (`web/src/screens/home.js`, `web/src/landing/landing.css`, `web/src/screens/milestones.js`, `web/src/screens/strings/milestones.js`, `web/src/style.css`):**
+  - Separadas en el navbar las 3 anclas de historia (`Capture`, `Gym`, `Policy`) de las rutas de aplicación (`Simulations`, `Milestones`) mediante divisor vertical `.topnav-sep`, y apuntado el CTA principal (`Try it live`) directamente a `#/simulations`.
+  - Ajustado `.milestone-tabs` (`max-width: 820px`, `white-space: nowrap`) para que ambos tabs quepan siempre en **1 sola línea**, y añadida fila de CTAs (`.milestone-cta-row`) en `Milestone 01` para eliminar el CLS vertical al alternar entre `Milestone 02` y `Milestone 01`.
+  - Ajustado `.photo-viewer .stage` para que abrace exactamente el borde de cada foto sin caja `3:2` ni esquinas negras (`.fill { display: none }`), y elevado el contraste de `.milestone-photo-tag` y `.photo-viewer figcaption`.
 

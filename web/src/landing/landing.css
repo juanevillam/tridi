@@ -437,6 +437,14 @@ html.is-landing.lenis body {
   text-transform: uppercase;
 }
 
+.topnav-sep {
+  display: inline-block;
+  width: 1px;
+  height: 14px;
+  background: var(--line);
+  flex: none;
+}
+
 .topnav a {
   position: relative;
   padding: 6px 2px;
