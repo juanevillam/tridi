@@ -15,6 +15,7 @@ import { loader } from '../loader.js';
 import { attachRobot, onRobotProgress, robotView } from '../robot-host.js';
 import { LANGS, escapeHtml, lang, langSwitch, onLang } from '../i18n.js';
 import { clipName, spans as langSpans, worldName } from '../strings-names.js';
+import { VIDEOS } from '../video-overlay.js';
 import { A, FILE_WHAT_EN, L, T, WORLD_WHY_EN, t as tl } from './strings/delivery.js';
 import './delivery.css';
 
@@ -31,8 +32,28 @@ const FILE_URLS = import.meta.glob(['../../../data/deliveries/*/*', '!../../../d
   import: 'default',
 });
 
-// #/delivery with no id opens the walk, the first clip with a delivery.
-const DEFAULT_CLIP = 'clip_2026-10-23_caminar-perfil_01';
+// #/delivery with no id opens the v2 GVHMR walk, the canonical 50M-step delivery.
+const DEFAULT_CLIP = 'clip_caminar-perfil-gvhmr';
+const SWITCHER_ORDER = [
+  'clip_caminar-perfil-gvhmr',
+  'clip_correr-perfil-gvhmr',
+  'clip_frente-04-gvhmr',
+  'clip_bailar-01-gvhmr',
+  'clip_jacks-01-gvhmr',
+  'clip_sentarse-02-gvhmr',
+  'clip_saludar-02-gvhmr',
+  'clip_dedos-01-gvhmr',
+  'clip_2026-10-23_caminar-perfil_01',
+];
+
+function switcherLabel(item, l = lang()) {
+  const tObj = clipName({ clip: item.clip_id, title: item.title || item.clip_id }).title;
+  const ver = item.clip_id.includes('gvhmr') ? 'v2 GVHMR' : 'v1 MediaPipe';
+  const stepsM = item.policy?.steps
+    ? `${Math.round(item.policy.steps / 1e6)}M ${l === 'es' ? 'pasos' : 'steps'}`
+    : (item.policy?.id ?? item.clip_id);
+  return `${tObj[l]} · ${ver} · ${stepsM}`;
+}
 // Clip ids as data/server.py makes them (its CLIP_ID); nothing else is asked of the server.
 const CLIP_ID = /^clip_[A-Za-z0-9_-]+$/;
 // A file of a delivery: a bare name, so it can only point inside the delivery's folder.
@@ -222,8 +243,13 @@ function showDelivery(root, { manifest: m, source, url }, signal) {
   const trainedWorlds = worlds.filter((world) => trained.has(world.id));
   const testOnly = worlds.length - trainedWorlds.length;
   const clipTitle = clipName({ clip: m.clip_id, title: m.title || m.clip_id }).title; // escaped
-  const bundledManifests = Object.values(MANIFESTS);
+  const bundledManifests = Object.values(MANIFESTS).sort((a, b) => {
+    const ia = SWITCHER_ORDER.indexOf(a.clip_id);
+    const ib = SWITCHER_ORDER.indexOf(b.clip_id);
+    return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+  });
   const switcherOptions = bundledManifests.some((b) => b.clip_id === m.clip_id) ? bundledManifests : [m, ...bundledManifests];
+  const sourceVideo = VIDEOS[m.clip_id] ?? null;
 
   // The status line, put together in each language.
   const statusIn = (l) => [
@@ -246,10 +272,7 @@ function showDelivery(root, { manifest: m, source, url }, signal) {
         <dl class="dl-meta">
           <div><dt>${T('clip')}</dt><dd>
             <select class="dl-switcher" ${A({ 'aria-label': 'switchClipAria' })}>
-              ${switcherOptions.map((item) => {
-                const tObj = clipName({ clip: item.clip_id, title: item.title || item.clip_id }).title;
-                return `<option value="${esc(item.clip_id)}" ${item.clip_id === m.clip_id ? 'selected' : ''}>${esc(tObj[lang()])} (${esc(item.policy?.id ?? item.clip_id)})</option>`;
-              }).join('')}
+              ${switcherOptions.map((item) => `<option value="${esc(item.clip_id)}" ${item.clip_id === m.clip_id ? 'selected' : ''}>${esc(switcherLabel(item))}</option>`).join('')}
             </select>
           </dd></div>
           <div><dt>${T('policy')}</dt><dd><span class="dl-mono">${esc(policy.id ?? '—')}</span>${policy.task === 'mimic' ? T('mimic') : ''}</dd></div>
@@ -275,6 +298,14 @@ function showDelivery(root, { manifest: m, source, url }, signal) {
             <div class="dl-boot">${loader()}<i class="dl-meter"><b class="dl-boot-fill"></b></i><span class="dl-boot-text">${T('booting')}</span></div>
             <p class="dl-hud dl-hud-left"><span class="dl-hud-ep">—</span><span class="dl-hud-state"></span></p>
             <p class="dl-hud dl-hud-right"><span class="dl-feet" ${A({ title: 'feetTitle' })}><i data-foot="left"></i>${T('footLeft')} <i data-foot="right"></i>${T('footRight')}</span><span class="dl-hud-t">t ${num(0, 2)} s</span></p>
+            ${sourceVideo ? `
+            <div class="dl-source-pip" title="${esc(sourceVideo.label)}">
+              <div class="dl-source-head">
+                <span class="dl-source-dot"></span>
+                <span class="dl-source-tag">${langSpans({ es: 'Video original', en: 'Source video' })}</span>
+              </div>
+              <video class="dl-source-video" src="${esc(sourceVideo.src)}" muted loop playsinline preload="metadata"></video>
+            </div>` : ''}
             <p class="dl-hud dl-hud-note"><span>${T('hudNote')}</span></p>
           </div>
           <div class="dl-transport">
@@ -823,11 +854,40 @@ function showDelivery(root, { manifest: m, source, url }, signal) {
   const timeOut = $('.dl-time');
   const hudT = $('.dl-hud-t');
   const feet = { left: $('[data-foot="left"]'), right: $('[data-foot="right"]') };
+  const pipBox = $('.dl-source-pip');
+  const pipVideo = $('.dl-source-video');
+  if (pipBox) {
+    pipBox.onclick = (e) => {
+      e.stopPropagation();
+      pipBox.classList.toggle('expanded');
+    };
+  }
+
+  function syncSourceVideo(shown) {
+    if (!pipVideo || !Number.isFinite(pipVideo.duration) || pipVideo.duration <= 0) return;
+    const targetTime = shown % pipVideo.duration;
+    if (Math.abs(pipVideo.currentTime - targetTime) > 0.28 || scrubbing) {
+      try {
+        pipVideo.currentTime = targetTime;
+      } catch {
+        // Ignore seek errors while metadata loads
+      }
+    }
+    if (Math.abs(pipVideo.playbackRate - speed) > 0.01) {
+      pipVideo.playbackRate = speed;
+    }
+    if (playing && !scrubbing) {
+      if (pipVideo.paused) pipVideo.play().catch(() => {});
+    } else if (!pipVideo.paused) {
+      pipVideo.pause();
+    }
+  }
 
   function seek(time) {
     const s = series();
     if (!s) return;
     t = Math.min(Math.max(time, 0), s.end);
+    syncSourceVideo(t);
   }
 
   function updatePlayhead() {
@@ -838,6 +898,7 @@ function showDelivery(root, { manifest: m, source, url }, signal) {
     if (document.activeElement !== scrub || !scrubbing) scrub.value = shown.toFixed(2);
     timeOut.textContent = `${num(shown, 2)} / ${num(s.end, 2)} s`;
     hudT.textContent = `t ${num(shown, 2)} s`;
+    syncSourceVideo(shown);
     // A foot is down when the floor pushes on it: the replay row's force, not a blend of two rows.
     const row = Math.round(rowAt(s, shown));
     feet.left.classList.toggle('on', s.left[row] > 0);
@@ -1049,6 +1110,12 @@ function showDelivery(root, { manifest: m, source, url }, signal) {
   // replay keeps playing where it was.
   const stopLang = onLang(() => {
     hideTip();
+    if (switcher) {
+      for (const opt of switcher.options) {
+        const item = switcherOptions.find((o) => o.clip_id === opt.value);
+        if (item) opt.textContent = switcherLabel(item);
+      }
+    }
     renderEpisode();
     renderTelemetry();
     updatePlayhead();

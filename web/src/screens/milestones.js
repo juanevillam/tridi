@@ -109,26 +109,48 @@ export function mount(root) {
         </div>
       </article>
 
-      <div class="milestone-lightbox" id="milestone-lightbox" role="dialog" aria-modal="true" hidden>
-        <div class="milestone-lightbox-backdrop" data-close-lightbox></div>
-        <div class="milestone-lightbox-dialog">
-          <div class="milestone-lightbox-top">
-            <span class="milestone-badge signal" id="lightbox-tag"></span>
-            <span class="milestone-lightbox-counter" id="lightbox-counter"></span>
-            <button type="button" class="milestone-lightbox-close" id="lightbox-close" ${A({ 'aria-label': 'm2.closeModal' })}>✕</button>
-          </div>
-          <div class="milestone-lightbox-stage">
-            <button type="button" class="milestone-lightbox-nav prev" id="lightbox-prev" ${A({ 'aria-label': 'm2.prevPhoto' })}>‹</button>
-            <img id="lightbox-img" src="" alt="" />
-            <button type="button" class="milestone-lightbox-nav next" id="lightbox-next" ${A({ 'aria-label': 'm2.nextPhoto' })}>›</button>
-          </div>
-          <p class="milestone-lightbox-cap" id="lightbox-cap"></p>
+      <dialog class="photo-viewer" id="milestone-lightbox" ${A({ 'aria-label': 'm2.galleryTitle' })}>
+        <div class="room">
+          <button type="button" class="v-close" id="lightbox-close" ${A({ 'aria-label': 'm2.closeModal' })}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"></path>
+            </svg>
+          </button>
+          <button type="button" class="v-prev" id="lightbox-prev" ${A({ 'aria-label': 'm2.prevPhoto' })}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </button>
+          <figure class="frame">
+            <div class="stage">
+              <div class="layer is-shown" data-layer="0">
+                <img class="fill" alt="" aria-hidden="true" />
+                <img class="photo" alt="" />
+              </div>
+              <div class="layer" data-layer="1">
+                <img class="fill" alt="" aria-hidden="true" />
+                <img class="photo" alt="" />
+              </div>
+            </div>
+            <figcaption>
+              <div class="v-meta-top">
+                <span class="milestone-badge signal" id="lightbox-tag"></span>
+                <span class="v-count" id="lightbox-counter"></span>
+              </div>
+              <span class="v-caption" id="lightbox-cap"></span>
+            </figcaption>
+          </figure>
+          <button type="button" class="v-next" id="lightbox-next" ${A({ 'aria-label': 'm2.nextPhoto' })}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </button>
         </div>
-      </div>
+      </dialog>
 
       <article class="milestone-card" id="platanus-hack" data-panel="platanus-hack" hidden>
         <div class="milestone-meta">
-          <span class="milestone-badge">${T('m1.badge')}</span>
+          <span class="milestone-badge signal">${T('m1.badge')}</span>
         </div>
         <h2>${T('m1.title')}</h2>
         <p class="milestone-intro">${T('m1.intro')}</p>
@@ -174,10 +196,10 @@ export function mount(root) {
     btn.onclick = () => selectTab(btn.dataset.tab);
   });
 
-  // Fullscreen Lightbox for Physical Architecture gallery
+  // Fullscreen Lightbox for Physical Architecture gallery (cross-fading dual-layer stage with smooth fade in/out)
   const photoCards = [...root.querySelectorAll('.milestone-photo-card')];
-  const lightbox = root.querySelector('#milestone-lightbox');
-  const lbImg = root.querySelector('#lightbox-img');
+  const dialog = root.querySelector('#milestone-lightbox');
+  const layers = [...root.querySelectorAll('#milestone-lightbox .layer')];
   const lbTag = root.querySelector('#lightbox-tag');
   const lbCap = root.querySelector('#lightbox-cap');
   const lbCounter = root.querySelector('#lightbox-counter');
@@ -185,47 +207,115 @@ export function mount(root) {
   const lbPrev = root.querySelector('#lightbox-prev');
   const lbNext = root.querySelector('#lightbox-next');
   let activePhotoIdx = 0;
+  let activeLayer = 0;
+  let closeTimer = null;
 
-  const showPhoto = (idx) => {
-    if (!photoCards.length || !lightbox) return;
+  const paintLayer = (layer, src, alt) => {
+    const fill = layer?.querySelector('.fill');
+    const photo = layer?.querySelector('.photo');
+    if (!photo || !fill) return Promise.resolve();
+    if (photo.getAttribute('src') === src) return Promise.resolve();
+    fill.src = src;
+    photo.src = src;
+    photo.alt = alt || '';
+    return photo.decode ? photo.decode().catch(() => {}) : Promise.resolve();
+  };
+
+  const renderPhoto = async (idx, animate = true) => {
+    if (!photoCards.length || !dialog) return;
     activePhotoIdx = (idx + photoCards.length) % photoCards.length;
     const card = photoCards[activePhotoIdx];
     const img = card.querySelector('img');
     const tag = card.querySelector('.milestone-photo-tag span');
     const cap = card.querySelector('figcaption');
-    lbImg.src = img?.src || '';
-    lbImg.alt = img?.alt || '';
+    const src = img?.src || '';
+    const alt = img?.alt || '';
+
     lbTag.innerHTML = tag ? tag.innerHTML : '';
     lbCap.innerHTML = cap ? cap.innerHTML : '';
     lbCounter.textContent = `${activePhotoIdx + 1} / ${photoCards.length}`;
-    lightbox.hidden = false;
+
+    if (!animate) {
+      await paintLayer(layers[activeLayer], src, alt);
+      layers[activeLayer]?.classList.add('is-shown');
+      layers[1 - activeLayer]?.classList.remove('is-shown');
+    } else {
+      const next = 1 - activeLayer;
+      await paintLayer(layers[next], src, alt);
+      layers[next]?.classList.add('is-shown');
+      layers[activeLayer]?.classList.remove('is-shown');
+      activeLayer = next;
+    }
+
+    // Preload neighbors for instant arrow switching
+    for (const step of [-1, 1]) {
+      const neighbor = photoCards[(activePhotoIdx + step + photoCards.length) % photoCards.length]?.querySelector('img');
+      if (neighbor?.src) {
+        const pre = new Image();
+        pre.src = neighbor.src;
+      }
+    }
+  };
+
+  const openPhoto = async (idx) => {
+    if (!dialog) return;
+    if (closeTimer !== null) {
+      clearTimeout(closeTimer);
+      closeTimer = null;
+    }
+    await renderPhoto(idx, false);
+    if (!dialog.open) dialog.showModal();
+    requestAnimationFrame(() => dialog.classList.add('is-visible'));
   };
 
   const closeLightbox = () => {
-    if (lightbox) lightbox.hidden = true;
+    if (!dialog || !dialog.open) return;
+    dialog.classList.remove('is-visible');
+    if (closeTimer !== null) clearTimeout(closeTimer);
+    closeTimer = window.setTimeout(() => {
+      dialog.close();
+      closeTimer = null;
+    }, 450);
   };
 
   photoCards.forEach((card, idx) => {
-    card.onclick = () => showPhoto(idx);
+    card.onclick = () => openPhoto(idx);
     card.onkeydown = (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         e.preventDefault();
-        showPhoto(idx);
+        openPhoto(idx);
       }
     };
   });
 
   if (lbClose) lbClose.onclick = closeLightbox;
-  if (lbPrev) lbPrev.onclick = () => showPhoto(activePhotoIdx - 1);
-  if (lbNext) lbNext.onclick = () => showPhoto(activePhotoIdx + 1);
-  lightbox?.querySelector('[data-close-lightbox]')?.addEventListener('click', closeLightbox);
+  if (lbPrev) lbPrev.onclick = () => renderPhoto(activePhotoIdx - 1, true);
+  if (lbNext) lbNext.onclick = () => renderPhoto(activePhotoIdx + 1, true);
+  dialog?.addEventListener('click', (e) => {
+    const t = e.target;
+    if (t === dialog || t?.classList?.contains('room')) closeLightbox();
+  });
+  dialog?.addEventListener('cancel', (e) => {
+    e.preventDefault();
+    closeLightbox();
+  });
 
   const onKeyDown = (e) => {
-    if (!lightbox || lightbox.hidden) return;
-    if (e.key === 'Escape') closeLightbox();
-    else if (e.key === 'ArrowLeft') showPhoto(activePhotoIdx - 1);
-    else if (e.key === 'ArrowRight') showPhoto(activePhotoIdx + 1);
+    if (!dialog || !dialog.open) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeLightbox();
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      renderPhoto(activePhotoIdx - 1, true);
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      renderPhoto(activePhotoIdx + 1, true);
+    }
   };
   window.addEventListener('keydown', onKeyDown);
-  return () => window.removeEventListener('keydown', onKeyDown);
+  return () => {
+    if (closeTimer !== null) clearTimeout(closeTimer);
+    window.removeEventListener('keydown', onKeyDown);
+  };
 }

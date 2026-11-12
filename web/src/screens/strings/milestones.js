@@ -8,8 +8,8 @@ export const { T, t, A } = dict({
   back: { es: 'Volver al inicio', en: 'Back to home' },
   head: { es: 'Avances y casos reales', en: 'Milestones & Field Notes' },
   lede: {
-    es: 'De las 36 horas en Platanus Hack 26 Caracas al primer robot físico controlado en el suelo por una política entrenada en Tridi.',
-    en: 'From 36 hours at Platanus Hack 26 Caracas to the first physical robot driven on the floor by a policy trained in Tridi.',
+    es: 'De 36 horas en Platanus Hack 26 Caracas al primer robot físico guiado en el suelo por una política de Tridi.',
+    en: 'From 36 hours at Platanus Hack 26 Caracas to the first physical robot driven on the floor by a Tridi policy.',
   },
   tabSim2Real: {
     es: '02 · Caso Real Sim-to-Real (Nov 2026)',
