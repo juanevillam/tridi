@@ -268,7 +268,7 @@ export function mount(root) {
           <span class="wordmark big" aria-label="Tridi">${LOGO}${WORDMARK}</span>
           <dl class="foot-specs">
             <div><dt>${T('foot.milestones')}</dt><dd><a href="#/milestones" data-warm="milestones">${T('foot.milestonesLink')}</a></dd></div>
-            <div><dt>${T('foot.team')}</dt><dd><a href="https://github.com/Torpass" target="_blank" rel="noopener">Pastor Jiménez</a> · <a href="https://github.com/juanevillam" target="_blank" rel="noopener">Juan Villa</a> · <a href="https://github.com/CisorM" target="_blank" rel="noopener">César Martínez</a> · <a href="https://github.com/AleHernandezt" target="_blank" rel="noopener">Ale Hernández</a></dd></div>
+            <div><dt>${T('foot.team')}</dt><dd><a href="https://www.linkedin.com/in/pastor-jimenez" target="_blank" rel="noopener">Pastor Jiménez</a> · <a href="https://www.linkedin.com/in/juanevillam" target="_blank" rel="noopener">Juan Villa</a> · <a href="https://www.linkedin.com/in/cesarmartinez-dev" target="_blank" rel="noopener">César Martínez</a> · <a href="https://www.linkedin.com/in/alehernandezt" target="_blank" rel="noopener">Ale Hernández</a></dd></div>
           </dl>
         </div>
       </footer>

@@ -57,6 +57,7 @@
   - Ocultado `clip_frente-correr-01-gvhmr` (el video fuente era una caminata tapándose el sol, no carrera) y corregido el intercambio monocular de piernas (`f=36..72`) y braceo en `clip_correr-perfil-gvhmr` + referencia balanceada G1 + respuesta de actuadores en `physics/src/policy.js` (`0.82 * target + 0.18 * ctrl`).
 - **Mundos y lugares más compactos y detallados (`physics/scenes/cocina.json`, `physics/scenes/deposito.json`, `web/src/props.js`, `web/src/looks/wet.js`, `web/src/looks/rocks.js`, `web/src/looks/meadow.js`):**
   - Delimitados `Cocina` (20 objetos) y `Depósito` (16 objetos) con muros perimetrales bajos (`pared`), plantas, bancos, estanterías y cajas sobre piso, y compactados los escenarios de `Piso resbaloso`, `Piedras` y `Viento`.
+- **Footer de la landing (`web/src/screens/home.js`):** Actualizados los enlaces del equipo a los perfiles de LinkedIn (`pastor-jimenez`, `juanevillam`, `cesarmartinez-dev`, `alehernandezt`).
 
 
 
