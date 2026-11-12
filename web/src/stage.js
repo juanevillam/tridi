@@ -58,6 +58,82 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     factory_cell: 'factory-cell',
   };
   const isCustomRobot = (r = robotModel) => Boolean(CUSTOM_ROBOT_POLICY[r]);
+
+  // Factory I/O style 3D component labels + live 4-step narrator bar inside .robot-pane
+  const robotPaneEl = root.querySelector('.robot-pane');
+  const factoryOverlay = document.createElement('div');
+  factoryOverlay.className = 'fio-overlay';
+  factoryOverlay.hidden = initialRobot !== 'factory_cell';
+  factoryOverlay.innerHTML = `
+    <div class="fio-tags">
+      <div class="fio-tag" data-fio="hopper">
+        <span class="fio-dot"></span>
+        <div class="fio-tag-body">
+          <strong>HOPPER-01 · PE-01</strong>
+          <span><span class="t" lang="es">1. Tolva + Báscula</span><span class="t" lang="en">1. Hopper + Weigher</span></span>
+        </div>
+      </div>
+      <div class="fio-tag" data-fio="cam">
+        <span class="fio-dot"></span>
+        <div class="fio-tag-body">
+          <strong>CAM-01 · COGNEX</strong>
+          <span><span class="t" lang="es">Visión Artificial</span><span class="t" lang="en">Machine Vision</span></span>
+        </div>
+      </div>
+      <div class="fio-tag fio-tag-blue" data-fio="press">
+        <span class="fio-dot"></span>
+        <div class="fio-tag-body">
+          <strong>PRESS-01 · PE-02</strong>
+          <span><span class="t" lang="es">2. Prensa Azul (Sella Tapa)</span><span class="t" lang="en">2. Blue Press (Seals Lid)</span></span>
+        </div>
+      </div>
+      <div class="fio-tag fio-tag-red" data-fio="pusher">
+        <span class="fio-dot"></span>
+        <div class="fio-tag-body">
+          <strong>PUSHER-01 · PE-03</strong>
+          <span><span class="t" lang="es">4. Pistón Rojo (Descarga)</span><span class="t" lang="en">4. Red Pusher (Ejector)</span></span>
+        </div>
+      </div>
+      <div class="fio-tag" data-fio="pallet">
+        <span class="fio-dot"></span>
+        <div class="fio-tag-body">
+          <strong>PALLET-01</strong>
+          <span><span class="t" lang="es">Tarima de Salida</span><span class="t" lang="en">Outfeed Pallet</span></span>
+        </div>
+      </div>
+      <div class="fio-tag" data-fio="plc">
+        <span class="fio-dot"></span>
+        <div class="fio-tag-body">
+          <strong>PLC / VFD · HMI</strong>
+          <span id="fio-plc-hz">50.0 Hz</span>
+        </div>
+      </div>
+    </div>
+    <div class="fio-narrator" id="fio-narrator">
+      <div class="fio-steps">
+        <span class="fio-step" data-fio-step="0"><span class="t" lang="es">1. Entrada y Pesaje (PE-01)</span><span class="t" lang="en">1. Infeed &amp; Weigh (PE-01)</span></span>
+        <span class="fio-step" data-fio-step="1"><span class="t" lang="es">2. Prensa Azul Sella (PE-02)</span><span class="t" lang="en">2. Blue Press Seals (PE-02)</span></span>
+        <span class="fio-step" data-fio-step="2"><span class="t" lang="es">3. Avance a Salida</span><span class="t" lang="en">3. Advance to Exit</span></span>
+        <span class="fio-step" data-fio-step="3"><span class="t" lang="es">4. Pistón Rojo al Palet (PE-03)</span><span class="t" lang="en">4. Red Pusher to Pallet (PE-03)</span></span>
+      </div>
+      <p class="fio-explain" id="fio-explain-text">
+        <span class="t" lang="es">Paso 1/4: Nace una caja en la Tolva (HOPPER-01), se pesa en la báscula dinámica (PE-01) y avanza hacia el puente central.</span>
+        <span class="t" lang="en">Step 1/4: A new box spawns at the Hopper (HOPPER-01), weighs on the dynamic scale (PE-01), and advances to the center bridge.</span>
+      </p>
+    </div>
+  `;
+  if (robotPaneEl) robotPaneEl.appendChild(factoryOverlay);
+  const FIO_ANCHORS = [
+    { key: 'hopper', lx: -0.62, ly: 0.0, lz: 0.38 },
+    { key: 'cam', lx: -0.14, ly: 0.0, lz: 0.44 },
+    { key: 'press', lx: 0.12, ly: 0.0, lz: 0.50 },
+    { key: 'pusher', lx: 0.62, ly: -0.26, lz: 0.19 },
+    { key: 'pallet', lx: 1.15, ly: 0.0, lz: -0.02 },
+    { key: 'plc', lx: -0.32, ly: 0.44, lz: 0.36 },
+  ];
+  let lastFactoryStage = -1;
+  let lastFactoryCrushed = null;
+  let scratchVec = null;
   let playing = true;
   let speed = 1;
   let robotModel = initialRobot;
@@ -183,10 +259,83 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       const elSt = $('sim-dodge-state');
       if (elHc) elHc.textContent = `${fr.vfdHz} Hz · C:${fr.conveyorMm} · P:${fr.pusherMm} mm`;
       if (elApds) elApds.textContent = `${fr.sealerMm} mm · [PE1:${fr.sensorEntry ? 1 : 0} PE2:${fr.sensorSealer ? 1 : 0} PE3:${fr.sensorExit ? 1 : 0}]`;
-      if (elWh) elWh.textContent = `${fr.completedCycles} ok · ${fr.crushedCount} merma`;
-      if (elSt) {
-        elSt.textContent = fr.modeLabel;
-        elSt.style.color = fr.crushedBox ? '#ff6a3d' : '#c8ff2e';
+      if (elWh) {
+        elWh.innerHTML = `<span class="t" lang="es">${fr.completedCycles} OK · ${fr.crushedCount} merma</span><span class="t" lang="en">${fr.completedCycles} OK · ${fr.crushedCount} waste</span>`;
+      }
+      if (elSt && fr.stage !== lastFactoryStage) {
+        elSt.innerHTML = `<span class="t" lang="es">${fr.modeLabelEs || fr.modeLabel}</span><span class="t" lang="en">${fr.modeLabelEn || fr.modeLabel}</span>`;
+        elSt.style.color = fr.crushedBox ? '#ff6a5a' : '#c8ff2e';
+      }
+      // Update Factory I/O 3D projected labels and live 4-step narrator bar
+      const viewer = robot.view.viewer;
+      if (viewer?.camera && viewer?.lastPelvis) {
+        scratchVec ||= viewer.lastPelvis.clone();
+        const [px, py] = robot.view.sim.bodyPosition('pelvis');
+        for (const anchor of FIO_ANCHORS) {
+          const tagEl = factoryOverlay.querySelector(`[data-fio="${anchor.key}"]`);
+          if (!tagEl) continue;
+          scratchVec.set(px + anchor.lx, 0.35 + anchor.lz, -(py + anchor.ly)).project(viewer.camera);
+          if (scratchVec.z > 1) {
+            tagEl.style.opacity = '0';
+          } else {
+            const xPct = Math.max(8, Math.min(92, (scratchVec.x * 0.5 + 0.5) * 100));
+            const yPct = Math.max(8, Math.min(76, (-scratchVec.y * 0.5 + 0.5) * 100));
+            tagEl.style.opacity = '1';
+            tagEl.style.left = `${xPct.toFixed(1)}%`;
+            tagEl.style.top = `${yPct.toFixed(1)}%`;
+          }
+          let isActive = false;
+          let isFault = false;
+          if (anchor.key === 'hopper') isActive = fr.stage === 0 || fr.sensorEntry;
+          else if (anchor.key === 'cam') isActive = fr.stage === 0 || fr.stage === 1;
+          else if (anchor.key === 'press') {
+            isActive = fr.stage === 1 || fr.sealerMm > 15;
+            isFault = fr.crushedBox;
+          } else if (anchor.key === 'pusher') {
+            isActive = fr.stage === 3 || fr.pusherMm > 15;
+          } else if (anchor.key === 'pallet') {
+            isActive = fr.stage === 3;
+          } else if (anchor.key === 'plc') {
+            isActive = true;
+          }
+          tagEl.dataset.active = String(isActive);
+          tagEl.dataset.fault = String(isFault);
+        }
+        const plcHzEl = factoryOverlay.querySelector('#fio-plc-hz');
+        if (plcHzEl) plcHzEl.textContent = `VFD ${fr.vfdHz} Hz`;
+      }
+      if (fr.stage !== lastFactoryStage) {
+        lastFactoryStage = fr.stage;
+        const narrator = factoryOverlay.querySelector('#fio-narrator');
+        if (narrator) narrator.dataset.fault = String(fr.crushedBox);
+        factoryOverlay.querySelectorAll('[data-fio-step]').forEach((stepEl) => {
+          const sIdx = Number(stepEl.dataset.fioStep);
+          const active = fr.stage === 4 ? sIdx === 1 : sIdx === fr.stage;
+          stepEl.dataset.active = String(active);
+          stepEl.dataset.fault = String(fr.stage === 4 && sIdx === 1);
+        });
+        const explainEl = factoryOverlay.querySelector('#fio-explain-text');
+        if (explainEl) {
+          explainEl.innerHTML = `<span class="t" lang="es">${fr.stepExplainEs}</span><span class="t" lang="en">${fr.stepExplainEn}</span>`;
+        }
+      }
+      // Visually squash & tint the 3D box red when crushed by the fixed-timer press, and restore on next spawn
+      if (fr.crushedBox !== lastFactoryCrushed) {
+        lastFactoryCrushed = fr.crushedBox;
+        const { mujoco, model } = robot.view.sim;
+        const boxGeomId = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM.value, 'package_box');
+        const gEntry = robot.view.viewer?.geoms?.find((g) => g.id === boxGeomId);
+        if (gEntry?.object) {
+          const fmtKey = robot.view.sim._factoryFormat || '500g';
+          const baseScale = (FACTORY_FORMAT_SPECS[fmtKey] || FACTORY_FORMAT_SPECS['500g']).scale;
+          if (fr.crushedBox) {
+            gEntry.object.scale.set(baseScale[0] * 1.18, baseScale[1] * 1.14, baseScale[2] * 0.56);
+            gEntry.object.material?.color?.setRGB(0.92, 0.22, 0.18);
+          } else {
+            gEntry.object.scale.set(...baseScale);
+            gEntry.object.material?.color?.setRGB(0.82, 0.62, 0.36);
+          }
+        }
       }
     }
     overlay.sync(skeleton.time, playing, speed);
@@ -201,6 +350,8 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     const currentPlace = $('place')?.value ?? '';
     const pushBtn = root.querySelector('.push');
     if (pushBtn) pushBtn.hidden = custom || !physics;
+    factoryOverlay.hidden = !isCell;
+    if (label) label.hidden = isCell;
     if ($('arduino-box')) $('arduino-box').hidden = !isRover;
     if ($('factory-fault-box')) $('factory-fault-box').hidden = !isCell;
     if ($('grasp-box')) $('grasp-box').hidden = custom || currentPlace !== 'cocina';
@@ -254,6 +405,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       if ($('sim-label-3')) $('sim-label-3').innerHTML = '<span class="t" lang="es">Puente H L298N (Izq / Der)</span><span class="t" lang="en">L298N H-Bridge (L / R)</span>';
       if ($('sim-label-4')) $('sim-label-4').innerHTML = '<span class="t" lang="es">Estado de evasión (4 etapas)</span><span class="t" lang="en">Dodge state (4 stages)</span>';
     } else if (robotModel === 'factory_cell') {
+      lastFactoryStage = -1;
       if ($('luigi-sim-badge')) {
         $('luigi-sim-badge').innerHTML = '<span class="t" lang="es">Línea PackML / ISA-88 · 4 Estaciones + Recetas HMI</span><span class="t" lang="en">PackML / ISA-88 Line · 4 Stations + HMI Recipes</span>';
       }
@@ -261,12 +413,12 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
         $('luigi-sim-title').innerHTML = '<span class="t" lang="es">Línea Industrial · Pesaje + Visión Cognex + Sellado + Paletizado</span><span class="t" lang="en">Industrial Line · Weigher + Cognex Vision + Sealer + Palletizer</span>';
       }
       if ($('luigi-sim-desc')) {
-        $('luigi-sim-desc').innerHTML = '<span class="t" lang="es">Gemelo físico de 4 estaciones con gabinete PLC/HMI, variador VFD, cilindro neumático Festo, visión cenital, prensa termoselladora, torre Andon y tarima de salida. Permite probar <strong>cambios de formato (250 g / 500 g / 1 kg)</strong> y estresar el patinaje de banda antes de ir a parada de planta.</span><span class="t" lang="en">4-station physical twin with PLC/HMI cabinet, VFD drive, Festo pneumatic pusher, overhead vision, heat-sealer press, Andon stack light, and outfeed pallet. Test <strong>HMI format changes (250 g / 500 g / 1 kg)</strong> and belt-slip stress before a plant shutdown window.</span>';
+        $('luigi-sim-desc').innerHTML = '<span class="t" lang="es">Flujo de izquierda a derecha: <strong>1. Tolva (HOPPER-01)</strong> alimenta la caja; <strong>2. Prensa Azul (PRESS-01)</strong> baja en el centro para sellar la tapa; <strong>3. Avance</strong> lleva la caja al final; <strong>4. Pistón Rojo (PUSHER-01)</strong> la descarga al palet.</span><span class="t" lang="en">Left-to-right flow: <strong>1. Hopper (HOPPER-01)</strong> feeds the box; <strong>2. Blue Press (PRESS-01)</strong> descends at center to seal the lid; <strong>3. Belt</strong> carries box to exit; <strong>4. Red Pusher (PUSHER-01)</strong> discharges it to the pallet.</span>';
       }
-      if ($('sim-label-1')) $('sim-label-1').textContent = 'Variador VFD + Cinta / Pistón';
-      if ($('sim-label-2')) $('sim-label-2').textContent = 'Prensa + Fotoceldas PE1..PE3';
+      if ($('sim-label-1')) $('sim-label-1').innerHTML = '<span class="t" lang="es">Variador VFD + Cinta / Pistón</span><span class="t" lang="en">VFD Drive + Belt / Pusher</span>';
+      if ($('sim-label-2')) $('sim-label-2').innerHTML = '<span class="t" lang="es">Prensa Azul + Sensores PE1..PE3</span><span class="t" lang="en">Blue Press + Sensors PE1..PE3</span>';
       if ($('sim-label-3')) $('sim-label-3').innerHTML = '<span class="t" lang="es">Lotes OK / Merma</span><span class="t" lang="en">Batches OK / Waste</span>';
-      if ($('sim-label-4')) $('sim-label-4').innerHTML = '<span class="t" lang="es">Estado PackML + Receta</span><span class="t" lang="en">PackML State + Recipe</span>';
+      if ($('sim-label-4')) $('sim-label-4').innerHTML = '<span class="t" lang="es">Etapa Actual (PackML)</span><span class="t" lang="en">Current Stage (PackML)</span>';
     }
   }
 
@@ -333,10 +485,10 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       await view.loadPolicy(onnx, json, imitation && !isCustom ? { motion: learned } : {});
       const [px, py] = view.sim.bodyPosition('pelvis');
       if (imitation?.robot === 'factory_cell') {
-        view.viewer.targetHeight = 0.35;
+        view.viewer.targetHeight = 0.34;
         view.viewer.controls.minDistance = 0.35;
-        view.viewer.controls.target.set(px, 0.35, -py);
-        view.viewer.camera.position.set(px + 1.15, 0.85, -py - 1.10);
+        view.viewer.controls.target.set(px + 0.12, 0.34, -py);
+        view.viewer.camera.position.set(px + 0.22, 0.96, -py - 1.58);
         view.viewer.controls.update();
       } else if (isCustom) {
         view.viewer.targetHeight = 0.09;
@@ -793,12 +945,13 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     const sim = robot.view?.sim;
     if (!sim) return;
     sim._factoryFixedTimerMode = Boolean(fixedTimer);
+    lastFactoryStage = -1;
     if ($('factory-mode-sensor')) $('factory-mode-sensor').setAttribute('aria-pressed', String(!sim._factoryFixedTimerMode));
     if ($('factory-fault-btn')) $('factory-fault-btn').setAttribute('aria-pressed', String(sim._factoryFixedTimerMode));
     if ($('factory-status-note')) {
       $('factory-status-note').innerHTML = sim._factoryFixedTimerMode
-        ? `<span class="t" lang="es">Modo activo: <strong>PLC clásico por timer fijo</strong> (baja la prensa sin verificar sensor óptico; aplasta cajas cuando patina la cinta).</span><span class="t" lang="en">Active mode: <strong>Classic fixed-timer PLC</strong> (lowers sealer without checking optical sensor; crushes boxes under belt slip).</span>`
-        : `<span class="t" lang="es">Modo activo: <strong>Lazo cerrado por sensores ópticos</strong> (la prensa espera confirmación física de caja antes de bajar).</span><span class="t" lang="en">Active mode: <strong>Closed-loop optical sensor gating</strong> (sealer waits for physical box confirmation before descending).</span>`;
+        ? `<span class="t" lang="es"><strong>⚠️ Modo Timer Fijo:</strong> La banda patina 28 %, la caja llega tarde y la <strong>Prensa Azul (PRESS-01)</strong> baja a ciegas aplastando el envase.</span><span class="t" lang="en"><strong>⚠️ Fixed-Timer Mode:</strong> Belt slips 28%, the box lags, and the <strong>Blue Press (PRESS-01)</strong> slams down blind, crushing the package.</span>`
+        : `<span class="t" lang="es"><strong>🔵 Prensa Azul (PRESS-01):</strong> Sella el tope en el centro (PE-02). <strong>🔴 Pistón Rojo (PUSHER-01):</strong> Empuja el lote al palet al final de la banda (PE-03).</span><span class="t" lang="en"><strong>🔵 Blue Press (PRESS-01):</strong> Seals the lid at center (PE-02). <strong>🔴 Red Pusher (PUSHER-01):</strong> Pushes finished box to pallet at belt exit (PE-03).</span>`;
     }
   }
   if ($('factory-mode-sensor')) {
@@ -811,18 +964,18 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
   const FACTORY_FORMAT_SPECS = {
     '250g': {
       scale: [0.78, 0.82, 0.76],
-      es: 'Receta PLC exportada (250 g): <code>VFD=58.5Hz | Rampa=0.24s | Pistón=155mm | Prensa=115mm | Dwell=420ms</code>',
-      en: 'Exported PLC Recipe (250 g): <code>VFD=58.5Hz | Ramp=0.24s | Pusher=155mm | Press=115mm | Dwell=420ms</code>',
+      es: 'Receta PLC (250 g): <code>VFD=58.5Hz · Rampa=0.24s · Prensa=109mm · Pistón=140mm</code>',
+      en: 'PLC Recipe (250 g): <code>VFD=58.5Hz · Ramp=0.24s · Press=109mm · Pusher=140mm</code>',
     },
     '500g': {
       scale: [1.0, 1.0, 1.0],
-      es: 'Receta PLC exportada (500 g): <code>VFD=50.0Hz | Rampa=0.35s | Pistón=145mm | Prensa=138mm | Dwell=550ms</code>',
-      en: 'Exported PLC Recipe (500 g): <code>VFD=50.0Hz | Ramp=0.35s | Pusher=145mm | Press=138mm | Dwell=550ms</code>',
+      es: 'Receta PLC (500 g): <code>VFD=50.0Hz · Rampa=0.35s · Prensa=97mm · Pistón=130mm</code>',
+      en: 'PLC Recipe (500 g): <code>VFD=50.0Hz · Ramp=0.35s · Press=97mm · Pusher=130mm</code>',
     },
     '1000g': {
       scale: [1.26, 1.18, 1.24],
-      es: 'Receta PLC exportada (1 kg): <code>VFD=41.5Hz | Rampa=0.52s | Pistón=132mm | Prensa=152mm | Dwell=680ms</code>',
-      en: 'Exported PLC Recipe (1 kg): <code>VFD=41.5Hz | Ramp=0.52s | Pusher=132mm | Press=152mm | Dwell=680ms</code>',
+      es: 'Receta PLC (1 kg): <code>VFD=41.5Hz · Rampa=0.52s · Prensa=84mm · Pistón=120mm</code>',
+      en: 'PLC Recipe (1 kg): <code>VFD=41.5Hz · Ramp=0.52s · Press=84mm · Pusher=120mm</code>',
     },
   };
   root.querySelectorAll('[data-factory-format]').forEach((btn) => {
@@ -832,6 +985,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       root.querySelectorAll('[data-factory-format]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
       if (robot.view?.sim) {
         robot.view.sim._factoryFormat = fmtKey;
+        lastFactoryStage = -1;
         const { mujoco, model } = robot.view.sim;
         const boxGeomId = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM.value, 'package_box');
         const gEntry = robot.view.viewer?.geoms?.find((g) => g.id === boxGeomId);
@@ -852,14 +1006,16 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
         robot.view.sim._serialCmd = null;
         robot.view.sim._factoryCrushedCount = 0;
         robot.view.sim._factoryCycles = 0;
+        robot.view.sim._lastFactoryCycleIdx = undefined;
       }
+      lastFactoryStage = -1;
       robot.view?.reset();
       if (robot.view?.viewer) {
         const [px, py] = robot.view.sim.bodyPosition('pelvis');
-        const h = robotModel === 'factory_cell' ? 0.35 : 0.09;
+        const h = robotModel === 'factory_cell' ? 0.34 : 0.09;
         robot.view.viewer.targetHeight = h;
-        robot.view.viewer.controls.target.set(px, h, -py);
-        robot.view.viewer.camera.position.set(px + (robotModel === 'factory_cell' ? 1.15 : 1.05), robotModel === 'factory_cell' ? 0.85 : 0.72, -py - (robotModel === 'factory_cell' ? 1.10 : 0.95));
+        robot.view.viewer.controls.target.set(px + (robotModel === 'factory_cell' ? 0.12 : 0), h, -py);
+        robot.view.viewer.camera.position.set(px + (robotModel === 'factory_cell' ? 0.22 : 1.05), robotModel === 'factory_cell' ? 0.96 : 0.72, -py - (robotModel === 'factory_cell' ? 1.58 : 0.95));
         robot.view.viewer.controls.update();
       }
       root.querySelectorAll('#arduino-box [data-cmd]').forEach((b) => {

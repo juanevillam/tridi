@@ -552,6 +552,10 @@ select:disabled {
   margin: 0;
 }
 
+.page-head .lang-switch {
+  margin-left: auto;
+}
+
 .sims-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 410px;
@@ -1504,6 +1508,7 @@ select:disabled {
 .luigi-sim-panel {
   display: grid;
   gap: 12px;
+  min-width: 0;
 }
 
 .luigi-sim-panel[hidden],
@@ -1513,7 +1518,9 @@ select:disabled {
 .field[hidden],
 .mode[hidden],
 .mode-note[hidden],
-select[hidden] {
+select[hidden],
+.fio-overlay[hidden],
+.pane-label[hidden] {
   display: none !important;
 }
 
@@ -1544,37 +1551,36 @@ select[hidden] {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+  min-width: 0;
 }
 
 .luigi-tel-card {
   display: grid;
   align-content: center;
   gap: 4px;
-  height: 62px;
   min-height: 62px;
-  padding: 8px 12px;
+  padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: var(--r-1);
   background: var(--bg);
+  min-width: 0;
   overflow: hidden;
 }
 
 .luigi-tel-card span {
-  font: 600 11px/1.2 var(--mono);
+  font: 600 10.5px/1.25 var(--mono);
   color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .luigi-tel-card strong {
   display: block;
-  font: 600 13.5px/1.25 var(--mono);
+  font: 600 12.5px/1.28 var(--mono);
   font-variant-numeric: tabular-nums;
   color: var(--signal);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .luigi-drive-box {
@@ -1584,10 +1590,11 @@ select[hidden] {
   border: 1px solid var(--line);
   border-radius: var(--r-1);
   background: var(--bg);
+  min-width: 0;
 }
 
 .luigi-drive-label {
-  font: 600 11px/1.2 var(--mono);
+  font: 600 11px/1.3 var(--mono);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--muted);
@@ -1597,6 +1604,7 @@ select[hidden] {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
+  min-width: 0;
 }
 
 .luigi-cmd-btn {
@@ -1604,7 +1612,8 @@ select[hidden] {
   align-items: center;
   justify-content: center;
   min-height: 38px;
-  padding: 0 8px;
+  min-width: 0;
+  padding: 6px 8px;
   border: 1px solid var(--line);
   border-radius: var(--r-1);
   background: var(--surface);
@@ -1613,6 +1622,204 @@ select[hidden] {
   font-weight: 600;
   white-space: nowrap;
   transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.luigi-cmd-btn.wrap-btn {
+  justify-content: flex-start;
+  text-align: left;
+  white-space: normal;
+  line-height: 1.32;
+  padding: 8px 10px;
+}
+
+.factory-recipe-box {
+  margin: 2px 0 0;
+  padding: 8px 10px;
+  border: 1px solid rgb(200 255 46 / 0.22);
+  border-radius: var(--r-1);
+  background: rgb(200 255 46 / 0.06);
+  font: 500 11.5px/1.4 var(--mono);
+  color: var(--signal);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.factory-recipe-box code {
+  font-family: var(--mono);
+  color: var(--ink);
+}
+
+/* Factory I/O style 3D component labels & live step-by-step narrator overlay */
+.fio-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  overflow: hidden;
+}
+
+.fio-tags {
+  position: absolute;
+  inset: 0;
+}
+
+.fio-tag {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid rgb(241 243 238 / 0.22);
+  border-radius: var(--r-1);
+  background: rgb(8 9 11 / 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.55);
+  transition: border-color 150ms ease, background-color 150ms ease, transform 150ms ease;
+  white-space: nowrap;
+}
+
+.fio-tag::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 1px;
+  height: 6px;
+  background: rgb(241 243 238 / 0.45);
+}
+
+.fio-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex: none;
+}
+
+.fio-tag[data-active='true'] {
+  border-color: var(--signal);
+  background: rgb(14 18 12 / 0.9);
+}
+
+.fio-tag[data-active='true'] .fio-dot {
+  background: var(--signal);
+  box-shadow: 0 0 8px var(--signal);
+}
+
+.fio-tag.fio-tag-blue[data-active='true'] {
+  border-color: #38bdf8;
+}
+
+.fio-tag.fio-tag-blue[data-active='true'] .fio-dot {
+  background: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8;
+}
+
+.fio-tag.fio-tag-red[data-active='true'] {
+  border-color: #fb7185;
+}
+
+.fio-tag.fio-tag-red[data-active='true'] .fio-dot {
+  background: #fb7185;
+  box-shadow: 0 0 8px #fb7185;
+}
+
+.fio-tag[data-fault='true'] {
+  border-color: var(--error) !important;
+  background: rgb(42 12 12 / 0.92) !important;
+}
+
+.fio-tag[data-fault='true'] .fio-dot {
+  background: var(--error) !important;
+  box-shadow: 0 0 10px var(--error) !important;
+}
+
+.fio-tag-body {
+  display: grid;
+  gap: 1px;
+}
+
+.fio-tag-body strong {
+  font: 700 10px/1.15 var(--mono);
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
+.fio-tag-body span {
+  font: 500 10px/1.15 var(--display);
+  color: var(--ink-body);
+}
+
+.fio-narrator {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid rgb(241 243 238 / 0.18);
+  border-radius: var(--r-2);
+  background: rgb(8 9 11 / 0.86);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: var(--lg-rim), 0 12px 28px rgb(0 0 0 / 0.65);
+}
+
+.fio-narrator[data-fault='true'] {
+  border-color: var(--error);
+  background: rgb(32 10 10 / 0.9);
+}
+
+.fio-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.fio-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-1);
+  background: rgb(241 243 238 / 0.04);
+  font: 600 10.5px/1.2 var(--mono);
+  color: var(--muted);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fio-step[data-active='true'] {
+  border-color: var(--signal);
+  background: rgb(200 255 46 / 0.15);
+  color: var(--signal);
+}
+
+.fio-step[data-fault='true'] {
+  border-color: var(--error);
+  background: rgb(255 106 90 / 0.22);
+  color: var(--error);
+}
+
+.fio-explain {
+  margin: 0;
+  font: 500 12.5px/1.35 var(--display);
+  color: var(--ink);
+}
+
+@media (max-width: 860px) {
+  .fio-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .fio-tag {
+    padding: 3px 6px;
+  }
 }
 
 .luigi-cmd-btn:hover {

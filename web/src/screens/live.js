@@ -12,7 +12,7 @@
 // server the button only says why; the webcam is untouched.
 import { addUserClip } from '../preloaded.js';
 import { mountRobotPane, robotPaneHTML } from '../robot-pane.js';
-import { escapeHtml } from '../i18n.js';
+import { escapeHtml, langSwitch } from '../i18n.js';
 import { A, L, T } from './strings/live.js';
 
 // One string with one value, in a given language: the clip's name and the frame rate.
@@ -77,6 +77,7 @@ export function mount(root, { api }) {
       <header class="page-head">
         <a class="back" href="#/" ${A({ 'aria-label': 'back' })}>←<span class="only-wide">&nbsp;${T('back')}</span></a>
         <h1>${T('head')}</h1>
+        ${langSwitch('page-head-lang')}
       </header>
       <div class="live-grid">
         <section class="pane camera-pane">
