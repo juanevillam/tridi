@@ -449,10 +449,10 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
         for (let i = 0; i < nu; i++) {
           const refJ = next.q[7 + i];
           const w = i >= 12 && i <= 14 ? 0.01 : reflex;
-          // Counteract gravity droop on G1 waist_pitch_joint (index 14) so the torso stays vertical
-          const uprightBias = i === 14 && nu === 29 ? -0.10 : 0;
-          const target = i === 14 && nu === 29 ? Math.min(0.05, refJ) + uprightBias : refJ + w * (ctrl[i] - refJ);
-          data.ctrl[i] = 0.55 * target + 0.45 * data.ctrl[i];
+          // Counteract gravity droop on G1 waist_pitch_joint (index 14) while preserving athletic forward lean on running
+          const uprightBias = i === 14 && nu === 29 ? -0.06 : 0;
+          const target = i === 14 && nu === 29 ? Math.min(0.14, refJ) + uprightBias : refJ + w * (ctrl[i] - refJ);
+          data.ctrl[i] = 0.82 * target + 0.18 * data.ctrl[i];
         }
       } else {
         data.ctrl.set(ctrl);

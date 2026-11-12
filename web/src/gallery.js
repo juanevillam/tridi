@@ -35,8 +35,8 @@ export function mountGallery(root, stage, initialClip, onSelect, { hide = [] } =
     const li = document.createElement('li');
     const button = document.createElement('button');
     button.className = `card ${isUser ? 'card-user' : 'card-preloaded'}`;
-    const badge = T(isUser ? 'badgeTrainable' : 'badgeTrained');
-    button.innerHTML = `<span class="card-top"><strong></strong><span class="card-badge ${isUser ? 'trainable' : 'trained'}">${badge}</span></span><span class="meta">…</span><span class="credit"></span>`;
+    const badgeHtml = isUser ? `<span class="card-badge trainable">${T('badgeTrainable')}</span>` : '';
+    button.innerHTML = `<span class="card-top"><strong></strong>${badgeHtml}</span><span class="meta">…</span><span class="credit"></span>`;
     const names = clipName(item);
     button.querySelector('strong').innerHTML = spans(names.title);
     button.querySelector('.credit').innerHTML = spans(names.credit);

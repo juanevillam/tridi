@@ -33,9 +33,10 @@ export function mount(root) {
       <article class="milestone-card" id="sim-to-real" data-panel="sim-to-real">
         <div class="milestone-meta">
           <span class="milestone-badge signal">${T('m2.badge')}</span>
-          <a class="button primary milestone-cta" href="#/simulations/luigi_lab3">${T('m2.ctaSim')}</a>
-          <a class="button milestone-cta" href="#/simulations/luigi_lab4">${T('m2.ctaLab4')}</a>
-          <a class="button milestone-cta" href="#/simulations/factory_cell">${T('m2.ctaCell')}</a>
+          <div class="milestone-cta-row">
+            <a class="button primary milestone-cta" href="#/simulations/luigi_lab3">${T('m2.ctaSim')}</a>
+            <a class="button milestone-cta" href="#/simulations/luigi_lab4">${T('m2.ctaLab4')}</a>
+          </div>
         </div>
         <h2>${T('m2.title')}</h2>
         <p class="milestone-intro">${T('m2.intro')}</p>
@@ -75,38 +76,55 @@ export function mount(root) {
 
         <h3 class="milestone-subhead">${T('m2.galleryTitle')}</h3>
         <div class="milestone-gallery-grid">
-          <figure class="milestone-photo-card">
-            <div class="milestone-photo-tag">${T('m2.g1.tag')}</div>
+          <figure class="milestone-photo-card" tabindex="0" role="button" data-photo-idx="0">
+            <div class="milestone-photo-tag"><span>${T('m2.g1.tag')}</span><span class="milestone-zoom-pill">⤢</span></div>
             <img src="${MEDIA}luigi-cad-robot.png" alt="CAD 3D Robot Luigi" loading="lazy" />
             <figcaption>${T('m2.g1.cap')}</figcaption>
           </figure>
-          <figure class="milestone-photo-card">
-            <div class="milestone-photo-tag">${T('m2.g2.tag')}</div>
+          <figure class="milestone-photo-card" tabindex="0" role="button" data-photo-idx="1">
+            <div class="milestone-photo-tag"><span>${T('m2.g2.tag')}</span><span class="milestone-zoom-pill">⤢</span></div>
             <img src="${MEDIA}luigi-cad-planta.png" alt="Plano de planta CAD Robot Luigi" loading="lazy" />
             <figcaption>${T('m2.g2.cap')}</figcaption>
           </figure>
-          <figure class="milestone-photo-card">
-            <div class="milestone-photo-tag">${T('m2.g3.tag')}</div>
+          <figure class="milestone-photo-card" tabindex="0" role="button" data-photo-idx="2">
+            <div class="milestone-photo-tag"><span>${T('m2.g3.tag')}</span><span class="milestone-zoom-pill">⤢</span></div>
             <img src="${MEDIA}luigi-cad-frente.png" alt="CAD frontal sensores HC-SR04 y APDS-9960" loading="lazy" />
             <figcaption>${T('m2.g3.cap')}</figcaption>
           </figure>
-          <figure class="milestone-photo-card">
-            <div class="milestone-photo-tag">${T('m2.g4.tag')}</div>
+          <figure class="milestone-photo-card" tabindex="0" role="button" data-photo-idx="3">
+            <div class="milestone-photo-tag"><span>${T('m2.g4.tag')}</span><span class="milestone-zoom-pill">⤢</span></div>
             <img src="${MEDIA}luigi-real-sensores.jpg" alt="Sensores reales HC-SR04 y APDS-9960" loading="lazy" />
             <figcaption>${T('m2.g4.cap')}</figcaption>
           </figure>
-          <figure class="milestone-photo-card">
-            <div class="milestone-photo-tag">${T('m2.g5.tag')}</div>
+          <figure class="milestone-photo-card" tabindex="0" role="button" data-photo-idx="4">
+            <div class="milestone-photo-tag"><span>${T('m2.g5.tag')}</span><span class="milestone-zoom-pill">⤢</span></div>
             <img src="${MEDIA}luigi-real-cables.jpg" alt="Cableado real Arduino UNO y L298N" loading="lazy" />
             <figcaption>${T('m2.g5.cap')}</figcaption>
           </figure>
-          <figure class="milestone-photo-card">
-            <div class="milestone-photo-tag">${T('m2.g6.tag')}</div>
+          <figure class="milestone-photo-card" tabindex="0" role="button" data-photo-idx="5">
+            <div class="milestone-photo-tag"><span>${T('m2.g6.tag')}</span><span class="milestone-zoom-pill">⤢</span></div>
             <img src="${MEDIA}luigi-real-abajo.jpg" alt="Tren motriz inferior y baterías 18650" loading="lazy" />
             <figcaption>${T('m2.g6.cap')}</figcaption>
           </figure>
         </div>
       </article>
+
+      <div class="milestone-lightbox" id="milestone-lightbox" role="dialog" aria-modal="true" hidden>
+        <div class="milestone-lightbox-backdrop" data-close-lightbox></div>
+        <div class="milestone-lightbox-dialog">
+          <div class="milestone-lightbox-top">
+            <span class="milestone-badge signal" id="lightbox-tag"></span>
+            <span class="milestone-lightbox-counter" id="lightbox-counter"></span>
+            <button type="button" class="milestone-lightbox-close" id="lightbox-close" ${A({ 'aria-label': 'm2.closeModal' })}>✕</button>
+          </div>
+          <div class="milestone-lightbox-stage">
+            <button type="button" class="milestone-lightbox-nav prev" id="lightbox-prev" ${A({ 'aria-label': 'm2.prevPhoto' })}>‹</button>
+            <img id="lightbox-img" src="" alt="" />
+            <button type="button" class="milestone-lightbox-nav next" id="lightbox-next" ${A({ 'aria-label': 'm2.nextPhoto' })}>›</button>
+          </div>
+          <p class="milestone-lightbox-cap" id="lightbox-cap"></p>
+        </div>
+      </div>
 
       <article class="milestone-card" id="platanus-hack" data-panel="platanus-hack" hidden>
         <div class="milestone-meta">
@@ -155,4 +173,59 @@ export function mount(root) {
   tabs.forEach((btn) => {
     btn.onclick = () => selectTab(btn.dataset.tab);
   });
+
+  // Fullscreen Lightbox for Physical Architecture gallery
+  const photoCards = [...root.querySelectorAll('.milestone-photo-card')];
+  const lightbox = root.querySelector('#milestone-lightbox');
+  const lbImg = root.querySelector('#lightbox-img');
+  const lbTag = root.querySelector('#lightbox-tag');
+  const lbCap = root.querySelector('#lightbox-cap');
+  const lbCounter = root.querySelector('#lightbox-counter');
+  const lbClose = root.querySelector('#lightbox-close');
+  const lbPrev = root.querySelector('#lightbox-prev');
+  const lbNext = root.querySelector('#lightbox-next');
+  let activePhotoIdx = 0;
+
+  const showPhoto = (idx) => {
+    if (!photoCards.length || !lightbox) return;
+    activePhotoIdx = (idx + photoCards.length) % photoCards.length;
+    const card = photoCards[activePhotoIdx];
+    const img = card.querySelector('img');
+    const tag = card.querySelector('.milestone-photo-tag span');
+    const cap = card.querySelector('figcaption');
+    lbImg.src = img?.src || '';
+    lbImg.alt = img?.alt || '';
+    lbTag.innerHTML = tag ? tag.innerHTML : '';
+    lbCap.innerHTML = cap ? cap.innerHTML : '';
+    lbCounter.textContent = `${activePhotoIdx + 1} / ${photoCards.length}`;
+    lightbox.hidden = false;
+  };
+
+  const closeLightbox = () => {
+    if (lightbox) lightbox.hidden = true;
+  };
+
+  photoCards.forEach((card, idx) => {
+    card.onclick = () => showPhoto(idx);
+    card.onkeydown = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        showPhoto(idx);
+      }
+    };
+  });
+
+  if (lbClose) lbClose.onclick = closeLightbox;
+  if (lbPrev) lbPrev.onclick = () => showPhoto(activePhotoIdx - 1);
+  if (lbNext) lbNext.onclick = () => showPhoto(activePhotoIdx + 1);
+  lightbox?.querySelector('[data-close-lightbox]')?.addEventListener('click', closeLightbox);
+
+  const onKeyDown = (e) => {
+    if (!lightbox || lightbox.hidden) return;
+    if (e.key === 'Escape') closeLightbox();
+    else if (e.key === 'ArrowLeft') showPhoto(activePhotoIdx - 1);
+    else if (e.key === 'ArrowRight') showPhoto(activePhotoIdx + 1);
+  };
+  window.addEventListener('keydown', onKeyDown);
+  return () => window.removeEventListener('keydown', onKeyDown);
 }

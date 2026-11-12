@@ -18,6 +18,7 @@ export const title = { es: 'Simulaciones', en: 'Simulations' };
 const HIDDEN_CLIPS = [
   'clip_2026-10-23_caminar-perfil_01',
   'clip_2026-10-23_correr-perfil_01',
+  'clip_frente-correr-01-gvhmr',
   'clip_synthetic_march_01',
   'clip_jacks-grupo-01-gvhmr',
   'clip_caminar-02-gvhmr',
@@ -61,7 +62,7 @@ export function mount(root, { api }, [clipId] = []) {
             ${robotPaneHTML('Robot')}
           </div>
           <div id="controls" class="controls">
-            <section class="control-group" aria-labelledby="ctl-play">
+            <section class="control-group" id="playback-group" aria-labelledby="ctl-play">
               <h3 id="ctl-play">${T('playback')}</h3>
               <div class="player">
                 <button id="play" class="icon-btn primary" type="button" ${A({ 'aria-label': 'pause', title: 'pause' })}>${ICONS.pause}</button>
@@ -74,7 +75,7 @@ export function mount(root, { api }, [clipId] = []) {
               </div>
               <p class="mode-note" id="physics-mode-note">${T('modeNote')}</p>
             </section>
-            <section class="control-group" aria-labelledby="ctl-world">
+            <section class="control-group" id="conditions-group" aria-labelledby="ctl-world">
               <h3 id="ctl-world">${T('conditions')}</h3>
               <div class="fields">
                 <label class="field wide">${T('robotModel')}
@@ -82,7 +83,7 @@ export function mount(root, { api }, [clipId] = []) {
                     ${ROBOT_MODELS.map(({ id, label }) => option(id, robotName(id, label), id === initRobot ? 'selected' : '')).join('')}
                   </select>
                 </label>
-                <label class="field">${T('world')}
+                <label class="field" id="world-field">${T('world')}
                   <select id="world">
                     ${WORLDS.map(({ id, title }) => option(id, worldName(id, title), id === 'plano' ? 'selected' : '')).join('')}
                   </select>
@@ -93,7 +94,7 @@ export function mount(root, { api }, [clipId] = []) {
                     ${SCENES.filter(({ id }) => id !== 'vereda').map(({ id, title }) => option(id, sceneName(id, title))).join('')}
                   </select>
                 </label>
-                <label class="field wide" id="policy-field">${T('trainedWith')}
+                <label class="field wide" id="policy-field" hidden>${T('trainedWith')}
                   <select id="policy">
                     ${LEVELS.map(({ id, label }) => option(id, levelName(id, label), id === initPolicy ? 'selected' : '')).join('')}
                     ${IMITATIONS.length ? `<optgroup ${A({ label: 'imitates' })}>${IMITATIONS.map(({ id, label }) => option(id, levelName(id, label), id === initPolicy ? 'selected' : 'disabled')).join('')}</optgroup>` : ''}
@@ -132,17 +133,6 @@ export function mount(root, { api }, [clipId] = []) {
                 <span class="t" lang="es">El robot diferencial simula el cono ultrasónico <code>HC-SR04</code> (±24°), el radar IR <code>APDS-9960 (0x9C)</code>, el cuello móvil <code>SG90</code> y colisiones sólidas en una arena de 3,4 m × 3,4 m.</span>
                 <span class="t" lang="en">The differential robot simulates the <code>HC-SR04</code> ultrasonic cone (±24°), the <code>APDS-9960 (0x9C)</code> IR radar, the <code>SG90</code> pan neck, and solid collisions inside a 3.4 m × 3.4 m arena.</span>
               </p>
-              <div class="mode" id="custom-robot-tabs" role="group" style="margin-top:8px">
-                <button type="button" data-quick-robot="luigi_lab3" aria-pressed="false">
-                  <span class="t" lang="es">Rover Luigi v1 (Sensores Fijos)</span><span class="t" lang="en">Luigi Rover v1 (Fixed Sensors)</span>
-                </button>
-                <button type="button" data-quick-robot="luigi_lab4" aria-pressed="false">
-                  <span class="t" lang="es">Rover Luigi v2 (Radar Servo SG90)</span><span class="t" lang="en">Luigi Rover v2 (SG90 Servo Radar)</span>
-                </button>
-                <button type="button" data-quick-robot="factory_cell" aria-pressed="false">
-                  <span class="t" lang="es">Celda Industrial (PLC S7-1200)</span><span class="t" lang="en">Industrial Cell (S7-1200 PLC)</span>
-                </button>
-              </div>
             </div>
             <div class="luigi-telemetry-grid">
               <div class="luigi-tel-card">
@@ -163,10 +153,19 @@ export function mount(root, { api }, [clipId] = []) {
               </div>
             </div>
             <div class="luigi-drive-box" id="factory-fault-box" hidden>
-              <span class="luigi-drive-label"><span class="t" lang="es">Prueba de Falla Mecánica (Fricción de Cinta)</span><span class="t" lang="en">Mechanical Fault Test (Conveyor Belt Slip)</span></span>
-              <button type="button" class="button" id="factory-fault-btn" style="width:100%;margin-top:6px">
-                <span class="t" lang="es">⚠️ Simular PLC ciego por timer (aplasta cajas si patina la cinta)</span><span class="t" lang="en">⚠️ Simulate blind fixed-timer PLC (crushes boxes on belt slip)</span>
-              </button>
+              <span class="luigi-drive-label"><span class="t" lang="es">Modo de Control PLC S7-1200 (PackML)</span><span class="t" lang="en">S7-1200 PLC Control Mode (PackML)</span></span>
+              <div class="luigi-drive-grid" role="group" style="grid-template-columns:1fr">
+                <button type="button" class="luigi-cmd-btn" id="factory-mode-sensor" aria-pressed="true">
+                  <span class="t" lang="es">✅ Política Tridi · Guiada por Barreras Ópticas (0 % merma)</span><span class="t" lang="en">✅ Tridi Policy · Optical Sensor-Gated (0% waste)</span>
+                </button>
+                <button type="button" class="luigi-cmd-btn" id="factory-fault-btn" aria-pressed="false">
+                  <span class="t" lang="es">⚠️ PLC Clásico · Timer Fijo (aplasta cajas si patina la cinta)</span><span class="t" lang="en">⚠️ Classic PLC · Fixed Timer (crushes boxes on belt slip)</span>
+                </button>
+              </div>
+              <p class="mode-note" id="factory-status-note">
+                <span class="t" lang="es">Modo activo: <strong>Lazo cerrado por sensores ópticos</strong> (la prensa espera confirmación física de caja antes de bajar).</span>
+                <span class="t" lang="en">Active mode: <strong>Closed-loop optical sensor gating</strong> (sealer waits for physical box confirmation before descending).</span>
+              </p>
             </div>
             <div class="luigi-drive-box" id="arduino-box">
               <span class="luigi-drive-label"><span class="t" lang="es">Control de Marcha y Política ONNX</span><span class="t" lang="en">Drive &amp; ONNX Policy Control</span></span>
@@ -195,12 +194,9 @@ export function mount(root, { api }, [clipId] = []) {
                 <span class="t" lang="en">Active mode: <strong>Autonomous 50 Hz ONNX cruise + 4-stage obstacle evasion</strong>.</span>
               </p>
             </div>
-            <div class="train-actions-row">
+            <div class="train-actions-stack">
               <button type="button" class="button primary" id="luigi-reset-arena">
-                <span class="t" lang="es">Reiniciar en centro de arena</span><span class="t" lang="en">Reset at arena center</span>
-              </button>
-              <button type="button" class="button" id="luigi-back-g1">
-                <span class="t" lang="es">Volver a Unitree G1 (Humanoide)</span><span class="t" lang="en">Switch back to Unitree G1</span>
+                <span class="t" lang="es">Reiniciar rover en centro de arena</span><span class="t" lang="en">Reset rover at arena center</span>
               </button>
             </div>
           </section>

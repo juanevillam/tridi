@@ -8,7 +8,7 @@ import { atmosphere, canvasTexture, disposeGroup, floor, hideViewerFloor, inWalk
 import { windNow } from './currents.js';
 
 const BLADES = SMALL_SCREEN ? 9000 : 24000;
-const GRASS_RADIUS_M = 22;
+const GRASS_RADIUS_M = 11.5;
 // How far a blade's tip leans per m/s of wind, as a share of its height, and the most it leans.
 const LEAN_PER_MPS = 0.035;
 const MAX_LEAN = 0.55;
@@ -182,10 +182,10 @@ export function dressMeadow(view, wind = () => windNow(view)) {
 
   const white = new THREE.MeshStandardMaterial({ color: 0xeef0f2, roughness: 0.6 });
   const turbines = [];
-  // All around and within the camera's 100 m reach; at half size the rotors sit inside the frame.
-  for (const [x, z, s] of [[-55, -62, 0.5], [-14, -82, 0.45], [32, -72, 0.55], [72, -28, 0.5], [66, 46, 0.45], [-76, 18, 0.5], [-30, 76, 0.55], [26, 82, 0.45]]) {
+  // Compact wind-field ring around the test pad so turbines and wind flags sit close in frame.
+  for (const [x, z, s] of [[-18, -22, 0.28], [-6, -26, 0.25], [14, -22, 0.3], [22, -9, 0.26], [19, 15, 0.25], [-22, 8, 0.26], [-11, 22, 0.28], [9, 24, 0.25]]) {
     const t = turbine(white);
-    t.group.position.set(x, -2, z);
+    t.group.position.set(x, -1, z);
     t.group.scale.setScalar(s);
     t.rotor.rotation.z = rand() * Math.PI;
     group.add(t.group);
@@ -193,7 +193,7 @@ export function dressMeadow(view, wind = () => windNow(view)) {
   }
   const flagUniforms = { uTime: uniforms.uTime, uLean: { value: 0 } };
   const banner = flag(flagUniforms);
-  banner.group.position.set(2.6, 0, -3.5);
+  banner.group.position.set(1.75, 0, -2.2);
   group.add(banner.group);
 
   let lean = 0;

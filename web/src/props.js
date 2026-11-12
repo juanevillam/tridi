@@ -30,6 +30,8 @@ const MODELS = {
 const SURFACES = {
   cordon: { color: '#5b5852', roughness: 0.95 },
   stones: { color: '#3a3833', roughness: 1 },
+  pared: { color: '#2b2d34', roughness: 0.88, metalness: 0.06 },
+  palet: { color: '#8a6236', roughness: 0.85, metalness: 0.02 },
   taza: { color: '#e85d3c', roughness: 0.28, metalness: 0.05 },
   agua: { color: '#38bdf8', roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.88 },
 };

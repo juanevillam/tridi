@@ -6,10 +6,10 @@ import * as THREE from 'three';
 import { Reflector } from 'three/addons/objects/Reflector.js';
 import { atmosphere, canvasTexture, disposeGroup, floor, hideViewerFloor, random, SMALL_SCREEN } from './common.js';
 
-const TILE_M = 0.6;
+const TILE_M = 0.5;
 const TILE_PERIOD_M = 4 * TILE_M; // 4 x 4 tiles per texture
-const MOP_PERIOD_M = 8; // the mop strokes repeat every 8 m: long enough not to see the pattern
-const HALL = { halfWidth: 7, height: 5.2, near: 14, far: -46 }; // the hall's walls, along the walk (-z)
+const MOP_PERIOD_M = 5; // compact mop strokes around the test corridor
+const HALL = { halfWidth: 3.6, height: 3.6, near: 4.8, far: -9.2 }; // compact, detailed lobby hall along the walk (-z)
 
 function drawTiles(ctx, size) {
   const rand = random(3);
@@ -197,10 +197,10 @@ function hall() {
     group.add(wall);
     // Tall windows on the left wall, glowing with the day outside.
     if (side < 0) {
-      for (let z = HALL.near - 6; z > HALL.far + 4; z -= 6) {
-        const window = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 3.4), new THREE.MeshBasicMaterial({ color: 0xdbe9f5 }));
+      for (let z = HALL.near - 2.2; z > HALL.far + 1.8; z -= 2.8) {
+        const window = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 2.2), new THREE.MeshBasicMaterial({ color: 0xdbe9f5 }));
         window.rotation.y = Math.PI / 2;
-        window.position.set(-HALL.halfWidth + 0.02, 2.3, z);
+        window.position.set(-HALL.halfWidth + 0.02, 1.75, z);
         group.add(window);
       }
     }
@@ -216,17 +216,17 @@ function hall() {
   ceiling.position.set(0, HALL.height, midZ);
   group.add(ceiling);
   const strip = new THREE.MeshBasicMaterial({ color: 0xfff6e6 });
-  for (let z = HALL.near - 3; z > HALL.far; z -= 4) {
-    for (const x of [-3.2, 0, 3.2]) {
-      const light = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.04, 2.2), strip);
+  for (let z = HALL.near - 1.5; z > HALL.far; z -= 2.2) {
+    for (const x of [-1.8, 0, 1.8]) {
+      const light = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.04, 1.3), strip);
       light.position.set(x, HALL.height - 0.03, z);
       group.add(light);
     }
   }
   const column = new THREE.MeshStandardMaterial({ color: 0xcfc8bc, roughness: 0.55 });
-  for (let z = HALL.near - 4; z > HALL.far + 2; z -= 5) {
-    for (const x of [-4.2, 4.2]) {
-      const c = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, HALL.height, 24), column);
+  for (let z = HALL.near - 1.8; z > HALL.far + 1.2; z -= 2.6) {
+    for (const x of [-2.45, 2.45]) {
+      const c = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, HALL.height, 24), column);
       c.position.set(x, HALL.height / 2, z);
       c.castShadow = c.receiveShadow = true;
       group.add(c);

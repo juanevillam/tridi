@@ -120,7 +120,7 @@ export function dressRocks(view) {
     view,
     {
       sky: { elevation: 14, azimuth: 235, turbidity: 5, rayleigh: 1.9, mieCoefficient: 0.006, mieDirectionalG: 0.84 },
-      fog: { color: 0xa8957f, near: 18, far: 95 },
+      fog: { color: 0xa8957f, near: 10, far: 38 },
       exposure: 0.85,
       envIntensity: 0.35,
       sunColor: 0xffd9b0,
@@ -173,9 +173,9 @@ export function dressRocks(view) {
     return { x, z, y: -0.1 * s, s, h: 0.6 + rand() * 0.6, ry: rand() * Math.PI * 2 };
   };
   shapes.forEach((shape, i) => {
-    scatter(group, shape, rockMaterial, 26, ring(2.6, 14, [0.06, 0.45], 0.3), rand, { shadows: true });
-    scatter(group, shape, rockMaterial, 9, ring(9, 30, [0.8, 2.6], 1), rand);
-    scatter(group, shape, rockMaterial, 5 + (i % 2), ring(38, 80, [7, 18], 0), rand);
+    scatter(group, shape, rockMaterial, 34, ring(1.8, 7.5, [0.06, 0.38], 0.24), rand, { shadows: true });
+    scatter(group, shape, rockMaterial, 14, ring(4.2, 13.5, [0.45, 1.45], 0.55), rand, { shadows: true });
+    scatter(group, shape, rockMaterial, 7 + (i % 2), ring(14, 28, [2.4, 6.2], 0), rand);
   });
 
   return {
