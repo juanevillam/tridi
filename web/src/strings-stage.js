@@ -68,7 +68,7 @@ export const { T, t, A, L, X, S } = dict({
   world: { es: 'Mundo', en: 'World' },
   place: { es: 'Lugar', en: 'Place' },
   noFurniture: { es: 'Sin muebles', en: 'No furniture' },
-  trainedWith: { es: 'Robot entrenado con', en: 'Robot trained with' },
+  trainedWith: { es: 'Política activa (cerebro ONNX)', en: 'Active policy (ONNX brain)' },
   imitates: { es: 'Imita este video', en: 'Imitates this video' },
   objectsHead: { es: 'Objetos, agarre y líquidos (gravedad y fricción)', en: 'Objects, grip and liquids (gravity and friction)' },
   holdDry: { es: 'Sostener taza con agua', en: 'Hold cup with water' },

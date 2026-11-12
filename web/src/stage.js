@@ -198,12 +198,14 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     const custom = isCustomRobot();
     const isRover = robotModel === 'luigi_lab3' || robotModel === 'luigi_lab4';
     const isCell = robotModel === 'factory_cell';
+    const currentPlace = $('place')?.value ?? '';
+    const pushBtn = root.querySelector('.push');
+    if (pushBtn) pushBtn.hidden = custom || !physics;
     if ($('arduino-box')) $('arduino-box').hidden = !isRover;
     if ($('factory-fault-box')) $('factory-fault-box').hidden = !isCell;
-    if ($('grasp-box')) $('grasp-box').hidden = custom;
+    if ($('grasp-box')) $('grasp-box').hidden = custom || currentPlace !== 'cocina';
     if ($('place-field')) $('place-field').hidden = custom;
     if ($('policy-field')) $('policy-field').hidden = custom;
-    if ($('show')) $('show').hidden = custom;
     if ($('physics-mode-group')) $('physics-mode-group').hidden = custom;
     if ($('physics-mode-note')) $('physics-mode-note').hidden = custom;
     if ($('luigi-sim-panel')) $('luigi-sim-panel').hidden = !custom;
@@ -211,9 +213,8 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     if ($('gallery')) $('gallery').hidden = custom;
     const tBox = root.querySelector('.train-box');
     if (tBox) tBox.hidden = custom || !current;
-    if (custom && $('stage')) {
-      $('stage').dataset.show = 'robot';
-      if ($('show')) $('show').value = 'robot';
+    if ($('stage')) {
+      $('stage').dataset.show = custom ? 'robot' : 'both';
     }
     lastDodgeStage = -1;
     root.querySelectorAll('[data-quick-robot]').forEach((btn) => {
@@ -221,27 +222,27 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     });
     if (robotModel === 'luigi_lab4') {
       if ($('luigi-sim-badge')) {
-        $('luigi-sim-badge').innerHTML = '<span class="t" lang="es">Lab IV · Radar Servo SG90 Activo (50 Hz)</span><span class="t" lang="en">Lab IV · Active SG90 Servo Radar (50 Hz)</span>';
+        $('luigi-sim-badge').innerHTML = '<span class="t" lang="es">Caso Luigi · Rover v2 con Radar Servo SG90 (50 Hz)</span><span class="t" lang="en">Luigi Case · Rover v2 with SG90 Servo Radar (50 Hz)</span>';
       }
       if ($('luigi-sim-title')) {
-        $('luigi-sim-title').innerHTML = '<span class="t" lang="es">Luigi Lab 4 · Cuello Móvil SG90 + HC-SR04</span><span class="t" lang="en">Luigi Lab 4 · SG90 Pan Neck + HC-SR04</span>';
+        $('luigi-sim-title').innerHTML = '<span class="t" lang="es">Rover de Luigi (v2) · Torreta Móvil SG90 + HC-SR04</span><span class="t" lang="en">Luigi’s Rover (v2) · SG90 Pan Turret + HC-SR04</span>';
       }
       if ($('luigi-sim-desc')) {
-        $('luigi-sim-desc').innerHTML = '<span class="t" lang="es">Chasis naranja extendido (180 mm, 7 STLs) con torreta móvil <code>7_cabeza_sensor_servo.stl</code> sobre servo <code>SG90</code> (±63°): barre izquierda-centro-derecha en movimiento continuo a 50 Hz sin frenar el robot.</span><span class="t" lang="en">Extended orange chassis (180 mm, 7 STLs) with pan turret <code>7_cabeza_sensor_servo.stl</code> on an <code>SG90</code> servo (±63°): sweeps left-center-right while driving at 50 Hz without stopping.</span>';
+        $('luigi-sim-desc').innerHTML = '<span class="t" lang="es">Segunda versión del robot móvil de Luigi D’Aquaro (chasis naranja de 180 mm, 7 piezas STL) con torreta móvil sobre servo <code>SG90</code> (±63°): barre izquierda-centro-derecha en movimiento continuo a 50 Hz sin frenar el robot.</span><span class="t" lang="en">Second version of Luigi D’Aquaro’s mobile rover (180 mm orange chassis, 7 STL parts) with pan turret on an <code>SG90</code> servo (±63°): sweeps left-center-right while driving at 50 Hz without stopping.</span>';
       }
       if ($('sim-label-1')) $('sim-label-1').textContent = 'HC-SR04 en Torreta (D7 / D4)';
       if ($('sim-label-2')) $('sim-label-2').textContent = 'Cuello Servo SG90 (Pin D13)';
       if ($('sim-label-3')) $('sim-label-3').innerHTML = '<span class="t" lang="es">Puente H L298N (ENA D5 / ENB D6)</span><span class="t" lang="en">L298N H-Bridge (ENA D5 / ENB D6)</span>';
-      if ($('sim-label-4')) $('sim-label-4').innerHTML = '<span class="t" lang="es">Evasión continua (Lab 4)</span><span class="t" lang="en">Continuous dodge (Lab 4)</span>';
+      if ($('sim-label-4')) $('sim-label-4').innerHTML = '<span class="t" lang="es">Evasión continua (Rover v2)</span><span class="t" lang="en">Continuous dodge (Rover v2)</span>';
     } else if (robotModel === 'luigi_lab3') {
       if ($('luigi-sim-badge')) {
-        $('luigi-sim-badge').innerHTML = '<span class="t" lang="es">Lab III · Sim-to-Real Físico (50 Hz)</span><span class="t" lang="en">Lab III · Physical Sim-to-Real (50 Hz)</span>';
+        $('luigi-sim-badge').innerHTML = '<span class="t" lang="es">Caso Luigi · Rover v1 Sim-to-Real Físico (50 Hz)</span><span class="t" lang="en">Luigi Case · Rover v1 Physical Sim-to-Real (50 Hz)</span>';
       }
       if ($('luigi-sim-title')) {
-        $('luigi-sim-title').innerHTML = '<span class="t" lang="es">Luigi Lab 3 · HC-SR04 Fijo + Radar IR APDS-9960</span><span class="t" lang="en">Luigi Lab 3 · Fixed HC-SR04 + APDS-9960 IR Radar</span>';
+        $('luigi-sim-title').innerHTML = '<span class="t" lang="es">Rover de Luigi (v1) · HC-SR04 Fijo + Radar IR APDS-9960</span><span class="t" lang="en">Luigi’s Rover (v1) · Fixed HC-SR04 + APDS-9960 IR Radar</span>';
       }
       if ($('luigi-sim-desc')) {
-        $('luigi-sim-desc').innerHTML = '<span class="t" lang="es">Chasis negro mate (150 mm, 6 STLs) con ultrasónico frontal fijo <code>HC-SR04</code>, radar infrarrojo <code>APDS-9960 (0x9E)</code> sobre soporte superior y arnés Dupont completo.</span><span class="t" lang="en">Matte-black chassis (150 mm, 6 STLs) with fixed front <code>HC-SR04</code>, overhead <code>APDS-9960 (0x9E)</code> IR radar, and full Dupont wire harness.</span>';
+        $('luigi-sim-desc').innerHTML = '<span class="t" lang="es">Primera versión del robot físico de Luigi D’Aquaro (chasis negro de 150 mm, 6 piezas STL) con ultrasónico frontal fijo <code>HC-SR04</code>, radar infrarrojo <code>APDS-9960 (0x9E)</code> sobre soporte superior y arnés Dupont completo.</span><span class="t" lang="en">First version of Luigi D’Aquaro’s physical rover (150 mm matte-black chassis, 6 STL parts) with fixed front <code>HC-SR04</code>, overhead <code>APDS-9960 (0x9E)</code> IR radar, and full Dupont wire harness.</span>';
       }
       if ($('sim-label-1')) $('sim-label-1').textContent = 'HC-SR04 (Trig D9 / Echo A1)';
       if ($('sim-label-2')) $('sim-label-2').textContent = 'APDS-9960 IR (Reg 0x9C)';
@@ -249,7 +250,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       if ($('sim-label-4')) $('sim-label-4').innerHTML = '<span class="t" lang="es">Estado de evasión (4 etapas)</span><span class="t" lang="en">Dodge state (4 stages)</span>';
     } else if (robotModel === 'factory_cell') {
       if ($('luigi-sim-badge')) {
-        $('luigi-sim-badge').innerHTML = '<span class="t" lang="es">Automatización Industrial · PLC S7-1200</span><span class="t" lang="en">Industrial Automation · S7-1200 PLC</span>';
+        $('luigi-sim-badge').innerHTML = '<span class="t" lang="es">Automatización Industrial · PLC S7-1200 / PackML</span><span class="t" lang="en">Industrial Automation · S7-1200 PLC / PackML</span>';
       }
       if ($('luigi-sim-title')) {
         $('luigi-sim-title').innerHTML = '<span class="t" lang="es">Celda de Empaquetado · Cinta + Pistón + Prensa</span><span class="t" lang="en">Packaging Cell · Conveyor + Pusher + Sealer</span>';
@@ -420,6 +421,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       $('place').disabled = false;
       root.querySelector('.push').disabled = !robot.view; // never before the robot is there
     }
+    syncRobotDependentUI();
     copying = false;
     resume();
   }
@@ -449,7 +451,6 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     };
   });
 
-  $('show').onchange = (event) => ($('stage').dataset.show = event.target.value);
   $('policy').onchange = (event) => loadLevel(event.target.value);
   $('world').onchange = (event) => setWorld(event.target.value);
   if ($('robot-model')) {
@@ -462,15 +463,13 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
           if (opt) opt.disabled = false;
           $('policy').value = customIm.id;
           physics = true;
-          if (isCustomRobot() && $('show')) {
-            $('show').value = 'robot';
+          if (isCustomRobot() && $('stage')) {
             $('stage').dataset.show = 'robot';
           }
           await loadLevel(customIm.id);
         }
       } else {
-        if ($('show') && $('show').value === 'robot') {
-          $('show').value = 'both';
+        if ($('stage')) {
           $('stage').dataset.show = 'both';
         }
         const g1Im = imitationFor(current?.clip, 'unitree_g1');
@@ -737,6 +736,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     button.onclick = async () => {
       physics = button.dataset.physics === 'on';
       root.querySelectorAll('[data-physics]').forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
+      syncRobotDependentUI();
       if (!robot.view) return;
       if (physics) {
         robot.view.stop(); // the puppet stands back up, on its own motors

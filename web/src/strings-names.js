@@ -13,18 +13,18 @@ const SCENES = {
   vereda: { es: 'Vereda', en: 'Sidewalk' },
 };
 const ROBOTS = {
-  unitree_g1: { es: 'Unitree G1 (29 motores + manos 5 dedos)', en: 'Unitree G1 (29 motors + 5-finger hands)' },
+  unitree_g1: { es: 'Humanoide Unitree G1 (29 motores + manos 5 dedos)', en: 'Unitree G1 Humanoid (29 motors + 5-finger hands)' },
   luigi_lab3: {
-    es: 'Robot Explorador Lab III — Luigi (Arduino UNO + HC-SR04 + APDS-9960)',
-    en: 'Lab III Explorer Robot — Luigi (Arduino UNO + HC-SR04 + APDS-9960)',
+    es: 'Rover Luigi v1 — Sensores Fijos (Arduino UNO + HC-SR04 + APDS-9960)',
+    en: 'Luigi Rover v1 — Fixed Sensors (Arduino UNO + HC-SR04 + APDS-9960)',
   },
   luigi_lab4: {
-    es: 'Robot Explorador Lab IV — Luigi (Arduino UNO + Radar Servo SG90 + HC-SR04)',
-    en: 'Lab IV Explorer Robot — Luigi (Arduino UNO + SG90 Servo Radar + HC-SR04)',
+    es: 'Rover Luigi v2 — Radar Servo Móvil (Arduino UNO + SG90 + HC-SR04)',
+    en: 'Luigi Rover v2 — Pan Servo Radar (Arduino UNO + SG90 + HC-SR04)',
   },
   factory_cell: {
-    es: 'Celda Industrial — Empaquetadora Cronometrada (PLC S7-1200 + Cinta + Pistón + Prensa)',
-    en: 'Industrial Cell — Timed Packaging Line (S7-1200 PLC + Conveyor + Pusher + Sealer)',
+    es: 'Celda Industrial — Empaquetadora Cronometrada (PLC S7-1200 / PackML)',
+    en: 'Industrial Cell — Timed Packaging Line (S7-1200 PLC / PackML)',
   },
   unitree_h1: { es: 'Unitree H1 (19 motores, open-source)', en: 'Unitree H1 (19 motors, open-source)' },
 };

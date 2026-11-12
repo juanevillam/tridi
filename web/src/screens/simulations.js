@@ -67,11 +67,6 @@ export function mount(root, { api }, [clipId] = []) {
                 <button id="play" class="icon-btn primary" type="button" ${A({ 'aria-label': 'pause', title: 'pause' })}>${ICONS.pause}</button>
                 <button id="reset" class="icon-btn" type="button" ${A({ 'aria-label': 'restart', title: 'restart' })}>${ICONS.restart}</button>
                 <button id="speed" class="icon-btn speed" type="button" ${A({ 'aria-label': 'speed', title: 'speedTitle' })}>1×</button>
-                <select id="show" ${A({ 'aria-label': 'what' })}>
-                  <option value="both" ${isCustomRobotLink ? '' : 'selected'} ${X('both')}>${t('both')}</option>
-                  <option value="human" ${X('onlyHuman')}>${t('onlyHuman')}</option>
-                  <option value="robot" ${isCustomRobotLink ? 'selected' : ''} ${X('onlyRobot')}>${t('onlyRobot')}</option>
-                </select>
               </div>
               <div class="mode" id="physics-mode-group" role="group" ${A({ 'aria-label': 'how' })}>
                 <button type="button" data-physics="on" aria-pressed="true">${T('physicsOn')}</button>
@@ -95,7 +90,7 @@ export function mount(root, { api }, [clipId] = []) {
                 <label class="field" id="place-field">${T('place')}
                   <select id="place">
                     <option value="" selected ${X('noFurniture')}>${t('noFurniture')}</option>
-                    ${SCENES.map(({ id, title }) => option(id, sceneName(id, title))).join('')}
+                    ${SCENES.filter(({ id }) => id !== 'vereda').map(({ id, title }) => option(id, sceneName(id, title))).join('')}
                   </select>
                 </label>
                 <label class="field wide" id="policy-field">${T('trainedWith')}
@@ -105,7 +100,7 @@ export function mount(root, { api }, [clipId] = []) {
                   </select>
                 </label>
               </div>
-              <div class="grasp-box" id="grasp-box">
+              <div class="grasp-box" id="grasp-box" hidden>
                 <p class="mode-note">${T('objectsHead')}</p>
                 <div class="mode grasp-actions" role="group" ${A({ 'aria-label': 'objectsHead' })}>
                   <button type="button" id="hold-dry" aria-pressed="false">${T('holdDry')}</button>
@@ -139,13 +134,13 @@ export function mount(root, { api }, [clipId] = []) {
               </p>
               <div class="mode" id="custom-robot-tabs" role="group" style="margin-top:8px">
                 <button type="button" data-quick-robot="luigi_lab3" aria-pressed="false">
-                  <span class="t" lang="es">Lab 3 (Chasis Negro)</span><span class="t" lang="en">Lab 3 (Black Chassis)</span>
+                  <span class="t" lang="es">Rover Luigi v1 (Sensores Fijos)</span><span class="t" lang="en">Luigi Rover v1 (Fixed Sensors)</span>
                 </button>
                 <button type="button" data-quick-robot="luigi_lab4" aria-pressed="false">
-                  <span class="t" lang="es">Lab 4 (Radar SG90)</span><span class="t" lang="en">Lab 4 (SG90 Radar)</span>
+                  <span class="t" lang="es">Rover Luigi v2 (Radar Servo SG90)</span><span class="t" lang="en">Luigi Rover v2 (SG90 Servo Radar)</span>
                 </button>
                 <button type="button" data-quick-robot="factory_cell" aria-pressed="false">
-                  <span class="t" lang="es">Celda Industrial</span><span class="t" lang="en">Factory Cell</span>
+                  <span class="t" lang="es">Celda Industrial (PLC S7-1200)</span><span class="t" lang="en">Industrial Cell (S7-1200 PLC)</span>
                 </button>
               </div>
             </div>

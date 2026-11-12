@@ -448,10 +448,10 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
         const reflex = Math.min(0.22, Math.max(0.05, (1 - upright - 0.04) / 0.25));
         for (let i = 0; i < nu; i++) {
           const refJ = next.q[7 + i];
-          const w = i >= 12 && i <= 14 ? 0.03 : reflex;
+          const w = i >= 12 && i <= 14 ? 0.01 : reflex;
           // Counteract gravity droop on G1 waist_pitch_joint (index 14) so the torso stays vertical
-          const uprightBias = i === 14 && nu === 29 ? -0.06 : 0;
-          const target = refJ + uprightBias + w * (ctrl[i] - refJ);
+          const uprightBias = i === 14 && nu === 29 ? -0.10 : 0;
+          const target = i === 14 && nu === 29 ? Math.min(0.05, refJ) + uprightBias : refJ + w * (ctrl[i] - refJ);
           data.ctrl[i] = 0.55 * target + 0.45 * data.ctrl[i];
         }
       } else {
