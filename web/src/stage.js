@@ -17,7 +17,7 @@ import { SCENES, WORLDS } from 'tridi-physics';
 import { savedMotion } from './motions.js';
 import { FINAL_LEVEL, IMITATIONS, imitationOf, policyUrls } from './policies.js';
 import { dressWorld } from './looks/index.js';
-import { dressPlace, setFloor, syncSitChair } from './props.js';
+import { dressPlace, setFloor, syncSitChair, syncWashSink } from './props.js';
 import { mountRobotPane } from './robot-pane.js';
 import { SkeletonView } from './skeleton.js';
 import { createVideoOverlay } from './video-overlay.js';
@@ -201,8 +201,6 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     const currentPlace = $('place')?.value ?? '';
     const pushBtn = root.querySelector('.push');
     if (pushBtn) pushBtn.hidden = custom || !physics;
-    if ($('playback-group')) $('playback-group').hidden = custom;
-    $('controls')?.classList.toggle('custom-robot', custom);
     if ($('arduino-box')) $('arduino-box').hidden = !isRover;
     if ($('factory-fault-box')) $('factory-fault-box').hidden = !isCell;
     if ($('grasp-box')) $('grasp-box').hidden = custom || currentPlace !== 'cocina';
@@ -346,6 +344,12 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
         view.viewer.controls.target.set(px, 0.09, -py);
         view.viewer.camera.position.set(px + 1.05, 0.72, -py - 0.95);
         view.viewer.controls.update();
+      } else if (activeClipId === 'clip_lavar-04-gvhmr') {
+        view.viewer.targetHeight = 0.78;
+        view.viewer.controls.minDistance = 0.65;
+        view.viewer.controls.target.set(px, 0.78, -py + 0.18);
+        view.viewer.camera.position.set(px + 2.1, 1.55, -py + 1.85);
+        view.viewer.controls.update();
       } else {
         view.viewer.targetHeight = 0.75;
         view.viewer.controls.minDistance = 0.65;
@@ -359,6 +363,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
         if (dx + dy > 0.4) view._streetAlongX = dx > dy;
       }
       syncSitChair(view, !isCustom && activeClipId === 'clip_sentarse-02-gvhmr');
+      syncWashSink(view, !isCustom && activeClipId === 'clip_lavar-04-gvhmr');
       level = id;
       loadedClipId = imitation ? (activeClipId ?? imitation.clip) : null;
       robotModel = imitation?.robot ?? 'unitree_g1';
@@ -394,6 +399,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       await view.setWorld(WORLDS.find((world) => world.id === id));
       await dressPlace(view); // a new world rebuilds the drawn geoms: dress the place again
       syncSitChair(view, current?.clip?.id === 'clip_sentarse-02-gvhmr');
+      syncWashSink(view, current?.clip?.id === 'clip_lavar-04-gvhmr');
       refreshLook();
     } catch (error) {
       console.error(error);
@@ -419,6 +425,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       await view.setScene(SCENES.find((scene) => scene.id === id) ?? null);
       await dressPlace(view); // real models over the place's boxes and cylinders
       syncSitChair(view, current?.clip?.id === 'clip_sentarse-02-gvhmr');
+      syncWashSink(view, current?.clip?.id === 'clip_lavar-04-gvhmr');
       setFloor(view, id); // and its floor: tiles, concrete or sidewalk
       refreshLook();
     } catch (error) {
@@ -443,7 +450,15 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     }
     refreshLook();
     await loadLevel(FINAL_LEVEL); // standing with its policy: physics from the first frame
-    if (current) await physicsFor(current.clip);
+    if (current) {
+      const targetPlace = current.clip.id === 'clip_lavar-04-gvhmr' ? 'cocina' : '';
+      if ($('place') && targetPlace === 'cocina' && $('place').value !== 'cocina') {
+        $('place').value = 'cocina';
+        autoPlaced = true;
+        await setPlace('cocina');
+      }
+      await physicsFor(current.clip);
+    }
     copyCurrent(); // the puppet reference, ready for the "sin física" mode
   });
 
@@ -725,7 +740,8 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
   $('speed').onclick = () => {
     speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length];
     robot.view?.setSpeed(speed);
-    $('speed').innerHTML = `${decimal(speed, speed === 1 ? 0 : speed === 0.5 ? 1 : 2)}×`;
+    const digits = speed === 1 ? 0 : speed === 0.5 ? 1 : 2;
+    $('speed').innerHTML = LANGS.map((l) => `<span class="t" lang="${l}">${fmt(speed, digits)(l)}×</span>`).join('');
   };
   // The physics switch only means something for a clip a policy learned: elsewhere it says so.
   function showMode(clip) {
@@ -826,17 +842,22 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       if (robot.view) {
         robot.view._streetAlongX = clip.id.includes('frente') || clip.id === 'clip_caminar-01-gvhmr';
         syncSitChair(robot.view, clip.id === 'clip_sentarse-02-gvhmr');
-      }
-      const targetPlace = clip.id === 'clip_lavar-04-gvhmr' ? 'cocina' : '';
-      if (robot.view && $('place') && (targetPlace === 'cocina' || autoPlaced) && $('place').value !== targetPlace) {
-        $('place').value = targetPlace;
-        autoPlaced = targetPlace !== '';
-        setPlace(targetPlace);
+        syncWashSink(robot.view, clip.id === 'clip_lavar-04-gvhmr');
       }
       offerImitations(clip);
       showMode(clip);
       overlay.show(clip.id).catch(console.error);
       motion = motions.get(clip.id) ?? null;
+      const targetPlace = clip.id === 'clip_lavar-04-gvhmr' ? 'cocina' : '';
+      if (robot.view && $('place') && (targetPlace === 'cocina' || autoPlaced) && $('place').value !== targetPlace) {
+        $('place').value = targetPlace;
+        autoPlaced = targetPlace !== '';
+        setPlace(targetPlace).then(() => {
+          physicsFor(clip);
+          if (!motion) copyCurrent();
+        });
+        return;
+      }
       physicsFor(clip);
       if (!motion) copyCurrent();
     },

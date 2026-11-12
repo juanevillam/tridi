@@ -185,9 +185,9 @@ export function setFloor(view, id) {
 }
 
 /**
- * Places a 3D bench right behind the robot's legs (`x = -0.30, y = 0, z = 0.215` in MuJoCo z-up
- * coordinates) when viewing a sitting clip (`clip_sentarse-02-gvhmr`), so the robot sits on a solid
- * physical seat instead of floating in empty air.
+ * Places a 3D chair (`furniture/chair.glb`) with a full backrest right behind the robot's legs
+ * when viewing a sitting clip (`clip_sentarse-02-gvhmr`), so the robot sits on a real chair seat
+ * with its backrest behind the torso instead of floating in empty air.
  */
 export async function syncSitChair(view, show) {
   if (!view?.viewer?.world) return;
@@ -199,15 +199,82 @@ export async function syncSitChair(view, show) {
   }
   if (existing) return;
   try {
-    const template = await loadModel('furniture/bench.glb');
+    const template = await loadModel('furniture/chair.glb');
     if (!view?.viewer?.world || world.getObjectByName('tridi-sit-bench')) return;
     const copy = template.clone();
     copy.name = 'tridi-sit-bench';
     const s = template.userData.size;
-    // Size: 0.40 m deep (x), 0.92 m wide (y), 0.43 m tall (z, matching sitting thigh height ~0.43 m)
-    copy.scale.set(0.40 / s.x, 0.92 / s.y, 0.43 / s.z);
-    copy.position.set(-0.31, 0, 0.215);
+    // In chair.glb (after loadModel's z-up turn), the backrest is at +y and seat height is 0.511 of total z.
+    // Rotating +90 deg around Z puts the backrest at -x (behind the robot) and seat at z = 0.43 m.
+    copy.scale.set(0.52 / s.x, 0.50 / s.y, 0.84 / s.z);
+    copy.rotation.z = Math.PI / 2;
+    copy.position.set(-0.25, -0.03, 0.42);
     world.add(copy);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+/**
+ * Places a 3D kitchen sink counter (`furniture/kitchenCabinet.glb` + stainless basin, faucet, and dishes)
+ * directly in front of the robot's hands when viewing `clip_lavar-04-gvhmr` ("Washing dishes").
+ */
+export async function syncWashSink(view, show) {
+  if (!view?.viewer?.world) return;
+  const world = view.viewer.world;
+  const existing = world.getObjectByName('tridi-wash-sink');
+  if (!show) {
+    if (existing) world.remove(existing);
+    return;
+  }
+  if (existing) return;
+  try {
+    const template = await loadModel('furniture/kitchenCabinet.glb');
+    if (!view?.viewer?.world || world.getObjectByName('tridi-wash-sink')) return;
+    const group = new THREE.Group();
+    group.name = 'tridi-wash-sink';
+
+    // Two tiled kitchen cabinet units forming a 1.05 m wide counter in front of the robot (which faces -y)
+    const s = template.userData.size;
+    for (const dx of [-0.26, 0.26]) {
+      const cab = template.clone();
+      cab.scale.set(0.52 / s.x, 0.48 / s.y, 0.84 / s.z);
+      cab.position.set(dx, 0, 0.42);
+      group.add(cab);
+    }
+
+    // Stainless steel sink rim & soapy water basin on top of the counter (z = 0.84..0.88 m)
+    const steelMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.65, roughness: 0.25 });
+    const basinRim = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.36, 0.03), steelMat);
+    basinRim.position.set(0, 0.02, 0.855);
+    const waterMat = new THREE.MeshStandardMaterial({ color: 0x7dd3fc, roughness: 0.12, metalness: 0.05, transparent: true, opacity: 0.85 });
+    const water = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.30, 0.02), waterMat);
+    water.position.set(0, 0.02, 0.865);
+
+    // Gooseneck faucet at the back of the sink
+    const faucetPost = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.016, 0.22, 12), steelMat);
+    faucetPost.rotation.x = Math.PI / 2;
+    faucetPost.position.set(0, -0.14, 0.96);
+    const faucetSpout = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.14, 12), steelMat);
+    faucetSpout.position.set(0, -0.08, 1.05);
+
+    // Ceramic plates and mug in the scrubbing zone right under the robot's hands
+    const plateMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2 });
+    const plate1 = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.08, 0.022, 20), plateMat);
+    plate1.rotation.x = Math.PI / 2 - 0.35;
+    plate1.position.set(-0.02, 0.08, 0.92);
+    const plate2 = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.08, 0.022, 20), plateMat);
+    plate2.rotation.x = Math.PI / 2;
+    plate2.position.set(0.32, 0.02, 0.86);
+    const mugMat = new THREE.MeshStandardMaterial({ color: 0xe85d3c, roughness: 0.28 });
+    const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.04, 0.095, 16), mugMat);
+    mug.rotation.x = Math.PI / 2;
+    mug.position.set(-0.34, 0.04, 0.89);
+
+    group.add(basinRim, water, faucetPost, faucetSpout, plate1, plate2, mug);
+    // Robot stands at (0, 0) facing -y with hands at (-0.05, -0.23, 0.96)
+    group.position.set(-0.05, -0.42, 0);
+    world.add(group);
   } catch (err) {
     console.error(err);
   }

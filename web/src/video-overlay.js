@@ -12,8 +12,11 @@ export const VIDEOS = {
   'clip_jacks-01-gvhmr': { video: 'media/clips/clip_jacks-01-gvhmr.mp4', pip: true },
   'clip_bailar-01-gvhmr': { video: 'media/clips/clip_bailar-01-gvhmr.mp4', pip: true },
   'clip_sentarse-02-gvhmr': { video: 'media/clips/clip_sentarse-02-gvhmr.mp4', pip: true },
+  'clip_caminar-01-gvhmr': { video: 'media/clips/clip_caminar-01-gvhmr.mp4', pip: true },
+  'clip_bailar-grupo-02-gvhmr': { video: 'media/clips/clip_bailar-grupo-02-gvhmr.mp4', pip: true },
   'clip_saludar-02-gvhmr': { video: 'media/clips/clip_saludar-02-gvhmr.mp4', pip: true },
   'clip_dedos-01-gvhmr': { video: 'media/clips/clip_dedos-01-gvhmr.mp4', pip: true },
+  'clip_lavar-04-gvhmr': { video: 'media/clips/clip_lavar-04-gvhmr.mp4', pip: true },
 };
 
 // The bones to draw, as MediaPipe Pose indices: shoulders, arms, torso, hips, legs and feet.

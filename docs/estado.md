@@ -28,7 +28,7 @@
   - **`J-4` (`training/luigi_lab4_env.py`):** Política `luigi-lab4.onnx` (`2.353 bytes`) que coordina las 2 ruedas + el barrido activo del cuello servo `SG90` en movimiento, y caso físico real `luigi_lab3` documentado en [`caso-luigi-sim2real.md`](caso-luigi-sim2real.md).
 - **Producción en `trytridi.com` y Pulido Web (`J-1` ✅):**
   - Despliegue continuo en Cloudflare Pages (`.github/workflows/deploy.yml`, seguridad DNS/HSTS/CSP en [`infra-and-security.md`](infra-and-security.md)).
-  - `J-1` completado en `web/` y `physics/`: landing, `#/milestones`, `#/simulations` (controles contextualizados por robot y mundo, nombres `Rover Luigi v1/v2` y `Política activa (cerebro ONNX)`) y postura erguida del G1 en `#/delivery`.
+  - `J-1` completado en `web/` y `physics/`: landing, `#/milestones` (con visor `PhotoViewer` a pantalla completa y chips unificados), `#/simulations` (layout de 2 columnas sin espacio muerto en todos los robots, botón `0.5×` en 1 línea, videos PiP en todos los clips incluyendo `Walking away`, `Group dance`, `Washing dishes` y `Running` a `1.56 Hz`, silla con respaldo en `Sitting down` y fregadero con platos bajo las manos en `Washing dishes`) y `#/delivery` (9 entregas empaquetadas con versión `v2 GVHMR / v1 MediaPipe`, conteo de pasos `50M / 20M`, video fuente PiP sincronizado y `README` en grilla de 2 columnas sin espacio muerto).
   - Transcripción y análisis de Elon Musk sobre Optimus en [`../yc/investigacion/voces/`](../yc/investigacion/voces/README.md) y guía para la reunión con **ZAKA, C.A.** en [`reunion-zaka.md`](reunion-zaka.md).
 - **Sigue:** Reunión de validación industrial con el Ing. José González (**ZAKA, C.A.**) y documentar conclusiones reales en campo.
 
