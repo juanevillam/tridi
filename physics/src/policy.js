@@ -302,9 +302,9 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
         // Supports ISA-88 / PackML HMI format recipes: '250g' (fast, compact), '500g' (standard), '1000g' (heavy inertia).
         const formatId = sim._factoryFormat || '500g';
         const FORMAT_RECIPES = {
-          '250g': { cycleS: 3.6, vfdHz: 58.5, sealerTarget: 0.115, pusherTarget: 0.155, dwellMs: 420, label: '250 g · 58,5 Hz' },
-          '500g': { cycleS: 4.4, vfdHz: 50.0, sealerTarget: 0.138, pusherTarget: 0.145, dwellMs: 550, label: '500 g · 50,0 Hz' },
-          '1000g': { cycleS: 5.2, vfdHz: 41.5, sealerTarget: 0.152, pusherTarget: 0.132, dwellMs: 680, label: '1 kg · 41,5 Hz' },
+          '250g': { cycleS: 3.6, vfdHz: 58.5, sealerTarget: 0.132, pusherTarget: 0.142, dwellMs: 420, label: '250 g · 58,5 Hz' },
+          '500g': { cycleS: 4.4, vfdHz: 50.0, sealerTarget: 0.122, pusherTarget: 0.132, dwellMs: 550, label: '500 g · 50,0 Hz' },
+          '1000g': { cycleS: 5.2, vfdHz: 41.5, sealerTarget: 0.110, pusherTarget: 0.120, dwellMs: 680, label: '1 kg · 41,5 Hz' },
         };
         const recipe = FORMAT_RECIPES[formatId] || FORMAT_RECIPES['500g'];
         // Carrier box starts at x = -0.45 m in frame; box x-center in world is -0.45 + qpos[7].
@@ -324,17 +324,17 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
         let crushed = false;
         if (fixedPlcMode) {
           // Fixed-timer PLC mode under 28% conveyor belt slip / heavy format inertia:
-          // The box lags at feed=0.38 m while the blind timer lowers the sealer press at t=p1 -> CRUSH!
+          // The box lags at feed=0.45 m (x=-0.00 m, half-entered into the x=+0.10 m press) when the blind timer fires -> CRUSH!
           if (phase < p1) {
-            data.ctrl[0] = 0.36; // box lags behind the 0.55 m sealer station due to belt slip
+            data.ctrl[0] = 0.45; // box lags 10 cm behind the 0.55 m sealer station due to belt slip
             data.ctrl[1] = 0.0;
             data.ctrl[2] = 0.0;
             stage = 0;
           } else if (phase < p2) {
-            data.ctrl[0] = 0.41;
+            data.ctrl[0] = 0.45; // jammed under the press edge
             data.ctrl[1] = recipe.pusherTarget;
-            data.ctrl[2] = recipe.sealerTarget; // blind timer lowers press on misaligned box -> CRUSH!
-            crushed = !sensorSealer;
+            data.ctrl[2] = recipe.sealerTarget + 0.022; // blind timer slams press onto the misaligned box edge -> CRUSH!
+            crushed = true;
             stage = 4; // PackML HELD / FAULT
           } else if (phase < p3) {
             data.ctrl[0] = 0.92;
@@ -348,15 +348,15 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
             stage = 3;
           }
         } else {
-          // Closed-loop Tridi policy: compensates VFD ramp & waits for PE-02 optical confirmation at x=0.10 m (feed=0.55 m)
+          // Closed-loop Tridi policy: keeps clamp & press 100% retracted while box travels, then clamps flush at x=0.10 m (PE-02)
           if (phase < p1) {
             data.ctrl[0] = 0.55;
-            data.ctrl[1] = 0.04; // pre-align guide rail
+            data.ctrl[1] = 0.0; // fully retracted outside the rail while the box advances
             data.ctrl[2] = 0.0;
             stage = 0;
           } else if (phase < p2) {
             data.ctrl[0] = 0.55;
-            data.ctrl[1] = sensorSealer ? recipe.pusherTarget : 0.05;
+            data.ctrl[1] = sensorSealer ? recipe.pusherTarget : 0.0;
             data.ctrl[2] = sensorSealer ? recipe.sealerTarget : 0.0;
             stage = 1;
           } else if (phase < p3) {
