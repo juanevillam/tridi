@@ -42,7 +42,7 @@ Tridi convierte movimiento humano en video (o simulación física guiada por sen
 
 ### 3.2 Primer Caso de Estudio Físico Sim-to-Real: Robot Explorador Diferencial (`luigi_lab3`)
 
-Documentado en detalle en [`docs/decisiones/2026-11-07-primer-sim-to-real-luigi.md`](../decisiones/2026-11-07-primer-sim-to-real-luigi.md) y desplegado en `#/milestones` y `#/simulations/luigi_lab3`:
+Documentado en detalle en [`docs/internal/caso-luigi-sim2real.md`](caso-luigi-sim2real.md) y desplegado en `#/milestones` y `#/simulations/luigi_lab3`:
 
 1. **Hardware Físico Real (Luigi D'Aquaro):**
    - Chasis diferencial impreso en 3D (6 piezas CAD STL en `physics/models/luigi_lab3/meshes/`), microcontrolador **Arduino UNO (ATmega328P, 16 MHz, 2 KB SRAM)**, puente H **L298N**, 2 motores TT 200 RPM con llantas TPU, baterías 2S 18650 (`7,4–8,4 V`), ultrasonido **HC-SR04** (`TRIG D9`, `ECHO A1`) y sensor óptico I2C **APDS-9960** (`0x39`, clon con Chip ID `0x9E`).

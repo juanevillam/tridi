@@ -25,7 +25,7 @@
   - Política de equilibrio `g1-stand.onnx` entrenada hasta **300 M pasos** (`4/4` empujones de `250 N` en 4 pisos) + las **9 políticas de imitación** publicadas en `training/policies/`.
   - **`J-2` (`training/multiclip.py`, `cloud_gpu.sh`):** Entrenamiento simultáneo multi-video con muestreo adaptativo por fallos (`clip_fail_ema`), degradación de actuadores (`--fault-prob`) y frenadas de emergencia (`--sudden-stop-prob`).
   - **`J-3` (`training/export_mcu.py`):** Compilador automático `ONNX → C99 / Arduino (.ino)` con paridad $< 10^{-5}$, interrupciones por hardware (`PCINT1`/`INT0`) en lugar de `pulseIn()` y máquina de estados no bloqueante a `50 Hz`.
-  - **`J-4` (`training/luigi_lab4_env.py`):** Política `luigi-lab4.onnx` (`2.353 bytes`) que coordina las 2 ruedas + el barrido activo del cuello servo `SG90` en movimiento, y caso físico real `luigi_lab3` documentado en [`decisiones/2026-11-07-primer-sim-to-real-luigi.md`](decisiones/2026-11-07-primer-sim-to-real-luigi.md).
+  - **`J-4` (`training/luigi_lab4_env.py`):** Política `luigi-lab4.onnx` (`2.353 bytes`) que coordina las 2 ruedas + el barrido activo del cuello servo `SG90` en movimiento, y caso físico real `luigi_lab3` documentado en [`internal/caso-luigi-sim2real.md`](internal/caso-luigi-sim2real.md).
 - **Producción en `trytridi.com` y Pulido Web (`J-1` ✅):**
   - Despliegue continuo en Cloudflare Pages (`.github/workflows/deploy.yml`, seguridad DNS/HSTS/CSP en [`internal/infra-and-security.md`](internal/infra-and-security.md)).
   - `J-1` completado en `web/` y `physics/`: landing, `#/milestones`, `#/simulations` (controles contextualizados por robot y mundo, nombres `Rover Luigi v1/v2` y `Política activa (cerebro ONNX)`) y postura erguida del G1 en `#/delivery`.
