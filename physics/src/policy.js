@@ -298,79 +298,19 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
           return;
         }
         const simTime = data.time;
-        // Multi-station PackML packaging line (Infeed Weigher -> Cognex Vision & Festo Pusher -> Vertical Sealer -> Palletizer)
+        // Multi-station PackML packaging line (1. Hopper/Weigher PE-01 -> 2. Cognex Vision & Blue Sealer Press PE-02 -> 3. Exit Conveyor -> 4. Red Discharge Pusher PE-03 & Pallet)
         // Supports ISA-88 / PackML HMI format recipes: '250g' (fast, compact), '500g' (standard), '1000g' (heavy inertia).
+        // Sealer press bottom starts at z = 0.244 m; box top is at z = 0.095 + 0.052 * scaleZ, so sealerTarget kisses the exact box top.
         const formatId = sim._factoryFormat || '500g';
         const FORMAT_RECIPES = {
-          '250g': { cycleS: 3.6, vfdHz: 58.5, sealerTarget: 0.132, pusherTarget: 0.142, dwellMs: 420, label: '250 g · 58,5 Hz' },
-          '500g': { cycleS: 4.4, vfdHz: 50.0, sealerTarget: 0.122, pusherTarget: 0.132, dwellMs: 550, label: '500 g · 50,0 Hz' },
-          '1000g': { cycleS: 5.2, vfdHz: 41.5, sealerTarget: 0.110, pusherTarget: 0.120, dwellMs: 680, label: '1 kg · 41,5 Hz' },
+          '250g': { cycleS: 4.0, vfdHz: 58.5, sealerTarget: 0.109, pusherTarget: 0.140, dwellMs: 420, labelEs: '250 g · 58,5 Hz', labelEn: '250 g · 58.5 Hz' },
+          '500g': { cycleS: 4.8, vfdHz: 50.0, sealerTarget: 0.097, pusherTarget: 0.130, dwellMs: 550, labelEs: '500 g · 50,0 Hz', labelEn: '500 g · 50.0 Hz' },
+          '1000g': { cycleS: 5.6, vfdHz: 41.5, sealerTarget: 0.084, pusherTarget: 0.120, dwellMs: 680, labelEs: '1 kg · 41,5 Hz', labelEn: '1 kg · 41.5 Hz' },
         };
         const recipe = FORMAT_RECIPES[formatId] || FORMAT_RECIPES['500g'];
-        // Carrier box starts at x = -0.45 m in frame; box x-center in world is -0.45 + qpos[7].
-        // Photoelectric sensors sit at x = -0.38 m (PE-01 entry/weigh), x = +0.10 m (PE-02 sealer zone), x = +0.52 m (PE-03 exit/pallet).
-        const feedM = qpos[7] ?? 0;
-        const boxX = -0.45 + feedM;
-        const sensorEntry = Math.abs(boxX - -0.38) < 0.095;
-        const sensorSealer = Math.abs(boxX - 0.10) < 0.075;
-        const sensorExit = Math.abs(boxX - 0.52) < 0.095;
         const fixedPlcMode = Boolean(sim._factoryFixedTimerMode);
         const cycleIdx = Math.floor(simTime / recipe.cycleS);
-        const phase = simTime % recipe.cycleS;
-        const p1 = recipe.cycleS * 0.33;
-        const p2 = recipe.cycleS * 0.60;
-        const p3 = recipe.cycleS * 0.82;
-        let stage = 0;
-        let crushed = false;
-        if (fixedPlcMode) {
-          // Fixed-timer PLC mode under 28% conveyor belt slip / heavy format inertia:
-          // The box lags at feed=0.45 m (x=-0.00 m, half-entered into the x=+0.10 m press) when the blind timer fires -> CRUSH!
-          if (phase < p1) {
-            data.ctrl[0] = 0.45; // box lags 10 cm behind the 0.55 m sealer station due to belt slip
-            data.ctrl[1] = 0.0;
-            data.ctrl[2] = 0.0;
-            stage = 0;
-          } else if (phase < p2) {
-            data.ctrl[0] = 0.45; // jammed under the press edge
-            data.ctrl[1] = recipe.pusherTarget;
-            data.ctrl[2] = recipe.sealerTarget + 0.022; // blind timer slams press onto the misaligned box edge -> CRUSH!
-            crushed = true;
-            stage = 4; // PackML HELD / FAULT
-          } else if (phase < p3) {
-            data.ctrl[0] = 0.92;
-            data.ctrl[1] = 0.0;
-            data.ctrl[2] = 0.0;
-            stage = 2;
-          } else {
-            data.ctrl[0] = -0.10;
-            data.ctrl[1] = 0.0;
-            data.ctrl[2] = 0.0;
-            stage = 3;
-          }
-        } else {
-          // Closed-loop Tridi policy: keeps clamp & press 100% retracted while box travels, then clamps flush at x=0.10 m (PE-02)
-          if (phase < p1) {
-            data.ctrl[0] = 0.55;
-            data.ctrl[1] = 0.0; // fully retracted outside the rail while the box advances
-            data.ctrl[2] = 0.0;
-            stage = 0;
-          } else if (phase < p2) {
-            data.ctrl[0] = 0.55;
-            data.ctrl[1] = sensorSealer ? recipe.pusherTarget : 0.0;
-            data.ctrl[2] = sensorSealer ? recipe.sealerTarget : 0.0;
-            stage = 1;
-          } else if (phase < p3) {
-            data.ctrl[0] = 0.92;
-            data.ctrl[1] = 0.0;
-            data.ctrl[2] = 0.0;
-            stage = 2;
-          } else {
-            data.ctrl[0] = -0.10;
-            data.ctrl[1] = 0.0;
-            data.ctrl[2] = 0.0;
-            stage = 3;
-          }
-        }
+        // Spawn a fresh box at the left hopper (x = -0.62 m -> feed = -0.17 m) at the start of every cycle so boxes NEVER travel backwards!
         if (sim._lastFactoryCycleIdx !== cycleIdx) {
           if (sim._lastFactoryCycleIdx !== undefined) {
             if (fixedPlcMode) {
@@ -380,20 +320,116 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
             }
           }
           sim._lastFactoryCycleIdx = cycleIdx;
+          data.qpos[7] = -0.17;
+          data.qvel[6] = 0;
+          data.ctrl[0] = -0.17;
+          data.ctrl[1] = 0.0;
+          data.ctrl[2] = 0.0;
+          sim._boxCrushedLatched = false;
         }
-        const feedMm = Math.round(feedM * 1000);
-        const pusherMm = Math.round((qpos[8] ?? 0) * 1000);
-        const sealerMm = Math.round((qpos[9] ?? 0) * 1000);
-        const stageNames = [
-          `EXECUTE · Pesaje y Avance (${recipe.label})`,
-          `EXECUTE · Sellado y Visión (${recipe.dwellMs} ms)`,
-          `EXECUTE · Descarga a Palet`,
-          `EXECUTE · Retorno de Ciclo`,
-          `HELD · COLISIÓN PRENSA (Patinaje 28%)`,
+        // Carrier box reference is at x = -0.45 m in frame; box x-center in world is -0.45 + qpos[7].
+        // Photoelectric sensors sit at x = -0.38 m (PE-01 entry/weigh), x = +0.12 m (PE-02 sealer zone), x = +0.62 m (PE-03 exit/pusher).
+        const feedM = data.qpos[7] ?? 0;
+        const boxX = -0.45 + feedM;
+        const sensorEntry = Math.abs(boxX - -0.38) < 0.11;
+        const sensorSealer = Math.abs(boxX - 0.12) < 0.075;
+        const sensorExit = Math.abs(boxX - 0.62) < 0.11;
+        const phase = simTime % recipe.cycleS;
+        const p1 = recipe.cycleS * 0.30;
+        const p2 = recipe.cycleS * 0.58;
+        const p3 = recipe.cycleS * 0.80;
+        let stage = 0;
+        let crushed = Boolean(sim._boxCrushedLatched);
+        if (fixedPlcMode) {
+          // Fixed-timer PLC mode under 28% conveyor belt slip:
+          // 1) Box lags behind at feed=0.45 m (boxX = 0.00 m, half-entered under the x=+0.12 m Blue Sealer Press, PE-02 = 0).
+          // 2) Blind timer lowers Blue Press (ctrl[2]) without waiting for PE-02 -> slams onto the box edge and crushes it!
+          // 3) Damaged box advances to exit and Red Pusher (ctrl[1]) ejects it as waste.
+          if (phase < p1) {
+            data.ctrl[0] = 0.45;
+            data.ctrl[1] = 0.0;
+            data.ctrl[2] = 0.0;
+            stage = 0;
+          } else if (phase < p2) {
+            data.ctrl[0] = 0.45;
+            data.ctrl[1] = 0.0;
+            data.ctrl[2] = recipe.sealerTarget + 0.032; // slams down past the misaligned box top -> CRUSH!
+            sim._boxCrushedLatched = true;
+            crushed = true;
+            stage = 4; // PackML HELD / FAULT
+          } else if (phase < p3) {
+            data.ctrl[0] = 1.07; // carry crushed box to PE-03 exit
+            data.ctrl[1] = 0.0;
+            data.ctrl[2] = 0.0;
+            stage = 4;
+          } else {
+            data.ctrl[0] = 1.26;
+            data.ctrl[1] = recipe.pusherTarget; // Red Pusher rejects damaged package at exit
+            data.ctrl[2] = 0.0;
+            stage = 4;
+          }
+        } else {
+          // Closed-loop Tridi policy (unidirectional left -> right):
+          // Step 1 (0..p1): Box enters from Hopper (-0.62 m), crosses Weigher (PE-01) and stops under Sealer Bridge (x = +0.12 m, feed = 0.57 m).
+          // Step 2 (p1..p2): PE-02 confirms arrival -> Blue Sealer Press (PRESS-01) descends to seal top of box; Red Pusher stays retracted.
+          // Step 3 (p2..p3): Blue Press retracts -> Sealed box travels forward to end of black belt (x = +0.62 m, feed = 1.07 m, PE-03).
+          // Step 4 (p3..end): PE-03 confirms exit -> Red Pusher (PUSHER-01) extends and transfers finished box down the ramp to the pallet.
+          if (phase < p1) {
+            data.ctrl[0] = 0.57;
+            data.ctrl[1] = 0.0;
+            data.ctrl[2] = 0.0;
+            stage = 0;
+          } else if (phase < p2) {
+            data.ctrl[0] = 0.57;
+            data.ctrl[1] = 0.0;
+            data.ctrl[2] = sensorSealer ? recipe.sealerTarget : 0.0;
+            stage = 1;
+          } else if (phase < p3) {
+            data.ctrl[0] = 1.07;
+            data.ctrl[1] = 0.0;
+            data.ctrl[2] = 0.0;
+            stage = 2;
+          } else {
+            data.ctrl[0] = 1.28;
+            data.ctrl[1] = recipe.pusherTarget;
+            data.ctrl[2] = 0.0;
+            stage = 3;
+          }
+        }
+        const feedMm = Math.round((feedM + 0.17) * 1000);
+        const pusherMm = Math.round((data.qpos[8] ?? 0) * 1000);
+        const sealerMm = Math.round((data.qpos[9] ?? 0) * 1000);
+        const stageNamesEs = [
+          `1/4 · Pesaje y Avance (${recipe.labelEs})`,
+          `2/4 · Prensa Azul Sella (${recipe.dwellMs} ms)`,
+          `3/4 · Avance a Salida PE-03`,
+          `4/4 · Pistón Rojo Descarga a Palet`,
+          `⚠️ FALLA · Prensa Azul Aplastó Caja (Patinaje 28%)`,
+        ];
+        const stageNamesEn = [
+          `1/4 · Weighing & Infeed (${recipe.labelEn})`,
+          `2/4 · Blue Press Sealing (${recipe.dwellMs} ms)`,
+          `3/4 · Advancing to Exit PE-03`,
+          `4/4 · Red Pusher Discharges to Pallet`,
+          `⚠️ FAULT · Blue Press Crushed Box (28% Slip)`,
+        ];
+        const stepExplainEs = [
+          `Paso 1/4: Nace una caja en la Tolva (HOPPER-01), se pesa en la báscula dinámica (PE-01) y avanza hacia el puente central.`,
+          `Paso 2/4: La fotocelda PE-02 confirma posición y la Prensa Azul (PRESS-01) baja desde el puente naranja para sellar la tapa.`,
+          `Paso 3/4: La Prensa Azul sube y la caja ya sellada avanza hacia el final de la banda negra (sensor PE-03).`,
+          `Paso 4/4: Al llegar al final (PE-03), el Pistón Rojo (PUSHER-01) empuja la caja terminada por la rampa hacia el palet (PALLET-01).`,
+          `🚨 ¡COLISIÓN POR TIMER FIJO! La banda patinó 28 %, la caja llegó tarde (PE-02=0) y la Prensa Azul bajó a ciegas aplastando el envase.`,
+        ];
+        const stepExplainEn = [
+          `Step 1/4: A new box spawns at the Hopper (HOPPER-01), weighs on the dynamic scale (PE-01), and advances to the center bridge.`,
+          `Step 2/4: Photo-eye PE-02 confirms position and the Blue Press (PRESS-01) descends from the orange bridge to heat-seal the lid.`,
+          `Step 3/4: The Blue Press retracts and the sealed box travels to the end of the black conveyor belt (sensor PE-03).`,
+          `Step 4/4: At the end of the belt (PE-03), the Red Pusher (PUSHER-01) pushes the finished box down the chute onto the pallet (PALLET-01).`,
+          `🚨 FIXED-TIMER COLLISION! The belt slipped 28%, the box arrived late (PE-02=0), and the Blue Press slammed down blind, crushing the package.`,
         ];
         sim.factoryReadout = {
-          feedMm,
-          conveyorMm: feedMm,
+          feedMm: Math.max(0, feedMm),
+          conveyorMm: Math.max(0, feedMm),
           pusherMm,
           sealerMm,
           vfdHz: fixedPlcMode ? (recipe.vfdHz * 0.72).toFixed(1) : recipe.vfdHz.toFixed(1),
@@ -407,7 +443,11 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
           crushedBox: crushed,
           completedCycles: sim._factoryCycles || 0,
           crushedCount: sim._factoryCrushedCount || 0,
-          modeLabel: stageNames[stage] || stageNames[0],
+          modeLabel: stageNamesEs[stage] || stageNamesEs[0],
+          modeLabelEs: stageNamesEs[stage] || stageNamesEs[0],
+          modeLabelEn: stageNamesEn[stage] || stageNamesEn[0],
+          stepExplainEs: stepExplainEs[stage] || stepExplainEs[0],
+          stepExplainEn: stepExplainEn[stage] || stepExplainEn[0],
           fixedPlcMode,
         };
         previous.set(data.ctrl);

@@ -5,7 +5,7 @@ import { FINAL_LEVEL, IMITATIONS, LEVELS, ROBOT_MODELS } from '../policies.js';
 import { robotPaneHTML } from '../robot-pane.js';
 import { ICONS, mountStage } from '../stage.js';
 import { mountTrainBox, trainBoxHTML } from '../training.js';
-import { option } from '../i18n.js';
+import { langSwitch, option } from '../i18n.js';
 import { A, T, X, t } from '../strings-stage.js';
 import { levelName, robotName, sceneName, worldName } from '../strings-names.js';
 
@@ -51,6 +51,7 @@ export function mount(root, { api }, [clipId] = []) {
       <header class="page-head">
         <a class="back" href="#/" ${A({ 'aria-label': 'back' })}>←<span class="only-wide">&nbsp;${T('back')}</span></a>
         <h1>${T('title')}</h1>
+        ${langSwitch('page-head-lang')}
       </header>
       <div class="sims-grid">
         <div class="sims-main">
@@ -153,34 +154,34 @@ export function mount(root, { api }, [clipId] = []) {
               </div>
             </div>
             <div class="luigi-drive-box" id="factory-fault-box" hidden>
-              <span class="luigi-drive-label"><span class="t" lang="es">1. Modo de Control PLC (Rockwell Studio 5000 / Siemens TIA Portal)</span><span class="t" lang="en">1. PLC Control Mode (Rockwell Studio 5000 / Siemens TIA Portal)</span></span>
-              <div class="luigi-drive-grid" role="group" style="grid-template-columns:1fr">
-                <button type="button" class="luigi-cmd-btn" id="factory-mode-sensor" aria-pressed="true">
-                  <span class="t" lang="es">✅ Gemelo Tridi · Sincronizado por Fotoceldas + Rampa VFD (0 % merma)</span><span class="t" lang="en">✅ Tridi Twin · Optical Sensor-Gated + VFD Ramp (0% waste)</span>
+              <span class="luigi-drive-label"><span class="t" lang="es">1. Modo de Control PLC (Studio 5000 / TIA Portal)</span><span class="t" lang="en">1. PLC Control Mode (Studio 5000 / TIA Portal)</span></span>
+              <div class="luigi-drive-grid" role="group" style="grid-template-columns:minmax(0,1fr)">
+                <button type="button" class="luigi-cmd-btn wrap-btn" id="factory-mode-sensor" aria-pressed="true">
+                  <span class="t" lang="es">✅ Gemelo Tridi · Fotoceldas PE1..PE3 + Rampa VFD (0 % merma)</span><span class="t" lang="en">✅ Tridi Twin · PE1..PE3 Sensors + VFD Ramp (0% waste)</span>
                 </button>
-                <button type="button" class="luigi-cmd-btn" id="factory-fault-btn" aria-pressed="false">
-                  <span class="t" lang="es">⚠️ Estresar con Timer Fijo · Simular 28 % Patinaje de Banda (Aplasta envase)</span><span class="t" lang="en">⚠️ Stress Fixed Timer · Simulate 28% Belt Slip (Crushes package)</span>
+                <button type="button" class="luigi-cmd-btn wrap-btn" id="factory-fault-btn" aria-pressed="false">
+                  <span class="t" lang="es">⚠️ Estresar Timer Fijo · 28 % Patinaje (Prensa Azul aplasta caja)</span><span class="t" lang="en">⚠️ Stress Fixed Timer · 28% Belt Slip (Blue Press crushes box)</span>
                 </button>
               </div>
-              <span class="luigi-drive-label" style="margin-top:8px"><span class="t" lang="es">2. Cambio de Formato HMI (Recetas ISA-88 / PackML Pre-Calibradas)</span><span class="t" lang="en">2. HMI Format Change (Pre-Calibrated ISA-88 / PackML Recipes)</span></span>
-              <div class="luigi-drive-grid" role="group" style="grid-template-columns:repeat(3,1fr)">
+              <span class="luigi-drive-label" style="margin-top:8px"><span class="t" lang="es">2. Cambio de Formato HMI (Recetas ISA-88 / PackML)</span><span class="t" lang="en">2. HMI Format Change (ISA-88 / PackML Recipes)</span></span>
+              <div class="luigi-drive-grid" role="group" style="grid-template-columns:repeat(3,minmax(0,1fr))">
                 <button type="button" class="luigi-cmd-btn" data-factory-format="250g" aria-pressed="false">
-                  <span class="t" lang="es">📦 250 g (58,5 Hz)</span><span class="t" lang="en">📦 250 g (58.5 Hz)</span>
+                  <span class="t" lang="es">📦 250 g</span><span class="t" lang="en">📦 250 g</span>
                 </button>
                 <button type="button" class="luigi-cmd-btn" data-factory-format="500g" aria-pressed="true">
-                  <span class="t" lang="es">📦 500 g (50,0 Hz)</span><span class="t" lang="en">📦 500 g (50.0 Hz)</span>
+                  <span class="t" lang="es">📦 500 g</span><span class="t" lang="en">📦 500 g</span>
                 </button>
                 <button type="button" class="luigi-cmd-btn" data-factory-format="1000g" aria-pressed="false">
-                  <span class="t" lang="es">📦 1 kg (41,5 Hz)</span><span class="t" lang="en">📦 1 kg (41.5 Hz)</span>
+                  <span class="t" lang="es">📦 1 kg</span><span class="t" lang="en">📦 1 kg</span>
                 </button>
               </div>
-              <p class="mode-note" id="factory-recipe-readout" style="font-family:var(--mono);font-size:11.5px;color:#c8ff2e">
-                <span class="t" lang="es">Receta PLC exportada: <code>VFD=50.0Hz | Rampa=0.35s | Pistón=145mm | Prensa=138mm | Dwell=550ms</code></span>
-                <span class="t" lang="en">Exported PLC Recipe: <code>VFD=50.0Hz | Ramp=0.35s | Pusher=145mm | Press=138mm | Dwell=550ms</code></span>
+              <p class="mode-note factory-recipe-box" id="factory-recipe-readout">
+                <span class="t" lang="es">Receta PLC (500 g): <code>VFD=50.0Hz · Rampa=0.35s · Prensa=97mm · Pistón=130mm</code></span>
+                <span class="t" lang="en">PLC Recipe (500 g): <code>VFD=50.0Hz · Ramp=0.35s · Press=97mm · Pusher=130mm</code></span>
               </p>
               <p class="mode-note" id="factory-status-note">
-                <span class="t" lang="es">Modo activo: <strong>Lazo cerrado por barreras ópticas PE1..PE3</strong> (la prensa espera confirmación física de envase antes de bajar).</span>
-                <span class="t" lang="en">Active mode: <strong>Closed-loop PE1..PE3 optical gating</strong> (sealer waits for physical package confirmation before descending).</span>
+                <span class="t" lang="es"><strong>🔵 Prensa Azul (PRESS-01):</strong> Sella el tope en el centro (PE-02). <strong>🔴 Pistón Rojo (PUSHER-01):</strong> Empuja el lote al palet al final de la banda (PE-03).</span>
+                <span class="t" lang="en"><strong>🔵 Blue Press (PRESS-01):</strong> Seals the lid at center (PE-02). <strong>🔴 Red Pusher (PUSHER-01):</strong> Pushes finished box to pallet at belt exit (PE-03).</span>
               </p>
             </div>
             <div class="luigi-drive-box" id="arduino-box">

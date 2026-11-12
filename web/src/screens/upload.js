@@ -6,7 +6,7 @@ import { chooseSubject, fetchClip, firstFrameUrl, UploadError, uploadVideo, watc
 import { createVideoOverlay } from '../video-overlay.js';
 import { addUserClip } from '../preloaded.js';
 import { cannotTrain, mountTrainBox, startTraining, trainBoxHTML } from '../training.js';
-import { escapeHtml } from '../i18n.js';
+import { escapeHtml, langSwitch } from '../i18n.js';
 import { A, T } from './strings/upload.js';
 
 export { title } from './strings/upload.js';
@@ -51,6 +51,7 @@ export function mount(root, { api }) {
       <header class="page-head">
         <a class="back" href="#/" ${A({ 'aria-label': 'back' })}>←<span class="only-wide">&nbsp;${T('back')}</span></a>
         <h1>${T('head')}</h1>
+        ${langSwitch('page-head-lang')}
       </header>
       <div class="upload-grid">
         <section class="pane example-pane">

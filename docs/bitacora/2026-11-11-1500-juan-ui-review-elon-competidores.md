@@ -115,3 +115,10 @@
   - Corregido el enlace de telemetría en vivo de `factoryReadout` en `stage.js` (`Variador VFD + Cinta / Pistón`, `Prensa + Fotoceldas PE1..PE3`, `Lotes OK / Merma`, `Estado PackML + Receta`).
 
 
+
+
+## 2026-11-12 15:48 — Factory I/O 3D Labels, Flujo Unidireccional sin Piezas Flotantes y Selector de Idioma en Simulaciones
+
+- **Geometría 3D sólida sin piezas flotantes (`physics/models/factory_cell/factory_cell.xml`):** Anclados la tolva (`HOPPER-01`) a los rieles laterales, el lente y cámara de visión (`CAM-01`) a su brazo, el cilindro neumático fijo (`sealer_barrel_fixed`) de la **Prensa Azul (`PRESS-01`)** al puente naranja superior, la carcasa del **Pistón Rojo (`PUSHER-01`)** al final de la banda (`x = +0.62 m`), el soporte de la rampa al piso y el pedestal del gabinete `PLC/VFD`.
+- **Ciclo unidireccional de 4 etapas (`physics/src/policy.js`):** Las cajas nacen siempre en la tolva izquierda (`x = -0.62 m`), avanzan hacia la derecha sin retroceder nunca en reversa, se detienen bajo el puente central para que la **Prensa Azul (`PRESS-01`)** selle la tapa al ras, siguen hasta el final de la banda negra (`PE-03`) donde el **Pistón Rojo (`PUSHER-01`)** las descarga hacia el palet, y en modo de falla (`28% patinaje`) la prensa azul aplasta visiblemente la caja desfasada (se achata y tiñe de rojo).
+- **Etiquetas 3D estilo Factory I/O + Narrador en vivo + Selector de idioma (`web/src/stage.js`, `web/src/screens/simulations.js`, `web/src/style.css`):** Proyección 3D en tiempo real de los 6 tags (`HOPPER-01`, `CAM-01`, `PRESS-01`, `PUSHER-01`, `PALLET-01`, `PLC/VFD`), barra inferior explicativa de 4 pasos en vivo, eliminación total del scroll horizontal en el panel derecho y botón `langSwitch` agregado en `#/simulations`, `#/live` y `#/upload`.
