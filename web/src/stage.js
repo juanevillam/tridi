@@ -84,21 +84,21 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
         <span class="fio-dot"></span>
         <div class="fio-tag-body">
           <strong>PRESS-01 · PE-02</strong>
-          <span><span class="t" lang="es">2. Prensa Azul (Sella Tapa)</span><span class="t" lang="en">2. Blue Press (Seals Lid)</span></span>
+          <span><span class="t" lang="es">2. Prensa Azul (Sella Caja)</span><span class="t" lang="en">2. Blue Press (Seals Box)</span></span>
         </div>
       </div>
       <div class="fio-tag fio-tag-red" data-fio="pusher">
         <span class="fio-dot"></span>
         <div class="fio-tag-body">
           <strong>PUSHER-01 · PE-03</strong>
-          <span><span class="t" lang="es">4. Pistón Rojo (Descarga)</span><span class="t" lang="en">4. Red Pusher (Ejector)</span></span>
+          <span><span class="t" lang="es">Pistón Rojo (Rechazo Merma)</span><span class="t" lang="en">Red Pusher (Reject Gate)</span></span>
         </div>
       </div>
       <div class="fio-tag" data-fio="pallet">
         <span class="fio-dot"></span>
         <div class="fio-tag-body">
           <strong>PALLET-01</strong>
-          <span><span class="t" lang="es">Tarima de Salida</span><span class="t" lang="en">Outfeed Pallet</span></span>
+          <span id="fio-pallet-count"><span class="t" lang="es">4. Rampa y Palet (0/6)</span><span class="t" lang="en">4. Ramp &amp; Pallet (0/6)</span></span>
         </div>
       </div>
       <div class="fio-tag" data-fio="plc">
@@ -111,14 +111,14 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     </div>
     <div class="fio-narrator" id="fio-narrator">
       <div class="fio-steps">
-        <span class="fio-step" data-fio-step="0"><span class="t" lang="es">1. Entrada y Pesaje (PE-01)</span><span class="t" lang="en">1. Infeed &amp; Weigh (PE-01)</span></span>
+        <span class="fio-step" data-fio-step="0"><span class="t" lang="es">1. Tolva y Pesaje (PE-01)</span><span class="t" lang="en">1. Hopper &amp; Weigh (PE-01)</span></span>
         <span class="fio-step" data-fio-step="1"><span class="t" lang="es">2. Prensa Azul Sella (PE-02)</span><span class="t" lang="en">2. Blue Press Seals (PE-02)</span></span>
-        <span class="fio-step" data-fio-step="2"><span class="t" lang="es">3. Avance a Salida</span><span class="t" lang="en">3. Advance to Exit</span></span>
-        <span class="fio-step" data-fio-step="3"><span class="t" lang="es">4. Pistón Rojo al Palet (PE-03)</span><span class="t" lang="en">4. Red Pusher to Pallet (PE-03)</span></span>
+        <span class="fio-step" data-fio-step="2"><span class="t" lang="es">3. Inspección Salida (PE-03)</span><span class="t" lang="en">3. Exit Check (PE-03)</span></span>
+        <span class="fio-step" data-fio-step="3" id="fio-step-4"><span class="t" lang="es">4. Rampa y Apilado en Palet</span><span class="t" lang="en">4. Ramp &amp; Stack on Pallet</span></span>
       </div>
       <p class="fio-explain" id="fio-explain-text">
-        <span class="t" lang="es">Paso 1/4: Nace una caja en la Tolva (HOPPER-01), se pesa en la báscula dinámica (PE-01) y avanza hacia el puente central.</span>
-        <span class="t" lang="en">Step 1/4: A new box spawns at the Hopper (HOPPER-01), weighs on the dynamic scale (PE-01), and advances to the center bridge.</span>
+        <span class="t" lang="es">Paso 1/4: Sale una caja nueva de la Tolva (HOPPER-01), pasa por la báscula (PE-01) y avanza a velocidad constante hacia el centro.</span>
+        <span class="t" lang="en">Step 1/4: A new box enters from the Hopper (HOPPER-01), crosses the scale (PE-01), and glides at constant speed toward the center.</span>
       </p>
     </div>
   `;
@@ -128,11 +128,11 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     { key: 'cam', lx: -0.14, ly: 0.0, lz: 0.44 },
     { key: 'press', lx: 0.12, ly: 0.0, lz: 0.50 },
     { key: 'pusher', lx: 0.62, ly: -0.26, lz: 0.19 },
-    { key: 'pallet', lx: 1.15, ly: 0.0, lz: -0.02 },
+    { key: 'pallet', lx: 1.28, ly: 0.0, lz: -0.02 },
     { key: 'plc', lx: -0.32, ly: 0.44, lz: 0.36 },
   ];
   let lastFactoryStage = -1;
-  let lastFactoryCrushed = null;
+  let lastFactorySealQuality = null;
   let scratchVec = null;
   let playing = true;
   let speed = 1;
@@ -290,11 +290,12 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
           else if (anchor.key === 'cam') isActive = fr.stage === 0 || fr.stage === 1;
           else if (anchor.key === 'press') {
             isActive = fr.stage === 1 || fr.sealerMm > 15;
-            isFault = fr.crushedBox;
+            isFault = fr.stage === 4;
           } else if (anchor.key === 'pusher') {
-            isActive = fr.stage === 3 || fr.pusherMm > 15;
+            isActive = fr.pusherMm > 15;
+            isFault = fr.fixedPlcMode && fr.stage === 3;
           } else if (anchor.key === 'pallet') {
-            isActive = fr.stage === 3;
+            isActive = !fr.fixedPlcMode && fr.stage === 3;
           } else if (anchor.key === 'plc') {
             isActive = true;
           }
@@ -303,37 +304,43 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
         }
         const plcHzEl = factoryOverlay.querySelector('#fio-plc-hz');
         if (plcHzEl) plcHzEl.textContent = `VFD ${fr.vfdHz} Hz`;
+        const palletCountEl = factoryOverlay.querySelector('#fio-pallet-count');
+        if (palletCountEl) {
+          palletCountEl.innerHTML = `<span class="t" lang="es">4. Palet (${fr.stackedBoxes ?? 0}/6 cajas)</span><span class="t" lang="en">4. Pallet (${fr.stackedBoxes ?? 0}/6 boxes)</span>`;
+        }
       }
       if (fr.stage !== lastFactoryStage) {
         lastFactoryStage = fr.stage;
         const narrator = factoryOverlay.querySelector('#fio-narrator');
         if (narrator) narrator.dataset.fault = String(fr.crushedBox);
+        const step4El = factoryOverlay.querySelector('#fio-step-4');
+        if (step4El) {
+          step4El.innerHTML = fr.fixedPlcMode
+            ? '<span class="t" lang="es">4. Pistón Rojo Rechaza (PE-03)</span><span class="t" lang="en">4. Red Pusher Rejects (PE-03)</span>'
+            : '<span class="t" lang="es">4. Rampa y Apilado en Palet</span><span class="t" lang="en">4. Ramp &amp; Stack on Pallet</span>';
+        }
         factoryOverlay.querySelectorAll('[data-fio-step]').forEach((stepEl) => {
           const sIdx = Number(stepEl.dataset.fioStep);
           const active = fr.stage === 4 ? sIdx === 1 : sIdx === fr.stage;
           stepEl.dataset.active = String(active);
-          stepEl.dataset.fault = String(fr.stage === 4 && sIdx === 1);
+          stepEl.dataset.fault = String((fr.stage === 4 && sIdx === 1) || (fr.fixedPlcMode && fr.stage === 3 && sIdx === 3));
         });
         const explainEl = factoryOverlay.querySelector('#fio-explain-text');
         if (explainEl) {
           explainEl.innerHTML = `<span class="t" lang="es">${fr.stepExplainEs}</span><span class="t" lang="en">${fr.stepExplainEn}</span>`;
         }
       }
-      // Visually squash & tint the 3D box red when crushed by the fixed-timer press, and restore on next spawn
-      if (fr.crushedBox !== lastFactoryCrushed) {
-        lastFactoryCrushed = fr.crushedBox;
+      // Color the top seal (package_label) white when properly sealed, or red-orange when mis-sealed in Fixed-Timer mode
+      if (fr.sealQuality !== lastFactorySealQuality) {
+        lastFactorySealQuality = fr.sealQuality;
         const { mujoco, model } = robot.view.sim;
-        const boxGeomId = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM.value, 'package_box');
-        const gEntry = robot.view.viewer?.geoms?.find((g) => g.id === boxGeomId);
-        if (gEntry?.object) {
-          const fmtKey = robot.view.sim._factoryFormat || '500g';
-          const baseScale = (FACTORY_FORMAT_SPECS[fmtKey] || FACTORY_FORMAT_SPECS['500g']).scale;
-          if (fr.crushedBox) {
-            gEntry.object.scale.set(baseScale[0] * 1.18, baseScale[1] * 1.14, baseScale[2] * 0.56);
-            gEntry.object.material?.color?.setRGB(0.92, 0.22, 0.18);
+        const labelGeomId = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM.value, 'package_label');
+        const labelEntry = robot.view.viewer?.geoms?.find((g) => g.id === labelGeomId);
+        if (labelEntry?.object?.material?.color) {
+          if (fr.sealQuality === 'bad') {
+            labelEntry.object.material.color.setRGB(0.95, 0.24, 0.18);
           } else {
-            gEntry.object.scale.set(...baseScale);
-            gEntry.object.material?.color?.setRGB(0.82, 0.62, 0.36);
+            labelEntry.object.material.color.setRGB(0.96, 0.96, 0.94);
           }
         }
       }
@@ -950,8 +957,8 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     if ($('factory-fault-btn')) $('factory-fault-btn').setAttribute('aria-pressed', String(sim._factoryFixedTimerMode));
     if ($('factory-status-note')) {
       $('factory-status-note').innerHTML = sim._factoryFixedTimerMode
-        ? `<span class="t" lang="es"><strong>⚠️ Modo Timer Fijo:</strong> La banda patina 28 %, la caja llega tarde y la <strong>Prensa Azul (PRESS-01)</strong> baja a ciegas aplastando el envase.</span><span class="t" lang="en"><strong>⚠️ Fixed-Timer Mode:</strong> Belt slips 28%, the box lags, and the <strong>Blue Press (PRESS-01)</strong> slams down blind, crushing the package.</span>`
-        : `<span class="t" lang="es"><strong>🔵 Prensa Azul (PRESS-01):</strong> Sella el tope en el centro (PE-02). <strong>🔴 Pistón Rojo (PUSHER-01):</strong> Empuja el lote al palet al final de la banda (PE-03).</span><span class="t" lang="en"><strong>🔵 Blue Press (PRESS-01):</strong> Seals the lid at center (PE-02). <strong>🔴 Red Pusher (PUSHER-01):</strong> Pushes finished box to pallet at belt exit (PE-03).</span>`;
+        ? `<span class="t" lang="es"><strong>⚠️ Modo Timer Fijo:</strong> La banda patina 28 %, la caja llega tarde y la <strong>Prensa Azul (PRESS-01)</strong> le pone el sello torcido en el borde; luego el <strong>Pistón Rojo (PUSHER-01)</strong> la expulsa a la bandeja de rechazo.</span><span class="t" lang="en"><strong>⚠️ Fixed-Timer Mode:</strong> Belt slips 28%, the box arrives late so the <strong>Blue Press (PRESS-01)</strong> stamps the seal crooked on the edge; then the <strong>Red Pusher (PUSHER-01)</strong> pushes it into the reject tray.</span>`
+        : `<span class="t" lang="es"><strong>🔵 Prensa Azul (PRESS-01):</strong> Sella el tope de la caja en el centro (PE-02). <strong>📦 Rampa y Palet (PALLET-01):</strong> Las cajas buenas bajan por la rampa y se van apilando (1 a 6). <strong>🔴 Pistón Rojo (PUSHER-01):</strong> Solo se activa si hay una caja mal sellada para sacarla a rechazo.</span><span class="t" lang="en"><strong>🔵 Blue Press (PRESS-01):</strong> Seals the box top at center (PE-02). <strong>📦 Ramp &amp; Pallet (PALLET-01):</strong> Good boxes slide down the ramp and stack (1 to 6). <strong>🔴 Red Pusher (PUSHER-01):</strong> Only fires on mis-sealed boxes to push them into the reject tray.</span>`;
     }
   }
   if ($('factory-mode-sensor')) {

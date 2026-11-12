@@ -160,7 +160,7 @@ export function mount(root, { api }, [clipId] = []) {
                   <span class="t" lang="es">✅ Gemelo Tridi · Fotoceldas PE1..PE3 + Rampa VFD (0 % merma)</span><span class="t" lang="en">✅ Tridi Twin · PE1..PE3 Sensors + VFD Ramp (0% waste)</span>
                 </button>
                 <button type="button" class="luigi-cmd-btn wrap-btn" id="factory-fault-btn" aria-pressed="false">
-                  <span class="t" lang="es">⚠️ Estresar Timer Fijo · 28 % Patinaje (Prensa Azul aplasta caja)</span><span class="t" lang="en">⚠️ Stress Fixed Timer · 28% Belt Slip (Blue Press crushes box)</span>
+                  <span class="t" lang="es">⚠️ Estresar Timer Fijo · 28 % Patinaje (Caja llega tarde → Mal sellada → Pistón Rojo la rechaza)</span><span class="t" lang="en">⚠️ Stress Fixed Timer · 28% Belt Slip (Box arrives late → Mis-sealed → Red Pusher rejects it)</span>
                 </button>
               </div>
               <span class="luigi-drive-label" style="margin-top:8px"><span class="t" lang="es">2. Cambio de Formato HMI (Recetas ISA-88 / PackML)</span><span class="t" lang="en">2. HMI Format Change (ISA-88 / PackML Recipes)</span></span>
@@ -176,12 +176,12 @@ export function mount(root, { api }, [clipId] = []) {
                 </button>
               </div>
               <p class="mode-note factory-recipe-box" id="factory-recipe-readout">
-                <span class="t" lang="es">Receta PLC (500 g): <code>VFD=50.0Hz · Rampa=0.35s · Prensa=97mm · Pistón=130mm</code></span>
-                <span class="t" lang="en">PLC Recipe (500 g): <code>VFD=50.0Hz · Ramp=0.35s · Press=97mm · Pusher=130mm</code></span>
+                <span class="t" lang="es">Receta PLC (500 g): <code>VFD=50.0Hz · Rampa=0.35s · Prensa=95mm · Pistón=360mm</code></span>
+                <span class="t" lang="en">PLC Recipe (500 g): <code>VFD=50.0Hz · Ramp=0.35s · Press=95mm · Pusher=360mm</code></span>
               </p>
               <p class="mode-note" id="factory-status-note">
-                <span class="t" lang="es"><strong>🔵 Prensa Azul (PRESS-01):</strong> Sella el tope en el centro (PE-02). <strong>🔴 Pistón Rojo (PUSHER-01):</strong> Empuja el lote al palet al final de la banda (PE-03).</span>
-                <span class="t" lang="en"><strong>🔵 Blue Press (PRESS-01):</strong> Seals the lid at center (PE-02). <strong>🔴 Red Pusher (PUSHER-01):</strong> Pushes finished box to pallet at belt exit (PE-03).</span>
+                <span class="t" lang="es"><strong>🔵 Prensa Azul (PRESS-01):</strong> Sella el tope de la caja en el centro (PE-02). <strong>📦 Rampa y Palet (PALLET-01):</strong> Las cajas buenas bajan por la rampa y se van apilando (1 a 6). <strong>🔴 Pistón Rojo (PUSHER-01):</strong> Solo se activa si hay una caja mal sellada para sacarla a rechazo.</span>
+                <span class="t" lang="en"><strong>🔵 Blue Press (PRESS-01):</strong> Seals the box top at center (PE-02). <strong>📦 Ramp &amp; Pallet (PALLET-01):</strong> Good boxes slide down the ramp and stack (1 to 6). <strong>🔴 Red Pusher (PUSHER-01):</strong> Only fires on mis-sealed boxes to push them into the reject tray.</span>
               </p>
             </div>
             <div class="luigi-drive-box" id="arduino-box">
