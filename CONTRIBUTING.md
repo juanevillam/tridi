@@ -33,7 +33,7 @@ Si cambias de tema, cambia el nombre: `git switch -c pastor/ragdoll` justo despu
 
 ## Deploy
 
-Hoy nada se despliega desde este repo. El demo vivo, [tridi-alpha.vercel.app](https://tridi-alpha.vercel.app), sigue saliendo del espejo `Torpass/tridi` del repo del hackathon, que quedó congelado: no se toca. Mover el deploy aquí es una decisión pendiente ([`yc/legal-y-equity.md`](yc/legal-y-equity.md#deploy)).
+Cada merge a `main` despliega automáticamente a producción en **[`https://trytridi.com`](https://trytridi.com)** mediante GitHub Actions y Cloudflare Pages (`.github/workflows/deploy.yml`). Los detalles técnicos viven en [`docs/internal/infra-and-security.md`](docs/internal/infra-and-security.md).
 
 ## Quién es dueño de qué
 
@@ -85,9 +85,9 @@ Se detiene en el primer error y no borra nada. Arreglas lo que dice y lo vuelves
 
 Además de los commits, cada sesión de trabajo deja un archivo en [`docs/bitacora/`](docs/bitacora) con qué se buscaba, qué se hizo, qué funcionó, qué no y qué sigue. El agente lo crea en el primer prompt de la sesión y lo actualiza después de cada prompt (un hook le recuerda cuál es su archivo). Encima de eso:
 
+- [`docs/ROADMAP.md`](docs/ROADMAP.md): visión del producto y tablero de tareas por persona (`J-*`, `P-*`, `C-*`, `A-*`).
 - [`docs/estado.md`](docs/estado.md): dónde está cada parte ahora; cada uno edita solo su sección.
-- [`docs/decisiones/`](docs/decisiones): las decisiones que afectan a otros, con su porqué.
-- [`docs/preguntas-abiertas.md`](docs/preguntas-abiertas.md): lo que falta decidir.
+- [`docs/internal/`](docs/internal/README.md): casos reales en hardware, reuniones industriales y manuales técnicos internos.
 
 Reglas y plantilla en [`docs/bitacora/README.md`](docs/bitacora/README.md).
 
