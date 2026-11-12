@@ -26,7 +26,7 @@
 ## 2. Por qué migramos de Vercel Hobby a Cloudflare Pages + GitHub Actions
 
 1. **Sin bloqueo por autor de commit en repositorios privados:** En el plan gratuito (Hobby) de Vercel, cuando un repositorio privado de GitHub tiene varios colaboradores (`Juan`, `Pastor`, `César`), Vercel **bloquea los despliegues** cuyos commits hayan sido hechos por cualquier miembro que no sea el dueño de la cuenta de Vercel (exigiendo pagar USD 20/mes por asiento en Vercel Pro).
-2. **Despliegue colaborativo gratuito:** Con **Cloudflare Pages** + [`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml), cualquier push a `main` (o `juan/experimental`) de **Juan, Pastor o César** corre primero las suites de verificación (`npm --prefix physics run check && npm --prefix web run check && npm --prefix web run build`) y despliega `web/dist` a Cloudflare Pages sin restricciones de asiento.
+2. **Despliegue colaborativo gratuito:** Con **Cloudflare Pages** + [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml), cualquier push a `main` (o `juan/experimental`) de **Juan, Pastor o César** corre primero las suites de verificación (`npm --prefix physics run check && npm --prefix web run check && npm --prefix web run build`) y despliega `web/dist` a Cloudflare Pages sin restricciones de asiento.
 3. **Límites holgados de archivos:** Cloudflare Pages permite hasta **25 MiB por archivo** y **20.000 archivos** en el plan gratis. El archivo más pesado de `web/dist` es `media/luigi-hardware.mp4` (**16,2 MB**), seguido por `media/luigi-sim2real.mp4` (**12,0 MB**), `media/platanus-pitch.mp4` (**11,0 MB**) y `mujoco.wasm` (**10,75 MB**); total: **236 archivos**.
 4. **DDoS, WAF y Seguridad de Borde incluidos gratis:** Al estar el dominio en Cloudflare con nube naranja (`Proxied`), `trytridi.com` recibe mitigación DDoS L3/L4/L7 ilimitada, HSTS en el borde, AI Labyrinth, Turnstile y DNSSEC sin costo.
 
@@ -104,7 +104,7 @@ Configuración activa en la zona `trytridi.com` (paridad total con `juanevillam.
      - *Por qué en el borde además de `_headers`:* Así la respuesta `301` de `https://www.trytridi.com` también incluye `Strict-Transport-Security` y `nosniff`.
 3. **`Rules → Redirect Rules` (`Redirect from WWW to root [Template]`):**
    - **Wildcard pattern:** `*://www.trytridi.com/*` → Target `https://trytridi.com/${1}` con código **`301`** y **`Preserve query string: ON`** (indispensable para no perder `?api=...` ni `?lang=es`).
-4. **`Security → Settings → security.txt` + [`web/public/.well-known/security.txt`](../../web/public/.well-known/security.txt):**
+4. **`Security → Settings → security.txt` + [`web/public/.well-known/security.txt`](../web/public/.well-known/security.txt):**
    ```text
    Canonical: https://trytridi.com/.well-known/security.txt
    Contact: mailto:juanesvillamendoza@gmail.com
@@ -118,7 +118,7 @@ Configuración activa en la zona `trytridi.com` (paridad total con `juanevillam.
 
 ## 6. Cabeceras de Seguridad en el Código y Pipeline de Deploy
 
-### 6.1 Cabeceras en Cloudflare Pages ([`web/public/_headers`](../../web/public/_headers)) y Vercel ([`vercel.json`](../../vercel.json), [`web/vercel.json`](../../web/vercel.json))
+### 6.1 Cabeceras en Cloudflare Pages ([`web/public/_headers`](../web/public/_headers)) y Vercel ([`vercel.json`](../vercel.json), [`web/vercel.json`](../web/vercel.json))
 
 Ambos archivos están sincronizados para que cualquier despliegue sirva exactamente las mismas cabeceras de seguridad y caché:
 
@@ -130,12 +130,12 @@ Ambos archivos están sincronizados para que cualquier despliegue sirva exactame
   *(Permite únicamente el acceso a la cámara web en el propio origen `trytridi.com` para la captura de pose en vivo, y bloquea en el navegador micrófono, geolocalización, pagos y WebUSB).*
 - `/assets/*`: `Cache-Control: public, max-age=31536000, immutable` (archivos con hash de Vite).
 - `/media/*`: `Cache-Control: public, max-age=604800, stale-while-revalidate=86400` (videos `.mp4` e imágenes de `#/milestones`).
-- `/og.png`: imagen Open Graph (`1200 × 627`, [`web/public/og.png`](../../web/public/og.png)) con el hero real de la landing (regenerable con `bash web/scripts/render-og.sh`), declarada en [`web/index.html`](../../web/index.html) (`og:image`, `og:image:width`, `og:image:height`, `twitter:image`) para que LinkedIn, X y mensajería carguen la miniatura automáticamente al compartir `https://trytridi.com`.
+- `/og.png`: imagen Open Graph (`1200 × 627`, [`web/public/og.png`](../web/public/og.png)) con el hero real de la landing (regenerable con `bash web/scripts/render-og.sh`), declarada en [`web/index.html`](../web/index.html) (`og:image`, `og:image:width`, `og:image:height`, `twitter:image`) para que LinkedIn, X y mensajería carguen la miniatura automáticamente al compartir `https://trytridi.com`.
 
 ### 6.2 Cómo desplegar a `https://trytridi.com`
 
-1. **Automático por GitHub Actions ([`.github/workflows/deploy.yml`](../../.github/workflows/deploy.yml)):**
-   - Al hacer push a `main` o `juan/experimental` (cuando el secreto `CLOUDFLARE_API_TOKEN` está configurado en el repo), GitHub Actions instala dependencias con Node `22.23.3` ([`.node-version`](../../.node-version)), corre `npm --prefix physics run check`, `npm --prefix web run check`, construye `web/dist` y ejecuta `wrangler pages deploy web/dist --project-name=tridi`.
+1. **Automático por GitHub Actions ([`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml)):**
+   - Al hacer push a `main` o `juan/experimental` (cuando el secreto `CLOUDFLARE_API_TOKEN` está configurado en el repo), GitHub Actions instala dependencias con Node `22.23.3` ([`.node-version`](../.node-version)), corre `npm --prefix physics run check`, `npm --prefix web run check`, construye `web/dist` y ejecuta `wrangler pages deploy web/dist --project-name=tridi`.
 2. **Directo desde terminal (cualquier desarrollador con `wrangler login`):**
    ```bash
    npm --prefix physics run check && npm --prefix web run check && npm --prefix web run build
@@ -143,11 +143,11 @@ Ambos archivos están sincronizados para que cualquier despliegue sirva exactame
    rm -rf .wrangler
    ```
 3. **Re-aplicar configuración de Zona Cloudflare por script:**
-   - [`scripts/cloudflare-setup.mjs`](../../scripts/cloudflare-setup.mjs) automatiza vía API de Cloudflare los récords DNS (`CNAME`, `SPF`, `DMARC`), ajustes TLS/HSTS, DNSSEC y Redirect Rule `301`.
+   - [`scripts/cloudflare-setup.mjs`](../scripts/cloudflare-setup.mjs) automatiza vía API de Cloudflare los récords DNS (`CNAME`, `SPF`, `DMARC`), ajustes TLS/HSTS, DNSSEC y Redirect Rule `301`.
 
 ---
 
-## 7. Seguridad y Operación del Servidor de Video en la Mac ([`data/serve.sh`](../../data/serve.sh) + [`data/server.py`](../../data/server.py))
+## 7. Seguridad y Operación del Servidor de Video en la Mac ([`data/serve.sh`](../data/serve.sh) + [`data/server.py`](../data/server.py))
 
 La física (MuJoCo WASM), las políticas ONNX preentrenadas, `#/milestones` y `#/simulations/luigi_lab3` corren **100% en el navegador del visitante** sin necesitar el servidor. El servidor de Python (`data/server.py`) solo interviene cuando alguien:
 1. Sube un video nuevo (`POST /uploads`),
@@ -157,9 +157,9 @@ La física (MuJoCo WASM), las políticas ONNX preentrenadas, `#/milestones` y `#
 ### Cómo se conecta `https://trytridi.com` con la Mac sin cambiar URLs
 1. Al ejecutar `./data/serve.sh` en la Mac de Juan, levanta `uvicorn` en `127.0.0.1:8000` (nunca expone puertos del router ni la IP residencial) y abre un túnel efímero de Cloudflare (`cloudflared tunnel --url http://127.0.0.1:8000`).
 2. `data/serve.sh` publica la URL `https://*.trycloudflare.com` en el Gist `78eb7f16b9c2d8d21a9abfe6607a98da` (`tridi-api.json`).
-3. Cuando un usuario abre `https://trytridi.com`, [`data/live/src/api.js`](../../data/live/src/api.js) (`findApiUrl()`) lee ese Gist, **verifica primero con `checkApi(published)` (`GET /health`) que el túnel esté vivo**, y solo si responde `200 OK` lo activa (si el servidor está apagado, cae silenciosamente a modo offline con `0` errores en consola).
+3. Cuando un usuario abre `https://trytridi.com`, [`data/live/src/api.js`](../data/live/src/api.js) (`findApiUrl()`) lee ese Gist, **verifica primero con `checkApi(published)` (`GET /health`) que el túnel esté vivo**, y solo si responde `200 OK` lo activa (si el servidor está apagado, cae silenciosamente a modo offline con `0` errores en consola).
 
-### Blindaje Anti-Abuso en [`data/server.py`](../../data/server.py) (modelo `sound-shaper`, sin Firebase)
+### Blindaje Anti-Abuso en [`data/server.py`](../data/server.py) (modelo `sound-shaper`, sin Firebase)
 - **CORS estricto (`CORS_ORIGINS` + `CORS_ORIGIN_REGEX`):** Solo acepta orígenes `https://trytridi.com`, `https://www.trytridi.com`, `https://tridi-18p.pages.dev`, `https://tridi-alpha.vercel.app`, dominios `*tridi*.com` y `localhost`/`127.0.0.1`.
 - **Rate Limiting por IP real (`_check_write_rate`):** Lee la IP del cliente desde la cabecera `CF-Connecting-IP` inyectada por el túnel de Cloudflare y limita a **`WRITE_RATE_PER_MIN = 20` peticiones de escritura por minuto por IP** en `POST /uploads`, `POST /clips` y `POST /clips/{id}/train` (devuelve `429 Too Many Requests` si un script intenta spamear).
 - **Topes de disco y memoria:**
