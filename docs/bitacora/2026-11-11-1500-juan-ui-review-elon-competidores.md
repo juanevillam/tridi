@@ -78,6 +78,9 @@
 - **`#/milestones` — Visor `PhotoViewer` a pantalla completa y chips unificados (`web/src/screens/milestones.js`, `web/src/screens/strings/milestones.js`, `web/src/style.css`):**
   - Reemplazado el lightbox por el visor `<dialog class="photo-viewer">` con transición `450ms cubic-bezier(0.22, 1, 0.36, 1)`, escenario `3:2` con fondo desenfocado `.fill`, doble `.layer` con cross-fade y botones circulares fijos en el viewport (`.v-close`, `.v-prev`, `.v-next`) que nunca cambian de posición entre fotos horizontales y verticales.
   - Unificados los chips de `Milestone 01` y `Milestone 02` (`.milestone-badge.signal` en una sola línea) y ajustado el subtítulo principal para que entre limpio en una línea.
+- **Estándares de UI/UX, tokens de movimiento, Liquid Glass y SquashPressable (`docs/audit-playbook.md`, `.claude/skills/tridi-quality/SKILL.md`, `web/src/style.css`, `web/src/screens/delivery.css`):**
+  - Incorporados en `:root` y en el playbook de auditoría la escalera cuantizada de tiempos (`--beat: 600ms`, `--dur-micro: 150ms`, `--dur-quick: 300ms`, `--dur-turn: 450ms`, `--dur-settle: 600ms`, `--ease: cubic-bezier(0.16, 1, 0.3, 1)`, `--hover`), la jerarquía de 4 tintas (`--ink`, `--ink-body`, `--ink-soft`, `--muted`), el borde especular Liquid Glass (`--lg-blur`, `--lg-rim`) en los overlays flotantes, el feedback táctil `:active` (`scale(0.97)` en tarjetas/pills y `scale(0.92)` en botones circulares de icono) y la regla de cero referencias al portafolio personal dentro del repo de Tridi.
+
 
 
 
