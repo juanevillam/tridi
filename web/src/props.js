@@ -30,7 +30,7 @@ const MODELS = {
 const SURFACES = {
   cordon: { color: '#5b5852', roughness: 0.95 },
   stones: { color: '#3a3833', roughness: 1 },
-  pared: { color: '#2b2d34', roughness: 0.88, metalness: 0.06 },
+  pared: { color: '#6e6a63', roughness: 0.82, metalness: 0.04 },
   palet: { color: '#8a6236', roughness: 0.85, metalness: 0.02 },
   taza: { color: '#e85d3c', roughness: 0.28, metalness: 0.05 },
   agua: { color: '#38bdf8', roughness: 0.08, metalness: 0.1, transparent: true, opacity: 0.88 },
@@ -178,10 +178,13 @@ const FLOORS = {
 };
 
 let undoFloor = () => {};
+let wantChair = false;
+let wantSink = false;
+
 /** The floor of the place `id` (a key of FLOORS), or the viewer's own floor for any other. */
 export function setFloor(view, id) {
   undoFloor();
-  undoFloor = FLOORS[id]?.(view.viewer.scene, view.viewer.renderer, view.scene?.()) ?? (() => {});
+  undoFloor = FLOORS[id]?.(view?.viewer?.scene, view?.viewer?.renderer, view?.scene?.()) ?? (() => {});
 }
 
 /**
@@ -190,17 +193,18 @@ export function setFloor(view, id) {
  * with its backrest behind the torso instead of floating in empty air.
  */
 export async function syncSitChair(view, show) {
+  wantChair = Boolean(show);
   if (!view?.viewer?.world) return;
   const world = view.viewer.world;
   const existing = world.getObjectByName('tridi-sit-bench');
-  if (!show) {
+  if (!wantChair) {
     if (existing) world.remove(existing);
     return;
   }
   if (existing) return;
   try {
     const template = await loadModel('furniture/chair.glb');
-    if (!view?.viewer?.world || world.getObjectByName('tridi-sit-bench')) return;
+    if (!wantChair || !view?.viewer?.world || world.getObjectByName('tridi-sit-bench')) return;
     const copy = template.clone();
     copy.name = 'tridi-sit-bench';
     const s = template.userData.size;
@@ -220,17 +224,18 @@ export async function syncSitChair(view, show) {
  * directly in front of the robot's hands when viewing `clip_lavar-04-gvhmr` ("Washing dishes").
  */
 export async function syncWashSink(view, show) {
+  wantSink = Boolean(show);
   if (!view?.viewer?.world) return;
   const world = view.viewer.world;
   const existing = world.getObjectByName('tridi-wash-sink');
-  if (!show) {
+  if (!wantSink) {
     if (existing) world.remove(existing);
     return;
   }
   if (existing) return;
   try {
     const template = await loadModel('furniture/kitchenCabinet.glb');
-    if (!view?.viewer?.world || world.getObjectByName('tridi-wash-sink')) return;
+    if (!wantSink || !view?.viewer?.world || world.getObjectByName('tridi-wash-sink')) return;
     const group = new THREE.Group();
     group.name = 'tridi-wash-sink';
 
@@ -278,4 +283,14 @@ export async function syncWashSink(view, show) {
   } catch (err) {
     console.error(err);
   }
+}
+
+/** Removes any clip-specific 3D props (chair, sink) and custom floor when leaving #/simulations. */
+export function clearStageProps(view) {
+  wantChair = false;
+  wantSink = false;
+  if (!view) return;
+  syncSitChair(view, false);
+  syncWashSink(view, false);
+  setFloor(view, null);
 }

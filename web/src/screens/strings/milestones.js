@@ -115,6 +115,8 @@ export const { T, t, A } = dict({
 
   // Milestone 01 — Platanus Hack 26 Caracas
   'm1.badge': { es: 'Hito 01 · Octubre 2026 · Platanus Hack 26 Caracas', en: 'Milestone 01 · October 2026 · Platanus Hack 26 Caracas' },
+  'm1.ctaSims': { es: 'Abrir Simulaciones →', en: 'Open Simulations →' },
+  'm1.ctaDelivery': { es: 'Ver Telemetría (#/delivery) →', en: 'View Telemetry (#/delivery) →' },
   'm1.title': {
     es: 'Dónde nació Tridi: demo y presentación en vivo en Platanus Hack 26 Caracas',
     en: 'Where Tridi was born: live demo & pitch at Platanus Hack 26 Caracas',

@@ -135,19 +135,25 @@ html.is-delivery body::before {
 }
 
 .dl-name {
-  min-width: 0;
+  width: 240px;
+  min-width: 240px;
+  max-width: 240px;
+  flex: none;
 }
 
 .dl-name h1 {
   margin: 0;
-  font: 500 26px/1 var(--display);
+  font: 600 20px/1.15 var(--display);
   text-transform: uppercase;
   letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dl-meta {
   display: flex;
-  gap: 24px;
+  gap: 20px;
   min-width: 0;
   margin-left: auto !important;
 }
@@ -157,6 +163,23 @@ html.is-delivery body::before {
   align-content: start;
   gap: 5px;
   min-width: 0;
+  flex: none;
+}
+
+.dl-meta > div:nth-child(2) {
+  min-width: 158px;
+}
+
+.dl-meta > div:nth-child(3) {
+  min-width: 84px;
+}
+
+.dl-meta > div:nth-child(4) {
+  min-width: 132px;
+}
+
+.dl-meta > div:nth-child(5) {
+  min-width: 148px;
 }
 
 .dl-meta dt,
@@ -180,18 +203,24 @@ html.is-delivery body::before {
 }
 
 .dl-switcher {
-  padding: 4px 24px 4px 8px;
+  width: 276px;
+  min-width: 276px;
+  max-width: 276px;
+  min-height: 36px;
+  padding: 4px 32px 4px 10px;
   border: 1px solid var(--line);
-  border-radius: 3px;
+  border-radius: 4px;
   background-color: #14171a;
+  background-position: right 10px center;
   color: var(--fg);
   font: 500 12px/1.2 var(--mono);
   cursor: pointer;
 }
 
-.dl-switcher:hover,
+.dl-switcher:hover:not(:disabled),
 .dl-switcher:focus-visible {
   border-color: var(--signal);
+  background-color: #1a1e22;
 }
 
 .dl-explain {

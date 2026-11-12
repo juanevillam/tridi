@@ -17,7 +17,7 @@ import { SCENES, WORLDS } from 'tridi-physics';
 import { savedMotion } from './motions.js';
 import { FINAL_LEVEL, IMITATIONS, imitationOf, policyUrls } from './policies.js';
 import { dressWorld } from './looks/index.js';
-import { dressPlace, setFloor, syncSitChair, syncWashSink } from './props.js';
+import { clearStageProps, dressPlace, setFloor, syncSitChair, syncWashSink } from './props.js';
 import { mountRobotPane } from './robot-pane.js';
 import { SkeletonView } from './skeleton.js';
 import { createVideoOverlay } from './video-overlay.js';
@@ -871,7 +871,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       if (view) {
         look?.undo();
         look = null;
-        setFloor(view, null); // the viewer's own floor again
+        clearStageProps(view); // removes chair, sink, and custom floor so nothing leaks to landing/#live
         if (view.sim) {
           view.sim._usbLocked = false;
           view.sim._serialCmd = null;
