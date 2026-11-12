@@ -31,10 +31,9 @@ Stop at the first failure and give the exact fix.
 
 Read, in order, and summarize in a few lines what changed and what is next for this person:
 
-1. `docs/ROADMAP.md` (current product vision, 4 verticals, customer ladder, and single-owner task board `J-*`, `P-*`, `C-*`, `A-*`) and `docs/README.md` (human index of active vs historical docs).
-2. `docs/internal/README.md` (internal manuals for `trytridi.com` Cloudflare infra/security, Capture 2.0 + Sim-to-Real architecture, and verbatim submitted YC W27 application in `docs/internal/yc-w27-reference.md`).
-3. `docs/estado.md` and the newest files in `docs/bitacora/`.
-4. `git log --oneline -15 origin/main`.
+1. `docs/ROADMAP.md` (current product vision, 4 verticals, customer ladder, and single-owner task board `J-*`, `P-*`, `C-*`, `A-*`) and `docs/README.md` (index of all docs in `docs/`).
+2. `docs/estado.md` and the newest files in `docs/bitacora/`.
+3. `git log --oneline -15 origin/main`.
 
 ## Working in the repo
 
@@ -44,13 +43,13 @@ Read, in order, and summarize in a few lines what changed and what is next for t
 - **2-Layer Documentation Auto-Sync (mandatory before `ship.sh` or closing a milestone — never wait to be asked):**
   - Alongside the session log in `docs/bitacora/`, whenever a session completes or advances a task in `docs/ROADMAP.md` (`J-*`, `P-*`, `C-*`, `A-*`), adds a new physical robot/factory case (`luigi_lab4`, etc.), changes JSON schemas/contracts, or modifies Cloudflare/infra/Sim-to-Real architecture, **automatically update**:
     1. **Layer 1 (Human-First):** `docs/ROADMAP.md` and `docs/estado.md` (plus `docs/README.md` if a new active document is created).
-    2. **Layer 2 (Technical/Internal):** `docs/internal/infra-and-security.md`, `docs/internal/architecture-and-sim2real.md`, or `docs/contrato.md` depending on the area touched.
-  - **Public Mirror Boundary:** `docs/internal/` and `yc/` live exclusively in the private repo `juanevillam/tridi` and must **NEVER** be pushed to the public mirror `Torpass/tridi`.
+    2. **Layer 2 (Technical):** `docs/infra-and-security.md`, `docs/architecture-and-sim2real.md`, or `docs/contrato.md` depending on the area touched.
+  - **Public Mirror Boundary:** `yc/` lives exclusively in the private repo `juanevillam/tridi` and must **NEVER** be pushed to the public mirror `Torpass/tridi`.
 - **Session log:** one file per session in `docs/bitacora/` (`YYYY-MM-DD-HHMM-<person>-<topic>.md`, `sesion: <id from the bitacora hook>`), updated before finishing every reply. Template in `docs/bitacora/README.md`.
 
 ## Working on the YC application
 
-- Every claim must be backed by `yc/verdad-hoy.md` and `docs/internal/yc-w27-reference.md`; if it is not there, add it with its proof or drop it.
+- Every claim must be backed by `yc/verdad-hoy.md` and `yc/yc-w27-reference.md`; if it is not there, add it with its proof or drop it.
 - Form answers in plain English, short, numbers over adjectives. Team notes in Spanish.
 - `TODO(name)` items are facts only that person knows: ask, never invent them.
 - YC research (every startup of the 2026 batches, public applications, robotics deep dive): `yc/investigacion/startups/`. Refresh with `python3 yc/investigacion/startups/actualizar.py`.

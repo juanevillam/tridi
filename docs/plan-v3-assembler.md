@@ -8,7 +8,7 @@
 
 ## 1. El aprendizaje clave y el verdadero "Aha! Moment" de Tridi
 
-Al llevar Tridi del navegador al piso real con el robot de Luigi ([`docs/internal/caso-luigi-sim2real.md`](internal/caso-luigi-sim2real.md)), descubrimos dos verdades fundamentales sobre el mercado de Physical AI:
+Al llevar Tridi del navegador al piso real con el robot de Luigi ([`docs/caso-luigi-sim2real.md`](caso-luigi-sim2real.md)), descubrimos dos verdades fundamentales sobre el mercado de Physical AI:
 
 1. **El dolor real está en la brecha entre los componentes físicos y la simulación:**
    - Incluso un robot móvil sencillo tiene decenas de detalles físicos que rompen el código de libro de texto: zona muerta de fricción de las llantas de TPU (`PWM < 115`), bloqueo de `47,1 ms` en `pulseIn()` del `HC-SR04`, clones I2C (`APDS-9960` con `Chip ID = 0x9E`) y conflictos de timers en el microcontrolador (en `luigi_lab4`, usar `<Servo.h>` secuestra el `Timer1` del ATmega328P y apaga el PWM en los pines `D9` y `D10`, obligando a mover `ENB` a `D6`).

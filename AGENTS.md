@@ -5,7 +5,7 @@ Private company repo of **Tridi** (`juanevillam/tridi`): Juan, Pastor, César an
 ## Where the company stands (read this first)
 
 - **Goal:** **Y Combinator Winter 2027** (application submitted on **2026-11-02**; decisions by Dec 11; batch Jan–Mar 2027 in San Francisco) and real-world physical robot & industrial automation deployments.
-- **Everything YC lives in [`yc/`](yc/README.md)** (Spanish; answers for the form in English) and the verbatim submitted application lives in [`docs/internal/yc-w27-reference.md`](docs/internal/yc-w27-reference.md).
+- **Everything YC lives in [`yc/`](yc/README.md)** (Spanish; answers for the form in English) and the verbatim submitted application lives in [`yc/yc-w27-reference.md`](yc/yc-w27-reference.md).
 - **Never state a YC answer, metric or claim that [`yc/verdad-hoy.md`](yc/verdad-hoy.md) does not back.** `TODO(name)` items are facts only that person knows: ask, never invent.
 - Quick catch-up for a teammate: the `tridi` skill (`/tridi estado`), in [`.claude/skills/tridi/SKILL.md`](.claude/skills/tridi/SKILL.md). Machine setup: `/tridi setup`.
 
@@ -15,7 +15,7 @@ Private company repo of **Tridi** (`juanevillam/tridi`): Juan, Pastor, César an
 | --- | --- |
 | **Product Roadmap, Customer Strategy & Team Task Board** | [`docs/ROADMAP.md`](docs/ROADMAP.md), [`docs/plan-v3-assembler.md`](docs/plan-v3-assembler.md) |
 | **Clean index of all `docs/`** | [`docs/README.md`](docs/README.md) |
-| **Real-World Cases, Field Meetings & Internal Manuals** | [`docs/internal/README.md`](docs/internal/README.md) (`reunion-zaka.md`, `caso-luigi-sim2real.md`, `architecture-and-sim2real.md`, `infra-and-security.md`, `yc-w27-reference.md`) |
+| **Real-World Cases, Field Meetings & Manuals** | [`docs/reunion-zaka.md`](docs/reunion-zaka.md), [`docs/caso-luigi-sim2real.md`](docs/caso-luigi-sim2real.md), [`docs/architecture-and-sim2real.md`](docs/architecture-and-sim2real.md), [`docs/infra-and-security.md`](docs/infra-and-security.md) |
 | What each area does and how to run it | `data/README.md`, `physics/README.md`, `training/README.md`, `web/` |
 | Where each part is now | [`docs/estado.md`](docs/estado.md), newest [`docs/bitacora/`](docs/bitacora) |
 | Brand manual & official pitch deck | [`docs/marca.md`](docs/marca.md), [`docs/pitch/manual-de-marca-tridi.pdf`](docs/pitch/manual-de-marca-tridi.pdf), [`docs/pitch/tridi-pitch.pdf`](docs/pitch/tridi-pitch.pdf) |
@@ -27,7 +27,7 @@ Private company repo of **Tridi** (`juanevillam/tridi`): Juan, Pastor, César an
 ## Remotes & Deploy
 
 - `origin` is `juanevillam/tridi` (private).
-- **Production (`https://trytridi.com`):** Deployed automatically from `main` to Cloudflare Pages (`tridi`, `tridi-18p.pages.dev`) via [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml). Full DNS, Cloudflare security, HSTS, DMARC/SPF, and deploy details live in [`docs/internal/infra-and-security.md`](docs/internal/infra-and-security.md).
+- **Production (`https://trytridi.com`):** Deployed automatically from `main` to Cloudflare Pages (`tridi`, `tridi-18p.pages.dev`) via [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml). Full DNS, Cloudflare security, HSTS, DMARC/SPF, and deploy details live in [`docs/infra-and-security.md`](docs/infra-and-security.md).
 - **Video server:** `data/server.py` runs on Juan's Mac behind a Cloudflare tunnel (`data/serve.sh`); it writes the tunnel's changing URL to a gist that the web reads (`?api=` still overrides it). It keeps only PoseClips, never videos.
 
 ## Start of every session
@@ -56,8 +56,8 @@ Rules and template in [`docs/bitacora/README.md`](docs/bitacora/README.md) and [
 - **2-Layer Documentation Auto-Sync (automatic before `scripts/ship.sh` or closing a milestone — never wait to be asked):**
   Whenever a session completes or advances a task in [`docs/ROADMAP.md`](docs/ROADMAP.md) (`J-*`, `P-*`, `C-*`, `A-*`), adds a new physical robot/factory case (`luigi_lab4`, etc.), changes a JSON schema/contract, or modifies infrastructure (`trytridi.com` / Cloudflare / `data/server.py`) or Sim-to-Real architecture, the agent **MUST automatically update in the same branch before shipping**:
   1. **Layer 1 (Human-First):** [`docs/ROADMAP.md`](docs/ROADMAP.md) and this person's section of [`docs/estado.md`](docs/estado.md) (plus [`docs/README.md`](docs/README.md) if a new active document is created).
-  2. **Layer 2 (Technical & Internal Manuals):** [`docs/internal/infra-and-security.md`](docs/internal/infra-and-security.md), [`docs/internal/architecture-and-sim2real.md`](docs/internal/architecture-and-sim2real.md), or [`docs/contrato.md`](docs/contrato.md) depending on the area touched.
-- **Public Mirror Boundary (`Torpass/tridi`):** [`docs/internal/`](docs/internal/README.md) and [`yc/`](yc/README.md) live exclusively in the private repo `juanevillam/tridi` and must **NEVER** be pushed to the public mirror `Torpass/tridi`.
+  2. **Layer 2 (Technical Manuals):** [`docs/infra-and-security.md`](docs/infra-and-security.md), [`docs/architecture-and-sim2real.md`](docs/architecture-and-sim2real.md), or [`docs/contrato.md`](docs/contrato.md) depending on the area touched.
+- **Public Mirror Boundary (`Torpass/tridi`):** [`yc/`](yc/README.md) lives exclusively in the private repo `juanevillam/tridi` and must **NEVER** be pushed to the public mirror `Torpass/tridi`.
 
 ## Team
 
@@ -68,7 +68,7 @@ Rules and template in [`docs/bitacora/README.md`](docs/bitacora/README.md) and [
 | César (CIO/CTO) | @cisorm | The web app & Assembler screens | `web/` |
 | Ale (COO) | @alehernandezt | Strategy, industrial verticals, unit economics, YC application, customer conversations | `docs/`, `yc/` |
 
-Exact submitted YC W27 application and 25/25/25/25 equity split live in [`docs/internal/yc-w27-reference.md`](docs/internal/yc-w27-reference.md).
+Exact submitted YC W27 application and 25/25/25/25 equity split live in [`yc/yc-w27-reference.md`](yc/yc-w27-reference.md).
 
 ## Conventions
 

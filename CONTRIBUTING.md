@@ -33,7 +33,7 @@ Si cambias de tema, cambia el nombre: `git switch -c pastor/ragdoll` justo despu
 
 ## Deploy
 
-Cada merge a `main` despliega automáticamente a producción en **[`https://trytridi.com`](https://trytridi.com)** mediante GitHub Actions y Cloudflare Pages (`.github/workflows/deploy.yml`). Los detalles técnicos viven en [`docs/internal/infra-and-security.md`](docs/internal/infra-and-security.md).
+Cada merge a `main` despliega automáticamente a producción en **[`https://trytridi.com`](https://trytridi.com)** mediante GitHub Actions y Cloudflare Pages (`.github/workflows/deploy.yml`). Los detalles técnicos viven en [`docs/infra-and-security.md`](docs/infra-and-security.md).
 
 ## Quién es dueño de qué
 
@@ -87,7 +87,7 @@ Además de los commits, cada sesión de trabajo deja un archivo en [`docs/bitaco
 
 - [`docs/ROADMAP.md`](docs/ROADMAP.md): visión del producto y tablero de tareas por persona (`J-*`, `P-*`, `C-*`, `A-*`).
 - [`docs/estado.md`](docs/estado.md): dónde está cada parte ahora; cada uno edita solo su sección.
-- [`docs/internal/`](docs/internal/README.md): casos reales en hardware, reuniones industriales y manuales técnicos internos.
+- [`docs/README.md`](docs/README.md): índice de toda la documentación en `docs/`.
 
 Reglas y plantilla en [`docs/bitacora/README.md`](docs/bitacora/README.md).
 
