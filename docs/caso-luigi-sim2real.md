@@ -4,10 +4,10 @@
 **Lugar:** Casa de Alejandro (reunión presencial con Luigi D'Aquaro)  
 **Participantes:** Juan Villa, Alejandro Hernández, Luigi D'Aquaro  
 **Archivos clave en el repo:**
-- Gemelo digital MuJoCo y mallas CAD: [`physics/models/luigi_lab3/luigi.xml`](../../physics/models/luigi_lab3/luigi.xml), [`scene.xml`](../../physics/models/luigi_lab3/scene.xml), [`assets/*.stl`](../../physics/models/luigi_lab3/assets)
-- Policy ONNX exportada: [`training/policies/luigi-lab3.onnx`](../../training/policies/luigi-lab3.onnx), [`luigi-lab3.json`](../../training/policies/luigi-lab3.json)
-- Panel WebSerial USB y gemelo en vivo: [`web/src/screens/simulations.js`](../../web/src/screens/simulations.js), [`web/src/stage.js`](../../web/src/stage.js)
-- Firmware final de Arduino UNO (inferencia a 50 Hz + drivers de sensores en C): [`physics/models/luigi_lab3/firmware/robot_gestos.ino`](../../physics/models/luigi_lab3/firmware/robot_gestos.ino)
+- Gemelo digital MuJoCo y mallas CAD: [`physics/models/luigi_lab3/luigi.xml`](../physics/models/luigi_lab3/luigi.xml), [`scene.xml`](../physics/models/luigi_lab3/scene.xml), [`assets/*.stl`](../physics/models/luigi_lab3/assets)
+- Policy ONNX exportada: [`training/policies/luigi-lab3.onnx`](../training/policies/luigi-lab3.onnx), [`luigi-lab3.json`](../training/policies/luigi-lab3.json)
+- Panel WebSerial USB y gemelo en vivo: [`web/src/screens/simulations.js`](../web/src/screens/simulations.js), [`web/src/stage.js`](../web/src/stage.js)
+- Firmware final de Arduino UNO (inferencia a 50 Hz + drivers de sensores en C): [`physics/models/luigi_lab3/firmware/robot_gestos.ino`](../physics/models/luigi_lab3/firmware/robot_gestos.ino)
 
 ---
 
@@ -39,15 +39,15 @@ El objetivo de la sesión del 7 de noviembre fue **ejecutar el pipeline completo
   4. `4_bandeja_protoboard.stl` (bandeja superior blanca)
   5. `5_rin_x2.stl` (rines amarillos de 5 rayos)
   6. `6_llanta_x2_TPU.stl` (llantas negras con dibujo en TPU flexible)
-- Importamos las 6 mallas STL en [`physics/models/luigi_lab3/luigi.xml`](../../physics/models/luigi_lab3/luigi.xml) a escala `0.002` (`2x` para visualización clara en escena), posicionando con precisión los componentes electrónicos reales (pack de baterías `18650` verdes abajo, `Arduino UNO` azul, `L298N` rojo con disipador negro, protoboard blanca con switch y capacitor de `100 µF`, `HC-SR04` frontal y módulo morado `APDS-9960` arriba).
+- Importamos las 6 mallas STL en [`physics/models/luigi_lab3/luigi.xml`](../physics/models/luigi_lab3/luigi.xml) a escala `0.002` (`2x` para visualización clara en escena), posicionando con precisión los componentes electrónicos reales (pack de baterías `18650` verdes abajo, `Arduino UNO` azul, `L298N` rojo con disipador negro, protoboard blanca con switch y capacitor de `100 µF`, `HC-SR04` frontal y módulo morado `APDS-9960` arriba).
 - Modelamos los dos actuadores como motores de velocidad diferencial (`vel_left_wheel`, `vel_right_wheel`) con el límite físico real de los motores TT (`200 RPM` = `20.94 rad/s`, `ctrlrange="-20.94 20.94"`).
 
 ### Etapa 2: Policy ONNX (`luigi-lab3.onnx`) y Motor de Inferencia en el Navegador
-- Exportamos la policy [`training/policies/luigi-lab3.onnx`](../../training/policies/luigi-lab3.onnx) (`obs_dim = 15`, `nu = 2`, `sense_velocity = true`), cuya observación lee la orientación del chasis, velocidad lineal/angular y la posición/velocidad de las dos ruedas (`theta_L`, `theta_R`).
-- Extendimos nuestro runtime ligero [`physics/src/onnx-lite.js`](../../physics/src/onnx-lite.js) para soportar los operadores matemáticos `Tanh`, `Relu`, `Sin`, `Cos`, `Identity` y `MatMul`, además de corregir la alineación de `byteOffset` en `Float32Array` al leer tensores embebidos en Node y en el navegador.
+- Exportamos la policy [`training/policies/luigi-lab3.onnx`](../training/policies/luigi-lab3.onnx) (`obs_dim = 15`, `nu = 2`, `sense_velocity = true`), cuya observación lee la orientación del chasis, velocidad lineal/angular y la posición/velocidad de las dos ruedas (`theta_L`, `theta_R`).
+- Extendimos nuestro runtime ligero [`physics/src/onnx-lite.js`](../physics/src/onnx-lite.js) para soportar los operadores matemáticos `Tanh`, `Relu`, `Sin`, `Cos`, `Identity` y `MatMul`, además de corregir la alineación de `byteOffset` en `Float32Array` al leer tensores embebidos en Node y en el navegador.
 
 ### Etapa 3: Gemelo Digital Bidireccional por WebSerial USB (`9600 baud`)
-- En [`web/src/screens/simulations.js`](../../web/src/screens/simulations.js) y [`web/src/stage.js`](../../web/src/stage.js), agregamos el panel **Arduino UNO — USB en vivo (`#arduino-box`)** cuando se selecciona el **Robot de Luigi (Lab 3)**.
+- En [`web/src/screens/simulations.js`](../web/src/screens/simulations.js) y [`web/src/stage.js`](../web/src/stage.js), agregamos el panel **Arduino UNO — USB en vivo (`#arduino-box`)** cuando se selecciona el **Robot de Luigi (Lab 3)**.
 - Usando la API **WebSerial** de Chrome a `9600 baud` (`/dev/cu.usbserial-11230`), logramos comunicación en ambos sentidos:
   - Los botones de la interfaz web (`⬆️ Avanzar (F)`, `⬇️ Atrás (B)`, `⬅️ Giro Izq (L)`, `➡️ Giro Der (R)`, `⏹ Quieto (S)`, `🤖 Patrulla ONNX`) mueven al mismo tiempo las ruedas del robot físico y el modelo 3D en MuJoCo.
   - La telemetría que el Arduino envía por USB (`Dist: ... | ProxIR: ... | Accion: ...`) actualiza el estado en vivo en la pantalla de Tridi.
@@ -64,7 +64,7 @@ Pasar de la simulación al robot físico en el piso destapó **5 problemas reale
 
 ### Problema 2: Caber en 2 KB de RAM (Transpilación de ONNX a C nativo a 50 Hz)
 - **Síntoma:** Un Arduino UNO (`ATmega328P`) solo tiene **2 KB de RAM** y **32 KB de Flash**; es imposible cargar un intérprete de `.onnx` en tiempo de ejecución.
-- **Solución:** Transpilamos el grafo matemático de `luigi-lab3.onnx` directamente a una función en C ([`pasoPolicyTridi()`](../../physics/models/luigi_lab3/firmware/robot_gestos.ino)) que corre cada `20 ms` (`50 Hz`), integrando la odometría de las ruedas (`thetaL += ctrlL * 0.02f`) y calculando las velocidades diferenciales continuas consumiendo solo **22 % de RAM (`461 bytes`)** y **29 % de Flash (`9.5 KB`)**.
+- **Solución:** Transpilamos el grafo matemático de `luigi-lab3.onnx` directamente a una función en C ([`pasoPolicyTridi()`](../physics/models/luigi_lab3/firmware/robot_gestos.ino)) que corre cada `20 ms` (`50 Hz`), integrando la odometría de las ruedas (`thetaL += ctrlL * 0.02f`) y calculando las velocidades diferenciales continuas consumiendo solo **22 % de RAM (`461 bytes`)** y **29 % de Flash (`9.5 KB`)**.
 
 ### Problema 3: Zona muerta de fricción estática de los motores TT en el piso
 - **Síntoma:** En MuJoCo, enviar `3 rad/s` mueve la rueda suavemente. En el robot físico con puente H `L298N` y batería `2S`, cualquier `PWM < 110` solo hace zumbar el motor sin vencer la fricción estática de las llantas de TPU contra la cerámica.

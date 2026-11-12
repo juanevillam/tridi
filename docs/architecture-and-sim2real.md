@@ -73,7 +73,7 @@ Construida en JavaScript modular + Three.js + MuJoCo WASM + Vite (`web/`), con i
 
 ## 5. Playbook de Calidad y Auditoría Obligatoria antes de cada Merge/Deploy
 
-Documentado en [`docs/audit-playbook.md`](../audit-playbook.md) y en el skill [`.claude/skills/tridi-quality/SKILL.md`](../../.claude/skills/tridi-quality/SKILL.md):
+Documentado en [`docs/audit-playbook.md`](audit-playbook.md) y en el skill [`.claude/skills/tridi-quality/SKILL.md`](../.claude/skills/tridi-quality/SKILL.md):
 
 1. **Checks automáticos en terminal (0 fallos permitidos):**
    ```bash
