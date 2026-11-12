@@ -21,6 +21,38 @@
 
 ---
 
+## 1.5 Diccionario Rápido de Planta para Todo el Equipo (Traducido a lo que ya construimos en Tridi) + Videos
+
+Para que todo el equipo (**Ale, Pastor, Juan y César**) vaya con la película clara hoy: **el 90 % de los conceptos de automatización industrial son equivalentes directos de lo que ya programamos en Tridi**, solo que en planta tienen otros nombres.
+
+### A. Traducción directa: de nuestro código al lenguaje del Sr. José
+
+| Concepto en Planta (ZAKA) | Qué es en sencillo (Nuestro mundo en Tridi) | Cómo lo resuelve lo que ya construimos |
+| --- | --- | --- |
+| **PLC (`Siemens S7-1200/1500`, `Rockwell CompactLogix`)** | Es literalmente un **microcontrolador industrial blindado a 24 V** montado en un gabinete que corre un ciclo fijo (`scan time` de `5–20 ms`) leyendo sensores (`true/false`) y activando motores o válvulas neumáticas. | Nuestro compilador [`training/export_mcu.py`](../training/export_mcu.py) ya genera lazos de control deterministas de `20 ms` (`50 Hz`) sin bloqueos ni memoria dinámica. |
+| **Texto Estructurado (`SCL` / `ST` — `IEC 61131-3`) y Bloques `AOI` / `FB`** | Es el lenguaje moderno de programación de PLCs. En vez de diagramas eléctricos viejos (*Ladder*), es código idéntico a TypeScript/C (`IF sensor THEN motor := 50.0; END_IF;`) empaquetado como una función reutilizable (`FB` en Siemens / `AOI` en Rockwell). | En vez de exportar solo `.h` de C para Arduino, el compilador de Tridi exporta un bloque `.scl` auditable que los ingenieros de ZAKA pegan en `TIA Portal` o `Studio 5000`. |
+| **Variador de Frecuencia (`VFD` — `PowerFlex` / `Sinamics`) y Rampas** | En el robot de Luigi usamos un puente H (`L298N`) con `PWM` (`0..255`) para regular motores DC. En fábrica los motores son trifásicos AC grandes, y el **VFD** regula su velocidad subiendo o bajando la frecuencia eléctrica (`0 Hz` a `60 Hz`). La **rampa (`Accel / Decel Time`)** son los segundos que tarda en subir de `0` a `50 Hz` para no partir ejes viejos ni patinar la banda por un tirón brusco. | En MuJoCo modelamos la masa real, fricción y juego mecánico de la máquina, probamos distintas rampas (`0,24 s`, `0,35 s`, `0,52 s`) y entregamos el número exacto antes de energizar el motor en planta. |
+| **HMI (`FactoryTalk View` / `WinCC` / `InTouch`) y "Recetas de Formato" (`ISA-88` / `PackML`)** | El **HMI** es la pantalla táctil pegada al tablero de la máquina donde el operador elige qué producto va a correr hoy (`Formato 250 g`, `500 g` o `1 kg`). La **receta** es la tabla de números (`Hz` de cinta, `mm` de pistón, `ms` de prensa) que se le envía al PLC al cambiar de envase. | Igual que en [`trytridi.com/#/delivery`](https://trytridi.com/#/delivery) probamos 32 episodios variando masa y fricción, en [`trytridi.com/#/simulations/factory_cell`](https://trytridi.com/#/simulations/factory_cell) simulamos cada formato de envase y exportamos la tabla de recetas pre-calibrada sin gastar horas ni aplastar cajas a ojo en la planta. |
+| ***Virtual Commissioning* (Puesta en marcha virtual)** | Es probar el programa del PLC contra el modelo 3D de la máquina en la computadora **antes** del domingo de parada de planta. | En lugar de usar software corporativo de USD 30.000+ que requiere estaciones pesadas, Tridi levanta el gemelo físico en MuJoCo directo en el navegador a partir de los `.STL` y prueba casos extremos (patinaje de banda, fricción, sensores con retardo). |
+
+### B. 5 Videos Cortos en YouTube (para ver a `1.5×` antes de la reunión)
+
+1. **Cómo se ve un simulador 3D conectado a un PLC real (Factory I/O + Siemens TIA Portal):**
+   - 🎥 [Simulación 3D con Factory I/O y TIA Portal (español)](https://www.youtube.com/watch?v=fOZVj-tRITw)
+   - 🎥 [Ejemplo práctico de banda transportadora 3D + sensores + PLC](https://www.youtube.com/watch?v=NO9WiTH9PLk)
+   - *Por qué verlo:* Muestra exactamente una cinta con fotoceldas y pistones como nuestro `factory_cell`. La diferencia clave es que los simuladores clásicos de PLC son casi "cinemáticos" (cajas ideales), mientras que **MuJoCo en Tridi simula física de contacto real, patinaje, fricción variable e inercia en la web**.
+2. **Qué es un Variador de Frecuencia (VFD) y por qué importan las rampas de aceleración:**
+   - 🎥 [Variadores de Frecuencia explicados fácilmente](https://www.youtube.com/watch?v=Ry10hneiET4)
+   - 🎥 [Rampas de aceleración y desaceleración en un variador](https://www.youtube.com/watch?v=Ul_O3oaz3cw)
+   - *Por qué verlo:* En los primeros 3 minutos queda clarísimo qué son los `Hz` y los segundos de rampa (`0,24 s`, `0,35 s`, `0,52 s`) que calculamos en `factory_cell`.
+3. **Qué es *Virtual Commissioning* con CAD mecánico real (Siemens NX MCD + PLC):**
+   - 🎥 [Virtual Commissioning: CAD 3D + PLC Simulation](https://www.youtube.com/watch?v=ZvrE2IfrfgI)
+   - *Por qué verlo:* Muestra cómo la gran industria conecta el CAD 3D con el PLC para validar una máquina antes de fabricarla o modernizarla.
+
+> **Actitud clave para todo el equipo:** Ninguno de nosotros tiene que fingir que lleva 20 años programando PLCs Siemens — ese es el orgullo y el terreno del Sr. José. Nuestra fortaleza frente a él es: *"Sr. José, nosotros dominamos el motor de física 3D (`MuJoCo`), visión e IA; queremos que usted nos diga cómo le entregamos esos parámetros, tablas de recetas o bloques de código para que a los ingenieros de ZAKA les ahorre horas reales en planta."*
+
+---
+
 ## 2. Nuestra Postura: Aliados y Generación de Relevo (Cero Competencia)
 
 > [!IMPORTANT]
