@@ -37,4 +37,26 @@
 - **Manual para reunión con ZAKA, C.A. ([`docs/reunion-zaka.md`](../reunion-zaka.md)):** Investigación de ZAKA, C.A. (`zakasys.com`, Ing. José González), postura del equipo como aliados y generación de relevo (cero competencia, jamás insinuar que Tridi reemplaza el trabajo de ZAKA), conexión con Elon Musk (Optimus / Sim-to-Real / fábricas 24/7), demo de 3 minutos y las 4 preguntas de validación dura.
 - **Limpieza total del legado de Platanus Hack y subcarpetas en `docs/`:** Eliminadas por completo las carpetas viejas y redundantes (`docs/internal/`, `docs/decisiones/`, `docs/archive/`, `docs/investigacion/`, `docs/preguntas-abiertas.md`, `docs/plan-producto.md`, `docs/plan-v2.md`, `docs/pitch/*.md`, `web/TAREAS.md`), dejando todos los documentos directamente en `docs/` ([`docs/reunion-zaka.md`](../reunion-zaka.md), [`docs/caso-luigi-sim2real.md`](../caso-luigi-sim2real.md), [`docs/architecture-and-sim2real.md`](../architecture-and-sim2real.md), [`docs/infra-and-security.md`](../infra-and-security.md)) y moviendo `yc-w27-reference.md` a `yc/`.
 
+---
+
+## Actualización (2026-11-12 02:25) · Pulido integral de `#/simulations`, `#/milestones`, video origen PiP y arreglo de `Running`
+
+- **`#/milestones` (`web/src/screens/milestones.js`, `web/src/screens/strings/milestones.js`, `web/src/style.css`):**
+  - Actualizado `48 horas` → `36 horas` (`48 hours` → `36 hours`) en todas las cadenas ES/EN.
+  - Reducido el tamaño de los chips y etiquetas (`.milestone-badge`, `.milestone-photo-tag`, `.milestone-video-head`).
+  - Eliminado el CTA redundante `"Abrir Celda Industrial"` del encabezado del Caso 2 (Luigi) y dejado el CTA principal directo al robot de Luigi (`Simular Robot de Luigi (Lab 3) →` / `Probar Lab 4 (Radar SG90) →`).
+  - Añadido modal **Lightbox en pantalla completa** (`#milestone-lightbox`) al hacer clic sobre cualquiera de las 6 fotos de arquitectura física (con navegación `‹`/`›`, teclado `Escape`/`ArrowLeft`/`ArrowRight`, contador y `object-fit: cover`).
+- **`#/simulations` — Condiciones, Playback y Robots Custom (`web/src/screens/simulations.js`, `web/src/stage.js`, `web/src/training.js`, `web/src/gallery.js`):**
+  - Ocultada por completo la tarjeta `Playback` (`#playback-group`) cuando se selecciona un robot custom (`luigi_lab3`, `luigi_lab4`, `factory_cell`), expandiendo `Condiciones` a ancho completo.
+  - En `factory_cell` (`Celda Industrial`), ocultados el selector `Mundo` (`#world-field`) y los sliders climáticos (`.tune`), y separado su panel derecho con un selector industrial limpio de 2 modos (`Política Tridi · Guiada por Barreras Ópticas` vs `PLC Clásico · Timer Fijo`) y botón de reinicio propio (`Reiniciar ciclo de celda industrial`), sin controles del rover de Luigi.
+  - Eliminados del panel derecho los selectores duplicados de robot (`#custom-robot-tabs`) y el botón `"Volver a Unitree G1"` (`#luigi-back-g1`), dejando el selector `Robot` en `Condiciones` como único punto de cambio.
+  - Ocultado el selector `#policy-field` (`Política activa`) en `#/simulations` para evitar inconsistencias al ver movimientos de galería.
+  - Reestructurada la caja `Entrenar al robot en este movimiento` (`.train-actions-stack` + `.train-actions-subrow`) con jerarquía y espaciado limpios, y eliminados los chips repetitivos `"Entrenado con física"` de todas las tarjetas de galería.
+- **Video origen Picture-in-Picture (PiP) y arreglo de `Running` (`web/src/video-overlay.js`, `web/public/media/clips/*.mp4`, `web/clips/clip_correr-perfil-gvhmr.json`, `training/references/clip_correr-perfil-gvhmr-balanced.json`, `physics/src/policy.js`):**
+  - Codificados los 8 videos fuente H.264 ligeros en `web/public/media/clips/` y añadido recuadro Picture-in-Picture (`source-pip-wrap`) en `#human-pane` que muestra el video real sincronizado junto al esqueleto 3D (con clic para ampliar a pantalla completa o minimizar).
+  - Ocultado `clip_frente-correr-01-gvhmr` (el video fuente era una caminata tapándose el sol, no carrera) y corregido el intercambio monocular de piernas (`f=36..72`) y braceo en `clip_correr-perfil-gvhmr` + referencia balanceada G1 + respuesta de actuadores en `physics/src/policy.js` (`0.82 * target + 0.18 * ctrl`).
+- **Mundos y lugares más compactos y detallados (`physics/scenes/cocina.json`, `physics/scenes/deposito.json`, `web/src/props.js`, `web/src/looks/wet.js`, `web/src/looks/rocks.js`, `web/src/looks/meadow.js`):**
+  - Delimitados `Cocina` (20 objetos) y `Depósito` (16 objetos) con muros perimetrales bajos (`pared`), plantas, bancos, estanterías y cajas sobre piso, y compactados los escenarios de `Piso resbaloso`, `Piedras` y `Viento`.
+
+
 

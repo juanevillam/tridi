@@ -851,8 +851,15 @@ select:disabled {
   padding: 0 6px;
 }
 
-/* The person's pane with the source video: the recording, its skeleton over it, no 3D skeleton. */
-.pane .source-video,
+/* The person's pane with the source video: either full-pane (.has-video) or Picture-in-Picture (.has-pip-video). */
+.pane .source-pip-wrap {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+}
+
 .pane .source-overlay {
   position: absolute;
   inset: 0;
@@ -862,16 +869,94 @@ select:disabled {
 }
 
 .source-video {
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   background: #000;
+  display: block;
 }
 
-.pane.has-video .source-video,
+.source-pip-tag {
+  display: none;
+}
+
+.pane.has-video .source-pip-wrap,
 .pane.has-video .source-overlay {
   display: block;
 }
 
 .has-video #human {
+  visibility: hidden;
+}
+
+/* Picture-in-Picture (PiP) source video preview: shows real video in top-right while 3D skeleton plays */
+.pane.has-pip-video .source-pip-wrap {
+  display: block;
+  inset: 12px 12px auto auto;
+  width: min(36%, 168px);
+  height: auto;
+  aspect-ratio: 16 / 10;
+  border-radius: 10px;
+  border: 1px solid rgb(200 255 46 / 0.45);
+  background: #050608;
+  box-shadow: 0 10px 28px rgb(0 0 0 / 0.65);
+  overflow: hidden;
+  z-index: 3;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.pane.has-pip-video .source-pip-wrap:hover {
+  transform: translateY(-1px) scale(1.02);
+  border-color: var(--signal);
+}
+
+.pane.has-pip-video .source-video {
+  object-fit: cover;
+}
+
+.pane.has-pip-video .source-pip-tag {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 6px;
+  display: inline-block;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: rgb(8 9 11 / 0.82);
+  backdrop-filter: blur(6px);
+  color: var(--signal);
+  font: 600 9.5px/1.2 var(--mono);
+  letter-spacing: 0.02em;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* Expanded PiP mode: fills the human pane when clicked */
+.pane.has-pip-video.pip-expanded .source-pip-wrap {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  border-radius: 0;
+  border: none;
+  transform: none;
+}
+
+.pane.has-pip-video.pip-expanded .source-video {
+  object-fit: contain;
+}
+
+.pane.has-pip-video.pip-expanded .source-pip-tag {
+  top: 12px;
+  right: 12px;
+  left: auto;
+  bottom: auto;
+  padding: 5px 10px;
+  font-size: 11px;
+}
+
+.pane.has-pip-video.pip-expanded #human {
   visibility: hidden;
 }
 
@@ -888,6 +973,10 @@ select:disabled {
   margin: 0;
   font-size: 12px;
   color: var(--muted);
+}
+
+.controls.custom-robot {
+  grid-template-columns: 1fr;
 }
 
 @media (max-width: 900px) {
@@ -961,8 +1050,36 @@ select:disabled {
 
 .train-box [data-train] {
   display: grid;
-  gap: 12px;
-  justify-items: start;
+  gap: 14px;
+  justify-items: stretch;
+}
+
+.train-actions-stack {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.train-actions-stack > .button {
+  width: 100%;
+  justify-content: center;
+  min-height: 42px;
+}
+
+.train-actions-subrow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+}
+
+.train-actions-subrow > .button {
+  width: 100%;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 12px;
+  font-size: 13.5px;
 }
 
 .train-box [data-train][hidden] {
@@ -2192,12 +2309,12 @@ select optgroup {
 .milestone-badge {
   display: inline-flex;
   align-items: center;
-  padding: 5px 12px;
+  padding: 3px 9px;
   border-radius: 999px;
   border: 1px solid var(--line);
-  background: rgb(255 255 255 / 0.04);
-  font: 600 12px/1.3 var(--mono);
-  letter-spacing: 0.04em;
+  background: rgb(255 255 255 / 0.03);
+  font: 600 10.5px/1.25 var(--mono);
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   color: var(--ink-soft);
 }
@@ -2255,10 +2372,10 @@ select optgroup {
 }
 
 .milestone-video-head {
-  padding: 10px 14px;
+  padding: 7px 12px;
   border-bottom: 1px solid var(--line);
-  font: 600 12px/1.35 var(--mono);
-  color: var(--ink);
+  font: 600 11px/1.3 var(--mono);
+  color: var(--ink-soft);
   background: rgb(255 255 255 / 0.02);
 }
 
@@ -2306,13 +2423,20 @@ select optgroup {
   border-radius: var(--r-2);
   overflow: hidden;
   background: #0a0c0f;
+  cursor: zoom-in;
+  transition: border-color 0.18s ease, transform 0.18s ease;
+}
+
+.milestone-photo-card:hover {
+  border-color: rgb(200 255 46 / 0.45);
+  transform: translateY(-2px);
 }
 
 .milestone-photo-tag {
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-bottom: 1px solid var(--line);
-  font: 600 11px/1.25 var(--mono);
-  letter-spacing: 0.03em;
+  font: 600 10px/1.2 var(--mono);
+  letter-spacing: 0.025em;
   text-transform: uppercase;
   color: var(--signal);
   background: rgb(255 255 255 / 0.02);
@@ -2324,6 +2448,126 @@ select optgroup {
   aspect-ratio: 16 / 10;
   object-fit: cover;
   background: #0d1014;
+}
+
+/* Fullscreen Lightbox for Milestone Architecture Photos */
+.milestone-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.milestone-lightbox[hidden] {
+  display: none !important;
+}
+
+.milestone-lightbox-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(5 6 8 / 0.88);
+  backdrop-filter: blur(12px);
+}
+
+.milestone-lightbox-content {
+  position: relative;
+  z-index: 1;
+  width: min(1040px, 92vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #0a0c0f;
+  box-shadow: 0 24px 64px rgb(0 0 0 / 0.75);
+  overflow: hidden;
+}
+
+.milestone-lightbox-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  background: rgb(255 255 255 / 0.02);
+}
+
+.milestone-lightbox-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.milestone-lightbox-counter {
+  font: 600 12px/1 var(--mono);
+  color: var(--muted);
+}
+
+.milestone-lightbox-close {
+  min-height: 32px;
+  width: 32px;
+  padding: 0;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+}
+
+.milestone-lightbox-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #050608;
+  min-height: 360px;
+  max-height: 70vh;
+}
+
+.milestone-lightbox-stage img {
+  display: block;
+  max-width: 100%;
+  max-height: 70vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.milestone-lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  min-height: 44px;
+  width: 44px;
+  padding: 0;
+  border-radius: 999px;
+  background: rgb(12 14 18 / 0.78);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 24px;
+  display: grid;
+  place-items: center;
+  z-index: 2;
+}
+
+.milestone-lightbox-nav.prev {
+  left: 14px;
+}
+
+.milestone-lightbox-nav.next {
+  right: 14px;
+}
+
+.milestone-lightbox-caption {
+  margin: 0;
+  padding: 12px 16px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  border-top: 1px solid var(--line);
 }
 
 .milestone-photo-card figcaption {

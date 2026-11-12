@@ -124,12 +124,13 @@ export const trainBoxHTML = () => `
 <section class="train-box" hidden aria-live="polite">
   <h2>${T('title')}</h2>
   <div data-train="preloaded" hidden>
-    <p class="train-badge-line"><span class="card-badge trained">${T('preloadedBadge')}</span></p>
     <p class="train-text">${T('preloadedText')}</p>
-    <div class="train-actions-row">
+    <div class="train-actions-stack">
       <a class="button primary train-example" href="#/delivery">${T('example')}</a>
-      <a class="button" href="#/live">${T('recordNew')}</a>
-      <a class="button" href="#/upload">${T('uploadNew')}</a>
+      <div class="train-actions-subrow">
+        <a class="button" href="#/live">${T('recordNew')}</a>
+        <a class="button" href="#/upload">${T('uploadNew')}</a>
+      </div>
     </div>
   </div>
   <div data-train="idle">

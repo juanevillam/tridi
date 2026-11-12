@@ -201,11 +201,16 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     const currentPlace = $('place')?.value ?? '';
     const pushBtn = root.querySelector('.push');
     if (pushBtn) pushBtn.hidden = custom || !physics;
+    if ($('playback-group')) $('playback-group').hidden = custom;
+    $('controls')?.classList.toggle('custom-robot', custom);
     if ($('arduino-box')) $('arduino-box').hidden = !isRover;
     if ($('factory-fault-box')) $('factory-fault-box').hidden = !isCell;
     if ($('grasp-box')) $('grasp-box').hidden = custom || currentPlace !== 'cocina';
+    if ($('world-field')) $('world-field').hidden = isCell;
+    const tuneEl = root.querySelector('.tune');
+    if (tuneEl) tuneEl.hidden = isCell;
     if ($('place-field')) $('place-field').hidden = custom;
-    if ($('policy-field')) $('policy-field').hidden = custom;
+    if ($('policy-field')) $('policy-field').hidden = true;
     if ($('physics-mode-group')) $('physics-mode-group').hidden = custom;
     if ($('physics-mode-note')) $('physics-mode-note').hidden = custom;
     if ($('luigi-sim-panel')) $('luigi-sim-panel').hidden = !custom;
@@ -216,10 +221,12 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     if ($('stage')) {
       $('stage').dataset.show = custom ? 'robot' : 'both';
     }
+    if ($('luigi-reset-arena')) {
+      $('luigi-reset-arena').innerHTML = isCell
+        ? '<span class="t" lang="es">Reiniciar ciclo de celda industrial</span><span class="t" lang="en">Reset industrial cell cycle</span>'
+        : '<span class="t" lang="es">Reiniciar rover en centro de arena</span><span class="t" lang="en">Reset rover at arena center</span>';
+    }
     lastDodgeStage = -1;
-    root.querySelectorAll('[data-quick-robot]').forEach((btn) => {
-      btn.setAttribute('aria-pressed', String(btn.dataset.quickRobot === robotModel));
-    });
     if (robotModel === 'luigi_lab4') {
       if ($('luigi-sim-badge')) {
         $('luigi-sim-badge').innerHTML = '<span class="t" lang="es">Caso Luigi · Rover v2 con Radar Servo SG90 (50 Hz)</span><span class="t" lang="en">Luigi Case · Rover v2 with SG90 Servo Radar (50 Hz)</span>';
@@ -766,15 +773,23 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     }
   }
 
+  function setFactoryMode(fixedTimer) {
+    const sim = robot.view?.sim;
+    if (!sim) return;
+    sim._factoryFixedTimerMode = Boolean(fixedTimer);
+    if ($('factory-mode-sensor')) $('factory-mode-sensor').setAttribute('aria-pressed', String(!sim._factoryFixedTimerMode));
+    if ($('factory-fault-btn')) $('factory-fault-btn').setAttribute('aria-pressed', String(sim._factoryFixedTimerMode));
+    if ($('factory-status-note')) {
+      $('factory-status-note').innerHTML = sim._factoryFixedTimerMode
+        ? `<span class="t" lang="es">Modo activo: <strong>PLC clásico por timer fijo</strong> (baja la prensa sin verificar sensor óptico; aplasta cajas cuando patina la cinta).</span><span class="t" lang="en">Active mode: <strong>Classic fixed-timer PLC</strong> (lowers sealer without checking optical sensor; crushes boxes under belt slip).</span>`
+        : `<span class="t" lang="es">Modo activo: <strong>Lazo cerrado por sensores ópticos</strong> (la prensa espera confirmación física de caja antes de bajar).</span><span class="t" lang="en">Active mode: <strong>Closed-loop optical sensor gating</strong> (sealer waits for physical box confirmation before descending).</span>`;
+    }
+  }
+  if ($('factory-mode-sensor')) {
+    $('factory-mode-sensor').onclick = () => setFactoryMode(false);
+  }
   if ($('factory-fault-btn')) {
-    $('factory-fault-btn').onclick = () => {
-      const sim = robot.view?.sim;
-      if (!sim) return;
-      sim._factoryFixedTimerMode = !sim._factoryFixedTimerMode;
-      $('factory-fault-btn').innerHTML = sim._factoryFixedTimerMode
-        ? `<span class="t" lang="es">✅ Volver a Política Tridi Sensor-Gated (0 % merma)</span><span class="t" lang="en">✅ Return to Tridi Sensor-Gated Policy (0% waste)</span>`
-        : `<span class="t" lang="es">⚠️ Simular PLC ciego por timer (aplasta cajas si patina la cinta)</span><span class="t" lang="en">⚠️ Simulate blind fixed-timer PLC (crushes boxes on belt slip)</span>`;
-    };
+    $('factory-fault-btn').onclick = () => setFactoryMode(true);
   }
 
   if ($('luigi-reset-arena')) {
@@ -791,20 +806,12 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
         const h = robotModel === 'factory_cell' ? 0.35 : 0.09;
         robot.view.viewer.targetHeight = h;
         robot.view.viewer.controls.target.set(px, h, -py);
-        robot.view.viewer.camera.position.set(px + 1.05, 0.72, -py - 0.95);
+        robot.view.viewer.camera.position.set(px + (robotModel === 'factory_cell' ? 1.15 : 1.05), robotModel === 'factory_cell' ? 0.85 : 0.72, -py - (robotModel === 'factory_cell' ? 1.10 : 0.95));
         robot.view.viewer.controls.update();
       }
       root.querySelectorAll('#arduino-box [data-cmd]').forEach((b) => {
         b.setAttribute('aria-pressed', String(b.dataset.cmd === 'AUTO'));
       });
-    };
-  }
-  if ($('luigi-back-g1')) {
-    $('luigi-back-g1').onclick = () => {
-      if ($('robot-model')) {
-        $('robot-model').value = 'unitree_g1';
-        $('robot-model').dispatchEvent(new Event('change'));
-      }
     };
   }
   syncRobotDependentUI();
