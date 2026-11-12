@@ -100,3 +100,18 @@
   - Ajustado `.milestone-tabs` (`max-width: 820px`, `white-space: nowrap`) para que ambos tabs quepan siempre en **1 sola línea**, y añadida fila de CTAs (`.milestone-cta-row`) en `Milestone 01` para eliminar el CLS vertical al alternar entre `Milestone 02` y `Milestone 01`.
   - Ajustado `.photo-viewer .stage` para que abrace exactamente el borde de cada foto sin caja `3:2` ni esquinas negras (`.fill { display: none }`), y elevado el contraste de `.milestone-photo-tag` y `.photo-viewer figcaption`.
 
+---
+
+## Actualización (2026-11-12 12:30) · Profundización técnica de `docs/reunion-zaka.md` y Línea Industrial PackML de 4 Estaciones (`factory_cell`)
+
+- **Profundización técnica de [`docs/reunion-zaka.md`](../reunion-zaka.md) para la reunión de hoy con el Ing. José González (ZAKA, C.A.):**
+  - Desarrollados en profundidad los 4 cruces de ingeniería con el stack real de ZAKA (`Rockwell Studio 5000 / PowerFlex`, `Siemens TIA Portal / Sinamics`, `Wonderware / FactoryTalk`, `Cognex`, `Festo`, `Rice Lake`):
+    1. **Retrofit y cálculo de rampas VFD (`P041/P042` / `p1120/p1121`):** Modelado de inercia reflejada ($J_{\text{eq}}$), holgura mecánica (*backlash*) y curva S en MuJoCo antes de energizar motores viejos.
+    2. **Tabla de Recetas HMI (`ISA-88` / `PackML` — `UDT_FormatRecipe`):** Matriz pre-calibrada para cambios de formato (`250 g`, `500 g`, `1 kg`) con frecuencia de variador (`Hz`), rampa (`s`), carrera de pistón (`mm`), cota de prensa (`mm`), tiempo de sellado (`ms`) y debounce óptico (`PE-02`).
+    3. **Compilador Tridi a `IEC 61131-3 Structured Text` (`SCL` / `ST` — `FB_TridiPackML_Sealer`):** Ejemplo completo de bloque de función determinista auditable con *Hard Safety Interlock* (`xEStop_OK`) y arquitectura de despliegue en 3 niveles (Offline Recipe CSV, Bloque `AOI`/`FB`, y *Shadow Mode* vía `OPC-UA` / `Modbus TCP`).
+- **Línea Industrial PackML de 4 Estaciones en MuJoCo (`physics/models/factory_cell/factory_cell.xml`, `physics/src/policy.js`, `web/src/screens/simulations.js`, `web/src/stage.js`):**
+  - Ampliado `factory_cell.xml` a una línea industrial completa de 4 estaciones: (1) Tolva de dosificación y celda de carga dinámica (`PE-01`), (2) Alineador neumático con manifold *Festo* y cámara cenital *Cognex In-Sight*, (3) Pórtico termosellador vertical (`PE-02`) con torre semáforo Andon (`Verde / Ámbar / Rojo`), y (4) Rampa de descarga a Euro-Palet con lotes apilados (`PE-03`) + gabinete NEMA 12 lateral (`PLC + VFD + HMI + E-Stop`).
+  - Añadido selector interactivo de **Cambio de Formato HMI (`250 g` / `500 g` / `1 kg`)** en `#/simulations/factory_cell` que escala el envase en 3D, actualiza las consignas del variador (`58,5 Hz` / `50,0 Hz` / `41,5 Hz`), pistón y prensa en tiempo real, y muestra la receta PLC exportada lista para `Studio 5000` / `TIA Portal`.
+  - Corregido el enlace de telemetría en vivo de `factoryReadout` en `stage.js` (`Variador VFD + Cinta / Pistón`, `Prensa + Fotoceldas PE1..PE3`, `Lotes OK / Merma`, `Estado PackML + Receta`).
+
+

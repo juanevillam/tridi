@@ -181,9 +181,9 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       const elApds = $('sim-apds');
       const elWh = $('sim-wheels');
       const elSt = $('sim-dodge-state');
-      if (elHc) elHc.textContent = `C:${fr.conveyorMm} · P:${fr.pusherMm} mm`;
-      if (elApds) elApds.textContent = `${fr.sealerMm} mm · [E:${fr.sensorEntry ? 1 : 0} S:${fr.sensorSealer ? 1 : 0} X:${fr.sensorExit ? 1 : 0}]`;
-      if (elWh) elWh.textContent = `${fr.completedCycles} ok · ${fr.crushedCount} aplastadas`;
+      if (elHc) elHc.textContent = `${fr.vfdHz} Hz · C:${fr.conveyorMm} · P:${fr.pusherMm} mm`;
+      if (elApds) elApds.textContent = `${fr.sealerMm} mm · [PE1:${fr.sensorEntry ? 1 : 0} PE2:${fr.sensorSealer ? 1 : 0} PE3:${fr.sensorExit ? 1 : 0}]`;
+      if (elWh) elWh.textContent = `${fr.completedCycles} ok · ${fr.crushedCount} merma`;
       if (elSt) {
         elSt.textContent = fr.modeLabel;
         elSt.style.color = fr.crushedBox ? '#ff6a3d' : '#c8ff2e';
@@ -255,18 +255,18 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       if ($('sim-label-4')) $('sim-label-4').innerHTML = '<span class="t" lang="es">Estado de evasión (4 etapas)</span><span class="t" lang="en">Dodge state (4 stages)</span>';
     } else if (robotModel === 'factory_cell') {
       if ($('luigi-sim-badge')) {
-        $('luigi-sim-badge').innerHTML = '<span class="t" lang="es">Automatización Industrial · PLC S7-1200 / PackML</span><span class="t" lang="en">Industrial Automation · S7-1200 PLC / PackML</span>';
+        $('luigi-sim-badge').innerHTML = '<span class="t" lang="es">Línea PackML / ISA-88 · 4 Estaciones + Recetas HMI</span><span class="t" lang="en">PackML / ISA-88 Line · 4 Stations + HMI Recipes</span>';
       }
       if ($('luigi-sim-title')) {
-        $('luigi-sim-title').innerHTML = '<span class="t" lang="es">Celda de Empaquetado · Cinta + Pistón + Prensa</span><span class="t" lang="en">Packaging Cell · Conveyor + Pusher + Sealer</span>';
+        $('luigi-sim-title').innerHTML = '<span class="t" lang="es">Línea Industrial · Pesaje + Visión Cognex + Sellado + Paletizado</span><span class="t" lang="en">Industrial Line · Weigher + Cognex Vision + Sealer + Palletizer</span>';
       }
       if ($('luigi-sim-desc')) {
-        $('luigi-sim-desc').innerHTML = '<span class="t" lang="es">Línea industrial de 3 ejes coordinados por barreras ópticas (<code>Entrada</code>, <code>Sellado</code>, <code>Salida</code>). Prueba el botón de falla abajo para ver cómo un PLC por timer aplasta cajas cuando patina la cinta.</span><span class="t" lang="en">3-axis industrial packaging line gated by optical sensors (<code>Entry</code>, <code>Sealer</code>, <code>Exit</code>). Toggle the fault button below to see how a fixed-timer PLC crushes boxes under belt slip.</span>';
+        $('luigi-sim-desc').innerHTML = '<span class="t" lang="es">Gemelo físico de 4 estaciones con gabinete PLC/HMI, variador VFD, cilindro neumático Festo, visión cenital, prensa termoselladora, torre Andon y tarima de salida. Permite probar <strong>cambios de formato (250 g / 500 g / 1 kg)</strong> y estresar el patinaje de banda antes de ir a parada de planta.</span><span class="t" lang="en">4-station physical twin with PLC/HMI cabinet, VFD drive, Festo pneumatic pusher, overhead vision, heat-sealer press, Andon stack light, and outfeed pallet. Test <strong>HMI format changes (250 g / 500 g / 1 kg)</strong> and belt-slip stress before a plant shutdown window.</span>';
       }
-      if ($('sim-label-1')) $('sim-label-1').textContent = 'Cinta + Pistón (mm)';
-      if ($('sim-label-2')) $('sim-label-2').textContent = 'Prensa + Sensores Ópticos';
-      if ($('sim-label-3')) $('sim-label-3').innerHTML = '<span class="t" lang="es">Ciclos / Merma</span><span class="t" lang="en">Cycles / Waste</span>';
-      if ($('sim-label-4')) $('sim-label-4').innerHTML = '<span class="t" lang="es">Controlador PLC S7-1200</span><span class="t" lang="en">S7-1200 PLC Controller</span>';
+      if ($('sim-label-1')) $('sim-label-1').textContent = 'Variador VFD + Cinta / Pistón';
+      if ($('sim-label-2')) $('sim-label-2').textContent = 'Prensa + Fotoceldas PE1..PE3';
+      if ($('sim-label-3')) $('sim-label-3').innerHTML = '<span class="t" lang="es">Lotes OK / Merma</span><span class="t" lang="en">Batches OK / Waste</span>';
+      if ($('sim-label-4')) $('sim-label-4').innerHTML = '<span class="t" lang="es">Estado PackML + Receta</span><span class="t" lang="en">PackML State + Recipe</span>';
     }
   }
 
@@ -807,6 +807,43 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
   if ($('factory-fault-btn')) {
     $('factory-fault-btn').onclick = () => setFactoryMode(true);
   }
+
+  const FACTORY_FORMAT_SPECS = {
+    '250g': {
+      scale: [0.78, 0.82, 0.76],
+      es: 'Receta PLC exportada (250 g): <code>VFD=58.5Hz | Rampa=0.24s | Pistón=155mm | Prensa=115mm | Dwell=420ms</code>',
+      en: 'Exported PLC Recipe (250 g): <code>VFD=58.5Hz | Ramp=0.24s | Pusher=155mm | Press=115mm | Dwell=420ms</code>',
+    },
+    '500g': {
+      scale: [1.0, 1.0, 1.0],
+      es: 'Receta PLC exportada (500 g): <code>VFD=50.0Hz | Rampa=0.35s | Pistón=145mm | Prensa=138mm | Dwell=550ms</code>',
+      en: 'Exported PLC Recipe (500 g): <code>VFD=50.0Hz | Ramp=0.35s | Pusher=145mm | Press=138mm | Dwell=550ms</code>',
+    },
+    '1000g': {
+      scale: [1.26, 1.18, 1.24],
+      es: 'Receta PLC exportada (1 kg): <code>VFD=41.5Hz | Rampa=0.52s | Pistón=132mm | Prensa=152mm | Dwell=680ms</code>',
+      en: 'Exported PLC Recipe (1 kg): <code>VFD=41.5Hz | Ramp=0.52s | Pusher=132mm | Press=152mm | Dwell=680ms</code>',
+    },
+  };
+  root.querySelectorAll('[data-factory-format]').forEach((btn) => {
+    btn.onclick = () => {
+      const fmtKey = btn.dataset.factoryFormat;
+      const spec = FACTORY_FORMAT_SPECS[fmtKey] || FACTORY_FORMAT_SPECS['500g'];
+      root.querySelectorAll('[data-factory-format]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+      if (robot.view?.sim) {
+        robot.view.sim._factoryFormat = fmtKey;
+        const { mujoco, model } = robot.view.sim;
+        const boxGeomId = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM.value, 'package_box');
+        const gEntry = robot.view.viewer?.geoms?.find((g) => g.id === boxGeomId);
+        if (gEntry?.object) {
+          gEntry.object.scale.set(...spec.scale);
+        }
+      }
+      if ($('factory-recipe-readout')) {
+        $('factory-recipe-readout').innerHTML = `<span class="t" lang="es">${spec.es}</span><span class="t" lang="en">${spec.en}</span>`;
+      }
+    };
+  });
 
   if ($('luigi-reset-arena')) {
     $('luigi-reset-arena').onclick = () => {
