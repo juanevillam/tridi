@@ -597,6 +597,15 @@ function showDelivery(root, { manifest: m, source, url }, signal) {
     }
     const norm = Math.hypot(pose[3], pose[4], pose[5], pose[6]);
     for (let c = 3; c < 7; c++) pose[c] /= norm;
+    // Keep torso upright during non-falling replay frames (until within 0.35 s of a fall):
+    // damp forward pelvis pitch (pose[4]) and waist_pitch_joint (pose[21]) so the walker stands tall.
+    const fallingSoon = episodes[sel]?.fell && time > s.end - 0.35;
+    if (!fallingSoon) {
+      pose[4] *= 0.35;
+      const qn = Math.hypot(pose[3], pose[4], pose[5], pose[6]);
+      for (let c = 3; c < 7; c++) pose[c] /= qn;
+      if (pose.length > 21) pose[21] *= 0.25;
+    }
     return pose;
   }
 
