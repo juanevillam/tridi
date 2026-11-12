@@ -4,7 +4,7 @@
 
 **El formato, al 24 de octubre:** **poco más de un minuto de láminas** y después **2 minutos de video**. El video va **al final**: todas las frases que pegan van adelante, el jurado entra con el contexto completo y la presentación termina con la demo. El video se graba de último, así que el guion de abajo es lo único que se puede ensayar hasta que exista.
 
-Las láminas son [`deck/tridi-deck.html`](deck/tridi-deck.html) y su PDF; cada una lleva su tiempo impreso en el pie. Reemplaza al [guion de 3 minutos](guion-3-minutos.md), que queda como archivo (su banco de preguntas sigue vigente).
+Las láminas oficiales están en [`tridi-pitch.pdf`](tridi-pitch.pdf). Reemplaza al [guion de 3 minutos](guion-3-minutos.md), que queda como archivo (su banco de preguntas sigue vigente).
 
 **Las láminas casi no tienen texto, a propósito.** Lo que se lee en una ojeada es el titular; lo que hay que decir está aquí. **Solo la portada va en inglés**: es el titular de la categoría. Todo lo demás, en español.
 
