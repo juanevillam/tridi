@@ -43,4 +43,14 @@ git push --quiet origin --delete "$branch" 2>/dev/null || true
 git fetch --quiet origin main
 git reset --quiet --hard origin/main
 git branch --quiet --unset-upstream 2>/dev/null || true
-echo "ship: '$title' is on main. '$branch' now matches main; keep working here."
+
+# Automatically build & deploy web/dist to Cloudflare Pages (https://trytridi.com)
+if [ -d "web" ]; then
+  echo "ship: building and deploying web/dist to https://trytridi.com ..."
+  npm --prefix web run build
+  CLOUDFLARE_ACCOUNT_ID="${CLOUDFLARE_ACCOUNT_ID:-3ffb7774e947f05433f775bce098f81f}" \
+    npx --yes wrangler pages deploy web/dist --project-name=tridi --branch=main --commit-dirty=true || \
+    echo "ship: warning: wrangler pages deploy skipped or failed (check wrangler login)."
+fi
+
+echo "ship: '$title' is on main and deployed to https://trytridi.com. '$branch' now matches main; keep working here."
