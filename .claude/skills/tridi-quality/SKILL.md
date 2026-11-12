@@ -1,6 +1,6 @@
 ---
 name: tridi-quality
-description: Tridi's UI/UX, 3D camera, MuJoCo physics, media, and bilingual quality gate (modeled on Juan's portfolio audit system). Use before finishing any web/ or physics/ task, or when invoked via /tridi-quality, /tridi-craft-audit, or /tridi-ux-audit.
+description: Tridi's UI/UX, 3D camera, MuJoCo physics, media, motion grammar, and bilingual quality gate. Use before finishing any web/ or physics/ task, or when invoked via /tridi-quality, /tridi-craft-audit, or /tridi-ux-audit.
 ---
 
 # Tridi Quality & Audit System (`tridi-quality`)
@@ -11,10 +11,10 @@ Whenever you modify `web/` or `physics/` in `~/Code/tridi`, you **must** run the
    - `npm --prefix physics run check`
    - `npm --prefix web run check`
    - `npm --prefix web run build`
-2. **Visual Craft & Geometry Verification (`docs/audit-playbook.md`):**
-   - Verify zero CLS on live telemetry (`#sim-dodge-state`) and playback speed (`#speed`).
-   - Verify equal height on `.controls` cards and `.sims-main` vs `.sims-list` at both `100%` and zoomed-out (`67%`) viewports.
-   - Verify high-contrast dark-mode tokens (`.card-badge.trained` in `--signal` lime, `.card-badge.trainable` in `#fbbf24` amber).
-   - Verify `cursor: grab` on all 3D canvases and proper `controls.target` + `camera.position` reset when switching between `unitree_g1` and `luigi_lab3`.
-   - Verify upright torso posture (`< 12°` tilt) on `Unitree G1` walking policies and solid obstacle avoidance on `luigi_lab3`.
+2. **Visual Craft, Motion & Geometry Verification (`docs/audit-playbook.md`):**
+   - Verify zero CLS on live telemetry (`#sim-dodge-state`) and single-line pill on playback speed (`#speed` `0.5×`).
+   - Verify **zero dead vertical/horizontal space** (`align-items: start` on `.controls-bar`, `.dl-more`, `.sims-layout`; 2-column grid on `.dl-formats`) and consistent 2-column `Playback` + `Conditions` layout across all robots.
+   - Verify 4-tier dark-mode ink hierarchy (`--fg`, `--fg-body`, `--fg-2`, `--dim`), liquid-glass rims on floating HUD/PiP overlays, and quantized duration/easing tokens (`--dur-*`, `--ease`, `--hover`) with tactile `:active` press squash.
+   - Verify `cursor: grab` on all 3D canvases, contextual 3D props (`chair.glb` on `Sitting down`, `syncWashSink` on `Washing dishes`), and proper `controls.target` + `camera.position` reset when switching robots.
+   - Verify upright torso posture (`< 12°` tilt) on `Unitree G1` walking/running policies (`1.56 Hz` stride cadence on `g1-run`), PiP source videos on all clips and deliveries, and `PhotoViewer` fullscreen lightbox in `#/milestones`.
    - Verify 100% `ES` / `EN` bilingual parity across all routes.

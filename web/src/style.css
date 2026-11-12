@@ -12,6 +12,7 @@
   --bg-deep: #0f1112;
   --scene: #2b3034; /* the 3D scenes' background (skeleton.js SCENE_THEME), so canvases blend in */
   --ink: #f1f3ee;
+  --ink-body: #bdbdbd;
   --ink-soft: #a9ada4;
   --muted: #7d8279;
   --line: rgb(241 243 238 / 0.12);
@@ -25,6 +26,23 @@
   --on-signal: #08090b; /* text on the lime */
   --ok: #6fcf8a;
   --error: #ff6a5a;
+
+  /* Liquid Glass & Specular Rim */
+  --lg-fill: rgb(18 20 23 / 0.72);
+  --lg-blur: blur(16px) saturate(1.8);
+  --lg-rim:
+    inset 0 0.75px 0 rgb(255 255 255 / 0.22),
+    inset 0 -0.5px 0 rgb(255 255 255 / 0.05),
+    inset 0 0 0 0.5px rgb(255 255 255 / 0.08);
+
+  /* Motion Grammar — 100 BPM quantized ladder (one easing, one clock) */
+  --beat: 600ms;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-micro: 150ms;
+  --dur-quick: 300ms;
+  --dur-turn: 450ms;
+  --dur-settle: 600ms;
+  --hover: 220ms cubic-bezier(0.25, 0.1, 0.25, 1);
 
   /* Shape: sharp, like an instrument; round only for what is literally a dot. */
   --r-1: 2px;
@@ -60,6 +78,51 @@
   --title: var(--display);
   --text: var(--display);
   color-scheme: dark;
+}
+
+/* Tactile press squash & liquid-glass rim (SquashPressable / GlassSurface standard) */
+.button,
+.back,
+.chip,
+.card,
+.milestone-tab,
+.milestone-cta {
+  transition:
+    color var(--hover),
+    border-color var(--hover),
+    background var(--hover),
+    box-shadow var(--hover),
+    transform 160ms var(--ease);
+}
+
+.button:active:not(:disabled),
+.back:active,
+.chip:active:not(:disabled),
+.card:active:not(:disabled),
+.milestone-tab:active,
+.milestone-cta:active {
+  transform: scale(0.97);
+}
+
+.icon-btn {
+  transition:
+    color var(--hover),
+    border-color var(--hover),
+    background var(--hover),
+    transform 160ms var(--ease);
+}
+
+.icon-btn:active:not(:disabled),
+.photo-viewer .v-close:active,
+.photo-viewer .v-prev:active,
+.photo-viewer .v-next:active {
+  transform: scale(0.92);
+}
+
+.source-pip-wrap {
+  backdrop-filter: var(--lg-blur);
+  -webkit-backdrop-filter: var(--lg-blur);
+  box-shadow: var(--lg-rim), 0 12px 32px rgb(0 0 0 / 0.55);
 }
 
 /* Languages (src/i18n.js): every translated string is in the page once per language, and the
