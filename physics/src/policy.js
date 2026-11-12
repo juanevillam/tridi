@@ -298,19 +298,36 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
           return;
         }
         const simTime = data.time;
-        // Multi-station PackML packaging line (1. Hopper/Weigher PE-01 -> 2. Cognex Vision & Blue Sealer Press PE-02 -> 3. Exit Conveyor -> 4. Red Discharge Pusher PE-03 & Pallet)
-        // Supports ISA-88 / PackML HMI format recipes: '250g' (fast, compact), '500g' (standard), '1000g' (heavy inertia).
-        // Sealer press bottom starts at z = 0.244 m; box top is at z = 0.095 + 0.052 * scaleZ, so sealerTarget kisses the exact box top.
+        // Bolt the industrial conveyor frame (pelvis) to the factory floor so it never rocks or slips.
+        data.qpos[0] = 0;
+        data.qpos[1] = 0;
+        data.qpos[2] = 0.35;
+        data.qpos[3] = 1;
+        data.qpos[4] = 0;
+        data.qpos[5] = 0;
+        data.qpos[6] = 0;
+        data.qvel.fill(0, 0, 6);
+
+        // Multi-station PackML packaging line:
+        // 1. Hopper/Weigher (PE-01) -> 2. Blue Sealer Press (PRESS-01, PE-02) -> 3. Exit Inspection (PE-03)
+        // -> 4A (Good box): Slides down ramp to stack on Pallet (PALLET-01, 1..6 stacked boxes)
+        // -> 4B (Badly sealed box in Fixed-Timer Slip Mode): Red Pusher (PUSHER-01) pushes box in +Y into Side Reject Tray!
         const formatId = sim._factoryFormat || '500g';
         const FORMAT_RECIPES = {
-          '250g': { cycleS: 4.0, vfdHz: 58.5, sealerTarget: 0.109, pusherTarget: 0.140, dwellMs: 420, labelEs: '250 g · 58,5 Hz', labelEn: '250 g · 58.5 Hz' },
-          '500g': { cycleS: 4.8, vfdHz: 50.0, sealerTarget: 0.097, pusherTarget: 0.130, dwellMs: 550, labelEs: '500 g · 50,0 Hz', labelEn: '500 g · 50.0 Hz' },
-          '1000g': { cycleS: 5.6, vfdHz: 41.5, sealerTarget: 0.084, pusherTarget: 0.120, dwellMs: 680, labelEs: '1 kg · 41,5 Hz', labelEn: '1 kg · 41.5 Hz' },
+          '250g': { cycleS: 4.8, vfdHz: 58.5, sealerTarget: 0.107, pusherTarget: 0.36, dwellMs: 420, labelEs: '250 g · 58,5 Hz', labelEn: '250 g · 58.5 Hz' },
+          '500g': { cycleS: 5.4, vfdHz: 50.0, sealerTarget: 0.095, pusherTarget: 0.36, dwellMs: 550, labelEs: '500 g · 50,0 Hz', labelEn: '500 g · 50.0 Hz' },
+          '1000g': { cycleS: 6.0, vfdHz: 41.5, sealerTarget: 0.082, pusherTarget: 0.36, dwellMs: 680, labelEs: '1 kg · 41,5 Hz', labelEn: '1 kg · 41.5 Hz' },
         };
         const recipe = FORMAT_RECIPES[formatId] || FORMAT_RECIPES['500g'];
         const fixedPlcMode = Boolean(sim._factoryFixedTimerMode);
         const cycleIdx = Math.floor(simTime / recipe.cycleS);
-        // Spawn a fresh box at the left hopper (x = -0.62 m -> feed = -0.17 m) at the start of every cycle so boxes NEVER travel backwards!
+        const clamp01 = (v) => Math.max(0, Math.min(1, v));
+        const sCurve = (u) => {
+          const c = clamp01(u);
+          return c * c * (3 - 2 * c);
+        };
+        const lerp = (a, b, u) => a + (b - a) * sCurve(u);
+
         if (sim._lastFactoryCycleIdx !== cycleIdx) {
           if (sim._lastFactoryCycleIdx !== undefined) {
             if (fixedPlcMode) {
@@ -320,112 +337,242 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
             }
           }
           sim._lastFactoryCycleIdx = cycleIdx;
-          data.qpos[7] = -0.17;
-          data.qvel[6] = 0;
-          data.ctrl[0] = -0.17;
-          data.ctrl[1] = 0.0;
-          data.ctrl[2] = 0.0;
-          sim._boxCrushedLatched = false;
         }
-        // Carrier box reference is at x = -0.45 m in frame; box x-center in world is -0.45 + qpos[7].
-        // Photoelectric sensors sit at x = -0.38 m (PE-01 entry/weigh), x = +0.12 m (PE-02 sealer zone), x = +0.62 m (PE-03 exit/pusher).
-        const feedM = data.qpos[7] ?? 0;
-        const boxX = -0.45 + feedM;
-        const sensorEntry = Math.abs(boxX - -0.38) < 0.11;
-        const sensorSealer = Math.abs(boxX - 0.12) < 0.075;
-        const sensorExit = Math.abs(boxX - 0.62) < 0.11;
-        const phase = simTime % recipe.cycleS;
-        const p1 = recipe.cycleS * 0.30;
-        const p2 = recipe.cycleS * 0.58;
-        const p3 = recipe.cycleS * 0.80;
+
+        const uCycle = (simTime % recipe.cycleS) / recipe.cycleS;
+        const completedCycles = sim._factoryCycles || 0;
+        const crushedCount = sim._factoryCrushedCount || 0;
+        const PALLET_SLOTS = [
+          { x: 1.21, y: -0.085, z: -0.228 },
+          { x: 1.21, y: 0.085, z: -0.228 },
+          { x: 1.38, y: -0.085, z: -0.228 },
+          { x: 1.38, y: 0.085, z: -0.228 },
+          { x: 1.21, y: -0.085, z: -0.126 },
+          { x: 1.21, y: 0.085, z: -0.126 },
+        ];
+        const targetSlotIdx = completedCycles % 6;
+        const targetSlot = PALLET_SLOTS[targetSlotIdx];
+
+        let feedTarget = -0.17; // boxX = -0.45 + feedTarget (-0.17 -> boxX = -0.62 m at Hopper)
+        let pusherTarget = 0.0;
+        let sealerTarget = 0.0;
+        let boxOffsetY = 0.0;
+        let boxOffsetZ = 0.0;
+        let boxPitchRad = 0.0;
+        let boxSealed = false;
+        let sealQuality = 'none'; // 'none' | 'ok' | 'bad'
         let stage = 0;
-        let crushed = Boolean(sim._boxCrushedLatched);
+        let crushed = false;
+
         if (fixedPlcMode) {
-          // Fixed-timer PLC mode under 28% conveyor belt slip:
-          // 1) Box lags behind at feed=0.45 m (boxX = 0.00 m, half-entered under the x=+0.12 m Blue Sealer Press, PE-02 = 0).
-          // 2) Blind timer lowers Blue Press (ctrl[2]) without waiting for PE-02 -> slams onto the box edge and crushes it!
-          // 3) Damaged box advances to exit and Red Pusher (ctrl[1]) ejects it as waste.
-          if (phase < p1) {
-            data.ctrl[0] = 0.45;
-            data.ctrl[1] = 0.0;
-            data.ctrl[2] = 0.0;
+          // Fixed-Timer PLC + 28% Belt Slip:
+          // Step 0 (0.00..0.28): Belt slips, so box only reaches feed = 0.44 m (boxX = -0.01 m, 13 cm behind Blue Press center!).
+          // Step 1 (0.28..0.56): Blind timer lowers Blue Press anyway -> hits front edge of lagging box, leaving a crooked bad seal!
+          // Step 2 (0.56..0.75): Poorly sealed box advances to x = +0.62 m (feed = 1.07 m), stopping in front of Red Reject Pusher.
+          // Step 3 (0.75..1.00): Red Pusher extends in +Y (0 -> 0.36 m) and pushes the defective box in +Y into the Side Reject Tray!
+          if (uCycle < 0.28) {
+            feedTarget = lerp(-0.17, 0.44, uCycle / 0.28);
             stage = 0;
-          } else if (phase < p2) {
-            data.ctrl[0] = 0.45;
-            data.ctrl[1] = 0.0;
-            data.ctrl[2] = recipe.sealerTarget + 0.032; // slams down past the misaligned box top -> CRUSH!
-            sim._boxCrushedLatched = true;
+          } else if (uCycle < 0.56) {
+            feedTarget = 0.44;
+            if (uCycle < 0.37) {
+              sealerTarget = lerp(0.0, recipe.sealerTarget, (uCycle - 0.28) / 0.09);
+            } else if (uCycle < 0.47) {
+              sealerTarget = recipe.sealerTarget;
+              boxSealed = true;
+              sealQuality = 'bad';
+            } else {
+              sealerTarget = lerp(recipe.sealerTarget, 0.0, (uCycle - 0.47) / 0.09);
+              boxSealed = true;
+              sealQuality = 'bad';
+            }
+            crushed = uCycle >= 0.35;
+            stage = 4;
+          } else if (uCycle < 0.75) {
+            feedTarget = lerp(0.44, 1.07, (uCycle - 0.56) / 0.19);
+            boxSealed = true;
+            sealQuality = 'bad';
             crushed = true;
-            stage = 4; // PackML HELD / FAULT
-          } else if (phase < p3) {
-            data.ctrl[0] = 1.07; // carry crushed box to PE-03 exit
-            data.ctrl[1] = 0.0;
-            data.ctrl[2] = 0.0;
-            stage = 4;
-          } else {
-            data.ctrl[0] = 1.26;
-            data.ctrl[1] = recipe.pusherTarget; // Red Pusher rejects damaged package at exit
-            data.ctrl[2] = 0.0;
-            stage = 4;
-          }
-        } else {
-          // Closed-loop Tridi policy (unidirectional left -> right):
-          // Step 1 (0..p1): Box enters from Hopper (-0.62 m), crosses Weigher (PE-01) and stops under Sealer Bridge (x = +0.12 m, feed = 0.57 m).
-          // Step 2 (p1..p2): PE-02 confirms arrival -> Blue Sealer Press (PRESS-01) descends to seal top of box; Red Pusher stays retracted.
-          // Step 3 (p2..p3): Blue Press retracts -> Sealed box travels forward to end of black belt (x = +0.62 m, feed = 1.07 m, PE-03).
-          // Step 4 (p3..end): PE-03 confirms exit -> Red Pusher (PUSHER-01) extends and transfers finished box down the ramp to the pallet.
-          if (phase < p1) {
-            data.ctrl[0] = 0.57;
-            data.ctrl[1] = 0.0;
-            data.ctrl[2] = 0.0;
-            stage = 0;
-          } else if (phase < p2) {
-            data.ctrl[0] = 0.57;
-            data.ctrl[1] = 0.0;
-            data.ctrl[2] = sensorSealer ? recipe.sealerTarget : 0.0;
-            stage = 1;
-          } else if (phase < p3) {
-            data.ctrl[0] = 1.07;
-            data.ctrl[1] = 0.0;
-            data.ctrl[2] = 0.0;
             stage = 2;
           } else {
-            data.ctrl[0] = 1.28;
-            data.ctrl[1] = recipe.pusherTarget;
-            data.ctrl[2] = 0.0;
+            feedTarget = 1.07;
+            boxSealed = true;
+            sealQuality = 'bad';
+            crushed = true;
+            stage = 3;
+            if (uCycle < 0.90) {
+              const pushU = (uCycle - 0.75) / 0.15;
+              pusherTarget = lerp(0.0, recipe.pusherTarget, pushU);
+              boxOffsetY = lerp(0.0, 0.36, pushU);
+              boxOffsetZ = pushU > 0.65 ? lerp(0.0, -0.055, (pushU - 0.65) / 0.35) : 0.0;
+            } else {
+              pusherTarget = lerp(recipe.pusherTarget, 0.0, (uCycle - 0.90) / 0.10);
+              boxOffsetY = 0.36;
+              boxOffsetZ = -0.055;
+            }
+          }
+        } else {
+          // Closed-Loop Tridi Twin (Optical Sensor Synchronized):
+          // Step 0 (0.00..0.28): Box glides from Hopper (-0.17) across Weigher (PE-01) and stops centered under Blue Press (feed = 0.57, boxX = +0.12 m).
+          // Step 1 (0.28..0.56): PE-02 confirms box centered -> Blue Press kisses box top (no squashing!), stamps centered white seal, and retracts.
+          // Step 2 (0.56..0.78): Sealed box glides to end of black belt (feed = 1.29, boxX = +0.84 m); Red Pusher stays at 0 mm because seal is OK.
+          // Step 3 (0.78..1.00): Box slides smoothly down the inclined ramp and lands directly in its target slot on the Euro-Pallet (PALLET-01)!
+          if (uCycle < 0.28) {
+            feedTarget = lerp(-0.17, 0.57, uCycle / 0.28);
+            stage = 0;
+          } else if (uCycle < 0.56) {
+            feedTarget = 0.57;
+            stage = 1;
+            if (uCycle < 0.37) {
+              sealerTarget = lerp(0.0, recipe.sealerTarget, (uCycle - 0.28) / 0.09);
+            } else if (uCycle < 0.47) {
+              sealerTarget = recipe.sealerTarget;
+              boxSealed = true;
+              sealQuality = 'ok';
+            } else {
+              sealerTarget = lerp(recipe.sealerTarget, 0.0, (uCycle - 0.47) / 0.09);
+              boxSealed = true;
+              sealQuality = 'ok';
+            }
+          } else if (uCycle < 0.78) {
+            feedTarget = lerp(0.57, 1.29, (uCycle - 0.56) / 0.22);
+            boxSealed = true;
+            sealQuality = 'ok';
+            stage = 2;
+          } else {
+            const rampU = (uCycle - 0.78) / 0.22;
+            const slotFeed = targetSlot.x - -0.45; // feed coordinate so boxX === targetSlot.x
+            const slotOffsetZ = targetSlot.z - 0.095; // z offset relative to carrier (0.095)
+            if (rampU < 0.65) {
+              const u1 = rampU / 0.65;
+              feedTarget = lerp(1.29, 1.56, u1);
+              boxOffsetY = lerp(0.0, targetSlot.y, u1 * 0.5);
+              boxOffsetZ = lerp(0.0, -0.29, u1);
+              boxPitchRad = Math.sin(u1 * Math.PI) * 0.28;
+            } else {
+              const u2 = (rampU - 0.65) / 0.35;
+              feedTarget = lerp(1.56, slotFeed, u2);
+              boxOffsetY = lerp(targetSlot.y * 0.5, targetSlot.y, u2);
+              boxOffsetZ = lerp(-0.29, slotOffsetZ, u2);
+              boxPitchRad = 0.0;
+            }
+            boxSealed = true;
+            sealQuality = 'ok';
             stage = 3;
           }
         }
-        const feedMm = Math.round((feedM + 0.17) * 1000);
-        const pusherMm = Math.round((data.qpos[8] ?? 0) * 1000);
-        const sealerMm = Math.round((data.qpos[9] ?? 0) * 1000);
+
+        // Apply smooth kinematic/servo state with zero spring bounce
+        data.qpos[7] = feedTarget;
+        data.qpos[8] = pusherTarget;
+        data.qpos[9] = sealerTarget;
+        data.qvel[6] = 0;
+        data.qvel[7] = 0;
+        data.qvel[8] = 0;
+        data.ctrl[0] = feedTarget;
+        data.ctrl[1] = pusherTarget;
+        data.ctrl[2] = sealerTarget;
+
+        // Update 3D geom offsets inside conveyor_carrier_link (ramp descent, lateral reject push, seal appearance, and pallet stack)
+        const { mujoco, model: m } = sim;
+        if (!sim._factoryGeomIds) {
+          const objGeom = mujoco.mjtObj.mjOBJ_GEOM.value;
+          sim._factoryGeomIds = {
+            box: mujoco.mj_name2id(m, objGeom, 'package_box'),
+            label: mujoco.mj_name2id(m, objGeom, 'package_label'),
+            palletBoxes: [1, 2, 3, 4, 5, 6].map((n) => mujoco.mj_name2id(m, objGeom, `pallet_box_${n}`)),
+          };
+        }
+        const gIds = sim._factoryGeomIds;
+        if (gIds.box >= 0) {
+          m.geom_pos[3 * gIds.box + 0] = 0.0;
+          m.geom_pos[3 * gIds.box + 1] = boxOffsetY;
+          m.geom_pos[3 * gIds.box + 2] = boxOffsetZ;
+          const halfP = 0.5 * boxPitchRad;
+          m.geom_quat[4 * gIds.box + 0] = Math.cos(halfP);
+          m.geom_quat[4 * gIds.box + 1] = 0.0;
+          m.geom_quat[4 * gIds.box + 2] = Math.sin(halfP);
+          m.geom_quat[4 * gIds.box + 3] = 0.0;
+        }
+        if (gIds.label >= 0) {
+          if (!boxSealed) {
+            // Hide seal inside box before Station 2 (Blue Sealer Press) stamps it
+            m.geom_pos[3 * gIds.label + 0] = 0.0;
+            m.geom_pos[3 * gIds.label + 1] = boxOffsetY;
+            m.geom_pos[3 * gIds.label + 2] = boxOffsetZ;
+          } else if (sealQuality === 'bad') {
+            // Misaligned seal stamped on front-right edge when box arrived late under fixed timer
+            m.geom_pos[3 * gIds.label + 0] = 0.038;
+            m.geom_pos[3 * gIds.label + 1] = boxOffsetY + 0.016;
+            m.geom_pos[3 * gIds.label + 2] = boxOffsetZ + 0.053;
+          } else {
+            // Centered seal stamped cleanly by Blue Press
+            m.geom_pos[3 * gIds.label + 0] = 0.0;
+            m.geom_pos[3 * gIds.label + 1] = boxOffsetY;
+            m.geom_pos[3 * gIds.label + 2] = boxOffsetZ + 0.053;
+          }
+          const halfP = 0.5 * boxPitchRad;
+          m.geom_quat[4 * gIds.label + 0] = Math.cos(halfP);
+          m.geom_quat[4 * gIds.label + 1] = 0.0;
+          m.geom_quat[4 * gIds.label + 2] = Math.sin(halfP);
+          m.geom_quat[4 * gIds.label + 3] = 0.0;
+        }
+        // Show stacked boxes on the pallet (0..6 boxes stacking up one by one as each good cycle finishes)
+        const visibleStackCount = completedCycles % 6;
+        for (let i = 0; i < 6; i++) {
+          const gid = gIds.palletBoxes[i];
+          if (gid >= 0) {
+            const slot = PALLET_SLOTS[i];
+            m.geom_pos[3 * gid + 0] = slot.x;
+            m.geom_pos[3 * gid + 1] = slot.y;
+            m.geom_pos[3 * gid + 2] = i < visibleStackCount ? slot.z : -10.0; // hide below ground until stacked
+          }
+        }
+
+        const boxX = -0.45 + feedTarget;
+        const sensorEntry = Math.abs(boxX - -0.38) < 0.11;
+        const sensorSealer = Math.abs(boxX - 0.12) < 0.065;
+        const sensorExit = Math.abs(boxX - 0.46) < 0.11;
+        const feedMm = Math.round((feedTarget + 0.17) * 1000);
+        const pusherMm = Math.round(pusherTarget * 1000);
+        const sealerMm = Math.round(sealerTarget * 1000);
+        const stackedBoxes = visibleStackCount + ( (!fixedPlcMode && stage === 3) ? 1 : 0 );
+
         const stageNamesEs = [
           `1/4 · Pesaje y Avance (${recipe.labelEs})`,
-          `2/4 · Prensa Azul Sella (${recipe.dwellMs} ms)`,
-          `3/4 · Avance a Salida PE-03`,
-          `4/4 · Pistón Rojo Descarga a Palet`,
-          `⚠️ FALLA · Prensa Azul Aplastó Caja (Patinaje 28%)`,
+          `2/4 · Prensa Azul Sella Caja (${recipe.dwellMs} ms)`,
+          `3/4 · Inspección Salida PE-03`,
+          fixedPlcMode ? `4/4 · Pistón Rojo Expulsa Caja Mal Sellada` : `4/4 · Rampa y Apilado en Palet (${stackedBoxes}/6)`,
+          `⚠️ FALLA · Caja Llegó Tarde y Quedó Mal Sellada`,
         ];
         const stageNamesEn = [
           `1/4 · Weighing & Infeed (${recipe.labelEn})`,
-          `2/4 · Blue Press Sealing (${recipe.dwellMs} ms)`,
-          `3/4 · Advancing to Exit PE-03`,
-          `4/4 · Red Pusher Discharges to Pallet`,
-          `⚠️ FAULT · Blue Press Crushed Box (28% Slip)`,
+          `2/4 · Blue Press Seals Box (${recipe.dwellMs} ms)`,
+          `3/4 · Exit Inspection PE-03`,
+          fixedPlcMode ? `4/4 · Red Pusher Rejects Mis-Sealed Box` : `4/4 · Ramp & Stacking on Pallet (${stackedBoxes}/6)`,
+          `⚠️ FAULT · Box Arrived Late & Mis-Sealed`,
         ];
         const stepExplainEs = [
-          `Paso 1/4: Nace una caja en la Tolva (HOPPER-01), se pesa en la báscula dinámica (PE-01) y avanza hacia el puente central.`,
-          `Paso 2/4: La fotocelda PE-02 confirma posición y la Prensa Azul (PRESS-01) baja desde el puente naranja para sellar la tapa.`,
-          `Paso 3/4: La Prensa Azul sube y la caja ya sellada avanza hacia el final de la banda negra (sensor PE-03).`,
-          `Paso 4/4: Al llegar al final (PE-03), el Pistón Rojo (PUSHER-01) empuja la caja terminada por la rampa hacia el palet (PALLET-01).`,
-          `🚨 ¡COLISIÓN POR TIMER FIJO! La banda patinó 28 %, la caja llegó tarde (PE-02=0) y la Prensa Azul bajó a ciegas aplastando el envase.`,
+          `Paso 1/4: Sale una caja nueva de la Tolva (HOPPER-01), pasa por la báscula (PE-01) y avanza a velocidad constante hacia el centro.`,
+          `Paso 2/4: La caja se detiene centrada en PE-02; la Prensa Azul (PRESS-01) baja justo hasta el tope de la caja y le estampa el sello blanco.`,
+          fixedPlcMode
+            ? `Paso 3/4: El sensor de salida PE-03 detecta que la caja tiene el sello descentrado/defectuoso y prepara el Pistón Rojo de rechazo.`
+            : `Paso 3/4: La Prensa Azul sube y la caja bien sellada avanza hacia el final de la banda negra (el Pistón Rojo no se activa porque la caja está OK).`,
+          fixedPlcMode
+            ? `Paso 4/4: El Pistón Rojo (PUSHER-01) empuja la caja mal sellada hacia adelante fuera de la banda hacia la Bandeja de Rechazo (Merma).`
+            : `Paso 4/4: La caja buena baja deslizándose por la rampa inclinada y se apila en el Palet (PALLET-01: ${stackedBoxes}/6 cajas apiladas).`,
+          `⚠️ ¡FALLA DE SINCRONIZACIÓN! La banda patinó 28 %, la caja llegó tarde (PE-02=0) y la Prensa Azul bajó por reloj golpeando el borde delantero (queda mal sellada).`,
         ];
         const stepExplainEn = [
-          `Step 1/4: A new box spawns at the Hopper (HOPPER-01), weighs on the dynamic scale (PE-01), and advances to the center bridge.`,
-          `Step 2/4: Photo-eye PE-02 confirms position and the Blue Press (PRESS-01) descends from the orange bridge to heat-seal the lid.`,
-          `Step 3/4: The Blue Press retracts and the sealed box travels to the end of the black conveyor belt (sensor PE-03).`,
-          `Step 4/4: At the end of the belt (PE-03), the Red Pusher (PUSHER-01) pushes the finished box down the chute onto the pallet (PALLET-01).`,
-          `🚨 FIXED-TIMER COLLISION! The belt slipped 28%, the box arrived late (PE-02=0), and the Blue Press slammed down blind, crushing the package.`,
+          `Step 1/4: A new box enters from the Hopper (HOPPER-01), crosses the scale (PE-01), and glides at constant speed toward the center.`,
+          `Step 2/4: Box stops centered at PE-02; the Blue Press (PRESS-01) lowers flush onto the box top and stamps the white seal.`,
+          fixedPlcMode
+            ? `Step 3/4: Exit sensor PE-03 detects the crooked/defective seal on the box and arms the Red Reject Pusher.`
+            : `Step 3/4: Blue Press retracts and the properly sealed box glides to the end of the black belt (Red Pusher stays idle because the box is OK).`,
+          fixedPlcMode
+            ? `Step 4/4: The Red Pusher (PUSHER-01) pushes the poorly sealed box forward off the belt into the Side Reject Tray (Waste).`
+            : `Step 4/4: The good box slides down the inclined chute and stacks onto the Pallet (PALLET-01: ${stackedBoxes}/6 stacked boxes).`,
+          `⚠️ TIMING FAULT! Belt slipped 28%, the box arrived late (PE-02=0), and the Blue Press came down on a fixed timer hitting the front edge (mis-sealed box).`,
         ];
         sim.factoryReadout = {
           feedMm: Math.max(0, feedMm),
@@ -441,8 +588,14 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
           stage,
           crushed,
           crushedBox: crushed,
-          completedCycles: sim._factoryCycles || 0,
-          crushedCount: sim._factoryCrushedCount || 0,
+          boxOffsetY,
+          boxOffsetZ,
+          boxPitchRad,
+          boxSealed,
+          sealQuality,
+          stackedBoxes,
+          completedCycles,
+          crushedCount,
           modeLabel: stageNamesEs[stage] || stageNamesEs[0],
           modeLabelEs: stageNamesEs[stage] || stageNamesEs[0],
           modeLabelEn: stageNamesEn[stage] || stageNamesEn[0],
