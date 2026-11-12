@@ -8,7 +8,7 @@ Grabas a una persona moviéndose con el celular. Un humanoide aprende a hacerlo 
 
 Repo privado de la empresa.
 - 🗺️ **Roadmap actual y división de tareas del equipo:** [`docs/ROADMAP.md`](docs/ROADMAP.md)
-- 📚 **Índice de documentación (para humanos):** [`docs/README.md`](docs/README.md) · **Manuales internos e infra:** [`docs/internal/`](docs/internal/README.md) · **YC W27:** [`yc/`](yc/README.md)
+- 📚 **Índice de documentación:** [`docs/README.md`](docs/README.md) · **YC W27:** [`yc/`](yc/README.md)
 
 👉 **Producción:** [trytridi.com](https://trytridi.com) · **Hitos Sim-to-Real:** [trytridi.com/#/milestones](https://trytridi.com/#/milestones) · **Espejo legacy:** [tridi-alpha.vercel.app](https://tridi-alpha.vercel.app) · **Pitch:** [`docs/pitch/tridi-pitch.pdf`](docs/pitch/tridi-pitch.pdf)
 
@@ -30,7 +30,7 @@ ChatGPT se entrenó con todo internet. Los robots no tienen nada parecido: no ex
 | **Imitación v2 (9 políticas ONNX)** | Camina (`g1-walk`, `h1-walk`), corre (`g1-run`), salta (`g1-jacks`), baila (`g1-bailar`), saluda (`g1-saludar`), cuenta con los 5 dedos (`g1-dedos`), se sienta (`g1-sentarse`) e interactúa con objetos y agua |
 | **Sim-to-Real físico (`luigi_lab3`)** | Primer caso de estudio completo ([`#/milestones`](https://trytridi.com/#/milestones)): gemelo digital en MuJoCo desde planos CAD (`.stl`) + política PPO ONNX (17 KB) transferida zero-shot al robot físico real (Arduino UNO + L298N + HC-SR04 + 4× CNY70) y por WebSerial a 50 Hz |
 
-El detalle histórico sin inflar: [`yc/verdad-hoy.md`](yc/verdad-hoy.md) y [`docs/internal/yc-w27-reference.md`](docs/internal/yc-w27-reference.md).
+El detalle histórico sin inflar: [`yc/verdad-hoy.md`](yc/verdad-hoy.md) y [`yc/yc-w27-reference.md`](yc/yc-w27-reference.md).
 
 ## El repo
 
@@ -40,7 +40,7 @@ El detalle histórico sin inflar: [`yc/verdad-hoy.md`](yc/verdad-hoy.md) y [`doc
 | [`physics/`](physics/README.md) | `Unitree G1`, `Unitree H1` y `luigi_lab3` en MuJoCo (WebAssembly), manos de 5 dedos, retargeting, mundos, objetos y líquidos |
 | [`training/`](training/README.md) | Entrenamiento con PPO (MJX / PyTorch), imitación DeepMimic, exportación a ONNX, rollouts, firmware Arduino y puente WebSerial |
 | [`web/`](web) | App web en producción (`trytridi.com`): Landing, Gym, Simulaciones, Hitos (`#/milestones`), En vivo, Teléfono por QR, Subir y Entrega |
-| [`docs/`](docs) | Estado, contrato entre partes, decisiones, bitácora, auditoría ([`audit-playbook.md`](docs/audit-playbook.md)) y manuales internos ([`docs/internal/`](docs/internal/README.md)) |
+| [`docs/`](docs) | Roadmap, estado, casos reales (`caso-luigi-sim2real.md`, `reunion-zaka.md`), arquitectura, infraestructura y bitácora |
 | [`yc/`](yc/README.md) | Aplicación a Y Combinator Winter 2027 (enviada el 2 de noviembre de 2026) |
 
 Cómo trabajamos (ramas, `scripts/ship.sh`, bitácora): [`CONTRIBUTING.md`](CONTRIBUTING.md). Para agentes: [`AGENTS.md`](AGENTS.md).

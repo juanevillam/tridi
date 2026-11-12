@@ -36,7 +36,7 @@
 3. **No hablar en jerga académica de IA (`PPO`, `domain randomization`, `reward`).** Hablar en idioma de planta: **gemelo físico, simulación de fricción y patinaje, pruebas antes de la ventana de parada (*virtual commissioning*), recetas de formato y cero merma**.
 
 ### Cómo entra aquí la tesis de Elon Musk (Optimus y fábricas, feb 2026)
-En la entrevista que transcribimos ([`yc/investigacion/voces/2026-02-elon-musk-optimus.md`](../../yc/investigacion/voces/2026-02-elon-musk-optimus.md)), Elon resume el problema real de la robótica física hoy en dos puntos que conectan directo con el Sr. José:
+En la entrevista que transcribimos ([`yc/investigacion/voces/2026-02-elon-musk-optimus.md`](../yc/investigacion/voces/2026-02-elon-musk-optimus.md)), Elon resume el problema real de la robótica física hoy en dos puntos que conectan directo con el Sr. José:
 - **El cuello de botella ya no es el hardware, es el *Sim-to-Real*:** Una cosa es el código en vacío y otra muy distinta cuando el motor enfrenta fricción real, desgaste mecánico, cajas que resbalan o sensores con retardo. Para resolverlo sin romper equipos en vivo hace falta un **simulador físicamente exacto**.
 - **Dónde da retorno primero:** En **operaciones continuas 24/7 dentro de fábricas**, donde cada minuto de parada o cada caja aplastada cuesta plata real.
 
