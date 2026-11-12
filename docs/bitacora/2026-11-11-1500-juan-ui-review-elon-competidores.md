@@ -34,5 +34,18 @@
   - Ocultados los selectores de configuración (`Pasos de práctica PPO`, `Empujones`, `4 mundos`) en la vista `preloaded` de la caja de entrenamiento para que solo aparezcan al entrenar un clip propio grabado o subido.
   - Renombrado *"Robot entrenado con"* a *"Política activa (cerebro ONNX)"* y aclarados los nombres de `Lab 3` / `Lab 4` a `Rover Luigi v1 (Sensores Fijos)` y `Rover Luigi v2 (Radar Servo SG90)`.
 - **Postura erguida del G1 en `#/delivery` y simulaciones (`web/src/screens/delivery.js`, `physics/src/policy.js`):** Amortiguado el pitch hacia adelante de pelvis y cintura (`pose[4]` y `pose[21]`) en los cuadros de replay de `#/delivery` (preservando las caídas reales en los últimos `0,35 s`) y reforzado el bias vertical de cintura en `policy.js`.
-- **Manual interno para reunión con ZAKA, C.A. (`docs/internal/preparacion-reunion-zaka-y-claridad-producto.md`):** Investigación completa de ZAKA, C.A. (`zakasys.com`, Ing. José González), aclaración de producto/UX para el equipo, conexión con Elon Musk (Optimus / Sim-to-Real / fábricas 24/7) y guion de reunión por bloques.
+- **Manual interno para reunión con ZAKA, C.A. (`docs/internal/preparacion-reunion-zaka-y-claridad-producto.md`):** Investigación completa de ZAKA, C.A. (`zakasys.com`, Ing. José González), aclaración de producto/UX para el equipo, conexión con Elon Musk (Optimus / Sim-to-Real / fábricas 24/7), cruce técnico de los 8 servicios de ZAKA con Tridi, y sección de reglas de oro ("Qué NO hacer: aliados y generación de relevo, cero competencia").
+
+---
+
+## Registro de Eventos de Campo y Validación Industrial (Hitos en persona)
+
+1. **Evento 1 — Reunión y Pruebas Físicas con Luigi D'Aquaro (`luigi_lab3` y `luigi_lab4`, 7–10 de noviembre de 2026):**
+   - **Qué pasó:** Llevamos a tierra el primer caso físico Sim-to-Real de Tridi con el robot diferencial de Luigi D'Aquaro (Arduino UNO, L298N, motores TT 200 RPM con llantas de TPU, ultrasónico `HC-SR04` y sensor óptico `APDS-9960` clon `0x9E`).
+   - **Qué descubrimos en la mesa real:** El código original fallaba en el piso por tres razones físicas que no se ven en un IDE: (1) zona muerta de fricción estática con `PWM < 115`, (2) bloqueo de `47,1 ms` por llamada a `pulseIn()` sin eco que dejaba al robot ciego antes de chocar, y (3) rechazo del sensor `APDS-9960` por `Chip ID 0x9E`.
+   - **Cómo le dimos la vuelta:** Armamos el gemelo digital en MuJoCo con sus 6 piezas `.stl`, entrenamos la política cerrada a **50 Hz (`luigi-lab3.onnx`)** y construimos el compilador automático `training/export_mcu.py` (`J-3`) que genera C99 nativo no bloqueante (`PCINT1` + registros I2C directos). El robot físico recorrió el pasillo y esquivó las cajas a la primera (documentado en video en `#/milestones`), y luego escalamos al segundo prototipo con torreta servo `SG90` (`luigi_lab4`).
+2. **Evento 2 — Preparación para Reunión de Validación Industrial con Ing. José González (`ZAKA, C.A.`, 12 de noviembre de 2026):**
+   - **Con quién nos reunimos:** Ing. José González, fundador de **ZAKA, C.A.** (`zakasys.com`, 22 años automatizando plantas en Venezuela desde Calabozo y Barquisimeto; integradores oficiales de Rockwell Automation, Siemens y AVEVA en alimentos, bebidas, empaque PackML y petróleo/gas).
+   - **Enfoque acordado por los 4 (Juan, Pastor, César, Ale):** Ir con humildad, como **aliados tecnológicos y generación de relevo** (jamás como competencia ni a "enseñarle qué es un PLC"), pedir su validación experta sobre dónde duele más hoy en piso de planta (ventanas de parada/puesta en marcha, merma por desincronización en empaque, retrofit de máquinas viejas) y abrir la puerta a documentar juntos un primer caso piloto industrial en Barquisimeto. Toda la guía quedó en [`docs/internal/preparacion-reunion-zaka-y-claridad-producto.md`](../internal/preparacion-reunion-zaka-y-claridad-producto.md).
+
 

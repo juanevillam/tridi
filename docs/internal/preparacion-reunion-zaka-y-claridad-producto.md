@@ -132,18 +132,50 @@ No vamos a pedirle que nos compre algo mañana; vamos a pedirle **validación in
 
 ---
 
-## Parte 5: Cómo se reparte el equipo mañana en la reunión
+## Parte 5: Reglas de Oro de Ale — Qué NO Hacer y Cómo Posicionarnos ("Aliados y Generación de Relevo, Cero Competencia")
 
-| Quién | Rol en la reunión con el Sr. José |
-| :--- | :--- |
-| **Ale** | Abre la conversación (confianza personal por José Miguel), presenta al equipo, hace las preguntas de negocio/industria (Bloque 2) y cierra con la propuesta de hacer un caso piloto con ZAKA (Bloque 5). |
-| **Juan** | Explica la visión producto/software ("de video y CAD a un controlador que corre a 50 Hz sin bloquearse"), muestra la web (`trytridi.com`), cuenta cómo resolvimos el código/firmware real del robot de Luigi y conecta con lo que hacen gigantes como Tesla/NVIDIA. |
-| **Pastor** | Explica el motor físico en MuJoCo, muestra en pantalla la **Celda Industrial (`factory_cell`)** con la falla de fricción de cinta vs. sensores ópticos y el **Rover v2 (`luigi_lab4`)**. |
-| **César** | Apoya en la demostración en vivo de la interfaz, la pantalla de entrega de datos/telemetría (`#/delivery`) y cómo estamos diseñando el `Tridi Assembler` para que sea fácil de usar por cualquier ingeniero. |
+> [!CAUTION]
+> **Instrucción crítica de José Alejandro Hernández (Ale):**  
+> El Ing. José González es el papá de José Miguel (amigo de colegio de Ale), es una gran persona con Ale, pero **nunca han hablado de trabajo**. El riesgo #1 que debemos evitar a toda costa es que sienta que 4 chamos con IA vienen a decirle que "lo que hace ZAKA está viejo" o que somos competencia de su integradora.  
+> **El posicionamiento exacto:** Nosotros **NO somos una integradora industrial ni montamos tableros ni vendemos servicios de planta**. Nosotros construimos **herramientas de software y simulación física** para que integradores como ZAKA —y la nueva generación de ingenieros— hagan pruebas virtuales, entrenen máquinas y ahorren horas en planta. Queremos que nos vea como **aliados tecnológicos y como su generación de relevo en ingeniería**.
+
+### ❌ Qué NO Hacer ni Decir mañana (Prohibido en la reunión)
+1. **NO decir que "la IA va a reemplazar a los PLCs o a los ingenieros de automatización".**  
+   - *Por qué:* El negocio de ZAKA es programar PLCs Rockwell/Siemens, armar tableros CCM y levantar redes en planta. Si decimos "reemplazamos al PLC", nos ve como amenaza o como novatos que no conocen una fábrica real.
+   - *Qué decir en su lugar:* *"El PLC (`S7-1200/1500` o `ControlLogix`) y las seguridades en planta son sagrados e irremplazables. Lo que hace Tridi es ser el **banco de pruebas físico en computadora (gemelo digital)** antes de ir a la planta, o darle una mano a los ingenieros cuando hay que calibrar tiempos, fricciones o máquinas nuevas."*
+2. **NO presentar el botón `⚠️ Simular PLC ciego por timer` como "miren cómo fallan los PLCs".**  
+   - *Por qué:* Si suena a que estamos criticando cómo se programa un PLC, puede sonar arrogante frente a alguien con 22 años programando `Studio 5000` y `TIA Portal`.
+   - *Qué decir en su lugar:* *"Hicimos esta simulación sencilla para entender nosotros mismos la diferencia entre programar por tiempos fijos (como suele hacer alguien que está empezando) versus un lazo cerrado bien sincronizado por fotoceldas como hacen ustedes en PackML cuando una banda patina."*
+3. **NO venderle nada ni hablar de precios/facturación a ZAKA.**  
+   - *Por qué:* Es la primera vez que Ale habla de temas profesionales con él. Ir con tono de vendedor rompe la confianza personal.
+   - *Qué hacer en su lugar:* Ir 100 % en modo **aprendices + aliados técnicos**: pedirle su consejo de veterano, mostrarle con humildad lo que armamos en 3 semanas (Platanus Hack + el rover de Luigi) y preguntarle cómo podemos **sumarle valor a ZAKA** como brazo de software/simulación.
+4. **NO hablar en jerga cerrada de Machine Learning (`PPO`, `clip_fail_ema`, `domain randomization`, `reward shaping`) sin traducirlo a planta.**  
+   - *Qué decir en su lugar:* Hablar en su idioma: **gemelo digital, simulación de fricción y desgaste, pruebas antes de la ventana de parada (*virtual commissioning*), tiempos de ciclo, cero merma y código determinista sin bloqueos**.
+5. **NO acaparar la palabra ni interrumpirlo cuando cuente historias de planta.**  
+   - Cuando un ingeniero senior cuenta cómo resolvió un problema en una planta de alimentos o petróleo, **esa información vale oro**. Dejarlo hablar, anotar todo y hacerle preguntas sobre sus proyectos.
+
+### ✅ Cómo lograr que nos vea como Aliados y su "Generación de Relevo"
+- **Frase llave para abrir (Ale / equipo):**  
+  > *"Sr. José, nosotros somos de la generación que creció programando software e inteligencia artificial, pero sabemos que **la industria real se mueve en el piso de planta**, como dice la propia página de ZAKA. Por eso queríamos sentarnos con usted: no queremos quedarnos haciendo software en la nube desconectado de la realidad; queremos aprender de quienes llevan 20 años manteniendo las plantas del país andando y poner nuestra tecnología al servicio de integradores como ZAKA."*
+- **Por qué somos el aliado perfecto para ZAKA:**
+  - ZAKA tiene lo más difícil de construir: **22 años de reputación, acceso a las plantas más grandes, certificaciones de Rockwell/Siemens/AVEVA y conocimiento de campo**.
+  - Tridi tiene lo que a cualquier empresa tradicional le cuesta meses investigar por falta de tiempo: **un equipo joven 24/7 dedicado a simulación física 3D (MuJoCo), visión por computadora e IA aplicada a control**.
+  - Si ZAKA algún día quiere mostrarle a un cliente un **gemelo digital 3D interactivo de su línea** o probar una modernización antes de parar la planta, nosotros somos su equipo aliado de casa.
 
 ---
 
-## Parte 6: Cruce Técnico Profundo (Juan + Pastor) — Los 8 Servicios de ZAKA vs. Lo que Proyecta Tridi
+## Parte 6: Cómo se reparte el equipo mañana en la reunión
+
+| Quién | Rol en la reunión con el Sr. José |
+| :--- | :--- |
+| **Ale** | Abre la conversación desde la confianza personal y el respeto (posición de "generación de relevo que viene a pedir consejo"), presenta al equipo, guía las preguntas de negocio/industria y cierra abriendo la puerta a colaborar como aliados de ZAKA. |
+| **Juan** | Explica la visión producto/software con humildad ("de video y CAD a un simulador físico y código sin bloqueos"), muestra la web (`trytridi.com`), cuenta la historia real de lo que pasó en la reunión con Luigi y cómo lo resolvimos en equipo. |
+| **Pastor** | Explica el motor físico en MuJoCo, muestra la **Celda Industrial (`factory_cell`)** pidiéndole feedback de experto en PackML (*"¿cómo ve usted esto desde su experiencia en planta?"*) y muestra el **Rover v2 (`luigi_lab4`)**. |
+| **César** | Apoya en la demostración en vivo de la interfaz, la pantalla de entrega de datos/telemetría (`#/delivery`) y cómo estamos diseñando el `Tridi Assembler` para que sea una herramienta útil para ingenieros de planta. |
+
+---
+
+## Parte 7: Cruce Técnico Profundo (Juan + Pastor) — Los 8 Servicios de ZAKA vs. Lo que Proyecta Tridi
 
 Además de las 3 hipótesis de Pastor (ventanas de parada, merma en PackML e IA vs. PLC), al cruzar el catálogo técnico completo de ZAKA (`zakasys.com/servicios/` y `zakasys.com/clientes/`) con lo que ya tenemos en el repositorio (`training/export_mcu.py`, `physics/src/assembler.js`, captura de video + manos, y telemetría en `#/delivery`), salen **4 ángulos adicionales** donde Tridi encaja con el negocio real de ZAKA:
 
