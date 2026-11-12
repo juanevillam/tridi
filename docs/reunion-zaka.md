@@ -62,19 +62,36 @@ En la entrevista que transcribimos ([`yc/investigacion/voces/2026-02-elon-musk-o
 
 ---
 
-## 4. Las 4 Preguntas de Validación Dura (Lo que queremos aprender de él)
+## 4. Qué Validar con el Sr. José (Las 3 Hipótesis de Planta + Los Cruces con Nuestro Repo)
 
-### Hipótesis 1 — Puesta en marcha y ventanas de parada (*Virtual Commissioning*)
-> *"Cuando ustedes en ZAKA modernizan una línea de empaque o montan un PLC nuevo trabajando contra reloj en una ventana de parada, ¿cuánto tiempo se pierde hoy probando y ajustando tiempos, variadores, sensores y pistones directamente sobre la máquina física el día del arranque? ¿Un gemelo físico 3D donde sus ingenieros puedan simular el CAD de la línea antes de tocar la planta les ahorraría horas reales, o ya usan algún software para eso?"*
+### A. Las 3 Hipótesis de Dolor en Planta (Pastor)
 
-### Hipótesis 2 — Merma, desincronización y cambios de formato en líneas de empaque
-> *"En las empaquetadoras y llenadoras reales que ustedes atienden en Venezuela, ¿qué es lo que más se traba o genera merma en el día a día? ¿Pasa por desincronización cuando patina una banda o cuando cambian de formato de envase desde el HMI, o el dolor principal está en otro lado (sensores dañados, falta de repuestos, cuellos mecánicos)?"*
+1. **Hipótesis 1 — Puesta en marcha y ventanas de parada (*Virtual Commissioning*):**  
+   Cuando ellos modernizan una línea de empaque o montan un PLC nuevo trabajando contra reloj en una ventana de parada, ¿cuánto tiempo y plata se pierde hoy probando y ajustando tiempos, variadores, sensores y pistones directamente sobre la máquina el día de la parada de planta? ¿Un gemelo físico donde puedan simular el CAD de la línea antes de tocar la planta les ahorraría horas reales, o ya usan algo para eso?
+2. **Hipótesis 2 — Merma y desincronización en líneas de empaque (`PackML`):**  
+   En las empaquetadoras y envasadoras reales que ellos atienden en Venezuela, ¿qué es lo que más se traba o genera merma en el día a día? ¿Es un tema de tiempos fijos en el PLC cuando resbala la cinta o cambia el envase (como lo que armamos en `factory_cell`), o el dolor de ellos pasa por otro lado (sensores dañados, falta de repuestos, cuellos de botella mecánicos)?
+3. **Hipótesis 3 — IA vs. PLC en industria real:**  
+   En una planta de alimentos de verdad que usa Rockwell o Siemens, ¿hasta dónde dejarían entrar algo como Tridi? ¿Como simulador previo para calcular y entregar parámetros deterministas al PLC, o en qué tipo de máquinas sí verían viable meter control adaptativo o visión?
 
-### Hipótesis 3 — Retrofits de máquinas viejas (sin planos ni fabricante original)
-> *"Vimos en su web que hacen muchos proyectos de **Retrofit y migración de controladores obsoletos** (como extrusoras o máquinas viejas donde la mecánica ya tiene juego y desgaste). En esos casos, ¿cómo calculan hoy las nuevas rampas de los variadores (`PowerFlex` / `Sinamics`) y los tiempos del PLC sin arriesgarse a forzar la máquina en el primer arranque?"*
+---
 
-### Hipótesis 4 — Del simulador al PLC real (Rockwell / Siemens) y cómo sumar como aliados
-> *"Sabemos que ningún jefe de planta va a meter una 'caja negra' de IA directo a gobernar una planta. Pero si nuestro simulador entrena en física 3D y lo que les entrega a ustedes es una **tabla de parámetros deterministas (recetas ISA-88 / PackML)** o un bloque en **Texto Estructurado (`ST` IEC 61131-3)** listo para importar en `Studio 5000` o `TIA Portal`, ¿eso sí les serviría en su flujo de trabajo?"*
+### B. Cruce Directo entre lo que Vende ZAKA (`/servicios` y `/clientes`) y lo que Ya Construimos en el Repo (Juan)
 
-### El Cierre (Abrir la puerta a un caso real juntos en Barquisimeto)
-> *"Sr. José, mientras estamos en el proceso de Y Combinator nuestra meta este mes es documentar un primer caso real industrial aquí en Barquisimeto, poniendo nuestro trabajo de simulación 3D gratis al servicio de ustedes. ¿Tienen algún banco de pruebas en la oficina de Barquisimeto o alguna máquina/celda sencilla donde podamos ir con ustedes a tomar medidas y armarles el gemelo 3D como aliados?"*
+1. **Servicio 06 de ZAKA (Retrofit de máquinas viejas) × `Tridi Assembler`:**
+   - **El contexto:** ZAKA hace mucho retrofit de extrusoras de plástico y empaquetadoras con controladores obsoletos donde ya no hay planos y la mecánica tiene desgaste y juego.
+   - **👉 Qué validar con él:** Cuando le cambian el PLC o meten variadores nuevos (`PowerFlex` / `Sinamics`) a una máquina vieja, ¿cómo calculan hoy las rampas y tiempos sin arriesgarse a romper algo en el arranque? Ahí un gemelo físico en MuJoCo les permite estresar la máquina vieja en simulación antes del día de parada.
+2. **"Cambios de formato parametrizados desde HMI" (`ISA-88` / `PackML`) × Nuestra Matriz de Escenarios (`#/delivery`):**
+   - **El contexto:** En su página de Alimentos y Bebidas destacan que hacen cambios de formato desde el HMI (ej. pasar de empaque de `250 g` a `1 kg` sin reprogramar desde cero).
+   - **👉 Qué validar con él:** Igual que en `#/delivery` probamos al robot con distintos pesos, fricciones y fuerzas, Tridi puede simular la línea con 10 formatos de envase distintos y exportar la **tabla de recetas pre-calibrada para `FactoryTalk View` o `WinCC`**. ¿Cuánto tiempo pierden hoy en planta afinando cada receta nueva a ojo?
+3. **El puente real entre Simulación y PLC × Evolución de nuestro compilador `J-3` (`training/export_mcu.py`):**
+   - **El contexto:** En industria pesada nadie va a meter una red neuronal `.onnx` como caja negra a controlar una prensa. Pero nosotros ya construimos `export_mcu.py`, que traduce la política entrenada en MuJoCo a C99 determinista sin bloqueos.
+   - **👉 Qué validar con él:** Si en vez de exportar a C de Arduino, exportamos la lógica validada en MuJoCo a **Texto Estructurado (`ST` / `SCL` bajo norma `IEC 61131-3`)** o como un bloque de función (**`AOI` para Rockwell `Studio 5000` / `FB` para Siemens `TIA Portal`**), ¿eso sí entraría directo en el flujo de trabajo de los ingenieros de ZAKA?
+4. **Fin de línea manual e inspección visual (Servicio 01 de ZAKA) × `Tridi Capture` (con el cuidado de Ale de posicionarlo 100 % como herramienta para que ZAKA venda más proyectos):**
+   - **El contexto:** Antes de hablar de humanoides carísimos, las plantas de alimentos en Barquisimeto siguen teniendo cuellos de botella en final de línea (encajonado, paletizado, inspección con cámaras Cognex).
+   - **👉 Qué validar con él (sin que suene a que Tridi automatiza por su cuenta):** Cuando ZAKA visita una planta para proponerles un proyecto de automatización en fin de línea, ¿en qué partes ven más cuellos de botella hoy donde a los ingenieros de ZAKA les serviría tener visión/medición por cámara o simular en 3D la solución que ZAKA les va a instalar?
+
+---
+
+## 5. El Cierre Perfecto para Mañana (Sin venderle nada)
+
+Preguntarle si en la oficina de ZAKA acá en Barquisimeto tienen algún **banco de pruebas / maqueta con PLC**, o algún equipo de un cliente de confianza donde nos dejen ir un día con ellos a tomar medidas y armar juntos nuestro **primer caso de estudio industrial real en `#/milestones`** (igual que hicimos con el rover de Luigi, cero costo para ellos y dejándoles el gemelo 3D a ZAKA).
