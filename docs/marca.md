@@ -1,67 +1,69 @@
-# Marca y landing de Tridi
+# Manual de Marca e Identidad Visual — Tridi (Noviembre 2026)
 
-> **Estilo vigente:** [instrumento de laboratorio](decisiones/2026-10-24-marca-instrumento-de-laboratorio.md) (papel, tinta, naranja señal `#ff4f1a`, Inter Tight + Geist Mono). Lo de abajo (público, mensaje, principios) sigue valiendo.
+> **PDF Oficial Completo (25 páginas):** [`docs/pitch/manual-de-marca-tridi.pdf`](pitch/manual-de-marca-tridi.pdf)  
+> **Pitch Deck Oficial (Platanus Hack 26):** [`docs/pitch/tridi-pitch.pdf`](pitch/tridi-pitch.pdf)
 
-La guía para la web: a quién le hablamos, cómo se ve, qué dice y qué no. La regla de fondo está en la [decisión](decisiones/2026-10-24-marca-b2b-robotica.md): **es un producto para empresas de robots humanoides, y se ve como tal.** Nombre provisional: Tridi.
+Tridi es una marca de deep tech para los equipos que construyen y entrenan robots. Su identidad visual funciona como un instrumento de laboratorio: oscura, precisa, con un solo color de acento (`Señal #C8FF2E`) y con el producto en vivo —el robot en simulación física MuJoCo— como imagen principal.
 
-## A quién le hablamos
+---
 
-| Quién | Qué le importa | Qué tiene que ver en 10 segundos |
-| --- | --- | --- |
-| **Equipos de humanoides** (los que construyen robots como Optimus, Figure 02, Digit, NEO, Apollo, el G1) | Datos de movimiento humano a escala, sin montar estudios de captura ni teleoperar durante meses | Que cualquier video se vuelve datos limpios y una política que funciona en física real |
-| **Laboratorios de robótica** | Reproducibilidad, código abierto, métricas | Cómo se mide, qué tan bien funciona, dónde está el código |
-| **Jurado y público de Platanus** | Que sea técnico, ambicioso y que funcione en vivo | La demo: empujar al robot y verlo recuperarse |
+## 1. El Símbolo y el Wordmark
 
-## Lo que decimos (mensaje)
+- **Concepto:** Una persona convertida en datos 3D para un robot.
+  - El **cubo** visto desde arriba en tres tonos de la Señal representa el «3D» del nombre.
+  - Sus **tres aristas internas** son, a la vez, los brazos levantados y la columna de una persona.
+  - La **cabeza** es una articulación circular sobre la cara superior y el **pecho** es una articulación cuadrada en el vértice central (igual que los keypoints que `Capture` extrae de un video).
+- **Wordmark (`tridi`):**
+  - Siempre en minúsculas, **Inter Tight Bold (700)** con tracking `-0.015em` (`-1.5%`).
+  - Las íes no llevan el punto redondo de la fuente: usan la `ı` sin punto (`U+0131`) y un cuadrado propio de `0.15em` en color Señal (`#C8FF2E` sobre fondo oscuro, o Señal 3 `#6B8F0E` sobre fondo claro).
+- **Tamaños mínimos y área de seguridad:**
+  - Margen libre alrededor igual a `x` (la altura de la cara superior del cubo).
+  - Horizontal: `24 px` de alto en pantalla (`8 mm` impreso). Por debajo de `24 px`, usar solo el símbolo (`16 px` favicon).
 
-- **Titular:** "Datos de movimiento humano para robots humanoides, desde cualquier video."
-- **Bajada:** "Tridi convierte video de personas reales en movimiento 3D y en políticas entrenadas en simulación física. Sin estudios de captura, sin trajes, sin teleoperación."
-- **Las tres pruebas que respaldan el mensaje** (todas medidas en el repo):
-  - El robot aguanta los 4 empujones de 250 N de la prueba, con una política que entrenamos en una laptop en 73 minutos ([`../training/README.md`](../training/README.md)).
-  - Del video al robot: retargeting al Unitree G1 con 3,2 cm de error mediano ([`../physics/README.md`](../physics/README.md)).
-  - Elige y sigue a una persona entre varias, y procesa 10 s de video en ~40 s ([`../data/README.md`](../data/README.md)).
-- **Lo que no decimos:** la tabla "Lo que NO podemos decir" de [`pitch/diferencia.md`](pitch/diferencia.md#lo-que-no-podemos-decir) manda. Además: nada de "clientes", "socios" ni logos de Tesla, Figure o cualquier otra empresa.
+---
 
-## Cómo se ve (principios)
+## 2. Paleta de Colores (`web/src/style.css`)
 
-1. **Sobrio y oscuro o claro, pero de un solo tono.** Base casi negra o casi blanca, grises, y **un solo color de acento** para lo que se toca o se mide. Nada de degradados de colores ni ilustraciones caricaturescas.
-2. **Tipografía:** una sans-serif geométrica o grotesca para todo, y una monoespaciada solo para números y datos (N, cm, s, fps). Titulares grandes y cortos; texto corto.
-3. **El producto es la imagen principal.** La simulación en vivo del G1 (que se puede empujar) reemplaza cualquier foto de stock o render. Si algo se mueve en la página, es el robot o los datos.
-4. **Números en vez de adjetivos.** "4 de 4 empujones de 250 N" en vez de "robusto". Cada cifra con su fuente.
-5. **Mucho aire, rejilla clara,** todo alineado. Los botones principales siempre visibles sin scroll (regla de `AGENTS.md`).
-6. **Movimiento con intención:** transiciones cortas y suaves; nada que distraiga del robot.
-7. **Estilo propio.** Tomamos el tono de las marcas de deep tech, no sus diseños: no clonar layouts, tipografías ni colores de Tesla, SpaceX ni de ninguna referencia.
+**Proporción aproximada:** `70% Grafito · 22% Tinta · 8% Señal`.
 
-## Estructura de la landing
+### Colores de Marca
+| Nombre | Hex | RGB | Variable CSS | Uso |
+| :--- | :--- | :--- | :--- | :--- |
+| **Grafito** | `#08090B` | `8 · 9 · 11` | `--bg` | Fondo base de todo |
+| **Señal** | `#C8FF2E` | `200 · 255 · 46` | `--signal` | Acento único: botones primarios, keypoints, lo que se toca o está en vivo |
+| **Señal 2** | `#9FD61C` | `159 · 214 · 28` | `--signal-2` | Cara izquierda del cubo |
+| **Señal 3** | `#6B8F0E` | `107 · 143 · 14` | `--signal-3` | Cara derecha del cubo y puntos de las íes sobre fondo claro |
+| **Tinta** | `#F1F3EE` | `241 · 243 · 238` | `--ink` | Texto principal y fondos claros |
 
-| # | Sección | Contenido |
-| --- | --- | --- |
-| 1 | **Hero** | Titular, bajada y el G1 en vivo a pantalla completa. Botones: **Probar en vivo** y **Hablar con el equipo** |
-| 2 | **El problema** | Los humanoides necesitan millones de horas de movimiento humano; capturarlo con estudios o teleoperación es caro y lento. El video ya existe |
-| 3 | **Cómo funciona** | Tres pasos con su dato: video → movimiento 3D de una persona (aunque haya más) → política entrenada en física real |
-| 4 | **Pruébalo** | Las tres funciones que ya existen, como consola del producto: cámara en vivo, subir un video, simulaciones |
-| 5 | **Resultados** | Las cifras medidas, cada una con su fuente, y la escalera de la política: sin entrenar → a medias → entrenada, con el mismo empujón |
-| 6 | **Para quién** | Equipos de humanoides, laboratorios, integradores. Sin logos |
-| 7 | **Tecnología** | Honesta: física con MuJoCo, robot Unitree G1, política propia entrenada por imitación y refuerzo, todo open source con enlace al repo |
-| 8 | **Cierre** | "Hablar con el equipo": el contacto del equipo |
+### Colores de Interfaz
+| Nombre | Valor | Variable CSS | Uso |
+| :--- | :--- | :--- | :--- |
+| **Fondo profundo** | `#0F1112` | `--bg-deep` | Paneles sobre el Grafito |
+| **Escena** | `#2B3034` | `--scene` | Fondo de las escenas 3D |
+| **Tinta suave** | `#A9ADA4` | `--ink-soft` | Texto secundario |
+| **Apagado** | `#7D8279` | `--muted` | Etiquetas y ayudas |
+| **Línea** | `Tinta al 12%` | `--line` | Bordes y divisores |
+| **OK** | `#6FCF8A` | `--ok` | Estados correctos |
+| **Error** | `#FF6A5A` | `--error` | Errores y alertas |
 
-Idioma: español, que es el del voto público. El inglés queda para después.
+---
 
-## Referencias para elegir
+## 3. Tipografía
 
-Para inspirarnos en el **tono**, no para copiar. Los 4 abren cada una, votan las 3 mejores y anotan qué tomar; con eso se cierra el estilo. Las notas son orientativas: las páginas cambian seguido, hay que verlas hoy.
+Ambas familias son libres (licencia OFL) y se cargan desde `@fontsource-variable`:
 
-| Sitio | Qué mirar |
-| --- | --- |
-| [figure.ai](https://www.figure.ai) | Minimalismo extremo de una empresa de humanoides: blanco y negro, el robot como protagonista |
-| [anduril.com](https://www.anduril.com) | Deep tech corporativo y cinematográfico, fondo oscuro, producto primero |
-| [physicalintelligence.company](https://www.physicalintelligence.company) | Laboratorio de robótica: sobriedad de investigación, texto y video |
-| [skild.ai](https://www.skild.ai) | "Cerebro" general para robots: cómo venden un modelo, no un robot |
-| [scale.com](https://scale.com) | El análogo más cercano del negocio: datos para entrenar IA, vendidos a empresas |
-| [bostondynamics.com](https://bostondynamics.com) | Robots industriales presentados como producto, con casos de uso |
-| [agilityrobotics.com](https://www.agilityrobotics.com) | Humanoide vendido a empresas de logística: retorno y operación |
-| [developer.nvidia.com/isaac](https://developer.nvidia.com/isaac) | Plataforma técnica de simulación de robots: specs y diagramas |
-| [palantir.com](https://www.palantir.com) | Tono serio y editorial para clientes grandes |
-| [linear.app](https://linear.app) | Oficio de producto: tipografía, rejilla y modo oscuro bien hechos |
+1. **Inter Tight** (`Regular 400`, `Medium 500`, `Semibold 600`, `Bold 700`): Grotesca compacta para titulares, texto y botones.
+   - Titulares: `Inter Tight 600`, mayúsculas, tracking `-2.5%`, segunda línea en Señal (`#C8FF2E`).
+   - Texto de cuerpo: `Inter Tight 400`, `17 px`, interlineado `1.5`, Tinta suave (`#A9ADA4`).
+   - Botones: `Inter Tight 600`, `13 px`, mayúsculas, tracking `+6%`, bordes rectos de `4 px`.
+2. **Geist Mono** (`Regular 400`, `Medium 500`): Monoespaciada exclusivamente para lo que se mide: números, unidades (`N`, `cm`, `s`, `Hz`, `fps`), etiquetas y telemetría (`11–12 px`, mayúsculas, tracking `+6%`).
 
-Cómo anotar: en [`decisiones/2026-10-24-marca-b2b-robotica.md`](decisiones/2026-10-24-marca-b2b-robotica.md) se agrega al final "Referencias elegidas" con las 3 votadas y qué se toma de cada una.
+---
+
+## 4. Principios Visuales y Usos Incorrectos
+
+1. **Un solo acento:** Base de un solo tono, grises fríos y la Señal (`#C8FF2E`) solo para lo que se toca o se mide. Nada de degradados de colores.
+2. **El producto es la imagen:** La simulación en vivo del robot en MuJoCo reemplaza cualquier foto de stock o ilustración. Si algo se mueve en pantalla, es el robot o los datos.
+3. **Números en vez de adjetivos:** `«4 de 4 empujones de 250 N»` en vez de `«robusto»`. Cada cifra con su fuente en el repositorio.
+4. **Bordes rectos:** Radios de `2 px` y `4 px`, nunca píldoras (`border-radius: 999px`). Puntos clave cuadrados.
+5. **Prohibido en el logotipo:** No agregar sombras/brillos, no inclinar/rotar, no invertir el orden símbolo–texto, no cambiar colores, no usar solo contorno, no estirar y nunca usar la `i` con punto redondo.

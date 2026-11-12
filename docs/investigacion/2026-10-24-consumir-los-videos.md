@@ -2,7 +2,7 @@
 
 - **Fecha:** 2026-10-24 · **Quién:** Ale · **Estado:** investigación, **para decidir quien programa**
 
-Esto acompaña a [`../videos-para-datos.txt`](../videos-para-datos.txt) (188 enlaces). **No es una decisión ni una instrucción**: es lo que encontré leyendo cómo lo hacen los proyectos que hacen exactamente esto, con sus números y sus fuentes, para que Pastor, Juan y César tengan una base y elijan — o busquen por su lado y elijan otra cosa. Si alguien llega a algo mejor, esto se tacha y se reemplaza.
+Esto acompaña a [`../archive/videos-para-datos.txt`](../archive/videos-para-datos.txt) (188 enlaces). **No es una decisión ni una instrucción**: es lo que encontré leyendo cómo lo hacen los proyectos que hacen exactamente esto, con sus números y sus fuentes, para que Pastor, Juan y César tengan una base y elijan — o busquen por su lado y elijan otra cosa. Si alguien llega a algo mejor, esto se tacha y se reemplaza.
 
 Leí antes lo que ya existe en el repo: [`data/README.md`](../../data/README.md) (pasos 1 a 4), [`docs/contrato.md`](../contrato.md) (cómo viaja la pelvis en `RobotMotion`) y [`docs/plan-producto.md`](../plan-producto.md) (los dos errores ya arreglados y el que queda).
 
