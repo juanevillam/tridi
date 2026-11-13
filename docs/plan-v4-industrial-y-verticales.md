@@ -130,24 +130,41 @@ En nuestra aplicación a **YC Winter 2027** enviamos `tridi-alpha.vercel.app` (y
 
 ---
 
-## 5. Propuesta de Reparto por Área (Para Analizar con el Equipo antes de Programar)
+## 5. Prioridad Cero del Equipo (Lo que hablaron Pastor, César y Juan en el chat): Dominar y Ordenar la Arquitectura como SaaS Real
+
+Antes de seguir metiendo features encima de archivos `.js` sueltos ("modo hackathon"), tenemos que resolver lo que comentaron Pastor y César hoy:
+1. **Entender Tridi a nivel medio/profundo (Cero caja negra para nosotros):**
+   - Cada uno de nosotros tiene que poder explicar en una pizarra, sin dudar, **qué hace hoy cada carpeta (`data/`, `physics/`, `training/`, `web/`), qué sí está conectado de verdad, qué es estático/simulado, y cómo se enchufa un aparato físico X (un rover por USB/WebSerial, un PLC por Modbus/archivo plano, o un humanoide por ONNX)** en el momento de una prueba real.
+   - La radiografía técnica completa de lo que existe hoy en el código está en **[`docs/architecture-and-sim2real.md`](architecture-and-sim2real.md)** y **[`docs/contrato.md`](contrato.md)**.
+2. **Pasar de "un poco de `.js` locos de hackathon" a una Arquitectura SaaS limpia (inspirada en `@mus3o/shared`):**
+   - En el repo de `mus3o`, todo el sistema es fácil de entender porque tienen **un contrato central tipado (`packages/shared/schema.ts` con Zod)** y capas separadas (`parser/ingest` → `DSL/contrato` → `motor 3D` → `UI`).
+   - En Tridi debemos consolidar ese mismo orden modular antes de escalar el SaaS:
+     - **Capa 1 — Ingesta (`data/` + parsers):** Video (`GVHMR`), CAD (`.stl` + `.ino`) o Plano Industrial (`.dxf` P&ID) → todos producen un **esquema JSON estandarizado y validado**.
+     - **Capa 2 — Motor Físico (`physics/`):** Recibe ese esquema, levanta el mundo en MuJoCo WASM y expone una sola interfaz limpia (`loadScene`, `step`, `injectFault`, `readSensors`).
+     - **Capa 3 — Cerebro y Compiladores (`training/`):** Entrena la política (`ONNX` a 50 Hz) y la transpila al hardware destino (`export_mcu.py` para C99/Arduino, `export_plc.py` para `Studio 5000` / `TIA Portal`).
+     - **Capa 4 — Aplicación SaaS (`web/`):** Pantallas desacopladas del motor físico, con rutas y estado predecibles.
+
+---
+
+## 6. Propuesta de Reparto por Área (Para Analizar con el Equipo antes de Programar)
 
 | Persona | Foco en esta etapa | Qué construye / analiza con su agente |
 | --- | --- | --- |
 | **Juan (`web/`, `data/`, `training/`)** | **1.** Navbar corporativo con acordeones + bloque de 3 verticales en landing (`J-5`).<br>**2.** Parser `.dxf` P&ID + Generador de Documentación `ISA-5.1` + Exportador de bloques PLC (`.scl` / `.L5K`) (`J-6`). | `web/src/screens/home.js`, `data/pid_parser.py`, `data/pid_docs.py`, `training/export_plc.py` |
-| **Pastor (`physics/`, arquitectura 3D `mus3o`)** | **1.** Diccionario `ISA-5.1` y catálogo 3D de componentes de planta (tanque, silo, válvula, celda de carga, agitador, tornillo sin fin).<br>**2.** Ensamblador 3D estilo *Factory I/O* desde el Micro-DSL del P&ID (inspirado en `mus3o`). | `physics/components/isa_standard.json`, `physics/components/catalog.json`, `physics/src/pid_assembler.js` |
-| **César (`web/src/screens/`)** | **1.** Pantalla `#/assembler` unificada (permitir subir `.zip` de robot `.stl + .ino` **o** plano industrial `.dxf P&ID` para ver los 3 pasos: Docs ISA → Sim 3D → Código PLC).<br>**2.** Descarga de documentación/código en `#/delivery` y selector por vertical en `#/simulations`. | `web/src/screens/assembler.js`, `web/src/screens/delivery.js`, `web/src/screens/simulations.js` |
-| **Ale (`docs/`, `yc/`, clientes)** | **1.** Estructura del documento estándar de ingeniería `ISA` y validación de casos con ZAKA.<br>**2.** Modelo financiero *Pay-per-Compute* en `docs/unit-economics.md` y preparación de aplicaciones (**YC W27 / 2027** + **Casa 212** en diciembre). | `docs/verticales-industriales.md`, `docs/unit-economics.md`, `yc/entrevista.md` |
+| **Pastor (`physics/`, arquitectura SaaS & `mus3o`)** | **1.** Definir cómo ordenamos la arquitectura de `physics/` y el contrato compartido (estilo `mus3o`) para que deje de ser `.js` sueltos.<br>**2.** Diccionario `ISA-5.1`, catálogo 3D de planta y ensamblador 3D estilo *Factory I/O* desde el Micro-DSL del P&ID. | `physics/components/isa_standard.json`, `physics/components/catalog.json`, `physics/src/pid_assembler.js` |
+| **César (`web/src/screens/`, arquitectura frontend)** | **1.** Ordenar la arquitectura de pantallas en `web/src/` para que sea mantenible como SaaS.<br>**2.** Pantalla `#/assembler` unificada (subir `.stl + .ino` o `.dxf P&ID` → ver Docs ISA, Sim 3D y Código PLC) + `#/delivery` y `#/simulations`. | `web/src/screens/assembler.js`, `web/src/screens/delivery.js`, `web/src/screens/simulations.js` |
+| **Ale (`docs/`, `yc/`, clientes)** | **1.** Estructura del documento estándar de ingeniería `ISA` y validación de casos con ZAKA.<br>**2.** Modelo financiero SaaS *Pay-per-Compute* en `docs/unit-economics.md` y preparación de aplicaciones (**YC W27 / 2027** + **Casa 212** en diciembre). | `docs/verticales-industriales.md`, `docs/unit-economics.md`, `yc/entrevista.md` |
 
 ---
 
-## 6. Prompt Listo para Copiar y Pegar en los Agentes del Equipo (Pastor, César, Ale y Juan)
+## 7. Prompt Listo para Copiar y Pegar en los Agentes del Equipo (Pastor, César, Ale y Juan)
 
 Cuando hagan `git pull` en `main`, pásenle este prompt a su agente:
 
 ```text
-Lee `docs/plan-v4-industrial-y-verticales.md`, `docs/reunion-zaka.md` y `docs/ROADMAP.md`.
+Lee `docs/plan-v4-industrial-y-verticales.md`, `docs/architecture-and-sim2real.md`, `docs/reunion-zaka.md` y `docs/ROADMAP.md`.
 Soy [Pastor / César / Ale / Juan].
-1. Hazme un resumen de las conclusiones de la reunión con el Ing. José González (ZAKA), cómo queda posicionado Tridi con 1 motor físico y 3 verticales (Humanoides, Robots/Mecatrónica y Plantas Industriales P&ID), y cómo aplicamos la arquitectura de `mus3o` ("la IA razona y el código ensambla").
-2. Revisa lo que me toca en la sección 5 de `docs/plan-v4-industrial-y-verticales.md` y propónme el diseño técnico detallado de mis archivos antes de tirar código.
+1. Explícame "a nivel medio" y sin cajas negras cómo funciona Tridi HOY por dentro: qué hace exactamente cada carpeta (`data/`, `physics/`, `training/`, `web/`), qué archivos `.js` o `.py` son el corazón de mi área, qué cosas ya corren en tiempo real vs. cuáles están precalculadas, y cómo se enchufa un aparato físico real hoy (como hicimos con el Arduino de Luigi o cómo conectaríamos un PLC).
+2. Hazme un resumen de las conclusiones de la reunión con el Ing. José González (ZAKA), cómo queda posicionado Tridi con 1 motor físico y 3 verticales (Humanoides, Robots/Mecatrónica y Plantas Industriales P&ID), y cómo aplicamos la arquitectura de `mus3o` ("la IA razona y el código ensambla").
+3. Antes de tirar código nuevo, propónme cómo ordenar la arquitectura de mi área para que Tridi sea un SaaS limpio y mantenible (y no un montón de `.js` sueltos de hackathon), y cómo diseñarías lo que me toca en la sección 6 de `docs/plan-v4-industrial-y-verticales.md`.
 ```
