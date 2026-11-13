@@ -29,8 +29,10 @@
 - **Producción en `trytridi.com` y Pulido Web (`J-1` ✅):**
   - Despliegue continuo en Cloudflare Pages (`.github/workflows/deploy.yml`, seguridad DNS/HSTS/CSP en [`infra-and-security.md`](infra-and-security.md)).
   - `J-1` completado en `web/` y `physics/`: landing, `#/milestones` (con visor `PhotoViewer` a pantalla completa y chips unificados), `#/simulations` (layout de 2 columnas sin espacio muerto en todos los robots, botón `0.5×` en 1 línea, videos PiP en todos los clips incluyendo `Walking away`, `Group dance`, `Washing dishes` y `Running` a `1.56 Hz`, silla con respaldo en `Sitting down` y fregadero con platos bajo las manos en `Washing dishes`) y `#/delivery` (9 entregas empaquetadas con versión `v2 GVHMR / v1 MediaPipe`, conteo de pasos `50M / 20M`, video fuente PiP sincronizado y `README` en grilla de 2 columnas sin espacio muerto).
-  - Transcripción y análisis de Elon Musk sobre Optimus en [`../yc/investigacion/voces/`](../yc/investigacion/voces/README.md) y guía para la reunión con **ZAKA, C.A.** en [`reunion-zaka.md`](reunion-zaka.md).
-- **Sigue:** Reunión de validación industrial con el Ing. José González (**ZAKA, C.A.**) y documentar conclusiones reales en campo.
+  - Transcripción y análisis de Elon Musk sobre Optimus en [`../yc/investigacion/voces/`](../yc/investigacion/voces/README.md) y resultados completos + plan post-reunión con **ZAKA, C.A. (Ing. José González)** en [`reunion-zaka.md`](reunion-zaka.md).
+- **Sigue:**
+  1. **Evolución Corporativa de Landing + Navbar Acordeón (`J-5`):** estructurar la navegación unificada (acordeones/menús por producto y herramienta en lugar de links dispersos entre navbar y footer) y el enfoque dual **`Tridi for Humanoid Robots`** + **`Tridi for Industrial Plants`**.
+  2. **Prototipo Industrial v1 para ZAKA (`P&ID .dxf → Docs ISA-5.1 + Simulación 3D + Bloques PLC`):** aplicar el patrón *Low-Token DSL + catálogo cerrado* (inspirado en `mus3o`) sobre un primer caso sencillo de tanque/proceso en `.dxf` antes del seguimiento de 1 semana con el Ing. José González.
 
 ---
 
