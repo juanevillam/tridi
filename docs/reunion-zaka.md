@@ -2,7 +2,7 @@
 
 > **Fecha:** 12 de noviembre de 2026 · Barquisimeto (2 horas de sesión grabada y transcrita)  
 > **Con quién:** **Ing. José González** (Fundador y Director de **ZAKA, C.A.**, [`zakasys.com`](https://zakasys.com), Ingeniero en Computación UFT con casi 30 años automatizando plantas en Venezuela, representante/integrador de **Rockwell Automation**, papá de José Miguel).  
-> **Estado:** ✅ **Reunión realizada con éxito.** Seguimiento acordado en **1 semana** (el Ing. José González nos compartirá formatos reales de documentación de ingeniería como punto de partida).
+> **Estado:** ✅ **Reunión realizada con éxito.** Próximo paso: investigar y construir 100 % de nuestro lado el estándar de documentación **ISA (`isa.org`)** + prototipo `P&ID (.dxf) → Docs + Simulación 3D + PLC` para mostrárselo funcionando.
 
 ---
 
@@ -43,7 +43,7 @@ flowchart LR
 1. **Prioridad 1 — De archivo P&ID (`.dxf` / `.dwg`) a Documentación Completa de Implementación (`ISA-5.1` / `ISA-88`):**
    - Todo proyecto industrial arranca por un plano **P&ID** normado por la **ISA (*International Society of Automation*, [`isa.org`](https://www.isa.org))**. Un tornillo sin fin, una válvula, un tanque o un switch de nivel (`LSH`) se dibujan y codifican igual en Barquisimeto que en Pekín.
    - El archivo `.dxf` de AutoCAD es texto estructurado muy fácil de parsear.
-   - **Qué debe entregar Tridi primero:** Leer el P&ID y generar automáticamente el documento formal de ingeniería de automatización (descripción paso a paso del proceso en lenguaje técnico humano, filosofía de operación, inventario de sensores/actuadores y qué representa cada línea de control). Cada corporación (Polar, Nestlé, PDVSA) tiene su plantilla con copyright, pero todas parten de la base **ISA**. **El Ing. José ofreció pasarnos un formato base en 1 semana para entrenar nuestro generador.**
+   - **Qué debe entregar Tridi primero:** Leer el P&ID y generar automáticamente el documento formal de ingeniería de automatización (descripción paso a paso del proceso en lenguaje técnico humano, filosofía de operación, inventario de sensores/actuadores y qué representa cada línea de control). Cada corporación (Polar, Nestlé, PDVSA) tiene su plantilla con copyright, pero todas parten de la base **ISA (`ISA-5.1` / `ISA-88`)**. **No dependemos de que nadie nos pase plantillas:** armamos nuestra propia plantilla maestra estandarizada basada directamente en las normas públicas de `isa.org` para llegar a mostrarle el resultado ya listo.
 2. **Prioridad 2 — Simulación Visual y Física 3D Auto-Generada (Tipo *Factory I/O*, pero Custom desde el P&ID):**
    - Él usa *Factory I/O* para simular entradas/salidas de Nivel 0 conectadas al controlador antes de ir a producción, pero hoy hay que armar la escena a mano y escribir el código uno mismo.
    - **Qué debe hacer Tridi:** Al subir el P&ID, levantar automáticamente el mundo 3D interactivo del proceso (tanques, silos, válvulas, bombas, bandas, sensores) en el navegador, tanto para que el ingeniero **vea visualmente su planta funcionando y pruebe fallos** (ej. válvula trancada, motor vencido, combinaciones de $22 \times 22$ silos) como para que la red neuronal optimice la secuencia en nanosegundos.
