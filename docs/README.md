@@ -4,6 +4,7 @@ Todos los documentos viven directamente aquí, sin subcarpetas innecesarias:
 
 | Archivo / Carpeta | Qué es y para quién |
 | --- | --- |
+| **[`plan-v4-industrial-y-verticales.md`](plan-v4-industrial-y-verticales.md)** | **🔥 LEER PRIMERO HOY (13 Nov):** Resumen completo post-reunión ZAKA, tesis unificada de **1 motor físico y 3 verticales** (Humanoides · Robots/Rovers · Plantas P&ID), plan de ingeniería inspirado en `mus3o`, diseño del Navbar acordeón y prompt para los agentes de Pastor, César, Ale y Juan. |
 | **[`ROADMAP.md`](ROADMAP.md)** | **Visión del producto y tablero de tareas actual (`J-*`, `P-*`, `C-*`, `A-*`)** para Juan, Pastor, César y Ale. |
 | **[`estado.md`](estado.md)** | **Qué está listo hoy y qué sigue** por cada integrante del equipo. |
 | **[`reunion-zaka.md`](reunion-zaka.md)** | **Reunión Industrial — ZAKA, C.A.:** Quién es ZAKA, postura de aliados (cero competencia), qué mostrar en 3 minutos y las 4 preguntas de validación dura. |

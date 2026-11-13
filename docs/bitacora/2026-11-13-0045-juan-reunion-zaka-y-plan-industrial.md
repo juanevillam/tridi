@@ -20,9 +20,10 @@ rama: juan/zaka-industrial-plan
    - Documentado el modelo de negocio recomendado por él: **Cloud SaaS *Pay-per-Compute*** dirigido a **integradores de automatización** y empresas normalizadas globalmente (Venezuela, Colombia, Chile, EE. UU.).
 3. **Análisis arquitectónico del repo ganador de Platanus Hack 26 (`mus3o`, `~/Code/platanus-hack-26-ve-team-5`) aplicado a Tridi Industrial:**
    - Extraído el patrón central de `mus3o` (*"La IA razona y el código ensambla"* mediante un **Low-Token DSL** validado con esquemas estrictos sobre un **catálogo cerrado de primitivas 3D** y verificación mecánica de citas contra el archivo fuente) para aplicarlo al pipeline `.dxf P&ID → Grafo ISA-5.1 → Docs + Escena MuJoCo 3D + Código PLC` sin alucinaciones.
-4. **Diseño del plan de evolución web corporativa (`Tridi for Humanoid Robots` + `Tridi for Industrial Plants`) y navegación por acordeones:**
-   - Definida la reestructuración del Navbar (acordeones/menús agrupados que unifican todas las rutas dispersas entre header y footer) y el posicionamiento dual para sostener tanto la tesis de **YC W27** (decisión 11 de diciembre + 4 batches en 2027) y **Casa 212** (diciembre 2026) como la monetización industrial inmediata en Venezuela y LatAm.
+4. **Creación del documento maestro [`docs/plan-v4-industrial-y-verticales.md`](../plan-v4-industrial-y-verticales.md) para todo el equipo y sus agentes:**
+   - Consolidada la tesis unificada de Tridi (**1 motor físico, 3 verticales abiertas**: `Humanoid & Dexterous Robots`, `Autonomous Robots & Mechatronics` como Luigi, y `Plant & Process Automation` con P&ID `.dxf` como ZAKA) sin encasillar la empresa ni alterar la película principal del G1 en `tridi-alpha.vercel.app` / `trytridi.com` de cara a **YC W27** (11 de diciembre) y **Casa 212** (diciembre).
+   - Detalladas las 4 etapas de ingeniería de `Tridi Industrial` (`ISA-5.1` 100 % propio → Docs FDS → Sim 3D estilo *Factory I/O* con Micro-DSL tipo `mus3o` → Bloques PLC `.scl`/`.L5K`), el diseño del Navbar con acordeones (`Product ▾`, `Studio ▾`, `Case Studies`), el reparto por integrante y el prompt listo para que Pastor, César, Ale y Juan lo corran con sus agentes antes de programar.
 
 ## Qué sigue
 
-- Revisar con Juan y el equipo el plan de ejecución antes de tocar código en `web/`, `physics/` y `data/`.
+- Hacer `scripts/ship.sh` (si Juan lo aprueba) para que Pastor, César y Ale descarguen `docs/plan-v4-industrial-y-verticales.md` y lo analicen con sus agentes.

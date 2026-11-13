@@ -13,7 +13,7 @@ Private company repo of **Tridi** (`juanevillam/tridi`): Juan, Pastor, César an
 
 | Need | Where |
 | --- | --- |
-| **Product Roadmap, Customer Strategy & Team Task Board** | [`docs/ROADMAP.md`](docs/ROADMAP.md), [`docs/plan-v3-assembler.md`](docs/plan-v3-assembler.md) |
+| **Product Roadmap, Customer Strategy & Team Task Board** | [`docs/plan-v4-industrial-y-verticales.md`](docs/plan-v4-industrial-y-verticales.md), [`docs/ROADMAP.md`](docs/ROADMAP.md), [`docs/plan-v3-assembler.md`](docs/plan-v3-assembler.md) |
 | **Clean index of all `docs/`** | [`docs/README.md`](docs/README.md) |
 | **Real-World Cases, Field Meetings & Manuals** | [`docs/reunion-zaka.md`](docs/reunion-zaka.md), [`docs/caso-luigi-sim2real.md`](docs/caso-luigi-sim2real.md), [`docs/architecture-and-sim2real.md`](docs/architecture-and-sim2real.md), [`docs/infra-and-security.md`](docs/infra-and-security.md) |
 | What each area does and how to run it | `data/README.md`, `physics/README.md`, `training/README.md`, `web/` |
