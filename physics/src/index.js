@@ -342,7 +342,7 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
      * Loading another policy of the same model only swaps the network (run by onnx-lite.js, a
      * few KB of JavaScript).
      */
-    async loadPolicy(onnx, meta, { motion } = {}) {
+    async loadPolicy(onnx, meta, { motion, reset = true } = {}) {
       const bytes = typeof onnx === 'string' ? new Uint8Array(await (await fetch(onnx)).arrayBuffer()) : new Uint8Array(onnx);
       if (typeof meta === 'string') meta = await (await fetch(meta)).json();
       if (typeof motion === 'string') motion = await (await fetch(motion)).json();
@@ -353,16 +353,22 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
       const { loadOrt } = await import('./ort.js');
       const ort = await loadOrt();
       const previous = { sceneFile: baseScene, keyName: sim.keyName };
-      if (baseScene !== sceneFile) swapScene(sceneFile, 'home');
-      else stop();
+      const sceneChanged = baseScene !== sceneFile;
+      if (sceneChanged) swapScene(sceneFile, 'home');
       if (isCustomRobot) dex3?.show(false);
-      view.targetHeight = meta.robot === 'luigi_lab3' || meta.robot === 'luigi_lab4' ? 0.12 : meta.robot === 'factory_cell' ? 0.35 : 0.75;
+      // Only set targetHeight when OrbitControls is active; on the landing page (controls.enabled === false)
+      // directCamera() drives targetHeight (~1.52 m) for its shift-lens projection, so overwriting it to 0.75
+      // before view.render() made the robot jump vertically to half height during checkpoint transitions.
+      if (view.controls.enabled) {
+        view.targetHeight = meta.robot === 'luigi_lab3' || meta.robot === 'luigi_lab4' ? 0.12 : meta.robot === 'factory_cell' ? 0.35 : 0.75;
+      }
       try {
         const policy = await createPolicy(ort, sim, bytes, meta, { motion });
+        if (!sceneChanged && (clip || sim.puppeted)) stop();
         sim.policy?.dispose();
         sim.policy = policy;
         lastPolicy = { bytes, meta, motion };
-        sim.reset();
+        if (sceneChanged || reset) sim.reset();
       } catch (error) {
         if (baseScene !== previous.sceneFile) swapScene(previous.sceneFile, previous.keyName);
         throw error;
