@@ -1,18 +1,50 @@
-# Documentación de Tridi (`docs/`)
+# Documentación de Tridi (`juanevillam/tridi`)
 
-Todos los documentos viven directamente aquí, sin subcarpetas innecesarias:
+> **Estándar de Documentación en 2 Capas (Noviembre 2026):**
+> 1. **Capa 1 — Punto de Entrada Humano, Estrategia y Estado Ejecutivo (`docs/README.md`, `docs/ROADMAP.md`, `docs/estado.md`):** Pensada para que **Juan, Pastor, César y Ale** entiendan en 3 minutos dónde está cada vertical de Tridi en producción (`trytridi.com`), cómo se conectan los 4 módulos (`data/`, `physics/`, `training/`, `web/`) y cuál es el tablero de tareas activo.
+> 2. **Capa 2 — Manuales de Ingeniería Profundos (`docs/architecture-and-sim2real.md`, `docs/infra-and-security.md`, `docs/contrato.md`):** Especificaciones técnicas exhaustivas (ecuaciones, esquemas JSON, pines de hardware, compiladores `ONNX → C99` y `P&ID .dxf → ISA-5.1 + 3D + PLC`, DNS/SSL/WAF en Cloudflare y auditorías).
+> 3. **Archivo de Reuniones, Identidad Visual y Fuentes Raw (`docs/pitch/`, `docs/reuniones/`, `docs/bitacora/`):** Respaldo permanente en el repo de los archivos originales de contexto general (manual de marca hecho por **José Alejandro**, pitch deck de **Platanus Hack 26**, grabación de audio `.m4a` y transcripción íntegra `.txt` de la reunión con **ZAKA**, bitácoras y planes históricos) para que nunca se pierdan y todo el equipo los tenga a mano.
 
-| Archivo / Carpeta | Qué es y para quién |
-| --- | --- |
-| **[`plan-v4-industrial-y-verticales.md`](plan-v4-industrial-y-verticales.md)** | **🔥 LEER PRIMERO HOY (13 Nov):** Resumen completo post-reunión ZAKA, tesis unificada de **1 motor físico y 3 verticales** (Humanoides · Robots/Rovers · Plantas P&ID), plan de ingeniería inspirado en `mus3o`, diseño del Navbar acordeón y prompt para los agentes de Pastor, César, Ale y Juan. |
-| **[`ROADMAP.md`](ROADMAP.md)** | **Visión del producto y tablero de tareas actual (`J-*`, `P-*`, `C-*`, `A-*`)** para Juan, Pastor, César y Ale. |
-| **[`estado.md`](estado.md)** | **Qué está listo hoy y qué sigue** por cada integrante del equipo. |
-| **[`reunion-zaka.md`](reunion-zaka.md)** | **Reunión Industrial — ZAKA, C.A.:** Quién es ZAKA, postura de aliados (cero competencia), qué mostrar en 3 minutos y las 4 preguntas de validación dura. |
-| **[`caso-luigi-sim2real.md`](caso-luigi-sim2real.md)** | **Caso Real #1 — Robot Físico de Luigi (`luigi_lab3`):** Qué pasó en la reunión, los 5 fallos físicos reales del hardware (`pulseIn()`, sensor clon `0x9E`, zona muerta `PWM < 115`, `2 KB` de RAM) y cómo lo sacamos andando a `50 Hz`. |
-| **[`plan-v3-assembler.md`](plan-v3-assembler.md)** | Diseño técnico del **Tridi Hardware Assembler (`#/assembler`)** y del `Rover Luigi v2` (`luigi_lab4`). |
-| **[`architecture-and-sim2real.md`](architecture-and-sim2real.md)** | Manual técnico de la arquitectura completa de Tridi (`data/`, `physics/`, `training/`, `web/`). |
-| **[`infra-and-security.md`](infra-and-security.md)** | Despliegue de **`trytridi.com`** en Cloudflare Pages, DNS, seguridad y servidor de video. |
-| **[`marca.md`](marca.md) y [`pitch/`](pitch)** | Identidad visual (`#08090B` Grafito, `#C8FF2E` Señal, `#F1F3EE` Tinta), **[`pitch/manual-de-marca-tridi.pdf`](pitch/manual-de-marca-tridi.pdf)** (25 págs) y **[`pitch/tridi-pitch.pdf`](pitch/tridi-pitch.pdf)**. |
-| **[`contrato.md`](contrato.md)** | Formatos JSON y esquemas técnicos compartidos entre `data/`, `physics/`, `training/` y `web/`. |
-| **[`audit-playbook.md`](audit-playbook.md)** | Checklist de pruebas visuales y de física antes de desplegar cambios en la web. |
-| **[`bitacora/`](bitacora)** | Historial automático sesión por sesión generado por los agentes de código. |
+---
+
+## 🟢 1. Documentos Activos (Lo que debes leer hoy)
+
+| Documento | Para quién es | Qué encontrarás adentro |
+| :--- | :--- | :--- |
+| **[`ROADMAP.md`](ROADMAP.md)** | **Todo el equipo (Juan, Pastor, César, Ale)** *(Leer primero)* | Resumen ejecutivo de 3 minutos, reglas de oro de las **3 verticales sobre 1 motor físico**, tabla de superficies en producción (`trytridi.com`), diagrama ASCII de arquitectura y tablero de tareas por integrante (`J-*`, `P-*`, `C-*`, `A-*`). |
+| **[`estado.md`](estado.md)** | **Todo el equipo** | Qué funciona hoy en cada módulo (`data/`, `physics/`, `training/`, `web/`), métricas reales medidas y comandos de verificación rápida. |
+| **[`plan-v4-industrial-y-verticales.md`](plan-v4-industrial-y-verticales.md)** | **Todo el equipo** | **Plan Maestro v4:** Cómo el principio *"la IA razona y el código ensambla"* (`mus3o`) y las conclusiones de ZAKA se traducen en nuestras 3 verticales (Humanoides, Robots/Mecatrónica y Plantas Industriales P&ID). |
+| **[`architecture-and-sim2real.md`](architecture-and-sim2real.md)** | **Ingeniería (Juan, Pastor, César) y Agentes IA** | **Manual Técnico Capa 2 — Producto y Sim-to-Real:** Captura 2.0 (`GVHMR + WiLoR`), retargeting MuJoCo, políticas PPO ONNX, compilador `ONNX → C99 / Arduino (.ino)`, pipeline `P&ID (.dxf) → Docs ISA-5.1 + 3D + PLC (.scl / .L5K)` y escenarios 3D con tags en vivo. |
+| **[`infra-and-security.md`](infra-and-security.md)** | **CTO (Juan) y Agentes IA** | **Manual Técnico Capa 2 — Infraestructura y Seguridad:** Dominio `trytridi.com` (Namecheap + Cloudflare Zone `ad0e73bb012d34db1af27f64cbace539`), DNS, SSL Strict, HSTS, anti-spoofing (`SPF`/`DMARC`), WAF, CI/CD a Cloudflare Pages y túnel del servidor de video. |
+| **[`contrato.md`](contrato.md)** | **Ingeniería (`data/`, `physics/`, `training/`, `web/`)** | **Manual Técnico Capa 2 — Contratos JSON:** Esquemas compartidos entre módulos (`PoseClip` v2, `RobotMotion`, `DeliveryManifest`, `HardwareCatalog` y grafo `ISA-5.1`). |
+| **[`audit-playbook.md`](audit-playbook.md)** | **Ingeniería y Agentes IA** | **Playbook de Calidad:** Los 4 checks automáticos de terminal y los invariantes de UI/UX y física que deben pasar con `0` errores antes de cada `scripts/ship.sh`. |
+| **[`marca.md`](marca.md)** | **Diseño, Web y Pitch (Todo el equipo)** | Guía rápida de identidad visual en código (paleta `--bg #08090B`, `--signal #C8FF2E`, tipografías `Inter Tight` + `Geist Mono`, reglas del símbolo y wordmark), resumida del manual original de **José Alejandro**. |
+
+---
+
+## 📦 2. Archivo de Reuniones, Identidad Visual y Fuentes Raw (Contexto General en el Repo)
+
+Todos los archivos maestros de identidad, presentaciones, grabaciones de campo y transcripciones sin editar viven versionados dentro de `docs/` para que ningún miembro del equipo dependa de archivos sueltos en su computadora:
+
+### 🎨 Identidad de Marca y Pitch Deck (`docs/pitch/`)
+- **[`pitch/manual-de-marca-tridi.pdf`](pitch/manual-de-marca-tridi.pdf)** (`3,8 MB`, 25 páginas): **Manual de Marca Oficial de Tridi**, diseñado por **José Alejandro**. Contiene la construcción geométrica del isotipo 3D, proporciones del wordmark `tridi` con la `ı` sin punto (`U+0131`), paleta cromática, tipografía y usos correctos/incorrectos.
+- **[`pitch/tridi-pitch.pdf`](pitch/tridi-pitch.pdf)** (`1,1 MB`): **Pitch Deck Oficial de Tridi en Platanus Hack 26** (Caracas, octubre de 2026).
+
+### 🏭 Reuniones Industriales, Audio Raw y Transcripciones (`docs/reunion-zaka.md` + `docs/reuniones/`)
+- **[`reunion-zaka.md`](reunion-zaka.md)**: **Documento estructurado de la reunión con el Ing. José González (ZAKA, C.A. / Rockwell Automation)** del 12 de noviembre de 2026 — conclusiones ejecutivas, las 3 prioridades del producto industrial (`P&ID .dxf → 1. Docs ISA-5.1 → 2. Simulación 3D → 3. Archivo plano PLC`), diccionario industrial y resumen de 8 bloques de la sesión de 2 horas.
+- **[`reuniones/2026-11-12-reunion-zaka-audio.m4a`](reuniones/2026-11-12-reunion-zaka-audio.m4a)** (`42 MB`, 2 horas): **Grabación de audio íntegra (raw)** de la reunión presencial en Barquisimeto con el Ing. José González (ZAKA, C.A.).
+- **[`reuniones/2026-11-12-reunion-zaka-transcripcion-raw.txt`](reuniones/2026-11-12-reunion-zaka-transcripcion-raw.txt)** (`96 KB`, texto completo): **Transcripción íntegra sin recortar (raw Whisper)** de las 2 horas de reunión con el Ing. José González, conservada palabra por palabra para consultas de detalle técnico o citas textuales.
+
+### 🤖 Casos de Estudio Físicos, Planes Anteriores y Bitácora
+- **[`caso-luigi-sim2real.md`](caso-luigi-sim2real.md)**: Bitácora técnica completa del **Caso 01 (Rover Diferencial Luigi — Lab 3 y Lab 4)**: mallas STL, fallos reales en el Arduino UNO (`pulseIn` de `47,1 ms` → `ISR < 4 µs`, clon I2C `APDS-9960` con `Chip ID = 0x9E`, conflicto `Timer1` entre `<Servo.h>` y `D9/D10` en `L298N`) y validación Sim-to-Real a `50 Hz`.
+- **[`plan-v3-assembler.md`](plan-v3-assembler.md)**: Especificación histórica del sprint v3 (`Tridi Assembler` para carritos Arduino y primera celda industrial `factory_cell`), cuyos entregables ya están integrados en producción.
+- **[`bitacora/`](bitacora/README.md)**: Historial cronológico de sesiones de trabajo de cada integrante (`YYYY-MM-DD-HHMM-<persona>-<tema>.md`).
+- **[`../yc/`](../yc/README.md)** *(Exclusivo del repo privado `juanevillam/tridi`)*: Aplicación oficial enviada a **Y Combinator Winter 2027** ([`yc/yc-w27-reference.md`](../yc/yc-w27-reference.md)), métricas auditadas ([`yc/verdad-hoy.md`](../yc/verdad-hoy.md)) e investigación de competidores ([`yc/competidores.md`](../yc/competidores.md)).
+
+---
+
+## 🔄 Regla de Auto-Sincronización de Documentación (Obligatoria para Agentes)
+
+Cada vez que una sesión complete o avance una tarea de [`ROADMAP.md`](ROADMAP.md), agregue un nuevo caso físico o industrial, cambie un contrato JSON o modifique la infraestructura de `trytridi.com`, el agente **debe actualizar automáticamente en el mismo commit/branch antes de `scripts/ship.sh`**:
+1. **Capa 1 (Humana):** [`docs/ROADMAP.md`](ROADMAP.md) y [`docs/estado.md`](estado.md) (más la bitácora de la sesión en `docs/bitacora/`).
+2. **Capa 2 (Manuales Técnicos):** [`docs/architecture-and-sim2real.md`](architecture-and-sim2real.md), [`docs/infra-and-security.md`](infra-and-security.md) o [`docs/contrato.md`](contrato.md) según el área tocada.
