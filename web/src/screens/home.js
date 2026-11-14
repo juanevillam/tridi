@@ -119,16 +119,34 @@ export function mount(root) {
           </button>
           <div class="nav-drop-panel" role="menu">
             <a class="nav-drop-item" href="#capture">
-              <b>Tridi Capture</b>
-              <span>${T('nav.captureSub')}</span>
+              <span class="nav-chip" aria-hidden="true">01</span>
+              <div class="nav-item-body">
+                <div class="nav-item-head">
+                  <b>Tridi Capture</b>
+                  <span class="nav-item-badge">${T('nav.tagStep')} 01</span>
+                </div>
+                <span>${T('nav.captureSub')}</span>
+              </div>
             </a>
             <a class="nav-drop-item" href="#gym">
-              <b>Tridi Gym</b>
-              <span>${T('nav.gymSub')}</span>
+              <span class="nav-chip" aria-hidden="true">02</span>
+              <div class="nav-item-body">
+                <div class="nav-item-head">
+                  <b>Tridi Gym</b>
+                  <span class="nav-item-badge">${T('nav.tagStep')} 02</span>
+                </div>
+                <span>${T('nav.gymSub')}</span>
+              </div>
             </a>
             <a class="nav-drop-item" href="#policy">
-              <b>Tridi Policy</b>
-              <span>${T('nav.policySub')}</span>
+              <span class="nav-chip" aria-hidden="true">03</span>
+              <div class="nav-item-body">
+                <div class="nav-item-head">
+                  <b>Tridi Policy</b>
+                  <span class="nav-item-badge">${T('nav.tagStep')} 03</span>
+                </div>
+                <span>${T('nav.policySub')}</span>
+              </div>
             </a>
           </div>
         </div>
@@ -137,26 +155,71 @@ export function mount(root) {
             <span>${T('nav.studio')}</span>
             <svg class="nav-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="nav-drop-panel" role="menu">
+          <div class="nav-drop-panel nav-drop-studio" role="menu">
             <a class="nav-drop-item" href="#/simulations" data-warm="simulations">
-              <b>${T('nav.simulations')}</b>
-              <span>${T('nav.simsSub')}</span>
+              <span class="nav-chip nav-chip-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 2.5 3.5 7v10L12 21.5l8.5-4.5V7L12 2.5Z"/><path d="M3.5 7 12 11.5 20.5 7M12 11.5v10"/></svg>
+                <i>01</i>
+              </span>
+              <div class="nav-item-body">
+                <div class="nav-item-head">
+                  <b>${T('nav.simulations')}</b>
+                  <span class="nav-item-badge">${T('nav.tag3d')}</span>
+                </div>
+                <span>${T('nav.simsSub')}</span>
+              </div>
             </a>
             <a class="nav-drop-item" href="#/live" data-warm="live">
-              <b>${T('nav.live')}</b>
-              <span>${T('nav.liveSub')}</span>
+              <span class="nav-chip nav-chip-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="13.5" height="12" rx="2"/><path d="m16 10.2 5.5-3.2v10L16 13.8"/><circle cx="9.25" cy="12" r="2.2"/></svg>
+                <i>02</i>
+              </span>
+              <div class="nav-item-body">
+                <div class="nav-item-head">
+                  <b>${T('nav.live')}</b>
+                  <span class="nav-item-badge">${T('nav.tagHumanoids')}</span>
+                </div>
+                <span>${T('nav.liveSub')}</span>
+              </div>
             </a>
             <a class="nav-drop-item" href="#/upload" data-warm="upload">
-              <b>${T('nav.upload')}</b>
-              <span>${T('nav.uploadSub')}</span>
+              <span class="nav-chip nav-chip-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 15.5V4.5m0 0-4 4m4-4 4 4"/><path d="M4 15.5v3a1.5 1.5 0 0 0 1.5 1.5h13a1.5 1.5 0 0 0 1.5-1.5v-3"/></svg>
+                <i>03</i>
+              </span>
+              <div class="nav-item-body">
+                <div class="nav-item-head">
+                  <b>${T('nav.upload')}</b>
+                  <span class="nav-item-badge">${T('nav.tagHumanoids')}</span>
+                </div>
+                <span>${T('nav.uploadSub')}</span>
+              </div>
             </a>
             <a class="nav-drop-item" href="#/delivery" data-warm="delivery">
-              <b>${T('nav.delivery')}</b>
-              <span>${T('nav.deliverySub')}</span>
+              <span class="nav-chip nav-chip-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 6.5h16M4 12h10m-10 5.5h7"/><circle cx="17.5" cy="15.5" r="3.5"/><path d="m16.2 15.5 1 1 2-2"/></svg>
+                <i>04</i>
+              </span>
+              <div class="nav-item-body">
+                <div class="nav-item-head">
+                  <b>${T('nav.delivery')}</b>
+                  <span class="nav-item-badge">${T('nav.tagHumanoids')}</span>
+                </div>
+                <span>${T('nav.deliverySub')}</span>
+              </div>
             </a>
             <a class="nav-drop-item" href="#/assembler" data-warm="assembler">
-              <b>${T('nav.assembler')}</b>
-              <span>${T('nav.assemblerSub')}</span>
+              <span class="nav-chip nav-chip-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="8.5" y="13.5" width="7" height="7" rx="1.5"/><path d="M10 7.5h4M6.5 11v4.5h2M17.5 11v4.5h-2"/></svg>
+                <i>05</i>
+              </span>
+              <div class="nav-item-body">
+                <div class="nav-item-head">
+                  <b>${T('nav.assembler')}</b>
+                  <span class="nav-item-badge">${T('nav.tagPlants')}</span>
+                </div>
+                <span>${T('nav.assemblerSub')}</span>
+              </div>
             </a>
           </div>
         </div>
@@ -217,7 +280,7 @@ export function mount(root) {
           <h2>${T('gym.title')}</h2>
           <p class="gym-lede"><span class="only-wide">${T('gym.lede')}</span><span class="only-narrow">${T('gym.ledeShort')}</span></p>
           <div class="steps-meter">
-            <p class="steps-now"><b data-gym="steps">0</b><span>${T('gym.stepsLabel')}</span></p>
+            <p class="steps-now"><b data-gym="steps" data-value="10000000">10 M</b><span>${T('gym.stepsLabel')}</span></p>
             <div class="steps-axis">
               <div class="axis-track" aria-hidden="true">
                 <i class="axis-line"><i class="axis-fill"></i></i>
@@ -338,13 +401,16 @@ export function mount(root) {
             <p class="foot-tagline">${T('foot.tagline')}</p>
           </div>
           <div class="foot-right">
-            <a class="foot-case-pill" href="#/milestones" data-warm="milestones">${T('foot.milestones')} →</a>
             <div class="foot-team-links">
               <a href="https://www.linkedin.com/in/pastor-jimenez" target="_blank" rel="noopener">Pastor Jiménez</a>
               <a href="https://www.linkedin.com/in/juanevillam" target="_blank" rel="noopener">Juan Villa</a>
               <a href="https://www.linkedin.com/in/cesarmartinez-dev" target="_blank" rel="noopener">César Martínez</a>
               <a href="https://www.linkedin.com/in/alehernandezt" target="_blank" rel="noopener">Ale Hernández</a>
             </div>
+            <button type="button" class="foot-top-btn" data-scroll-top>
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3m0 0L3.5 7.5M8 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>${T('foot.top')}</span>
+            </button>
           </div>
         </div>
       </footer>
@@ -458,6 +524,14 @@ export function mount(root) {
       closeAllMenus();
       const target = root.querySelector(link.getAttribute('href'));
       if (target) scrollTo(target);
+    });
+  }
+  const scrollTopBtn = $('[data-scroll-top]');
+  if (scrollTopBtn) {
+    on(scrollTopBtn, 'click', () => {
+      closeAllMenus();
+      const homeEl = $('#home');
+      if (homeEl) scrollTo(homeEl);
     });
   }
 
@@ -655,8 +729,10 @@ export function mount(root) {
       // was for MediaPipe's walk, whose path was too short and slid the planted foot backward.
       if (token === modeToken && motion) view.playClip(motion);
     } else if (kind === 'gym') {
+      gym.loading = true;
       await useLevel(gymLevel());
-      if (token === modeToken) startGymRun();
+      gym.loading = false;
+      if (token === modeToken && mode === 'gym') startGymRun();
     } else {
       await useLevel(wanted);
       // Stood back up only when it is not already standing on its own: on the first visit, after
@@ -841,27 +917,9 @@ export function mount(root) {
   layoutObserver.observe(root.querySelector('.landing'));
   cleanups.push(() => layoutObserver.disconnect());
   const gymLevel = () => GYM_STAGES[gymStage()].level;
-  const gymShown = (stage) => level === GYM_STAGES[stage].level && gym.shownAt > 0 && performance.now() >= gym.shownAt;
-  const gate = { stop: -1, since: 0 };
-  function gymGate(data) {
-    const { event } = data;
-    // Touch scrolls natively (Lenis has no syncTouch here); before the robot loads there is nothing to wait for.
-    if (!event.type.includes('wheel') || event.ctrlKey || !view) return true;
-    const from = lenis.targetScroll;
-    const stops = gymStops();
-    const holding =
-      gate.stop >= 0 && Math.abs(from - stops[gate.stop]) < STOP_PX && !gymShown(gate.stop) && performance.now() - gate.since < GYM_HOLD_MAX_S * 1000;
-    if (!holding) gate.stop = -1;
-    if (data.deltaY <= 0) return true; // up and sideways are always free
-    if (holding) {
-      if (event.cancelable) event.preventDefault(); // Lenis skips its own preventDefault when this returns false
-      return false;
-    }
-    const next = stops.findIndex((stop) => from < stop - STOP_PX && stop <= from + data.deltaY);
-    if (next < 0 || gymShown(next) || held.has(next)) return true;
-    data.deltaY = stops[next] - from; // Lenis reads the delta after this callback: land on the stop
-    Object.assign(gate, { stop: next, since: performance.now() });
-    held.add(next);
+  function gymGate() {
+    // Let wheel and trackpad scrolling glide naturally through Tridi Gym without clamping or blocking deltaY,
+    // which previously fought trackpad momentum and caused scroll stutter/flicker.
     return true;
   }
   $$('.axis-stop').forEach((stop, i) =>
@@ -902,6 +960,7 @@ export function mount(root) {
   updateArrows();
 
   let shownStage = -1;
+  const stepsCounter = { value: GYM_STAGES[0].steps };
   // Numbers written as text (the step counter) take the new language's decimal mark on a switch.
   cleanups.push(onLang(() => (shownStage = -1)));
   function showGymStage() {
@@ -928,21 +987,18 @@ export function mount(root) {
       const pct = current.maxN <= 0 ? 0 : Math.min(100, Math.max(0, ((current.maxN - 50) / 450) * 100));
       zoneEl.style.width = `${pct}%`;
     }
-    // The big number counts up (or back) to this stage's steps.
-    const shown = { value: Number($('[data-gym="steps"]').dataset.value ?? 0) };
-    gsap.to(shown, {
+    // Single shared counter object with killTweensOf so rapid stage changes never run competing tweens.
+    gsap.killTweensOf(stepsCounter);
+    gsap.to(stepsCounter, {
       value: current.steps,
-      duration: reducedMotion ? 0 : 0.9,
+      duration: reducedMotion ? 0 : 0.65,
       ease: 'power2.out',
       onUpdate: () => {
         const el = $('[data-gym="steps"]');
-        el.dataset.value = shown.value;
-        el.textContent =
-          shown.value >= 9.95e8
-            ? `${fmt(shown.value / 1e9, 0)(lang())} B`
-            : shown.value >= 1e6
-              ? `${fmt(shown.value / 1e6, shown.value < 1e7 ? 1 : 0)(lang())} M`
-              : fmtInt(shown.value)(lang());
+        if (!el) return;
+        el.dataset.value = stepsCounter.value;
+        const millions = Math.max(1, Math.round(stepsCounter.value / 1e6));
+        el.textContent = `${fmtInt(millions)(lang())} M`;
       },
     });
   }

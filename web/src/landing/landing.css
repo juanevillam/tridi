@@ -303,6 +303,7 @@ html.is-landing.lenis body {
 
 /* ---- Buttons ---- */
 
+.landing .btn,
 .btn {
   display: inline-flex;
   align-items: center;
@@ -320,29 +321,50 @@ html.is-landing.lenis body {
   text-transform: uppercase;
   text-decoration: none;
   cursor: pointer;
-  transition: background 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.3s;
+  transform: none;
+  transition: background-color 0.22s ease, color 0.22s ease, border-color 0.22s ease, box-shadow 0.28s ease, transform 0.15s ease;
 }
 
+.landing .btn:hover:not(:disabled),
 .btn:hover:not(:disabled) {
   border-color: var(--fg);
+  background-color: rgb(241 243 238 / 0.08);
+  color: var(--fg);
   box-shadow: none;
+  transform: none;
 }
 
+.landing .btn:active:not(:disabled),
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.landing .btn-small,
 .btn-small {
   min-height: 38px;
   padding: 0 var(--s-4);
   font-size: 12px;
 }
 
+.landing .btn-signal,
 .btn-signal {
   border-color: var(--signal);
   background: var(--signal);
   color: var(--on-signal);
 }
 
+.landing .btn-signal:hover:not(:disabled),
 .btn-signal:hover:not(:disabled) {
-  border-color: var(--signal);
-  box-shadow: 0 0 40px -6px var(--signal-glow);
+  border-color: #d4ff4d;
+  background-color: #d4ff4d;
+  color: var(--on-signal);
+  box-shadow: 0 0 32px -6px var(--signal-glow);
+  transform: none;
+}
+
+.landing .btn-signal:active:not(:disabled),
+.btn-signal:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .btn:disabled {
@@ -470,6 +492,7 @@ html.is-landing.lenis body {
   transition: color 0.2s, background-color 0.2s, border-color 0.2s;
 }
 
+.landing .nav-drop-btn:hover:not(:disabled),
 .nav-drop-btn:hover,
 .nav-drop-btn:focus-visible,
 .nav-drop:hover .nav-drop-btn,
@@ -478,6 +501,8 @@ html.is-landing.lenis body {
 .topnav > .nav-direct:focus-visible {
   color: var(--fg);
   background: rgb(241 243 238 / 0.06);
+  box-shadow: none;
+  transform: none;
 }
 
 .nav-drop:hover:not(.dismissed) .nav-drop-btn,
@@ -505,12 +530,12 @@ html.is-landing.lenis body {
   right: 0;
   z-index: 40;
   display: grid;
-  gap: 4px;
-  width: 320px;
-  padding: 12px;
+  gap: 5px;
+  width: 348px;
+  padding: 10px;
   border: 1px solid var(--line-strong);
   border-radius: var(--r-2);
-  background: rgb(12 14 18 / 0.94);
+  background: rgb(12 14 18 / 0.95);
   backdrop-filter: blur(20px) saturate(1.6);
   box-shadow:
     inset 0 0.75px 0 rgb(255 255 255 / 0.16),
@@ -524,6 +549,10 @@ html.is-landing.lenis body {
     opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1),
     transform 0.26s cubic-bezier(0.16, 1, 0.3, 1),
     visibility 0.24s;
+}
+
+.nav-drop-panel.nav-drop-studio {
+  width: 384px;
 }
 
 /* Invisible hover bridge across the 10px gap so moving the pointer from the button into the menu never drops :hover */
@@ -547,48 +576,99 @@ html.is-landing.lenis body {
   }
 }
 
-.nav-drop-col {
-  display: grid;
-  align-content: start;
-  gap: 4px;
-}
-
-.nav-drop-col + .nav-drop-col {
-  padding-left: 14px;
-  border-left: 1px solid var(--line);
-}
-
-.nav-drop-head {
-  margin: 2px 8px 6px !important;
-  font: 600 10px/1.2 var(--mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--dim);
-}
-
 .nav-drop-item {
   display: grid;
-  gap: 3px;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 11px;
   padding: 9px 10px;
-  border: 1px solid transparent;
+  border: 1px solid rgb(241 243 238 / 0.06);
   border-radius: var(--r-1);
+  background: rgb(241 243 238 / 0.025);
   color: var(--fg);
   text-decoration: none;
   text-transform: none;
   letter-spacing: 0;
-  transition: background-color 0.16s ease, border-color 0.16s ease;
+  transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.15s ease;
+}
+
+.nav-drop-item:active {
+  transform: scale(0.985);
 }
 
 .nav-drop-item:hover,
 .nav-drop-item:focus-visible,
 .nav-drop-item.active {
-  border-color: rgb(200 255 46 / 0.32);
-  background: rgb(200 255 46 / 0.07);
+  border-color: rgb(200 255 46 / 0.38);
+  background: rgb(200 255 46 / 0.08);
+}
+
+.nav-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid rgb(200 255 46 / 0.32);
+  border-radius: 8px;
+  background: rgb(200 255 46 / 0.09);
+  font: 600 11px/1 var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: var(--signal);
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.nav-chip.nav-chip-icon {
+  position: relative;
+  flex-direction: column;
+  gap: 2px;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+}
+
+.nav-chip.nav-chip-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.nav-chip.nav-chip-icon i {
+  font: 600 8.5px/1 var(--mono);
+  font-style: normal;
+  letter-spacing: 0.05em;
+  opacity: 0.85;
+}
+
+.nav-drop-item:hover .nav-chip,
+.nav-drop-item.active .nav-chip {
+  border-color: var(--signal);
+  background: var(--signal);
+  color: var(--on-signal);
+}
+
+.nav-item-body {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.nav-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .nav-drop-item b {
-  font: 600 13.5px/1.25 var(--display);
-  letter-spacing: -0.01em;
+  font: 600 13.5px/1.2 var(--display);
+  letter-spacing: -0.015em;
   color: var(--fg);
 }
 
@@ -597,7 +677,25 @@ html.is-landing.lenis body {
   color: var(--signal);
 }
 
-.nav-drop-item > span {
+.nav-item-badge {
+  padding: 2.5px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgb(8 9 11 / 0.55);
+  font: 600 9px/1 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--fg-2);
+}
+
+.nav-drop-item:hover .nav-item-badge,
+.nav-drop-item.active .nav-item-badge {
+  border-color: rgb(200 255 46 / 0.35);
+  color: var(--signal);
+}
+
+.nav-item-body > span {
   font: 400 11.5px/1.35 var(--display);
   color: var(--fg-2);
 }
@@ -972,7 +1070,7 @@ html.is-landing.lenis body {
 /* Gym: three stops of the training, one screen of scroll each */
 
 .gym {
-  height: 340svh; /* the panel sticks for three compact stages (home.js gymStage, gymGate) */
+  height: 400svh; /* the panel sticks for three full screens, one per stage (home.js gymStage) */
 }
 
 /* Gym and Policy: their words sit on a dark card, since the street behind them is busy. No
@@ -1117,6 +1215,8 @@ html.is-landing.lenis body {
 }
 
 .steps-now b {
+  min-width: 3.6ch;
+  white-space: nowrap;
   font: 500 clamp(38px, 3.8vw, 56px)/0.9 var(--display);
   letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
@@ -1189,6 +1289,7 @@ html.is-landing.lenis body {
   gap: 4px; /* no box around the stops: the card is the only box (one card, not one inside another) */
 }
 
+.landing .axis-stop,
 .axis-stop {
   display: grid;
   justify-items: start;
@@ -1196,23 +1297,40 @@ html.is-landing.lenis body {
   min-width: 0;
   min-height: 0;
   padding: 10px 8px;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: var(--r-2);
   background: none;
   color: var(--fg-2);
   text-align: left;
   cursor: pointer;
-  transition: background 0.25s, color 0.25s;
+  transform: none;
+  box-shadow: none;
+  transition: background-color 0.22s ease, color 0.22s ease, border-color 0.22s ease, transform 0.15s ease;
 }
 
+.landing .axis-stop:hover:not(:disabled),
 .axis-stop:hover {
-  background: rgb(241 243 238 / 0.07);
+  border-color: var(--line);
+  background-color: rgb(241 243 238 / 0.07);
   color: var(--fg);
+  box-shadow: none;
+  transform: none;
 }
 
-.axis-stop.on {
-  background: var(--signal);
+.landing .axis-stop:active:not(:disabled),
+.axis-stop:active {
+  transform: scale(0.98);
+}
+
+.landing .axis-stop.on,
+.landing .axis-stop.on:hover:not(:disabled),
+.axis-stop.on,
+.axis-stop.on:hover {
+  border-color: var(--signal);
+  background-color: var(--signal);
   color: var(--bg);
+  box-shadow: none;
+  transform: none;
 }
 
 .axis-label {
@@ -1234,8 +1352,9 @@ html.is-landing.lenis body {
   gap: 6px;
 }
 
-
 .stage-text {
+  display: block;
+  min-height: 2.8em;
   font-size: 15px;
   line-height: 1.4;
 }
@@ -1243,6 +1362,8 @@ html.is-landing.lenis body {
 .stage-numbers {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  min-height: 1.4em;
   gap: 4px 6px;
 }
 
@@ -1268,20 +1389,16 @@ html.is-landing.lenis body {
   align-items: center;
   margin-top: 16px !important;
   font: 500 11px/1.5 var(--mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
   text-transform: uppercase;
   color: var(--signal) !important;
 }
 
-
-
-
-
-
-
 /* Policy: the whole robot the network moves, the numbers beside it */
 
 .policy {
-  height: 200svh;
+  height: 175svh;
 }
 
 .policy-caption {
@@ -1343,7 +1460,7 @@ html.is-landing.lenis body {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  padding: 14vh var(--gutter) 0;
+  padding: clamp(36px, 5vh, 64px) var(--gutter) 0;
 }
 
 .closing-sticky {
@@ -1360,8 +1477,9 @@ html.is-landing.lenis body {
 
 /* Two lines, one sentence each (strings.js): sized so the longer one fits the 1200 px column. */
 .manifesto {
-  font-size: clamp(28px, 4.2vw, 56px) !important;
-  line-height: 1.02 !important;
+  font-size: clamp(34px, 4.9vw, 68px) !important;
+  line-height: 1.0 !important;
+  letter-spacing: -0.035em;
   white-space: nowrap;
 }
 
@@ -1377,9 +1495,10 @@ html.is-landing.lenis body {
 
 .closing-text {
   max-width: 48em;
-  margin-top: 24px !important;
-  font-size: clamp(17px, 1.4vw, 21px);
-  color: var(--fg-2);
+  margin-top: 18px !important;
+  font-size: clamp(19px, 1.65vw, 24px);
+  line-height: 1.45;
+  color: var(--fg) !important;
 }
 
 /* ---- 3 Verticals Section (One Physics Engine, Every Physical Machine) ---- */
@@ -1618,8 +1737,8 @@ html.is-landing.lenis body {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: stretch;
-  gap: 12px;
-  margin-top: 32px;
+  gap: 14px;
+  margin-top: 28px;
 }
 
 @media (max-width: 1160px) {
@@ -1633,12 +1752,12 @@ html.is-landing.lenis body {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 10px;
-  min-height: 204px;
-  padding: 20px;
+  gap: 11px;
+  min-height: 214px;
+  padding: 22px;
   border: 1px solid var(--line-dark);
   border-radius: var(--r-2);
-  background: rgb(18 20 23 / 0.76);
+  background: rgb(18 20 23 / 0.78);
   backdrop-filter: blur(14px);
   color: var(--fg);
   text-decoration: none;
@@ -1665,10 +1784,10 @@ html.is-landing.lenis body {
 }
 
 .try-icon {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   stroke: var(--signal);
-  stroke-width: 1.7;
+  stroke-width: 1.75;
   stroke-linecap: round;
   stroke-linejoin: round;
   fill: none;
@@ -1689,23 +1808,23 @@ html.is-landing.lenis body {
 
 .try b {
   margin-top: 2px;
-  font: 600 clamp(20px, 1.65vw, 24px)/1.12 var(--display);
+  font: 600 clamp(21px, 1.75vw, 25px)/1.12 var(--display);
   letter-spacing: -0.025em;
   color: var(--fg);
 }
 
 .try-sub {
-  font: 400 13.5px/1.4 var(--display);
+  font: 400 14px/1.45 var(--display);
   color: var(--fg-2);
 }
 
 .try-go {
   align-self: flex-start;
   margin-top: auto;
-  padding: 7px 14px;
+  padding: 8px 15px;
   border: 1px solid var(--signal);
   border-radius: 999px;
-  font: 500 12.5px/1 var(--display);
+  font: 500 13px/1 var(--display);
   white-space: nowrap;
   color: var(--signal);
   transition: background 0.22s ease, color 0.22s ease;
@@ -1738,8 +1857,8 @@ html.is-landing.lenis body {
   z-index: 2;
   width: 100%;
   max-width: 1200px;
-  margin: 24px auto 0;
-  padding: 22px 36px 28px;
+  margin: 36px auto 0;
+  padding: 32px 36px 40px;
   border-top: 1px solid var(--line-dark);
   border-radius: 0;
   background: linear-gradient(180deg, rgb(8 9 11 / 0.94), rgb(8 9 11 / 1));
@@ -1750,19 +1869,23 @@ html.is-landing.lenis body {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 18px 28px;
+  gap: 20px 32px;
 }
 
 .foot-brand {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 14px 18px;
+  gap: 16px 22px;
+}
+
+.footer .wordmark {
+  font-size: clamp(26px, 2.3vw, 32px);
 }
 
 .foot-tagline {
   margin: 0 !important;
-  font: 400 13.5px/1.4 var(--display);
+  font: 400 clamp(14.5px, 1.15vw, 16px)/1.45 var(--display);
   color: var(--fg-2) !important;
 }
 
@@ -1770,40 +1893,19 @@ html.is-landing.lenis body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 14px 20px;
-}
-
-.foot-case-pill {
-  display: inline-flex;
-  align-items: center;
-  min-height: 32px;
-  padding: 0 13px;
-  border: 1px solid rgb(200 255 46 / 0.4);
-  border-radius: 999px;
-  background: rgb(200 255 46 / 0.08);
-  color: var(--signal);
-  font: 500 12.5px/1 var(--display);
-  text-decoration: none;
-  white-space: nowrap;
-  transition: background-color 0.18s ease, color 0.18s ease;
-}
-
-.foot-case-pill:hover,
-.foot-case-pill:focus-visible {
-  background: var(--signal);
-  color: var(--on-signal);
+  gap: 16px 24px;
 }
 
 .foot-team-links {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 14px;
+  gap: 10px 18px;
 }
 
 .foot-team-links a {
   color: var(--fg-2);
-  font: 500 13px/1.3 var(--display);
+  font: 500 14px/1.35 var(--display);
   text-decoration: none;
   transition: color 0.18s ease;
 }
@@ -1811,6 +1913,46 @@ html.is-landing.lenis body {
 .foot-team-links a:hover,
 .foot-team-links a:focus-visible {
   color: var(--fg);
+}
+
+.landing .foot-top-btn,
+.foot-top-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgb(241 243 238 / 0.05);
+  color: var(--fg);
+  font: 500 12.5px/1 var(--display);
+  white-space: nowrap;
+  cursor: pointer;
+  transform: none;
+  box-shadow: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+
+.landing .foot-top-btn svg,
+.foot-top-btn svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.landing .foot-top-btn:hover:not(:disabled),
+.foot-top-btn:hover {
+  border-color: var(--signal);
+  background-color: rgb(200 255 46 / 0.12);
+  color: var(--signal);
+  box-shadow: none;
+  transform: none;
+}
+
+.landing .foot-top-btn:active:not(:disabled),
+.foot-top-btn:active {
+  transform: scale(0.97);
 }
 
 /* ---- Small tablets & phones: mobile accordion drawer ---- */

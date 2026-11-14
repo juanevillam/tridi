@@ -71,36 +71,25 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       baseY: 0.35,
       anchors: [
         {
-          key: 'hopper', lx: -0.62, ly: 0.0, lz: 0.38, defLeft: 24, defTop: 34, cls: '',
-          title: 'HOPPER-01 · PE-01',
-          sub: '<span class="t" lang="es">1. Tolva + Báscula</span><span class="t" lang="en">1. Hopper + Weigher</span>',
+          key: 'hopper', body: 'pelvis', lx: -0.64, ly: 0.0, lz: 0.36, defLeft: 26, defTop: 36, cls: '',
+          title: 'HOPPER-01',
+          sub: 'PE-01',
         },
         {
-          key: 'cam', lx: -0.14, ly: 0.0, lz: 0.44, defLeft: 42, defTop: 28, cls: '',
-          title: 'CAM-01 · COGNEX',
-          sub: '<span class="t" lang="es">Visión Artificial</span><span class="t" lang="en">Machine Vision</span>',
+          key: 'press', body: 'sealer_head_link', lx: 0.0, ly: 0.0, lz: 0.16, defLeft: 50, defTop: 26, cls: 'fio-tag-blue',
+          title: 'PRESS-01',
+          sub: 'PE-02',
         },
         {
-          key: 'press', lx: 0.12, ly: 0.0, lz: 0.50, defLeft: 54, defTop: 24, cls: 'fio-tag-blue',
-          title: 'PRESS-01 · PE-02',
-          sub: '<span class="t" lang="es">2. Prensa Azul (Sella Caja)</span><span class="t" lang="en">2. Blue Press (Seals Box)</span>',
+          key: 'pusher', body: 'pusher_gate_link', lx: 0.0, ly: -0.06, lz: 0.15, defLeft: 66, defTop: 46, cls: 'fio-tag-red',
+          title: 'PUSHER-01',
+          sub: 'PE-03',
         },
         {
-          key: 'pusher', lx: 0.62, ly: -0.26, lz: 0.19, defLeft: 68, defTop: 46, cls: 'fio-tag-red',
-          title: 'PUSHER-01 · PE-03',
-          sub: '<span class="t" lang="es">Pistón Rojo (Rechazo Merma)</span><span class="t" lang="en">Red Pusher (Reject Gate)</span>',
-        },
-        {
-          key: 'pallet', lx: 1.28, ly: 0.0, lz: -0.02, defLeft: 84, defTop: 56, cls: '',
+          key: 'pallet', body: 'pelvis', lx: 1.25, ly: 0.0, lz: 0.02, defLeft: 82, defTop: 54, cls: '',
           title: 'PALLET-01',
           subId: 'fio-pallet-count',
-          sub: '<span class="t" lang="es">4. Rampa y Palet (0/6)</span><span class="t" lang="en">4. Ramp &amp; Pallet (0/6)</span>',
-        },
-        {
-          key: 'plc', lx: -0.32, ly: 0.44, lz: 0.36, defLeft: 34, defTop: 22, cls: '',
-          title: 'PLC / VFD · HMI',
-          subId: 'fio-plc-hz',
-          sub: 'VFD 50.0 Hz',
+          sub: '0/6',
         },
       ],
       steps: [
@@ -118,27 +107,16 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       baseY: 0.09,
       anchors: [
         {
-          key: 'hc', lx: 0.14, ly: 0.0, lz: 0.14, defLeft: 58, defTop: 42, cls: 'fio-tag-blue',
-          title: 'HC-SR04 · D9/A1',
+          key: 'hc', body: 'pelvis', rotate: true, lx: 0.15, ly: 0.0, lz: 0.08, defLeft: 56, defTop: 40, cls: 'fio-tag-blue',
+          title: 'HC-SR04',
           subId: 'fio-rover-hc',
-          sub: '120 cm · Cono ±24°',
+          sub: '120 cm',
         },
         {
-          key: 'apds', lx: 0.0, ly: 0.0, lz: 0.24, defLeft: 48, defTop: 28, cls: '',
-          title: 'APDS-9960 IR · 0x9E',
-          subId: 'fio-rover-aux',
-          sub: 'Prox IR: 18 / 255',
-        },
-        {
-          key: 'l298n', lx: -0.12, ly: -0.12, lz: 0.08, defLeft: 34, defTop: 52, cls: '',
-          title: 'L298N · 2× TT 200 RPM',
+          key: 'l298n', body: 'pelvis', rotate: true, lx: -0.14, ly: 0.0, lz: 0.07, defLeft: 38, defTop: 50, cls: '',
+          title: 'L298N · 50 Hz',
           subId: 'fio-rover-wh',
-          sub: '[15.5, 15.5] rad/s',
-        },
-        {
-          key: 'mcu', lx: -0.06, ly: 0.12, lz: 0.16, defLeft: 66, defTop: 30, cls: '',
-          title: 'ATmega328P · 50 Hz',
-          sub: 'luigi-lab3.onnx',
+          sub: '15.5 rad/s',
         },
       ],
       steps: [
@@ -156,27 +134,16 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       baseY: 0.09,
       anchors: [
         {
-          key: 'sg90', lx: 0.11, ly: 0.0, lz: 0.23, defLeft: 52, defTop: 26, cls: 'fio-tag-blue',
-          title: 'SG90 RADAR · PIN D13',
-          subId: 'fio-rover-aux',
-          sub: 'Barrido ±63°',
-        },
-        {
-          key: 'hc', lx: 0.17, ly: 0.0, lz: 0.12, defLeft: 62, defTop: 44, cls: '',
-          title: 'HC-SR04 · D7/D4',
+          key: 'hc', body: 'head_neck_link', rotate: true, lx: 0.04, ly: 0.0, lz: 0.07, defLeft: 56, defTop: 36, cls: 'fio-tag-blue',
+          title: 'SG90 + HC-SR04',
           subId: 'fio-rover-hc',
-          sub: '120 cm en Torreta',
+          sub: '120 cm',
         },
         {
-          key: 'l298n', lx: -0.12, ly: -0.12, lz: 0.08, defLeft: 34, defTop: 52, cls: '',
-          title: 'L298N · Timer0 D5/D6',
+          key: 'l298n', body: 'pelvis', rotate: true, lx: -0.14, ly: 0.0, lz: 0.07, defLeft: 38, defTop: 50, cls: '',
+          title: 'L298N · 50 Hz',
           subId: 'fio-rover-wh',
-          sub: '[15.5, 15.5] rad/s',
-        },
-        {
-          key: 'mcu', lx: -0.06, ly: 0.12, lz: 0.16, defLeft: 68, defTop: 32, cls: '',
-          title: 'ATmega328P · 50 Hz',
-          sub: 'luigi-lab4.onnx',
+          sub: '15.5 rad/s',
         },
       ],
       steps: [
@@ -194,26 +161,16 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       baseY: 0.78,
       anchors: [
         {
-          key: 'head', lx: 0.0, ly: 0.0, lz: 0.48, defLeft: 50, defTop: 20, cls: 'fio-tag-blue',
-          title: 'GVHMR · POSE 3D',
-          sub: '<span class="t" lang="es">Video → 29 Articulaciones</span><span class="t" lang="en">Video → 29 Joints</span>',
-        },
-        {
-          key: 'torso', lx: 0.0, ly: 0.22, lz: 0.14, defLeft: 66, defTop: 38, cls: '',
-          title: 'POLICY · 50 Hz ONNX',
+          key: 'torso', body: 'torso_link', rotate: true, lx: 0.0, ly: 0.18, lz: 0.16, defLeft: 62, defTop: 34, cls: 'fio-tag-blue',
+          title: 'ONNX · 50 Hz',
           subId: 'fio-g1-policy',
-          sub: '<span class="t" lang="es">Equilibrio e Imitación</span><span class="t" lang="en">Balance &amp; Imitation</span>',
+          sub: '29 DOF',
         },
         {
-          key: 'hands', lx: 0.16, ly: -0.28, lz: -0.04, defLeft: 32, defTop: 46, cls: '',
-          title: 'INSPIRE · 5 DEDOS',
-          sub: '<span class="t" lang="es">Manos Articuladas</span><span class="t" lang="en">5-Finger Hands</span>',
-        },
-        {
-          key: 'feet', lx: 0.0, ly: 0.0, lz: -0.58, defLeft: 50, defTop: 68, cls: '',
+          key: 'feet', body: 'pelvis', rotate: true, lx: 0.0, ly: -0.22, lz: -0.18, defLeft: 38, defTop: 54, cls: '',
           title: 'MUJOCO · 250 Hz',
           subId: 'fio-g1-world',
-          sub: '<span class="t" lang="es">Gravedad y Fricción Real</span><span class="t" lang="en">Real Gravity &amp; Friction</span>',
+          sub: '33.3 kg',
         },
       ],
       steps: [
@@ -365,16 +322,40 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     else if (playing) skeleton.advance(wall * speed);
     if (copying && robot.view) robot.view.seek(skeleton.time);
     look?.update(wall);
-    // Project 3D component callout tags onto .robot-pane for ALL models on every frame
+    // Project 3D component callout tags onto .robot-pane for ALL models on every frame using live MuJoCo body pose & rotation
     if (robot.view?.viewer?.camera && robot.view?.sim) {
       const viewer = robot.view.viewer;
+      const sim = robot.view.sim;
+      const { mujoco, model, data } = sim;
       viewer.camera.updateMatrixWorld();
-      const [px, py] = robot.view.sim.bodyPosition('pelvis');
+      const [px, py] = sim.bodyPosition('pelvis');
       const cfg = getOverlayConfig(robotModel);
       for (const anchor of cfg.anchors) {
         const tagEl = factoryOverlay.querySelector(`[data-fio="${anchor.key}"]`);
         if (!tagEl) continue;
-        scratchVec.set(px + anchor.lx, cfg.baseY + anchor.lz, -(py + anchor.ly)).project(viewer.camera);
+        let wx = px + anchor.lx;
+        let wy = py + anchor.ly;
+        let wz = cfg.baseY + anchor.lz;
+        if (anchor.body) {
+          const bId = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY.value, anchor.body);
+          if (bId >= 0) {
+            const bx = data.xpos[3 * bId];
+            const by = data.xpos[3 * bId + 1];
+            const bz = data.xpos[3 * bId + 2];
+            if (anchor.rotate) {
+              const m = 9 * bId;
+              const xmat = data.xmat;
+              wx = bx + xmat[m] * anchor.lx + xmat[m + 1] * anchor.ly + xmat[m + 2] * anchor.lz;
+              wy = by + xmat[m + 3] * anchor.lx + xmat[m + 4] * anchor.ly + xmat[m + 5] * anchor.lz;
+              wz = bz + xmat[m + 6] * anchor.lx + xmat[m + 7] * anchor.ly + xmat[m + 8] * anchor.lz;
+            } else {
+              wx = bx + anchor.lx;
+              wy = by + anchor.ly;
+              wz = bz + anchor.lz;
+            }
+          }
+        }
+        scratchVec.set(wx, wz, -wy).project(viewer.camera);
         if (scratchVec.z > 1) {
           tagEl.style.opacity = '0';
         } else {
@@ -404,17 +385,15 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       if (elWh) {
         elWh.textContent = `[${c0}, ${c1}] rad/s`;
       }
-      // Update 3D floating tag readouts on the rover
+      // Update compact 3D floating tag readouts on the rover
       const tagHc = factoryOverlay.querySelector('#fio-rover-hc');
-      if (tagHc) tagHc.textContent = `${sr.distCm} cm`;
-      const tagAux = factoryOverlay.querySelector('#fio-rover-aux');
-      if (tagAux) {
-        tagAux.textContent = robotModel === 'luigi_lab4'
-          ? `SG90 ${sr.neckDeg >= 0 ? '+' : ''}${sr.neckDeg.toFixed(0)}°`
-          : `IR ${sr.irProx}/255`;
+      if (tagHc) {
+        tagHc.textContent = robotModel === 'luigi_lab4'
+          ? `${sr.distCm} cm · ${sr.neckDeg >= 0 ? '+' : ''}${sr.neckDeg.toFixed(0)}°`
+          : `${sr.distCm} cm`;
       }
       const tagWh = factoryOverlay.querySelector('#fio-rover-wh');
-      if (tagWh) tagWh.textContent = `[${c0}, ${c1}] rad/s`;
+      if (tagWh) tagWh.textContent = `${c0} / ${c1} rad/s`;
 
       const hcTagEl = factoryOverlay.querySelector('[data-fio="hc"]');
       if (hcTagEl) hcTagEl.dataset.fault = String(sr.distCm < 26);
@@ -501,11 +480,9 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
         tagEl.dataset.active = String(isActive);
         tagEl.dataset.fault = String(isFault);
       }
-      const plcHzEl = factoryOverlay.querySelector('#fio-plc-hz');
-      if (plcHzEl) plcHzEl.textContent = `VFD ${fr.vfdHz} Hz`;
       const palletCountEl = factoryOverlay.querySelector('#fio-pallet-count');
       if (palletCountEl) {
-        palletCountEl.innerHTML = `<span class="t" lang="es">4. Palet (${fr.stackedBoxes ?? 0}/6 cajas)</span><span class="t" lang="en">4. Pallet (${fr.stackedBoxes ?? 0}/6 boxes)</span>`;
+        palletCountEl.textContent = `${fr.stackedBoxes ?? 0}/6`;
       }
       if (fr.stage !== lastFactoryStage) {
         lastFactoryStage = fr.stage;
@@ -627,6 +604,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       if ($('sim-label-4')) $('sim-label-4').innerHTML = '<span class="t" lang="es">Etapa Actual (PackML)</span><span class="t" lang="en">Current Stage (PackML)</span>';
     }
   }
+  syncRobotDependentUI();
 
   // Shows the current clip on the robot. Its RobotMotion comes from the saved ones if there is one;
   // otherwise it is computed in slices, with its progress on the label, so the page keeps working.
@@ -694,10 +672,10 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       if (seq !== loadSeq) return;
       const [px, py] = view.sim.bodyPosition('pelvis');
       if (imitation?.robot === 'factory_cell') {
-        view.viewer.targetHeight = 0.34;
+        view.viewer.targetHeight = 0.42;
         view.viewer.controls.minDistance = 0.35;
-        view.viewer.controls.target.set(px + 0.12, 0.34, -py);
-        view.viewer.camera.position.set(px + 0.22, 0.96, -py - 1.58);
+        view.viewer.controls.target.set(px + 0.1, 0.42, -py + 0.12);
+        view.viewer.camera.position.set(px + 0.15, 1.38, -py - 2.55);
         view.viewer.controls.update();
       } else if (isCustom) {
         view.viewer.targetHeight = 0.09;
@@ -843,6 +821,8 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
   if ($('robot-model')) {
     $('robot-model').onchange = async (event) => {
       robotModel = event.target.value;
+      const nextHash = robotModel === 'unitree_g1' ? '#/simulations' : `#/simulations/${robotModel}`;
+      if (location.hash !== nextHash) history.replaceState(null, '', nextHash);
       if (robotModel === 'unitree_h1' || isCustomRobot()) {
         const customIm = IMITATIONS.find((im) => im.robot === robotModel);
         if (customIm) {
@@ -1225,10 +1205,10 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       robot.view?.reset();
       if (robot.view?.viewer) {
         const [px, py] = robot.view.sim.bodyPosition('pelvis');
-        const h = robotModel === 'factory_cell' ? 0.34 : 0.09;
+        const h = robotModel === 'factory_cell' ? 0.42 : 0.09;
         robot.view.viewer.targetHeight = h;
-        robot.view.viewer.controls.target.set(px + (robotModel === 'factory_cell' ? 0.12 : 0), h, -py);
-        robot.view.viewer.camera.position.set(px + (robotModel === 'factory_cell' ? 0.22 : 1.05), robotModel === 'factory_cell' ? 0.96 : 0.72, -py - (robotModel === 'factory_cell' ? 1.58 : 0.95));
+        robot.view.viewer.controls.target.set(px + (robotModel === 'factory_cell' ? 0.1 : 0), h, -py + (robotModel === 'factory_cell' ? 0.12 : 0));
+        robot.view.viewer.camera.position.set(px + (robotModel === 'factory_cell' ? 0.15 : 1.05), robotModel === 'factory_cell' ? 1.38 : 0.72, -py - (robotModel === 'factory_cell' ? 2.55 : 0.95));
         robot.view.viewer.controls.update();
       }
       root.querySelectorAll('#arduino-box [data-cmd]').forEach((b) => {
