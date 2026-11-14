@@ -68,17 +68,27 @@ async function ensureZone() {
 
 async function upsertDnsRecord(zoneId, desired) {
   const existing = await cf(`/zones/${zoneId}/dns_records?type=${desired.type}&name=${encodeURIComponent(desired.name)}`);
-  const match = existing.result?.[0];
+  const prefix = desired.matchPrefix || desired.content;
+  const match = (existing.result || []).find((r) =>
+    desired.type === 'TXT' ? r.content.startsWith(prefix) : true
+  );
+  const payload = {
+    type: desired.type,
+    name: desired.name,
+    content: desired.content,
+    ttl: desired.ttl,
+    proxied: desired.proxied,
+  };
   if (match) {
     const res = await cf(`/zones/${zoneId}/dns_records/${match.id}`, {
       method: 'PUT',
-      body: JSON.stringify(desired),
+      body: JSON.stringify(payload),
     });
     console.log(`  ✓ Updated DNS ${desired.type} ${desired.name} -> ${desired.content} (${res.success ? 'OK' : JSON.stringify(res.errors)})`);
   } else {
     const res = await cf(`/zones/${zoneId}/dns_records`, {
       method: 'POST',
-      body: JSON.stringify(desired),
+      body: JSON.stringify(payload),
     });
     console.log(`  ✓ Created DNS ${desired.type} ${desired.name} -> ${desired.content} (${res.success ? 'OK' : JSON.stringify(res.errors)})`);
   }
@@ -90,12 +100,13 @@ async function main() {
   console.log(`Cloudflare Nameservers for Namecheap -> Domain -> Custom DNS:`);
   for (const ns of zone.name_servers || []) console.log(`  - ${ns}`);
 
-  console.log('\n1. Configuring DNS records (Cloudflare Pages + Anti-Spoofing)...');
+  console.log('\n1. Configuring DNS records (Cloudflare Pages + Anti-Spoofing + Google Search Console)...');
   const records = [
     { type: 'CNAME', name: DOMAIN, content: PAGES_TARGET, ttl: 1, proxied: true },
     { type: 'CNAME', name: `www.${DOMAIN}`, content: PAGES_TARGET, ttl: 1, proxied: true },
-    { type: 'TXT', name: DOMAIN, content: 'v=spf1 -all', ttl: 1, proxied: false },
-    { type: 'TXT', name: `_dmarc.${DOMAIN}`, content: 'v=DMARC1; p=reject; sp=reject; adkim=s; aspf=s;', ttl: 1, proxied: false },
+    { type: 'TXT', name: DOMAIN, content: 'v=spf1 -all', matchPrefix: 'v=spf1', ttl: 1, proxied: false },
+    { type: 'TXT', name: DOMAIN, content: 'google-site-verification=Cy_4JLz2S7WS9MCtz35HXpGQw9ViuvfWRDeHVPvr7xc', matchPrefix: 'google-site-verification=', ttl: 1, proxied: false },
+    { type: 'TXT', name: `_dmarc.${DOMAIN}`, content: 'v=DMARC1; p=reject; sp=reject; adkim=s; aspf=s;', matchPrefix: 'v=DMARC1', ttl: 1, proxied: false },
   ];
   for (const rec of records) {
     await upsertDnsRecord(zone.id, rec);

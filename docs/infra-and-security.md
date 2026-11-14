@@ -69,6 +69,7 @@ Se eliminaron los 5 registros `MX` basura que Namecheap pone por defecto (`eforw
 | Type | Name | Content | Razón técnica |
 | :--- | :--- | :--- | :--- |
 | `TXT` | `@` | `"v=spf1 -all"` | Declara que ningún servidor está autorizado a enviar correo desde `@trytridi.com`. |
+| `TXT` | `@` | `"google-site-verification=Cy_4JLz2S7WS9MCtz35HXpGQw9ViuvfWRDeHVPvr7xc"` | Verifica la propiedad del dominio `trytridi.com` en **Google Search Console** (`juanesvillamendoza@gmail.com`) y Google Cloud. |
 | `TXT` | `_dmarc` | `"v=DMARC1; p=reject; sp=reject; adkim=s; aspf=s;"` | Ordena a los proveedores de correo rechazar el 100% de correos falsificados de `@trytridi.com` y subdominios (`p=reject; sp=reject`). No lleva `rua=mailto:...@gmail.com` porque RFC 7489 exige autorización TXT del dominio externo y Gmail no la publica. |
 | `MX` | *(ninguno)* | *(vacío)* | Sin servidores MX mientras no se reciba correo. |
 
