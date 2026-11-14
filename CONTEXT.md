@@ -1,44 +1,51 @@
 # Tridi — Context Handoff (`CONTEXT.md`)
 
-**Last updated:** 2026-11-09  
-**Active branch:** `juan/experimental`  
-**Internal technical manuals:** [`docs/internal/README.md`](docs/internal/README.md)  
+**Last updated:** 2026-11-14  
+**Active branch:** `juan/zaka-industrial-plan` (pushed to `origin/juan/zaka-industrial-plan`, **NOT yet merged to `main`** so `https://trytridi.com` is not deployed until final approval)  
+**Documentation index:** [`docs/README.md`](docs/README.md) | **Roadmap:** [`docs/ROADMAP.md`](docs/ROADMAP.md)  
+**Latest session log:** [`docs/bitacora/2026-11-13-0045-juan-reunion-zaka-y-plan-industrial.md`](docs/bitacora/2026-11-13-0045-juan-reunion-zaka-y-plan-industrial.md)  
 **Quality playbook:** [`docs/audit-playbook.md`](docs/audit-playbook.md) | **Skill:** `.claude/skills/tridi-quality/SKILL.md`
 
 ---
 
-## 1. Current State Summary
+## 1. Current State Summary (`juan/zaka-industrial-plan`)
 
-1. **First Physical Sim-to-Real Case Study (`luigi_lab3`, Nov 2026):**
-   - **Hardware:** Differential explorer robot by Luigi D'Aquaro (Arduino UNO ATmega328P, L298N H-bridge, 2× 200 RPM TT gearmotors with TPU tires, 2S 18650 battery pack, HC-SR04 ultrasonic sensor on `D9/A1`, APDS-9960 I2C optical sensor on `0x39` with clone Chip ID `0x9E`).
-   - **Embedded Firmware & Deliverable:** [`entregable-luigi/robot_tridi_autonomo/robot_tridi_autonomo.ino`](entregable-luigi/robot_tridi_autonomo/robot_tridi_autonomo.ino) runs the transpiled `luigi-lab3.onnx` policy natively in C at **50 Hz** (461 bytes RAM, 22%), uses non-blocking hardware pin-change interrupts (`ISR(PCINT1_vect)`) on `A1` to avoid `pulseIn()`'s 47.1 ms freeze, drives the `0x9E` APDS-9960 register-direct at 40 Hz as an IR proximity radar, and executes a 4-stage closed-loop dodge maneuver.
-   - **MuJoCo Digital Twin (`physics/models/luigi_lab3/`):**
-     - `luigi.xml` includes the 6 CAD STL meshes, 18650 batteries, L298N heatsink, HC-SR04 dual cylinders, APDS-9960 PCB, and 3D Dupont wire arcs.
-     - `scene.xml` features a compact, solid **3.4 m × 3.4 m** walled arena with cylinders and boxes (no hollow city houses).
-     - `physics/src/policy.js` & `physics/src/viewer.js` simulate the 7-ray `HC-SR04` + `APDS-9960` sensor fan (±24° cone rendered in 3D, turning lime → amber → red on proximity) and the 4-stage obstacle dodge.
+1. **Industrial P&ID & CAD Assembler (`physics/src/assembler/` + `#/assembler`):**
+   - **Channel 1 — Plant & Process Automation (`.dxf` P&ID → ISA-5.1 Docs + 3D Twin + PLC Code):**
+     - `physics/src/assembler/pid-parser.js` parses `.dxf` (`INSERT`/`ATTDEF`/`TEXT`/`LINE`/`LWPOLYLINE`) and builds an ISA-5.1 process DAG + I/O schedule (`DI`, `DO`, `AI 4-20 mA`) with 3 bundled industrial plants (`01_batch_mixer.dxf`, `02_sorting_cell.dxf`, `03_pump_interlock.dxf`).
+     - `physics/src/assembler/isa-docs-generator.js` generates Cause & Effect Matrix (`CE-01..`), Control Narrative (`STEP 00..30`), and Alarm & Interlock Philosophy.
+     - `physics/src/assembler/plc-generator.js` compiles deterministic IEC 61131-3 **Siemens TIA Portal Structured Text (`.scl`)** and **Rockwell Studio 5000 (`.L5K`)** flat files.
+   - **Channel 2 — Custom Robots & Mechatronics (`.stl` + `.ino` → Hardware Audit + MuJoCo Twin + 50 Hz C99 Firmware):**
+     - `physics/src/assembler/pinout.js` audits ATmega328P / ESP32 pinouts & hardware timers (`Timer1` `<Servo.h>` conflict on `D9/D10` vs `Timer0` PWM on `D5/D6`, blocking `pulseIn()`/`delay()` detection) and outputs calibrated 50 Hz C99 `.ino` firmware (`PWM_MIN_MOVE = 115`, `ISR(INT1_vect)`).
+   - **Simulated Industrial Cell (`physics/models/factory_cell/scene.xml`):**
+     - Closed-loop 3D sorting cell (`CV-101` conveyor, `PE-101` optical sensor, `LC-101` load cell `250 g / 500 g / 1 kg`, `PZ-101` reject pusher, `PZ-102` accept diverter) inside a 3-wall enclosed industrial bay (`dressIndustrialPlant` in `web/src/looks/index.js`).
 
-2. **Web App (`web/`) & Physics (`physics/`) Fixes Shipped:**
-   - **`#/milestones` (`web/src/screens/milestones.js`):**
-     - Segmented tab bar (`02 · Caso Real Sim-to-Real (Nov 2026)` | `01 · Origen en Platanus Hack 26 (Oct 2026)`) so users never get lost scrolling.
-     - Full-duration upright videos: `luigi-sim2real.mp4` (`2:19`), `luigi-hardware.mp4` (`1:29` full hardware inspection, transposed upright), and `platanus-pitch.mp4` (`2:53` official pitch before Q&A), constrained to comfortable `310px–360px` player heights (`object-fit: contain`).
-   - **`#/simulations` & `#/simulations/luigi_lab3` (`web/src/screens/simulations.js`, `web/src/stage.js`, `web/src/style.css`):**
-     - Direct navigation to `#/simulations/luigi_lab3` automatically loads `luigi_lab3` in robot-only view, positions the camera at a clean 3/4 arena overview (`target` reset before `camera.position`), and shows `#luigi-sim-panel` in the right sidebar.
-     - Drive & ONNX Policy controller (`🤖 ONNX Patrol`, `⬆️ Forward`, `⬇️ Reverse`, `⬅️ Turn Left`, `➡️ Turn Right`, `⏹ Stop`) lives cleanly inside `#luigi-sim-panel` (no USB connect clutter in Conditions).
-     - Fixed CLS on `#sim-dodge-state` (`.luigi-tel-card` fixed `62px` height + `ellipsis`) and `#speed` (`68px` pill width).
-     - Balanced column heights across all zoom levels: `.controls` cards stretch equally, and `.sims-list` matches `.sims-main` height.
-     - High-contrast badges (`.card-badge.trained` in `--signal` lime, `.card-badge.trainable` in `#fbbf24` amber) and `cursor: grab` on all 3D canvases.
-   - **Unitree G1 Upright Walking (`physics/src/sim.js`, `physics/src/policy.js`):**
-     - Increased pelvis orientation tracking stiffness (`kpRot = 420`, `kdRot = 48`) and isolated `waist_pitch_joint` (`index 14`) from out-of-distribution forward pitch residuals, reducing walking torso tilt from `32.8°` to `< 9°` while passing all 9 imitation checks in `check-mimic.mjs`.
-   - **Landing (`#/`, `web/src/screens/home.js`, `web/src/landing/landing.css`, `web/src/landing/telemetry.js`):**
-     - Click-and-drag 3D orbiting enabled on the background scene (`cursor: grab !important` overriding `OrbitControls` inline `cursor: auto`), `Try it live` smooth-scroll mode lock (`navFlight`), safe restoration of `Unitree G1` and camera target when returning from `#/simulations/luigi_lab3` (guarding `dressTelemetry` while G1 reloads), GPU-composited `.try` cards without hover flicker, and generous spacing between `.tries` and `.footer`.
-   - **Production & Domain Readiness (`vercel.json`, `web/vercel.json`, `web/public/_headers`, `web/public/.well-known/security.txt`, `.node-version`, `.github/workflows/deploy.yml`, `scripts/cloudflare-setup.mjs`, `web/index.html`, `data/server.py`, `data/live/src/api.js`):**
-     - Created Cloudflare Pages project `tridi` (`https://tridi-18p.pages.dev`, live on **`https://trytridi.com`**), added `web/public/.well-known/security.txt` (RFC 9116), `web/public/_headers` + `vercel.json` + `web/vercel.json` (`Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(self)` + immutable `/assets/*` and `/media/*` cache), `.node-version` (`22.23.3`), `.github/workflows/deploy.yml`, and `scripts/cloudflare-setup.mjs` (matching `~/Code/portfolio/docs/internal/infra-and-security.md`).
-     - Hardened `data/server.py` (matching Sound Shaper's `media-worker` security model without Firebase): per-IP sliding-window rate limit (`20/min` on `POST /uploads`, `/clips`, `/clips/*/train` via `CF-Connecting-IP`), concurrent upload and queue caps (`MAX_ACTIVE_UPLOADS = 16`, `MAX_PENDING_JOBS = 8`), security response headers (`nosniff`, `DENY`, `strict-origin-when-cross-origin`), and explicit `trytridi.com` / `tridi-18p.pages.dev` CORS origins.
+2. **Global UI/UX Standardization & Polish (`web/` + `physics/`):**
+   - **Unified Global Header (`web/src/header.js`):** All inner screens (`#/simulations`, `#/live`, `#/upload`, `#/delivery`, `#/assembler`, `#/milestones`) share `appHeaderHTML()` and `mountAppHeader()`.
+   - **Landing (`#/`, `web/src/screens/home.js`, `web/src/landing/landing.css`):**
+     - Hover-to-open dropdowns (`Product ▾` & `Studio ▾`) with SVG icons and compact category chips (`7.5px` font).
+     - `Tridi Gym` (`#gym`): eliminated vertical robot jump when switching between `10M`, `100M`, and `300M` steps (`loadPolicy` only updates `view.targetHeight` when `controls.enabled === true` and skips `sim.reset()` when `reset: false`).
+     - `Tridi Policy` (`#policy`): fixed `.policy-data` button overflow by animating `.policy-caption` as a single card unit.
+     - Closing & Footer (`#closing`): removed duplicate `.try-tag` chips on `.tries` cards; redesigned `.footer` with larger `tridi` wordmark + tagline stacked below, 2-column team grid next to brand, and `↑ Back to top` button on the right.
+   - **Simulations (`#/simulations`):**
+     - Matched camera zoom/scale across the source video PiP, 3D green skeleton (`SkeletonView`), and simulated Unitree G1 (`Viewer`).
+     - Added Newtons force selector (`100 N · 150 N · 300 N · 500 N`) next to `Push the robot`.
+     - Removed `"Pick a motion"` / `"Preloaded examples"` headers, removed bottom `.fio-narrator` boxes, and hid floating tags on `unitree_g1`, `luigi_lab3`, and `luigi_lab4` (kept only on `factory_cell`).
+   - **Deliveries (`#/delivery`) & Assembler (`#/assembler`):**
+     - `#/delivery`: replaced the crowded header, `.dl-status`, `.dl-explain`, and `.dl-guide` wall of text with a single compact `.dl-toolbar` (clip selector first, inline metric pills, and `↓ Download files` button without `(5)`).
+     - `#/assembler`: unified header with mode toggle, removed the 3-step banner in the header, and toned down excessive lime green (`--signal`) so tables, tabs, and SVG schematics use clean neutral monochrome contrast.
+   - **Source Video PiP & Expanded View (`#/simulations` & `#/delivery`) + Lightbox (`#/milestones`):**
+     - Source training video uses `object-fit: contain` with radial-gradient backdrop in both compact PiP and full-stage expanded view so the person's full body is always visible.
+     - `#/milestones` fullscreen lightbox (`.photo-viewer`) centers `figcaption` horizontally, uses a radial-gradient background instead of black, and sets `border-radius: 0` on fullscreen images.
+
+3. **2-Layer Documentation & Raw Archives (`docs/`):**
+   - Standardized all documentation in [`docs/README.md`](docs/README.md) following `~/Code/portfolio` conventions, and archived the official Brand Manual by José Alejandro ([`docs/pitch/manual-de-marca-tridi.pdf`](docs/pitch/manual-de-marca-tridi.pdf)), Platanus Hack Pitch Deck ([`docs/pitch/tridi-pitch.pdf`](docs/pitch/tridi-pitch.pdf)), and ZAKA field meeting audio + raw transcript ([`docs/reuniones/`](docs/reuniones/)).
 
 ---
 
-## 2. How to Resume in a New Session
+## 2. How to Resume Tomorrow
 
-1. Read [`AGENTS.md`](AGENTS.md), [`docs/estado.md`](docs/estado.md), and [`docs/audit-playbook.md`](docs/audit-playbook.md).
-2. Run `npm --prefix physics run check && npm --prefix web run check` to verify baseline health.
-3. For any UI/UX or simulation work, follow `.claude/skills/tridi-quality/SKILL.md` (`/tridi-craft-audit` and `/tridi-ux-audit`).
+1. Read [`AGENTS.md`](AGENTS.md), [`CONTEXT.md`](CONTEXT.md), and [`docs/bitacora/2026-11-13-0045-juan-reunion-zaka-y-plan-industrial.md`](docs/bitacora/2026-11-13-0045-juan-reunion-zaka-y-plan-industrial.md).
+2. Confirm branch is `juan/zaka-industrial-plan` (`git status`).
+3. Start dev server on a free port when needed (`npm --prefix web run dev -- --port 5199 --strictPort`).
+4. When ready to deploy to `https://trytridi.com`, run `scripts/ship.sh` to squash-merge `juan/zaka-industrial-plan` into `main`.
