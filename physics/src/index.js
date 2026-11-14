@@ -26,13 +26,21 @@ export {
   validateHardwarePinout,
 } from '../components/index.js';
 export { classifyStlMeshes, generateMujocoXml, parseArduinoSketch } from './assembler.js';
+export {
+  generateIsaEngineeringDocs,
+  generatePidMujocoXml,
+  generatePlcFlatFile,
+  ISA_STANDARD,
+  parseDxfPid,
+  PID_SAMPLE_DXFS,
+} from './pid_assembler.js';
 
 export const ROBOTS = [
-  { id: 'g1', robot: 'unitree_g1', name: 'Unitree G1 (29 DOF + Inspire 5 dedos)' },
-  { id: 'luigi', robot: 'luigi_lab3', name: 'Robot Explorador Lab III — Luigi (Arduino UNO + HC-SR04 + APDS-9960)' },
-  { id: 'luigi_lab4', robot: 'luigi_lab4', name: 'Robot Explorador Lab IV — Luigi (Arduino UNO + Cuello Servo SG90 + HC-SR04)' },
-  { id: 'factory_cell', robot: 'factory_cell', name: 'Celda Industrial de Empaque y Clasificación (Cinta + Pistón + Selladora)' },
-  { id: 'h1', robot: 'unitree_h1', name: 'Unitree H1 (19 DOF, open-source)' },
+  { id: 'g1', robot: 'unitree_g1', vertical: 'humanoids', name: 'Unitree G1 (29 DOF + Inspire 5 dedos)' },
+  { id: 'h1', robot: 'unitree_h1', vertical: 'humanoids', name: 'Unitree H1 (19 DOF, open-source)' },
+  { id: 'luigi_lab4', robot: 'luigi_lab4', vertical: 'rovers', name: 'Robot Explorador Lab IV — Luigi (Arduino UNO + Cuello Servo SG90 + HC-SR04)' },
+  { id: 'luigi', robot: 'luigi_lab3', vertical: 'rovers', name: 'Robot Explorador Lab III — Luigi (Arduino UNO + HC-SR04 + APDS-9960)' },
+  { id: 'factory_cell', robot: 'factory_cell', vertical: 'industrial', name: 'Celda Industrial de Empaque y Clasificación (Cinta + Pistón + Selladora)' },
 ];
 
 const CUSTOM_SCENE_PREFIXES = ['unitree_h1/', 'luigi_lab3/', 'luigi_lab4/', 'factory_cell/'];
