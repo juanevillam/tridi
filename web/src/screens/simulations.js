@@ -51,7 +51,10 @@ export function mount(root, { api }, [clipId] = []) {
       <header class="page-head">
         <a class="back" href="#/" ${A({ 'aria-label': 'back' })}>←<span class="only-wide">&nbsp;${T('back')}</span></a>
         <h1>${T('title')}</h1>
-        ${langSwitch('page-head-lang')}
+        <div style="display:flex;align-items:center;gap:10px;margin-left:auto">
+          <a class="back" href="#/assembler" style="font-size:12px;padding:6px 12px;border:1px solid rgb(200 255 46 / 0.45);border-radius:999px;color:#c8ff2e;text-decoration:none;white-space:nowrap">${T('openAssembler')}</a>
+          ${langSwitch('page-head-lang')}
+        </div>
       </header>
       <div class="sims-grid">
         <div class="sims-main">
@@ -81,7 +84,15 @@ export function mount(root, { api }, [clipId] = []) {
               <div class="fields">
                 <label class="field wide">${T('robotModel')}
                   <select id="robot-model">
-                    ${ROBOT_MODELS.map(({ id, label }) => option(id, robotName(id, label), id === initRobot ? 'selected' : '')).join('')}
+                    <optgroup ${A({ label: 'vertHumanoids' })}>
+                      ${ROBOT_MODELS.filter((r) => r.vertical === 'humanoids').map(({ id, label }) => option(id, robotName(id, label), id === initRobot ? 'selected' : '')).join('')}
+                    </optgroup>
+                    <optgroup ${A({ label: 'vertRovers' })}>
+                      ${ROBOT_MODELS.filter((r) => r.vertical === 'rovers').map(({ id, label }) => option(id, robotName(id, label), id === initRobot ? 'selected' : '')).join('')}
+                    </optgroup>
+                    <optgroup ${A({ label: 'vertIndustrial' })}>
+                      ${ROBOT_MODELS.filter((r) => r.vertical === 'industrial').map(({ id, label }) => option(id, robotName(id, label), id === initRobot ? 'selected' : '')).join('')}
+                    </optgroup>
                   </select>
                 </label>
                 <label class="field" id="world-field">${T('world')}

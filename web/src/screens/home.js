@@ -112,16 +112,86 @@ export function mount(root) {
 
     <header class="topbar">
       <a class="wordmark" href="#/" ${A({ 'aria-label': 'nav.home' })}>${LOGO}${WORDMARK}</a>
-      <nav class="topnav" ${A({ 'aria-label': 'nav.product' })}>
-        <a href="#capture">Capture</a>
-        <a href="#gym">Gym</a>
-        <a href="#policy">Policy</a>
+      <nav class="topnav" ${A({ 'aria-label': 'nav.menu' })}>
+        <div class="nav-drop" data-drop="product">
+          <button type="button" class="nav-drop-btn" aria-expanded="false">
+            <span>${T('nav.product')}</span>
+            <svg class="nav-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="nav-drop-panel nav-drop-wide" role="menu">
+            <div class="nav-drop-col">
+              <p class="nav-drop-head">${T('nav.groupChapters')}</p>
+              <a class="nav-drop-item" href="#capture">
+                <b>Tridi Capture</b>
+                <span>${T('nav.captureSub')}</span>
+              </a>
+              <a class="nav-drop-item" href="#gym">
+                <b>Tridi Gym</b>
+                <span>${T('nav.gymSub')}</span>
+              </a>
+              <a class="nav-drop-item" href="#policy">
+                <b>Tridi Policy</b>
+                <span>${T('nav.policySub')}</span>
+              </a>
+              <a class="nav-drop-item" href="#verticals">
+                <b>${T('nav.verticals')}</b>
+                <span>${T('nav.verticalsSub')}</span>
+              </a>
+            </div>
+            <div class="nav-drop-col">
+              <p class="nav-drop-head">${T('nav.groupVerticals')}</p>
+              <a class="nav-drop-item" href="#/simulations" data-warm="simulations">
+                <b>${T('nav.vert1')}</b>
+                <span>${T('nav.vert1Sub')}</span>
+              </a>
+              <a class="nav-drop-item" href="#/simulations/luigi_lab4" data-warm="simulations">
+                <b>${T('nav.vert2')}</b>
+                <span>${T('nav.vert2Sub')}</span>
+              </a>
+              <a class="nav-drop-item" href="#/assembler" data-warm="assembler">
+                <b>${T('nav.vert3')}</b>
+                <span>${T('nav.vert3Sub')}</span>
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="nav-drop" data-drop="studio">
+          <button type="button" class="nav-drop-btn" aria-expanded="false">
+            <span>${T('nav.studio')}</span>
+            <svg class="nav-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="nav-drop-panel" role="menu">
+            <p class="nav-drop-head">${T('nav.groupTools')}</p>
+            <a class="nav-drop-item" href="#/simulations" data-warm="simulations">
+              <b>${T('nav.simulations')}</b>
+              <span>${T('nav.simsSub')}</span>
+            </a>
+            <a class="nav-drop-item" href="#/assembler" data-warm="assembler">
+              <b>${T('nav.assembler')}</b>
+              <span>${T('nav.assemblerSub')}</span>
+            </a>
+            <a class="nav-drop-item" href="#/live" data-warm="live">
+              <b>${T('nav.live')}</b>
+              <span>${T('nav.liveSub')}</span>
+            </a>
+            <a class="nav-drop-item" href="#/upload" data-warm="upload">
+              <b>${T('nav.upload')}</b>
+              <span>${T('nav.uploadSub')}</span>
+            </a>
+            <a class="nav-drop-item" href="#/delivery" data-warm="delivery">
+              <b>${T('nav.delivery')}</b>
+              <span>${T('nav.deliverySub')}</span>
+            </a>
+          </div>
+        </div>
         <i class="topnav-sep" aria-hidden="true"></i>
-        <a href="#/simulations" data-warm="simulations">${T('nav.simulations')}</a>
-        <a href="#/milestones" data-warm="milestones">${T('nav.milestones')}</a>
+        <a class="nav-direct" href="#/milestones" data-warm="milestones">${T('nav.milestones')}</a>
       </nav>
       ${langSwitch()}
       <a class="btn btn-signal btn-small" href="#/simulations" data-warm="simulations"><span class="only-wide">${T('nav.tryLive')}</span><span class="only-narrow">${T('nav.try')}</span></a>
+      <button type="button" class="nav-mobile-btn" aria-expanded="false" ${A({ 'aria-label': 'nav.menu' })}>
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path class="i-bars" d="M3 5.5h14M3 10h14M3 14.5h14"/><path class="i-close" d="M4.5 4.5l11 11M15.5 4.5l-11 11"/></svg>
+      </button>
     </header>
 
     <section class="chapter hero" id="home" data-shot="hero" data-mode="stand">
@@ -236,12 +306,59 @@ export function mount(root) {
         <div class="closing-inner" id="try" data-offset="-112">
           <h2 class="manifesto">${T('close.manifesto')}</h2>
           <p class="closing-text">${T('close.text')}</p>
+
+          <div class="verticals-block" id="verticals" data-offset="-96">
+            <div class="verticals-head">
+              <p class="verticals-kicker">${T('vert.kicker')}</p>
+              <h3 class="verticals-title">${T('vert.title')}</h3>
+              <p class="verticals-lede">${T('vert.lede')}</p>
+            </div>
+            <div class="verticals-grid">
+              <article class="vertical-card">
+                <span class="vertical-badge">${T('vert.1.badge')}</span>
+                <h4>${T('vert.1.title')}</h4>
+                <p class="vertical-io">${T('vert.1.io')}</p>
+                <p class="vertical-body">${T('vert.1.body')}</p>
+                <div class="vertical-actions">
+                  <a class="vertical-cta primary" href="#/simulations" data-warm="simulations">${T('vert.1.cta1')}</a>
+                  <a class="vertical-cta" href="#/delivery" data-warm="delivery">${T('vert.1.cta2')}</a>
+                </div>
+              </article>
+              <article class="vertical-card">
+                <span class="vertical-badge">${T('vert.2.badge')}</span>
+                <h4>${T('vert.2.title')}</h4>
+                <p class="vertical-io">${T('vert.2.io')}</p>
+                <p class="vertical-body">${T('vert.2.body')}</p>
+                <div class="vertical-actions">
+                  <a class="vertical-cta primary" href="#/simulations/luigi_lab4" data-warm="simulations">${T('vert.2.cta1')}</a>
+                  <a class="vertical-cta" href="#/milestones" data-warm="milestones">${T('vert.2.cta2')}</a>
+                </div>
+              </article>
+              <article class="vertical-card">
+                <span class="vertical-badge">${T('vert.3.badge')}</span>
+                <h4>${T('vert.3.title')}</h4>
+                <p class="vertical-io">${T('vert.3.io')}</p>
+                <p class="vertical-body">${T('vert.3.body')}</p>
+                <div class="vertical-actions">
+                  <a class="vertical-cta primary" href="#/assembler" data-warm="assembler">${T('vert.3.cta1')}</a>
+                  <a class="vertical-cta" href="#/simulations/factory_cell" data-warm="simulations">${T('vert.3.cta2')}</a>
+                </div>
+              </article>
+            </div>
+          </div>
+
           <nav class="tries" ${A({ 'aria-label': 'close.tries' })}>
             <a class="try" href="#/simulations" data-warm="simulations">
               <svg class="try-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 6l16 9v18l-16 9-16-9V15z"/><path d="M8 15l16 9 16-9M24 24v18"/></svg>
               <b><span class="only-wide">${T('try.sims')}</span><span class="only-narrow">${T('try.simsShort')}</span></b>
               <span class="try-sub only-narrow">${T('try.simsSub')}</span>
               <span class="try-go">${T('try.simsGo')}</span>
+            </a>
+            <a class="try" href="#/assembler" data-warm="assembler">
+              <svg class="try-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="8" width="14" height="14" rx="2"/><rect x="28" y="8" width="14" height="14" rx="2"/><rect x="17" y="28" width="14" height="14" rx="2"/><path d="M20 15h8M13 22v13h4M35 22v13h-4"/></svg>
+              <b><span class="only-wide">${T('try.assembler')}</span><span class="only-narrow">${T('try.assemblerShort')}</span></b>
+              <span class="try-sub only-narrow">${T('try.assemblerSub')}</span>
+              <span class="try-go">${T('try.assemblerGo')}</span>
             </a>
             <a class="try" href="#/live" data-warm="live">
               <svg class="try-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="14" width="28" height="20" rx="3"/><path d="M34 21l9-5v16l-9-5z"/><circle cx="20" cy="24" r="5"/></svg>
@@ -265,12 +382,41 @@ export function mount(root) {
         </div>
       </div>
       <footer class="footer">
-        <div class="foot-row">
-          <span class="wordmark big" aria-label="Tridi">${LOGO}${WORDMARK}</span>
-          <dl class="foot-specs">
-            <div><dt>${T('foot.milestones')}</dt><dd><a href="#/milestones" data-warm="milestones">${T('foot.milestonesLink')}</a></dd></div>
-            <div><dt>${T('foot.team')}</dt><dd><a href="https://www.linkedin.com/in/pastor-jimenez" target="_blank" rel="noopener">Pastor Jiménez</a> · <a href="https://www.linkedin.com/in/juanevillam" target="_blank" rel="noopener">Juan Villa</a> · <a href="https://www.linkedin.com/in/cesarmartinez-dev" target="_blank" rel="noopener">César Martínez</a> · <a href="https://www.linkedin.com/in/alehernandezt" target="_blank" rel="noopener">Ale Hernández</a></dd></div>
-          </dl>
+        <div class="foot-grid">
+          <div class="foot-brand">
+            <span class="wordmark big" aria-label="Tridi">${LOGO}${WORDMARK}</span>
+            <p class="foot-tagline">${T('foot.tagline')}</p>
+          </div>
+          <div class="foot-col">
+            <p class="foot-col-head">${T('foot.colProduct')}</p>
+            <a href="#capture">Tridi Capture</a>
+            <a href="#gym">Tridi Gym</a>
+            <a href="#policy">Tridi Policy</a>
+            <a href="#verticals">${T('nav.verticals')}</a>
+            <a href="#/simulations" data-warm="simulations">${T('nav.vert1')}</a>
+            <a href="#/simulations/luigi_lab4" data-warm="simulations">${T('nav.vert2')}</a>
+            <a href="#/assembler" data-warm="assembler">${T('nav.vert3')}</a>
+          </div>
+          <div class="foot-col">
+            <p class="foot-col-head">${T('foot.colStudio')}</p>
+            <a href="#/simulations" data-warm="simulations">${T('nav.simulations')}</a>
+            <a href="#/assembler" data-warm="assembler">${T('nav.assembler')}</a>
+            <a href="#/live" data-warm="live">${T('nav.live')}</a>
+            <a href="#/upload" data-warm="upload">${T('nav.upload')}</a>
+            <a href="#/delivery" data-warm="delivery">${T('nav.delivery')}</a>
+          </div>
+          <div class="foot-col">
+            <p class="foot-col-head">${T('foot.milestones')}</p>
+            <a class="foot-accent" href="#/milestones" data-warm="milestones">${T('foot.milestonesLink')}</a>
+            <a class="foot-accent" href="#/assembler" data-warm="assembler">${T('foot.zakaLink')}</a>
+            <p class="foot-col-head foot-team-head">${T('foot.team')}</p>
+            <div class="foot-team-links">
+              <a href="https://www.linkedin.com/in/pastor-jimenez" target="_blank" rel="noopener">Pastor Jiménez</a>
+              <a href="https://www.linkedin.com/in/juanevillam" target="_blank" rel="noopener">Juan Villa</a>
+              <a href="https://www.linkedin.com/in/cesarmartinez-dev" target="_blank" rel="noopener">César Martínez</a>
+              <a href="https://www.linkedin.com/in/alehernandezt" target="_blank" rel="noopener">Ale Hernández</a>
+            </div>
+          </div>
         </div>
       </footer>
     </section>
@@ -284,6 +430,53 @@ export function mount(root) {
     target.addEventListener(type, fn, options);
     cleanups.push(() => target.removeEventListener(type, fn, options));
   };
+
+  // ---- Unified Navbar Dropdowns & Mobile Accordion ----
+  const topbarEl = $('.topbar');
+  const navDrops = $$('.nav-drop');
+  const mobileBtn = $('.nav-mobile-btn');
+  const closeAllMenus = () => {
+    for (const drop of navDrops) {
+      drop.classList.remove('open');
+      drop.querySelector('.nav-drop-btn')?.setAttribute('aria-expanded', 'false');
+    }
+    if (topbarEl) topbarEl.classList.remove('menu-open');
+    if (mobileBtn) mobileBtn.setAttribute('aria-expanded', 'false');
+  };
+  for (const drop of navDrops) {
+    const btn = drop.querySelector('.nav-drop-btn');
+    if (!btn) continue;
+    on(btn, 'click', (e) => {
+      e.stopPropagation();
+      const willOpen = !drop.classList.contains('open');
+      for (const other of navDrops) {
+        other.classList.remove('open');
+        other.querySelector('.nav-drop-btn')?.setAttribute('aria-expanded', 'false');
+      }
+      if (willOpen) {
+        drop.classList.add('open');
+        btn.setAttribute('aria-expanded', 'true');
+      }
+    });
+  }
+  if (mobileBtn && topbarEl) {
+    on(mobileBtn, 'click', (e) => {
+      e.stopPropagation();
+      const willOpen = !topbarEl.classList.contains('menu-open');
+      topbarEl.classList.toggle('menu-open', willOpen);
+      mobileBtn.setAttribute('aria-expanded', String(willOpen));
+      if (willOpen && !navDrops.some((d) => d.classList.contains('open')) && navDrops[0]) {
+        navDrops[0].classList.add('open');
+        navDrops[0].querySelector('.nav-drop-btn')?.setAttribute('aria-expanded', 'true');
+      }
+    });
+  }
+  on(document, 'click', (e) => {
+    if (!e.target.closest?.('.topbar')) closeAllMenus();
+  });
+  on(window, 'keydown', (e) => {
+    if (e.key === 'Escape') closeAllMenus();
+  });
 
   // ---- Smooth scroll, and GSAP's scroll triggers driven by it ----
   // gymGate (Gym, below) sees every wheel step first, so a fast scroll stops at each stage.
@@ -316,9 +509,13 @@ export function mount(root) {
     link.addEventListener('pointerenter', warm, { once: true });
     link.addEventListener('focus', warm, { once: true });
   }
+  for (const link of $$('.topbar a')) {
+    on(link, 'click', () => closeAllMenus());
+  }
   for (const link of $$('a[href^="#"]:not([href^="#/"])')) {
     on(link, 'click', (event) => {
       event.preventDefault();
+      closeAllMenus();
       const target = root.querySelector(link.getAttribute('href'));
       if (target) scrollTo(target);
     });
