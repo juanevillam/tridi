@@ -149,10 +149,10 @@ export function mount(root) {
   let sampleId = '01_batch_mixer.dxf';
   let dxfText = PID_SAMPLE_DXFS[sampleId].dxf;
   let processGoal = PID_SAMPLE_DXFS[sampleId].processGoal[lang()] ?? PID_SAMPLE_DXFS[sampleId].processGoal.es;
-  let pidTab = 'p1'; // 'p1' | 'p2' | 'p3'
+  let pidTab = 'p1'; // 'p1' | 'p1io' | 'p3' | 'p2'
   let plcDialect = 'scl'; // 'scl' | 'l5k'
   let cadPreset = 'luigi_lab4';
-  let cadTab = 'xml'; // 'xml' | 'ino'
+  let cadTab = 'audit'; // 'audit' | 'ino' | 'xml'
   let inoText = LAB4_DEFAULT_INO;
   let stlNames = ['1_chasis_robot.stl', '5_rin_x2.stl', '6_llanta_x2_TPU.stl', '7_cabeza_sensor_servo.stl'];
   let pinOverride = null;
@@ -170,7 +170,13 @@ export function mount(root) {
     <div class="asm-page">
       <div class="asm-shell">
         <header class="asm-top">
-          <a class="asm-brand" href="#/">${LOGO}${WORDMARK}</a>
+          <div class="asm-top-left">
+            <a class="asm-brand" href="#/">${LOGO}${WORDMARK}</a>
+            <div class="asm-modes" role="tablist" ${A({ 'aria-label': 'modeAria' })}>
+              <button type="button" class="asm-mode-btn" data-mode="pid" role="tab" aria-selected="true">${T('modePid')}</button>
+              <button type="button" class="asm-mode-btn" data-mode="cad" role="tab" aria-selected="false">${T('modeCad')}</button>
+            </div>
+          </div>
           <div class="asm-nav">
             <a class="asm-pill" href="#/">${T('backHome')}</a>
             <a class="asm-pill" href="#/simulations">${T('goSims')}</a>
@@ -179,21 +185,13 @@ export function mount(root) {
           </div>
         </header>
 
-        <section class="asm-hero">
-          <p class="asm-kicker">${T('kicker')}</p>
-          <h1>${T('title')}</h1>
-          <p class="asm-lede">${T('lede')}</p>
-        </section>
-
-        <div class="asm-modes" role="tablist" ${A({ 'aria-label': 'modeAria' })}>
-          <button type="button" class="asm-mode-btn" data-mode="pid" role="tab" aria-selected="true">${T('modePid')}</button>
-          <button type="button" class="asm-mode-btn" data-mode="cad" role="tab" aria-selected="false">${T('modeCad')}</button>
-        </div>
+        <div class="asm-flow-bar" id="asm-flow-bar"></div>
 
         <div class="asm-grid" id="asm-content"></div>
       </div>
     </div>`;
 
+  const flowBarEl = root.querySelector('#asm-flow-bar');
   const contentEl = root.querySelector('#asm-content');
   const cleanups = [];
   const on = (target, type, fn, opts) => {
@@ -209,6 +207,59 @@ export function mount(root) {
       }
       render();
     });
+  }
+
+  function renderCadSchematicSvg(activePinout, pinAudit) {
+    const enaPin = activePinout.ENA ?? 5;
+    const enbPin = activePinout.ENB ?? 6;
+    const servoPin = activePinout.SERVO ?? 9;
+    const echoPin = activePinout.ECHO ?? 3;
+    const isConflict = !pinAudit.valid;
+    const pwmColor = isConflict ? '#ff6b6b' : '#c8ff2e';
+    return `
+      <svg class="asm-pid-svg" viewBox="0 0 620 220" role="img" aria-label="Hardware & Pinout Schematic">
+        <!-- Wires from MCU to peripherals -->
+        <path d="M210 64 H135" stroke="${pwmColor}" stroke-width="2.4" fill="none" stroke-dasharray="${isConflict ? '4 3' : 'none'}"/>
+        <path d="M210 106 H135" stroke="#32d583" stroke-width="2.2" fill="none"/>
+        <path d="M210 154 H135" stroke="#38bdf8" stroke-width="2.2" fill="none"/>
+        <path d="M410 74 H485" stroke="#c8ff2e" stroke-width="2.2" fill="none"/>
+        <path d="M410 142 H485" stroke="#a855f7" stroke-width="2.2" fill="none"/>
+
+        <!-- Left: L298N Dual H-Bridge + TT Gearmotors -->
+        <rect x="20" y="34" width="115" height="92" rx="8" fill="#121417" stroke="${pwmColor}" stroke-width="1.8"/>
+        <text x="77" y="56" text-anchor="middle" font-family="Geist Mono, monospace" font-size="11" font-weight="700" fill="#f5f5f5">L298N DRIVER</text>
+        <text x="77" y="74" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="${pwmColor}">ENA: D${esc(enaPin)} ${isConflict ? '⚠ TIMER1' : '(Timer0)'}</text>
+        <text x="77" y="90" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="#32d583">ENB: D${esc(enbPin)} (Timer0)</text>
+        <text x="77" y="108" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9" fill="#9ea6b5">Deadzone PWM ≥ 115</text>
+
+        <!-- Left bottom: Dual TT Gearmotors -->
+        <rect x="20" y="138" width="115" height="52" rx="8" fill="#121417" stroke="#38bdf8" stroke-width="1.5"/>
+        <text x="77" y="160" text-anchor="middle" font-family="Geist Mono, monospace" font-size="10.5" font-weight="700" fill="#f5f5f5">2× TT 1:48 MOTORS</text>
+        <text x="77" y="176" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9" fill="#38bdf8">TPU Tires · 200 RPM</text>
+
+        <!-- Center: Arduino UNO (ATmega328P) -->
+        <rect x="210" y="28" width="200" height="164" rx="10" fill="#14181f" stroke="${isConflict ? '#ff6b6b' : '#8e96a4'}" stroke-width="2"/>
+        <text x="310" y="54" text-anchor="middle" font-family="Geist Mono, monospace" font-size="12.5" font-weight="700" fill="#f5f5f5">ARDUINO UNO (ATmega328P)</text>
+        <text x="310" y="72" text-anchor="middle" font-family="Geist Mono, monospace" font-size="10" fill="#c8ff2e">50 Hz Non-Blocking C99 Loop</text>
+        <rect x="228" y="86" width="164" height="42" rx="6" fill="#0d0f13" stroke="#262a33"/>
+        <text x="310" y="104" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="#f5f5f5">Timer0 (D5/D6): 976 Hz PWM</text>
+        <text x="310" y="120" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="${pwmColor}">Timer1 (D9/D10): &lt;Servo.h&gt; Lock</text>
+        <rect x="228" y="138" width="164" height="38" rx="6" fill="#0d0f13" stroke="#262a33"/>
+        <text x="310" y="155" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="#32d583">ISR INT1 (D${esc(echoPin)}): 0 ms block</text>
+        <text x="310" y="169" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9" fill="#9ea6b5">SRAM: 461 B / 2048 B (22.5%)</text>
+
+        <!-- Right top: SG90 Neck Radar Servo -->
+        <rect x="485" y="42" width="115" height="64" rx="8" fill="#121417" stroke="#c8ff2e" stroke-width="1.6"/>
+        <text x="542" y="65" text-anchor="middle" font-family="Geist Mono, monospace" font-size="10.5" font-weight="700" fill="#f5f5f5">SG90 SERVO</text>
+        <text x="542" y="81" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="#c8ff2e">PWM: D${esc(servoPin)} (±65°)</text>
+        <text x="542" y="95" text-anchor="middle" font-family="Geist Mono, monospace" font-size="8.5" fill="#9ea6b5">Active Neck Sweep</text>
+
+        <!-- Right bottom: HC-SR04 + APDS-9960 -->
+        <rect x="485" y="118" width="115" height="68" rx="8" fill="#121417" stroke="#a855f7" stroke-width="1.6"/>
+        <text x="542" y="140" text-anchor="middle" font-family="Geist Mono, monospace" font-size="10.5" font-weight="700" fill="#f5f5f5">HC-SR04 + I2C</text>
+        <text x="542" y="156" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="#a855f7">TRIG D4 · ECHO D${esc(echoPin)}</text>
+        <text x="542" y="172" text-anchor="middle" font-family="Geist Mono, monospace" font-size="8.5" fill="#9ea6b5">APDS-9960 (0x9E)</text>
+      </svg>`;
   }
 
   function renderPidFlowSvg(dag) {
@@ -280,52 +331,43 @@ export function mount(root) {
           ? 'HOLD · MOTOR_OL_FAULT (CE-02)'
           : stateNames[simState.stepIdx];
 
+      flowBarEl.innerHTML = `
+        <div class="asm-step-item">
+          <span class="asm-step-num">01</span>
+          <div><b>${T('step1Pid')}</b><span>${T('step1PidSub')}</span></div>
+        </div>
+        <span class="asm-step-arrow" aria-hidden="true">→</span>
+        <div class="asm-step-item">
+          <span class="asm-step-num">02</span>
+          <div><b>${T('step2Pid')}</b><span>${T('step2PidSub')}</span></div>
+        </div>
+        <span class="asm-step-arrow" aria-hidden="true">→</span>
+        <div class="asm-step-item">
+          <span class="asm-step-num">03</span>
+          <div><b>${T('step3Pid')}</b><span>${T('step3PidSub')}</span></div>
+        </div>`;
+
       contentEl.innerHTML = `
         <div class="asm-col">
           <section class="asm-win">
             <div class="asm-bar"><span>${T('pidSourceBar')}</span><b>${dag.nodes.length} TAGS · ${dag.ioSummary.totalIoPoints} I/O</b></div>
             <div class="asm-body">
-              <div class="asm-field">
-                <label class="asm-label" for="asm-sample-select">${T('pidPickSample')}</label>
-                <div class="asm-row">
-                  <select id="asm-sample-select" class="asm-select" style="flex:1">
-                    ${Object.values(PID_SAMPLE_DXFS)
-                      .map(
-                        (s) =>
-                          `<option value="${esc(s.id)}" ${s.id === sampleId ? 'selected' : ''}>${esc(s.title[lang()] ?? s.title.es)}</option>`,
-                      )
-                      .join('')}
-                  </select>
-                  <label class="asm-pill" style="cursor:pointer">
-                    <span>${T('pidUploadBtn')}</span>
-                    <input type="file" id="asm-dxf-file" accept=".dxf,.txt" hidden />
-                  </label>
-                </div>
+              <div class="asm-row">
+                <select id="asm-sample-select" class="asm-select" style="flex:1">
+                  ${Object.values(PID_SAMPLE_DXFS)
+                    .map(
+                      (s) =>
+                        `<option value="${esc(s.id)}" ${s.id === sampleId ? 'selected' : ''}>${esc(s.title[lang()] ?? s.title.es)}</option>`,
+                    )
+                    .join('')}
+                </select>
+                <label class="asm-pill" style="cursor:pointer">
+                  <span>${T('pidUploadBtn')}</span>
+                  <input type="file" id="asm-dxf-file" accept=".dxf,.txt" hidden />
+                </label>
+                <a class="asm-pill signal" href="#/simulations/factory_cell">${T('pidOpen3dSim')}</a>
               </div>
-              <div class="asm-field">
-                <label class="asm-label" for="asm-goal-input">${T('pidGoalLabel')}</label>
-                <input id="asm-goal-input" class="asm-input" type="text" value="${esc(processGoal)}" />
-              </div>
-              <div class="asm-badges">
-                <span class="asm-badge ok">${T('pidVerifiedBadge')}</span>
-                <span class="asm-badge">DI: ${dag.ioSummary.DI}</span>
-                <span class="asm-badge">DO: ${dag.ioSummary.DO}</span>
-                <span class="asm-badge">AI (4-20 mA): ${dag.ioSummary.AI}</span>
-                <span class="asm-badge">Pipes: ${dag.edges.length}</span>
-              </div>
-              <details>
-                <summary class="asm-label" style="cursor:pointer">${T('pidRawToggle')}</summary>
-                <div class="asm-field" style="margin-top:8px">
-                  <textarea id="asm-dxf-raw" class="asm-textarea" rows="6">${esc(dxfText)}</textarea>
-                  <button type="button" class="asm-pill signal" id="asm-reparse-btn">${T('pidReparseBtn')}</button>
-                </div>
-              </details>
-            </div>
-          </section>
 
-          <section class="asm-win">
-            <div class="asm-bar"><span>${T('pidTwinBar')}</span><b>ISA-88 / PACKML</b></div>
-            <div class="asm-body">
               <div class="asm-pid-stage">
                 <div class="asm-pid-hud">
                   <div class="asm-hud-card">
@@ -346,8 +388,15 @@ export function mount(root) {
                   <button type="button" class="asm-pill" id="asm-fault-lsh">${T('pidFaultLsh')}</button>
                   <button type="button" class="asm-pill" id="asm-fault-motor">${T('pidFaultMotor')}</button>
                   <button type="button" class="asm-pill" id="asm-fault-reset">${T('pidFaultReset')}</button>
-                  <a class="asm-pill signal" href="#/simulations/factory_cell">${T('pidOpen3dSim')}</a>
                 </div>
+              </div>
+
+              <div class="asm-badges">
+                <span class="asm-badge ok">${T('pidVerifiedBadge')}</span>
+                <span class="asm-badge">DI: ${dag.ioSummary.DI}</span>
+                <span class="asm-badge">DO: ${dag.ioSummary.DO}</span>
+                <span class="asm-badge">AI (4-20 mA): ${dag.ioSummary.AI}</span>
+                <span class="asm-badge">Pipes: ${dag.edges.length}</span>
               </div>
             </div>
           </section>
@@ -358,8 +407,9 @@ export function mount(root) {
             <div class="asm-bar"><span>${T('pidOutBar')}</span><b>${esc(dag.projectId)}</b></div>
             <div class="asm-tabs" role="tablist">
               <button type="button" class="asm-tab" data-ptab="p1" aria-selected="${pidTab === 'p1'}">${T('tabP1')}</button>
-              <button type="button" class="asm-tab" data-ptab="p2" aria-selected="${pidTab === 'p2'}">${T('tabP2')}</button>
+              <button type="button" class="asm-tab" data-ptab="p1io" aria-selected="${pidTab === 'p1io'}">${T('tabP1Io')} (${dag.ioSummary.totalIoPoints})</button>
               <button type="button" class="asm-tab" data-ptab="p3" aria-selected="${pidTab === 'p3'}">${T('tabP3')}</button>
+              <button type="button" class="asm-tab" data-ptab="p2" aria-selected="${pidTab === 'p2'}">${T('tabP2')}</button>
             </div>
             <div class="asm-body">
               ${
@@ -369,41 +419,6 @@ export function mount(root) {
                   <button type="button" class="asm-pill signal" id="asm-dl-fds">${T('dlFdsBtn')}</button>
                   <button type="button" class="asm-pill" id="asm-copy-fds">${T('copyBtn')}</button>
                 </div>
-                <h3 class="asm-sec-title">${T('secEquip')}</h3>
-                <div class="asm-table-wrap">
-                  <table class="asm-table">
-                    <thead><tr><th>${T('colTag')}</th><th>${T('colFunc')}</th><th>${T('colBlock')}</th><th>${T('colFailSafe')}</th></tr></thead>
-                    <tbody>
-                      ${dag.nodes
-                        .map(
-                          (n) =>
-                            `<tr><td><code>${esc(n.tag)}</code></td><td>${esc(lang() === 'es' ? n.isaNameEs : n.isaName)}</td><td><code>${esc(n.plcBlock)}</code></td><td>${esc(n.failSafe)}</td></tr>`,
-                        )
-                        .join('')}
-                    </tbody>
-                  </table>
-                </div>
-
-                <h3 class="asm-sec-title">${T('secIo')}</h3>
-                <div class="asm-table-wrap">
-                  <table class="asm-table">
-                    <thead><tr><th>${T('colPlcTag')}</th><th>${T('colTag')}</th><th>${T('colIoType')}</th><th>${T('colAddr')}</th><th>${T('colSignal')}</th></tr></thead>
-                    <tbody>
-                      ${dag.ioSchedule
-                        .map(
-                          (io) =>
-                            `<tr><td><code>${esc(io.plcTag)}</code></td><td><code>${esc(io.isaTag)}</code></td><td><b>${esc(io.ioType)}</b></td><td><code>${esc(io.address)}</code></td><td>${esc(io.signal)}</td></tr>`,
-                        )
-                        .join('')}
-                    </tbody>
-                  </table>
-                </div>
-
-                <h3 class="asm-sec-title">${T('secNarrative')}</h3>
-                <ul class="asm-narrative-list">
-                  ${docs.controlNarrative.map((s) => `<li><b>${esc(s.step)} — ${esc(s.title)}</b><p>${esc(s.logic)}</p></li>`).join('')}
-                </ul>
-
                 <h3 class="asm-sec-title">${T('secMatrix')}</h3>
                 <div class="asm-table-wrap">
                   <table class="asm-table">
@@ -417,15 +432,39 @@ export function mount(root) {
                         .join('')}
                     </tbody>
                   </table>
-                </div>`
-                  : pidTab === 'p2'
+                </div>
+                <h3 class="asm-sec-title">${T('secNarrative')}</h3>
+                <ul class="asm-narrative-list">
+                  ${docs.controlNarrative.map((s) => `<li><b>${esc(s.step)} — ${esc(s.title)}</b><p>${esc(s.logic)}</p></li>`).join('')}
+                </ul>`
+                  : pidTab === 'p1io'
                     ? `
+                <div class="asm-row" style="justify-content:space-between">
+                  <button type="button" class="asm-pill signal" id="asm-dl-fds">${T('dlFdsBtn')}</button>
+                  <button type="button" class="asm-pill" id="asm-copy-fds">${T('copyBtn')}</button>
+                </div>
+                <h3 class="asm-sec-title">${T('secIo')}</h3>
+                <div class="asm-table-wrap">
+                  <table class="asm-table">
+                    <thead><tr><th>${T('colPlcTag')}</th><th>${T('colTag')}</th><th>${T('colIoType')}</th><th>${T('colAddr')}</th><th>${T('colSignal')}</th></tr></thead>
+                    <tbody>
+                      ${dag.ioSchedule
+                        .map(
+                          (io) =>
+                            `<tr><td><code>${esc(io.plcTag)}</code></td><td><code>${esc(io.isaTag)}</code></td><td><b>${esc(io.ioType)}</b></td><td><code>${esc(io.address)}</code></td><td>${esc(io.signal)}</td></tr>`,
+                        )
+                        .join('')}
+                    </tbody>
+                  </table>
+                </div>`
+                    : pidTab === 'p2'
+                      ? `
                 <div class="asm-row" style="justify-content:space-between">
                   <button type="button" class="asm-pill signal" id="asm-dl-pid-xml">${T('dlXmlBtn')}</button>
                   <a class="asm-pill signal" href="#/simulations/factory_cell">${T('pidOpen3dSim')}</a>
                 </div>
                 <pre class="asm-code"><code>${esc(pid3d.sceneXml)}</code></pre>`
-                    : `
+                      : `
                 <div class="asm-row" style="justify-content:space-between">
                   <div class="asm-row">
                     <button type="button" class="asm-tab" data-dialect="scl" aria-selected="${plcDialect === 'scl'}">${T('plcSclTab')}</button>
@@ -539,85 +578,59 @@ export function mount(root) {
     const compiledMjcf = generateMujocoXml({ preset: cadPreset, modelName: `${cadPreset}_assembled` });
     const catalog = listComponents();
 
+    flowBarEl.innerHTML = `
+      <div class="asm-step-item">
+        <span class="asm-step-num">01</span>
+        <div><b>${T('step1Cad')}</b><span>${T('step1CadSub')}</span></div>
+      </div>
+      <span class="asm-step-arrow" aria-hidden="true">→</span>
+      <div class="asm-step-item">
+        <span class="asm-step-num">02</span>
+        <div><b>${T('step2Cad')}</b><span>${T('step2CadSub')}</span></div>
+      </div>
+      <span class="asm-step-arrow" aria-hidden="true">→</span>
+      <div class="asm-step-item">
+        <span class="asm-step-num">03</span>
+        <div><b>${T('step3Cad')}</b><span>${T('step3CadSub')}</span></div>
+      </div>`;
+
     contentEl.innerHTML = `
       <div class="asm-col">
         <section class="asm-win">
-          <div class="asm-bar"><span>${T('cadSourceBar')}</span><b>${meshRoles.length} STL · ${Object.keys(activePinout).length} PINS</b></div>
+          <div class="asm-bar"><span>${T('cadSourceBar')}</span><b>${meshRoles.length} STL · ${pinAudit.valid ? 'PINOUT OK' : 'CONFLICT'}</b></div>
           <div class="asm-body">
-            <div class="asm-field">
-              <label class="asm-label" for="asm-cad-preset">${T('cadPresetLabel')}</label>
+            <div class="asm-row">
+              <select id="asm-cad-preset" class="asm-select" style="flex:1">
+                <option value="luigi_lab4" ${cadPreset === 'luigi_lab4' ? 'selected' : ''}>Luigi Lab IV — Rover Autónomo (Arduino UNO + SG90 + HC-SR04)</option>
+                <option value="luigi_lab3" ${cadPreset === 'luigi_lab3' ? 'selected' : ''}>Luigi Lab III — Rover Explorador (Arduino UNO + HC-SR04 + APDS-9960)</option>
+              </select>
+              <label class="asm-pill" style="cursor:pointer">
+                <span>${T('cadUploadStl')}</span>
+                <input type="file" id="asm-stl-files" accept=".stl" multiple hidden />
+              </label>
+              <label class="asm-pill" style="cursor:pointer">
+                <span>${T('cadUploadIno')}</span>
+                <input type="file" id="asm-ino-file" accept=".ino,.c,.cpp,.txt" hidden />
+              </label>
+              <a class="asm-pill signal" href="#/simulations/luigi_lab4">${T('cadOpenRoverSim')}</a>
+            </div>
+
+            <div class="asm-pid-stage">
+              <div class="asm-badges">
+                <span class="asm-badge ${pinAudit.valid ? 'ok' : 'err'}">${
+                  pinAudit.valid ? `✓ Pinout Valid (${pinAudit.interruptMode})` : `✗ ${pinAudit.errors.join(' | ')}`
+                }</span>
+                ${parsedIno.bottlenecks.map((b) => `<span class="asm-badge err">⚠ ${esc(b.type)}: ${esc(b.fix)}</span>`).join('')}
+              </div>
+              <div>${renderCadSchematicSvg(activePinout, pinAudit)}</div>
               <div class="asm-row">
-                <select id="asm-cad-preset" class="asm-select" style="flex:1">
-                  <option value="luigi_lab4" ${cadPreset === 'luigi_lab4' ? 'selected' : ''}>Luigi Lab IV — Rover Autónomo (Arduino UNO + SG90 + HC-SR04)</option>
-                  <option value="luigi_lab3" ${cadPreset === 'luigi_lab3' ? 'selected' : ''}>Luigi Lab III — Rover Explorador (Arduino UNO + HC-SR04 + APDS-9960)</option>
-                </select>
-                <label class="asm-pill" style="cursor:pointer">
-                  <span>${T('cadUploadStl')}</span>
-                  <input type="file" id="asm-stl-files" accept=".stl" multiple hidden />
-                </label>
-                <label class="asm-pill" style="cursor:pointer">
-                  <span>${T('cadUploadIno')}</span>
-                  <input type="file" id="asm-ino-file" accept=".ino,.c,.cpp,.txt" hidden />
-                </label>
+                <button type="button" class="asm-pill" id="asm-test-conflict">${T('cadTestConflict')}</button>
+                <button type="button" class="asm-pill signal" id="asm-fix-conflict">${T('cadFixConflict')}</button>
               </div>
             </div>
+
             <div class="asm-badges">
               ${meshRoles.map((m) => `<span class="asm-badge ok">${esc(m.file)} → ${esc(m.role)}</span>`).join('')}
-            </div>
-          </div>
-        </section>
-
-        <section class="asm-win">
-          <div class="asm-bar"><span>${T('cadAuditBar')}</span><b>${pinAudit.valid ? 'PINOUT OK' : 'CONFLICT'}</b></div>
-          <div class="asm-body">
-            <div class="asm-badges">
-              <span class="asm-badge ${pinAudit.valid ? 'ok' : 'err'}">${
-                pinAudit.valid ? `✓ Pinout Valid (${pinAudit.interruptMode})` : `✗ ${pinAudit.errors.join(' | ')}`
-              }</span>
-              ${parsedIno.bottlenecks.map((b) => `<span class="asm-badge err">⚠ ${esc(b.type)}: ${esc(b.fix)}</span>`).join('')}
-            </div>
-            <div class="asm-row">
-              <button type="button" class="asm-pill" id="asm-test-conflict">${T('cadTestConflict')}</button>
-              <button type="button" class="asm-pill signal" id="asm-fix-conflict">${T('cadFixConflict')}</button>
-            </div>
-            <div class="asm-table-wrap">
-              <table class="asm-table">
-                <thead><tr><th>Signal</th><th>MCU Pin</th><th>Hardware Bus / Timer</th></tr></thead>
-                <tbody>
-                  ${Object.entries(activePinout)
-                    .map(
-                      ([sig, pin]) =>
-                        `<tr><td><code>${esc(sig)}</code></td><td><b>D${esc(pin)}</b></td><td>${
-                          pin === 5 || pin === 6
-                            ? 'Timer0 PWM (976 Hz)'
-                            : pin === 9 || pin === 10
-                              ? 'Timer1 (16-bit Servo / PWM)'
-                              : pin === 2 || pin === 3
-                                ? 'Hardware External ISR (INT0/INT1)'
-                                : 'Digital GPIO'
-                        }</td></tr>`,
-                    )
-                    .join('')}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <section class="asm-win">
-          <div class="asm-bar"><span>${T('cadCatalogBar')}</span><b>${catalog.length} PARTS</b></div>
-          <div class="asm-body">
-            <div class="asm-comp-grid">
-              ${catalog
-                .slice(0, 8)
-                .map(
-                  (c) => `
-                <div class="asm-comp-card">
-                  <b>${esc(c.name)}</b>
-                  <span><code>${esc(c.id)}</code> · ${esc(c.category)}</span>
-                </div>`,
-                )
-                .join('')}
             </div>
           </div>
         </section>
@@ -627,19 +640,60 @@ export function mount(root) {
         <section class="asm-win">
           <div class="asm-bar"><span>${T('cadOutBar')}</span><b>${esc(cadPreset.toUpperCase())}</b></div>
           <div class="asm-tabs" role="tablist">
-            <button type="button" class="asm-tab" data-ctab="xml" aria-selected="${cadTab === 'xml'}">${T('cadTabXml')}</button>
+            <button type="button" class="asm-tab" data-ctab="audit" aria-selected="${cadTab === 'audit'}">${T('cadTabAudit')}</button>
             <button type="button" class="asm-tab" data-ctab="ino" aria-selected="${cadTab === 'ino'}">${T('cadTabIno')}</button>
+            <button type="button" class="asm-tab" data-ctab="xml" aria-selected="${cadTab === 'xml'}">${T('cadTabXml')}</button>
           </div>
           <div class="asm-body">
-            <div class="asm-row" style="justify-content:space-between">
-              ${
-                cadTab === 'xml'
-                  ? `<button type="button" class="asm-pill signal" id="asm-dl-cad-xml">${T('dlXmlBtn')}</button>`
-                  : `<button type="button" class="asm-pill signal" id="asm-dl-cad-ino">${T('cadDlInoBtn')}</button>`
-              }
-              <a class="asm-pill signal" href="#/simulations/luigi_lab4">${T('cadOpenRoverSim')}</a>
-            </div>
-            <pre class="asm-code"><code>${esc(cadTab === 'xml' ? compiledMjcf.robotXml : CALIBRATED_LAB4_C99)}</code></pre>
+            ${
+              cadTab === 'audit'
+                ? `
+              <h3 class="asm-sec-title">${T('cadAuditBar')}</h3>
+              <div class="asm-table-wrap">
+                <table class="asm-table">
+                  <thead><tr><th>Signal</th><th>MCU Pin</th><th>Hardware Bus / Timer</th></tr></thead>
+                  <tbody>
+                    ${Object.entries(activePinout)
+                      .map(
+                        ([sig, pin]) =>
+                          `<tr><td><code>${esc(sig)}</code></td><td><b>D${esc(pin)}</b></td><td>${
+                            pin === 5 || pin === 6
+                              ? 'Timer0 PWM (976 Hz)'
+                              : pin === 9 || pin === 10
+                                ? 'Timer1 (16-bit Servo / PWM)'
+                                : pin === 2 || pin === 3
+                                  ? 'Hardware External ISR (INT0/INT1)'
+                                  : 'Digital GPIO'
+                          }</td></tr>`,
+                      )
+                      .join('')}
+                  </tbody>
+                </table>
+              </div>
+              <h3 class="asm-sec-title">${T('cadCatalogBar')} (${catalog.length})</h3>
+              <div class="asm-comp-grid">
+                ${catalog
+                  .slice(0, 6)
+                  .map(
+                    (c) => `
+                  <div class="asm-comp-card">
+                    <b>${esc(c.name)}</b>
+                    <span><code>${esc(c.id)}</code> · ${esc(c.category)}</span>
+                  </div>`,
+                  )
+                  .join('')}
+              </div>`
+                : `
+              <div class="asm-row" style="justify-content:space-between">
+                ${
+                  cadTab === 'xml'
+                    ? `<button type="button" class="asm-pill signal" id="asm-dl-cad-xml">${T('dlXmlBtn')}</button>`
+                    : `<button type="button" class="asm-pill signal" id="asm-dl-cad-ino">${T('cadDlInoBtn')}</button>`
+                }
+                <a class="asm-pill signal" href="#/simulations/luigi_lab4">${T('cadOpenRoverSim')}</a>
+              </div>
+              <pre class="asm-code"><code>${esc(cadTab === 'xml' ? compiledMjcf.robotXml : CALIBRATED_LAB4_C99)}</code></pre>`
+            }
           </div>
         </section>
       </div>`;

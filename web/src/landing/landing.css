@@ -472,6 +472,7 @@ html.is-landing.lenis body {
 
 .nav-drop-btn:hover,
 .nav-drop-btn:focus-visible,
+.nav-drop:hover .nav-drop-btn,
 .nav-drop.open .nav-drop-btn,
 .topnav > .nav-direct:hover,
 .topnav > .nav-direct:focus-visible {
@@ -479,6 +480,7 @@ html.is-landing.lenis body {
   background: rgb(241 243 238 / 0.06);
 }
 
+.nav-drop:hover:not(.dismissed) .nav-drop-btn,
 .nav-drop.open .nav-drop-btn {
   border-color: var(--line);
   color: var(--signal);
@@ -488,9 +490,10 @@ html.is-landing.lenis body {
   width: 11px;
   height: 11px;
   opacity: 0.7;
-  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.26s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
 }
 
+.nav-drop:hover:not(.dismissed) .nav-chev,
 .nav-drop.open .nav-chev {
   transform: rotate(180deg);
   opacity: 1;
@@ -503,7 +506,7 @@ html.is-landing.lenis body {
   z-index: 40;
   display: grid;
   gap: 4px;
-  width: 340px;
+  width: 320px;
   padding: 12px;
   border: 1px solid var(--line-strong);
   border-radius: var(--r-2);
@@ -514,27 +517,34 @@ html.is-landing.lenis body {
     0 24px 48px -12px rgb(0 0 0 / 0.88);
   opacity: 0;
   visibility: hidden;
-  transform: translateY(-6px) scale(0.985);
+  transform: translateY(-8px) scale(0.975);
   transform-origin: top right;
   pointer-events: none;
   transition:
-    opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
-    visibility 0.2s;
+    opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.26s cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0.24s;
 }
 
-.nav-drop-panel.nav-drop-wide {
-  right: -120px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  width: 620px;
+/* Invisible hover bridge across the 10px gap so moving the pointer from the button into the menu never drops :hover */
+.nav-drop-panel::before {
+  content: '';
+  position: absolute;
+  top: -14px;
+  left: 0;
+  right: 0;
+  height: 14px;
 }
 
-.nav-drop.open .nav-drop-panel {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0) scale(1);
-  pointer-events: auto;
+@media (min-width: 1001px) {
+  .nav-drop:hover:not(.dismissed) .nav-drop-panel,
+  .nav-drop:focus-within:not(.dismissed) .nav-drop-panel,
+  .nav-drop.open .nav-drop-panel {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
 }
 
 .nav-drop-col {
@@ -962,7 +972,7 @@ html.is-landing.lenis body {
 /* Gym: three stops of the training, one screen of scroll each */
 
 .gym {
-  height: 500svh; /* the panel sticks for four screens, one per stage (home.js gymStage, gymGate) */
+  height: 340svh; /* the panel sticks for three compact stages (home.js gymStage, gymGate) */
 }
 
 /* Gym and Policy: their words sit on a dark card, since the street behind them is busy. No
@@ -1175,7 +1185,7 @@ html.is-landing.lenis body {
 /* The three checkpoints as a segmented control. */
 .axis-stops {
   display: grid;
-  grid-template-columns: repeat(4, 1fr); /* one per GYM_STAGES entry (home.js) */
+  grid-template-columns: repeat(3, 1fr); /* one per GYM_STAGES entry (home.js) */
   gap: 4px; /* no box around the stops: the card is the only box (one card, not one inside another) */
 }
 
@@ -1271,7 +1281,7 @@ html.is-landing.lenis body {
 /* Policy: the whole robot the network moves, the numbers beside it */
 
 .policy {
-  height: 260svh;
+  height: 200svh;
 }
 
 .policy-caption {
@@ -1607,9 +1617,9 @@ html.is-landing.lenis body {
 .tries {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  align-items: start;
+  align-items: stretch;
   gap: 12px;
-  margin-top: 28px;
+  margin-top: 32px;
 }
 
 @media (max-width: 1160px) {
@@ -1618,22 +1628,27 @@ html.is-landing.lenis body {
   }
 }
 
-/* The ways to try it (and see what it delivers): real cards, each with its own icon, a short detail and a button, so
-   they read as different and clickable. */
+/* The 5 Studio tools: each card has a clear step badge, screen name, 1-line explanation, and CTA pill. */
 .try {
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  gap: var(--s-4);
-  min-height: 196px;
-  padding: var(--s-4);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 10px;
+  min-height: 210px;
+  padding: 20px;
   border: 1px solid var(--line-dark);
   border-radius: var(--r-2);
-  background: rgb(241 243 238 / 0.04);
+  background: rgb(18 20 23 / 0.72);
+  backdrop-filter: blur(12px);
   color: var(--fg);
   text-decoration: none;
   transform: translateZ(0);
   backface-visibility: hidden;
-  transition: border-color 0.16s ease, background-color 0.16s ease;
+  transition: border-color 0.22s ease, background-color 0.22s ease, transform 0.15s ease;
+}
+
+.try:active {
+  transform: scale(0.98);
 }
 
 .try:hover,
@@ -1642,34 +1657,40 @@ html.is-landing.lenis body {
   background-color: rgb(200 255 46 / 0.08);
 }
 
-.try-icon {
-  width: 40px;
-  height: 40px;
-  margin-bottom: 4px;
-  fill: none;
-  stroke: var(--signal);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-
-.try b {
-  font: 500 clamp(18px, 1.45vw, 22px)/1.15 var(--display);
-  letter-spacing: -0.02em;
-}
-
-
-.try-go {
-  justify-self: start;
-  margin-top: 6px;
-  padding: 9px 14px;
-  border: 1px solid var(--signal);
+.try-tag {
+  align-self: flex-start;
+  padding: 3px 8px;
+  border: 1px solid rgb(200 255 46 / 0.3);
   border-radius: 999px;
-  font: 500 13px/1 var(--display);
+  background: rgb(200 255 46 / 0.07);
+  font: 600 10px/1 var(--mono);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
   white-space: nowrap;
   color: var(--signal);
-  transition: background 0.25s, color 0.25s;
+}
+
+.try b {
+  font: 600 clamp(18px, 1.45vw, 21px)/1.15 var(--display);
+  letter-spacing: -0.02em;
+  color: var(--fg);
+}
+
+.try-sub {
+  font: 400 13.5px/1.45 var(--display);
+  color: var(--fg-2);
+}
+
+.try-go {
+  align-self: flex-start;
+  margin-top: auto;
+  padding: 8px 14px;
+  border: 1px solid var(--signal);
+  border-radius: 999px;
+  font: 500 12.5px/1 var(--display);
+  white-space: nowrap;
+  color: var(--signal);
+  transition: background 0.22s ease, color 0.22s ease;
 }
 
 .try:hover .try-go,
@@ -2142,16 +2163,18 @@ html.is-landing.lenis body {
   }
 
   .try {
-    grid-template-columns: 28px 1fr auto;
-    grid-template-rows: auto auto;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto auto;
     align-items: center;
-    gap: 2px var(--s-3);
+    gap: 4px var(--s-3);
     min-height: 60px;
     padding: var(--s-3) 0;
     border: 0;
     border-bottom: 1px solid var(--line);
     border-radius: 0;
     background: none;
+    backdrop-filter: none;
   }
 
   .try:hover,
@@ -2160,30 +2183,30 @@ html.is-landing.lenis body {
     background: none;
   }
 
-  .try-icon {
-    grid-row: span 2;
-    width: 28px;
-    height: 28px;
-    margin: 0;
+  .try-tag {
+    grid-column: 1;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-size: 9.5px;
+  }
+
+  .try b {
+    grid-column: 1;
+    font-size: 17px;
   }
 
   .try .try-sub {
     display: block;
-    grid-column: 2;
+    grid-column: 1;
     font-size: 13px;
     color: var(--fg-2);
   }
 
   .try-go {
-    grid-column: 3;
-    grid-row: 1 / span 2;
-  }
-
-  .try b {
-    font-size: 17px;
-  }
-
-  .try-go {
+    grid-column: 2;
+    grid-row: 1 / span 3;
+    align-self: center;
     margin: 0;
     padding: 0;
     border: 0;

@@ -48,11 +48,10 @@ const GYM_PUSH_EVERY_S = 3.2; // the Gym pushes the standing robot this often, g
 const GYM_FIRST_PUSH_S = 2.0;
 const GYM_RESTART_S = 1.6; // a fallen robot lies this long before it is stood up again
 const AFTER_PUSH_S = 5; // after a push in the hero, the robot stands this long before it is reset
-// The Gym in four stops of the real training (stand-300m, training/README.md), each a saved
+// The Gym in three stops of the real training (stand-300m, training/README.md), each a saved
 // checkpoint with what training.evaluate measured for it: seconds standing (of 20) and 250 N
 // pushes held (of 4).
 const GYM_STAGES = [
-  { level: 'g1-stand-step-0', steps: 0, label: '0', up: 1.1, pushes: 0, maxN: 0 },
   { level: 'g1-stand-step-10000000', steps: 10e6, label: '10 M', up: 11.2, pushes: 1.6, maxN: 200 },
   { level: 'g1-stand-step-100000000', steps: 100e6, label: '100 M', up: 20, pushes: 4, maxN: 350 },
   { level: 'g1-stand', steps: 300e6, label: '300 M', up: 20, pushes: 4, maxN: 500 },
@@ -118,41 +117,20 @@ export function mount(root) {
             <span>${T('nav.product')}</span>
             <svg class="nav-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
-          <div class="nav-drop-panel nav-drop-wide" role="menu">
-            <div class="nav-drop-col">
-              <p class="nav-drop-head">${T('nav.groupChapters')}</p>
-              <a class="nav-drop-item" href="#capture">
-                <b>Tridi Capture</b>
-                <span>${T('nav.captureSub')}</span>
-              </a>
-              <a class="nav-drop-item" href="#gym">
-                <b>Tridi Gym</b>
-                <span>${T('nav.gymSub')}</span>
-              </a>
-              <a class="nav-drop-item" href="#policy">
-                <b>Tridi Policy</b>
-                <span>${T('nav.policySub')}</span>
-              </a>
-              <a class="nav-drop-item" href="#verticals">
-                <b>${T('nav.verticals')}</b>
-                <span>${T('nav.verticalsSub')}</span>
-              </a>
-            </div>
-            <div class="nav-drop-col">
-              <p class="nav-drop-head">${T('nav.groupVerticals')}</p>
-              <a class="nav-drop-item" href="#/simulations" data-warm="simulations">
-                <b>${T('nav.vert1')}</b>
-                <span>${T('nav.vert1Sub')}</span>
-              </a>
-              <a class="nav-drop-item" href="#/simulations/luigi_lab4" data-warm="simulations">
-                <b>${T('nav.vert2')}</b>
-                <span>${T('nav.vert2Sub')}</span>
-              </a>
-              <a class="nav-drop-item" href="#/assembler" data-warm="assembler">
-                <b>${T('nav.vert3')}</b>
-                <span>${T('nav.vert3Sub')}</span>
-              </a>
-            </div>
+          <div class="nav-drop-panel" role="menu">
+            <p class="nav-drop-head">${T('nav.groupChapters')}</p>
+            <a class="nav-drop-item" href="#capture">
+              <b>Tridi Capture</b>
+              <span>${T('nav.captureSub')}</span>
+            </a>
+            <a class="nav-drop-item" href="#gym">
+              <b>Tridi Gym</b>
+              <span>${T('nav.gymSub')}</span>
+            </a>
+            <a class="nav-drop-item" href="#policy">
+              <b>Tridi Policy</b>
+              <span>${T('nav.policySub')}</span>
+            </a>
           </div>
         </div>
         <div class="nav-drop" data-drop="studio">
@@ -195,7 +173,6 @@ export function mount(root) {
     </header>
 
     <section class="chapter hero" id="home" data-shot="hero" data-mode="stand">
-      <div class="hero-live"><i class="live-dot"></i>${T('hero.live')}</div>
       <div class="caption hero-caption">
         <h1>${T('hero.title')}</h1>
         <p class="hero-lede"><span class="only-wide">${T('hero.lede')}</span><span class="only-narrow">${T('hero.ledeShort')}</span></p>
@@ -246,11 +223,11 @@ export function mount(root) {
             <div class="steps-axis">
               <div class="axis-track" aria-hidden="true">
                 <i class="axis-line"><i class="axis-fill"></i></i>
-                ${GYM_STAGES.map((stage) => `<i class="axis-tick" style="--at: ${(100 * stage.steps) / GYM_STAGES.at(-1).steps}%"></i>`).join('')}
+                ${GYM_STAGES.map((_, i) => `<i class="axis-tick" style="--at: ${(100 * i) / (GYM_STAGES.length - 1)}%"></i>`).join('')}
               </div>
               <div class="axis-stops" role="group" ${A({ 'aria-label': 'gym.stages' })}>
               ${GYM_STAGES.map((stage, i) => `
-                <button class="axis-stop" type="button" data-stage="${i}" style="--at: ${(100 * stage.steps) / GYM_STAGES.at(-1).steps}%">
+                <button class="axis-stop" type="button" data-stage="${i}" style="--at: ${(100 * i) / (GYM_STAGES.length - 1)}%">
                   <span class="axis-label">${T('gym.stepsAt', { n: stage.label })}</span>
                   <span class="axis-verdict">${T(`stage.${i}.verdict`)}</span>
                 </button>`).join('')}
@@ -307,75 +284,35 @@ export function mount(root) {
           <h2 class="manifesto">${T('close.manifesto')}</h2>
           <p class="closing-text">${T('close.text')}</p>
 
-          <div class="verticals-block" id="verticals" data-offset="-96">
-            <div class="verticals-head">
-              <p class="verticals-kicker">${T('vert.kicker')}</p>
-              <h3 class="verticals-title">${T('vert.title')}</h3>
-              <p class="verticals-lede">${T('vert.lede')}</p>
-            </div>
-            <div class="verticals-grid">
-              <article class="vertical-card">
-                <span class="vertical-badge">${T('vert.1.badge')}</span>
-                <h4>${T('vert.1.title')}</h4>
-                <p class="vertical-io">${T('vert.1.io')}</p>
-                <p class="vertical-body">${T('vert.1.body')}</p>
-                <div class="vertical-actions">
-                  <a class="vertical-cta primary" href="#/simulations" data-warm="simulations">${T('vert.1.cta1')}</a>
-                  <a class="vertical-cta" href="#/delivery" data-warm="delivery">${T('vert.1.cta2')}</a>
-                </div>
-              </article>
-              <article class="vertical-card">
-                <span class="vertical-badge">${T('vert.2.badge')}</span>
-                <h4>${T('vert.2.title')}</h4>
-                <p class="vertical-io">${T('vert.2.io')}</p>
-                <p class="vertical-body">${T('vert.2.body')}</p>
-                <div class="vertical-actions">
-                  <a class="vertical-cta primary" href="#/simulations/luigi_lab4" data-warm="simulations">${T('vert.2.cta1')}</a>
-                  <a class="vertical-cta" href="#/milestones" data-warm="milestones">${T('vert.2.cta2')}</a>
-                </div>
-              </article>
-              <article class="vertical-card">
-                <span class="vertical-badge">${T('vert.3.badge')}</span>
-                <h4>${T('vert.3.title')}</h4>
-                <p class="vertical-io">${T('vert.3.io')}</p>
-                <p class="vertical-body">${T('vert.3.body')}</p>
-                <div class="vertical-actions">
-                  <a class="vertical-cta primary" href="#/assembler" data-warm="assembler">${T('vert.3.cta1')}</a>
-                  <a class="vertical-cta" href="#/simulations/factory_cell" data-warm="simulations">${T('vert.3.cta2')}</a>
-                </div>
-              </article>
-            </div>
-          </div>
-
           <nav class="tries" ${A({ 'aria-label': 'close.tries' })}>
             <a class="try" href="#/simulations" data-warm="simulations">
-              <svg class="try-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 6l16 9v18l-16 9-16-9V15z"/><path d="M8 15l16 9 16-9M24 24v18"/></svg>
+              <span class="try-tag">${T('try.simsTag')}</span>
               <b><span class="only-wide">${T('try.sims')}</span><span class="only-narrow">${T('try.simsShort')}</span></b>
-              <span class="try-sub only-narrow">${T('try.simsSub')}</span>
+              <span class="try-sub">${T('try.simsSub')}</span>
               <span class="try-go">${T('try.simsGo')}</span>
             </a>
             <a class="try" href="#/assembler" data-warm="assembler">
-              <svg class="try-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="8" width="14" height="14" rx="2"/><rect x="28" y="8" width="14" height="14" rx="2"/><rect x="17" y="28" width="14" height="14" rx="2"/><path d="M20 15h8M13 22v13h4M35 22v13h-4"/></svg>
+              <span class="try-tag">${T('try.assemblerTag')}</span>
               <b><span class="only-wide">${T('try.assembler')}</span><span class="only-narrow">${T('try.assemblerShort')}</span></b>
-              <span class="try-sub only-narrow">${T('try.assemblerSub')}</span>
+              <span class="try-sub">${T('try.assemblerSub')}</span>
               <span class="try-go">${T('try.assemblerGo')}</span>
             </a>
             <a class="try" href="#/live" data-warm="live">
-              <svg class="try-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="14" width="28" height="20" rx="3"/><path d="M34 21l9-5v16l-9-5z"/><circle cx="20" cy="24" r="5"/></svg>
+              <span class="try-tag">${T('try.liveTag')}</span>
               <b><span class="only-wide">${T('try.live')}</span><span class="only-narrow">${T('try.liveShort')}</span></b>
-              <span class="try-sub only-narrow">${T('try.live')}</span>
+              <span class="try-sub">${T('try.liveSub')}</span>
               <span class="try-go">${T('try.liveGo')}</span>
             </a>
             <a class="try" href="#/upload" data-warm="upload">
-              <svg class="try-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="10" width="36" height="26" rx="3"/><path d="M24 31V17M18 22l6-6 6 6"/><path d="M14 40h20"/></svg>
+              <span class="try-tag">${T('try.uploadTag')}</span>
               <b><span class="only-wide">${T('try.upload')}</span><span class="only-narrow">${T('try.uploadShort')}</span></b>
-              <span class="try-sub only-narrow">${T('try.uploadSub')}</span>
+              <span class="try-sub">${T('try.uploadSub')}</span>
               <span class="try-go">${T('try.uploadGo')}</span>
             </a>
             <a class="try" href="#/delivery" data-warm="delivery">
-              <svg class="try-icon" viewBox="0 0 48 48" aria-hidden="true"><rect x="8" y="16" width="32" height="24" rx="2"/><path d="M8 24h32M24 6v14M18 14l6 6 6-6"/></svg>
+              <span class="try-tag">${T('try.deliveryTag')}</span>
               <b><span class="only-wide">${T('try.delivery')}</span><span class="only-narrow">${T('try.deliveryShort')}</span></b>
-              <span class="try-sub only-narrow">${T('try.deliverySub')}</span>
+              <span class="try-sub">${T('try.deliverySub')}</span>
               <span class="try-go">${T('try.deliveryGo')}</span>
             </a>
           </nav>
@@ -392,10 +329,6 @@ export function mount(root) {
             <a href="#capture">Tridi Capture</a>
             <a href="#gym">Tridi Gym</a>
             <a href="#policy">Tridi Policy</a>
-            <a href="#verticals">${T('nav.verticals')}</a>
-            <a href="#/simulations" data-warm="simulations">${T('nav.vert1')}</a>
-            <a href="#/simulations/luigi_lab4" data-warm="simulations">${T('nav.vert2')}</a>
-            <a href="#/assembler" data-warm="assembler">${T('nav.vert3')}</a>
           </div>
           <div class="foot-col">
             <p class="foot-col-head">${T('foot.colStudio')}</p>
@@ -407,8 +340,7 @@ export function mount(root) {
           </div>
           <div class="foot-col">
             <p class="foot-col-head">${T('foot.milestones')}</p>
-            <a class="foot-accent" href="#/milestones" data-warm="milestones">${T('foot.milestonesLink')}</a>
-            <a class="foot-accent" href="#/assembler" data-warm="assembler">${T('foot.zakaLink')}</a>
+            <a class="foot-accent" href="#/milestones" data-warm="milestones">${T('nav.milestones')} →</a>
             <p class="foot-col-head foot-team-head">${T('foot.team')}</p>
             <div class="foot-team-links">
               <a href="https://www.linkedin.com/in/pastor-jimenez" target="_blank" rel="noopener">Pastor Jiménez</a>
@@ -431,13 +363,14 @@ export function mount(root) {
     cleanups.push(() => target.removeEventListener(type, fn, options));
   };
 
-  // ---- Unified Navbar Dropdowns & Mobile Accordion ----
+  // ---- Unified Navbar Dropdowns (Hover on Desktop, Accordion on Mobile) ----
   const topbarEl = $('.topbar');
   const navDrops = $$('.nav-drop');
   const mobileBtn = $('.nav-mobile-btn');
   const closeAllMenus = () => {
     for (const drop of navDrops) {
       drop.classList.remove('open');
+      drop.classList.add('dismissed');
       drop.querySelector('.nav-drop-btn')?.setAttribute('aria-expanded', 'false');
     }
     if (topbarEl) topbarEl.classList.remove('menu-open');
@@ -445,9 +378,19 @@ export function mount(root) {
   };
   for (const drop of navDrops) {
     const btn = drop.querySelector('.nav-drop-btn');
+    on(drop, 'pointerenter', () => {
+      drop.classList.remove('dismissed');
+      for (const other of navDrops) {
+        if (other !== drop) {
+          other.classList.remove('open');
+          other.querySelector('.nav-drop-btn')?.setAttribute('aria-expanded', 'false');
+        }
+      }
+    });
     if (!btn) continue;
     on(btn, 'click', (e) => {
       e.stopPropagation();
+      drop.classList.remove('dismissed');
       const willOpen = !drop.classList.contains('open');
       for (const other of navDrops) {
         other.classList.remove('open');
@@ -1218,7 +1161,7 @@ export function mount(root) {
     if (reducedMotion) return;
     // Hero words: lines rise in on load; the whole caption drifts up and fades as you leave.
     gsap.from('.hero-caption > *', { y: 40, opacity: 0, duration: 1.2, ease: 'expo.out', stagger: 0.08, delay: 0.2 });
-    gsap.to('.hero-caption, .hud, .hero-live', {
+    gsap.to('.hero-caption, .hud', {
       y: -80,
       opacity: 0,
       ease: 'none',
