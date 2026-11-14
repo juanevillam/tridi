@@ -13,7 +13,8 @@
   - **`P-2` (`physics/models/luigi_lab4/`):** Gemelo digital del `Rover Luigi v2 (Radar Servo SG90)` (`nq=10, nu=3`) con cuello móvil `neck_servo_joint` (`±90°`) y cono ultrasónico rotatorio en tiempo real.
   - **`P-3` (`physics/src/assembler.js`):** Parser de sketches Arduino (`parseArduinoSketch`), clasificador de piezas `.stl` (`classifyStlMeshes`) y generador automático de MJCF (`generateMujocoXml`).
   - **`P-4` (`physics/models/factory_cell/`):** Celda industrial de empaque en MuJoCo (`nq=10, nu=3`: cinta transportadora, pistón desviador, prensa selladora y 3 sensores ópticos) con política `factory-cell.onnx` (`0 %` merma) y simulador comparativo frente a PLC por timer fijo.
-- **Sigue:** Apoyar la validación técnica en la reunión con **ZAKA, C.A.** ([`reunion-zaka.md`](reunion-zaka.md)) y la integración del Assembler con César (`C-1..C-3`).
+  - **`P-5 / J-6` (`physics/components/isa_standard.json`, `physics/src/pid_assembler.js`):** Catálogo determinista `ISA-5.1` de 14 clases de equipos industriales (`FV`, `WT`, `LT`, `LSH`, `LSL`, `PT`, `TT`, `M`, `P`, `TK`, `SL`, `SC`, `CV`, `PK`), parser `.dxf` (`parseDxfPid`), generador de documentación FDS `ISA-5.1 / ISA-88` (`generateIsaEngineeringDocs`), ensamblador de escenas 3D MuJoCo (`generatePidMujocoXml`) y generador de código PLC (`generatePlcFlatFile`), verificado en `check-assembler.mjs`.
+- **Sigue:** Extender escenas 3D de tanques/silos en MuJoCo y pruebas de seguimiento con **ZAKA, C.A.** ([`reunion-zaka.md`](reunion-zaka.md)).
 
 ---
 
@@ -26,23 +27,22 @@
   - **`J-2` (`training/multiclip.py`, `cloud_gpu.sh`):** Entrenamiento simultáneo multi-video con muestreo adaptativo por fallos (`clip_fail_ema`), degradación de actuadores (`--fault-prob`) y frenadas de emergencia (`--sudden-stop-prob`).
   - **`J-3` (`training/export_mcu.py`):** Compilador automático `ONNX → C99 / Arduino (.ino)` con paridad $< 10^{-5}$, interrupciones por hardware (`PCINT1`/`INT0`) en lugar de `pulseIn()` y máquina de estados no bloqueante a `50 Hz`.
   - **`J-4` (`training/luigi_lab4_env.py`):** Política `luigi-lab4.onnx` (`2.353 bytes`) que coordina las 2 ruedas + el barrido activo del cuello servo `SG90` en movimiento, y caso físico real `luigi_lab3` documentado en [`caso-luigi-sim2real.md`](caso-luigi-sim2real.md).
-- **Producción en `trytridi.com` y Pulido Web (`J-1` ✅):**
+- **Producción en `trytridi.com`, Evolución Corporativa de 3 Verticales y Piloto Industrial P&ID (`J-1`, `J-5`, `J-6` ✅):**
   - Despliegue continuo en Cloudflare Pages (`.github/workflows/deploy.yml`, seguridad DNS/HSTS/CSP en [`infra-and-security.md`](infra-and-security.md)).
-  - `J-1` completado en `web/` y `physics/`: landing, `#/milestones` (con visor `PhotoViewer` a pantalla completa y chips unificados), `#/simulations` (layout de 2 columnas sin espacio muerto en todos los robots, botón `0.5×` en 1 línea, videos PiP en todos los clips incluyendo `Walking away`, `Group dance`, `Washing dishes` y `Running` a `1.56 Hz`, silla con respaldo en `Sitting down` y fregadero con platos bajo las manos en `Washing dishes`) y `#/delivery` (9 entregas empaquetadas con versión `v2 GVHMR / v1 MediaPipe`, conteo de pasos `50M / 20M`, video fuente PiP sincronizado y `README` en grilla de 2 columnas sin espacio muerto).
-  - Transcripción y análisis de Elon Musk sobre Optimus en [`../yc/investigacion/voces/`](../yc/investigacion/voces/README.md) y resultados completos + plan post-reunión con **ZAKA, C.A. (Ing. José González)** en [`reunion-zaka.md`](reunion-zaka.md).
-- **Sigue:**
-  1. **Evolución Corporativa de Landing + Navbar Acordeón (`J-5`):** estructurar la navegación unificada (acordeones/menús por producto y herramienta en lugar de links dispersos entre navbar y footer) y el enfoque dual **`Tridi for Humanoid Robots`** + **`Tridi for Industrial Plants`**.
-  2. **Prototipo Industrial v1 para ZAKA (`P&ID .dxf → Docs ISA-5.1 + Simulación 3D + Bloques PLC`):** aplicar el patrón *Low-Token DSL + catálogo cerrado* (inspirado en `mus3o`) sobre un primer caso sencillo de tanque/proceso en `.dxf` antes del seguimiento de 1 semana con el Ing. José González.
+  - **`J-1` ✅:** Landing, `#/milestones` (con visor `PhotoViewer` a pantalla completa y chips unificados), `#/simulations` (layout de 2 columnas sin espacio muerto en todos los robots, botón `0.5×` en 1 línea, videos PiP en todos los clips y utilería 3D en `Sitting down` y `Washing dishes`) y `#/delivery`.
+  - **`J-5` ✅ (`web/src/screens/home.js`, `web/src/landing/`):** Navbar corporativo unificado con dropdowns en desktop y acordeón en móvil (`Product ▾`, `Studio ▾`, `Case Studies`), sección corporativa de las **3 verticales (`#verticals`)**, 5.ª tarjeta interactiva (`#/assembler`) y footer espejo de 4 columnas.
+  - **`J-6` ✅ (`data/pid_parser.py`, `training/export_plc.py`, `physics/src/pid_assembler.js`, `data/pid_samples/*.dxf`):** Pipeline autónomo `P&ID (.dxf) → Documentación FDS ISA-5.1 + Escena 3D MuJoCo + Bloques PLC (.scl / .L5K)` con 2 planos `.dxf` de prueba (`01_batch_mixer.dxf`, `02_silo_packaging.dxf`).
+- **Sigue:** Demostración de seguimiento con el **Ing. José González (ZAKA, C.A.)** sobre `#/assembler` y preparación de entrevista YC W27.
 
 ---
 
 ## César: Pantallas de Aplicación y Assembler (`web/src/screens/`)
 
-- **Funciona:** Navegación completa de la aplicación (`#/`, `#/live`, `#/upload`, `#/simulations`, `#/milestones`, `#/delivery`), conexión con el servidor de video y traducción bilingüe ES/EN verificada (`585` claves).
-- **Pendiente en [`ROADMAP.md`](ROADMAP.md):**
-  - **`C-1`:** Pantalla web del `Tridi Assembler` (`#/assembler`) conectada al catálogo `P-1` y al generador `P-3`.
-  - **`C-2`:** Pestaña de descarga dual en `#/delivery` (`ONNX` + código nativo `.ino` / C explicable generado por `J-3`).
-  - **`C-3`:** Selector de vertical agrupado en `#/simulations` (`Humanoides · Rovers · Industrial`).
+- **Funciona (`C-1..C-3` ✅):**
+  - Navegación completa de la aplicación (`#/`, `#/live`, `#/upload`, `#/simulations`, `#/assembler`, `#/milestones`, `#/delivery`), conexión con el servidor de video y traducción bilingüe ES/EN verificada (`780+` claves).
+  - **`C-1` ✅ (`web/src/screens/assembler.js`):** Pantalla self-serve `#/assembler` con doble canal (**Canal 01: Plantas Industriales P&ID `.dxf`** con Prioridades 1, 2 y 3; **Canal 02: Robots y Mecatrónica `.stl + .ino`** con auditoría `Timer1`, catálogo `P-1` y descarga de `.xml` + `.ino` C99).
+  - **`C-2` ✅ (`web/src/screens/delivery.js`):** Descarga dual en `#/delivery` (`ONNX` + código determinista C99/Arduino `.ino` a `50 Hz`, `Siemens TIA Portal .scl` y `Rockwell Studio 5000 .L5K`).
+  - **`C-3` ✅ (`web/src/screens/simulations.js`):** Selector `<select id="robot-model">` agrupado con `<optgroup>` por las 3 verticales (`Humanoides`, `Robots Móviles`, `Plantas Industriales`) + acceso directo a `#/assembler`.
 
 ---
 
