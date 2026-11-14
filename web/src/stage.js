@@ -191,8 +191,17 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
   }
 
   function renderOverlayForModel(m = robotModel) {
-    const key = OVERLAY_CONFIGS[m] ? m : 'unitree_g1';
-    if (factoryOverlay.dataset.model === key) return;
+    if (m !== 'factory_cell') {
+      factoryOverlay.dataset.model = m;
+      factoryOverlay.innerHTML = '';
+      factoryOverlay.hidden = true;
+      return;
+    }
+    const key = 'factory_cell';
+    if (factoryOverlay.dataset.model === key && factoryOverlay.innerHTML) {
+      factoryOverlay.hidden = false;
+      return;
+    }
     factoryOverlay.dataset.model = key;
     const cfg = OVERLAY_CONFIGS[key];
     factoryOverlay.innerHTML = `
@@ -210,23 +219,8 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
           )
           .join('')}
       </div>
-      <div class="fio-narrator" id="fio-narrator">
-        <div class="fio-steps">
-          ${cfg.steps
-            .map(
-              (s, idx) => `
-            <span class="fio-step" data-fio-step="${idx}" ${s.id ? `id="${s.id}"` : ''} data-active="${idx === 0}">
-              <span class="t" lang="es">${s.es}</span><span class="t" lang="en">${s.en}</span>
-            </span>`,
-            )
-            .join('')}
-        </div>
-        <p class="fio-explain" id="fio-explain-text">
-          <span class="t" lang="es">${cfg.explain.es}</span>
-          <span class="t" lang="en">${cfg.explain.en}</span>
-        </p>
-      </div>
     `;
+    factoryOverlay.hidden = false;
   }
   renderOverlayForModel(initialRobot);
 
@@ -531,9 +525,10 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     const isCell = robotModel === 'factory_cell';
     const currentPlace = $('place')?.value ?? '';
     const pushBtn = root.querySelector('.push');
+    const pushGroup = root.querySelector('.push-group');
     if (pushBtn) pushBtn.hidden = custom || !physics;
+    if (pushGroup) pushGroup.hidden = custom || !physics;
     renderOverlayForModel(robotModel);
-    factoryOverlay.hidden = false;
     if (label) label.hidden = custom;
     if ($('arduino-box')) $('arduino-box').hidden = !isRover;
     if ($('factory-fault-box')) $('factory-fault-box').hidden = !isCell;
@@ -693,7 +688,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
         view.viewer.targetHeight = 0.75;
         view.viewer.controls.minDistance = 0.65;
         view.viewer.controls.target.set(px, 0.75, -py);
-        view.viewer.camera.position.set(px + 2.6, 1.5, -py - 1.6);
+        view.viewer.camera.position.set(px + 2.05, 1.25, -py - 1.35);
         view.viewer.controls.update();
       }
       if (learned?.qpos?.length) {

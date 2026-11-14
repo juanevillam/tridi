@@ -119,7 +119,9 @@ export function mount(root) {
           </button>
           <div class="nav-drop-panel" role="menu">
             <a class="nav-drop-item" href="#capture">
-              <span class="nav-chip" aria-hidden="true">01</span>
+              <span class="nav-chip nav-chip-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="5.5" r="2.2"/><path d="M8 10.5h8m-4 0v5m0 0-3 4.5m3-4.5 3 4.5"/></svg>
+              </span>
               <div class="nav-item-body">
                 <div class="nav-item-head">
                   <b>Tridi Capture</b>
@@ -129,7 +131,9 @@ export function mount(root) {
               </div>
             </a>
             <a class="nav-drop-item" href="#gym">
-              <span class="nav-chip" aria-hidden="true">02</span>
+              <span class="nav-chip nav-chip-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M3.5 12h3.5l2.2-5.5 4.6 11 2.4-5.5h4.3"/></svg>
+              </span>
               <div class="nav-item-body">
                 <div class="nav-item-head">
                   <b>Tridi Gym</b>
@@ -139,7 +143,9 @@ export function mount(root) {
               </div>
             </a>
             <a class="nav-drop-item" href="#policy">
-              <span class="nav-chip" aria-hidden="true">03</span>
+              <span class="nav-chip nav-chip-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2"/><path d="M9.5 3.5v3m5-3v3m-5 11v3m5-3v3m-11-11h3m-3 5h3m11-5h3m-3 5h3"/></svg>
+              </span>
               <div class="nav-item-body">
                 <div class="nav-item-head">
                   <b>Tridi Policy</b>
@@ -159,7 +165,6 @@ export function mount(root) {
             <a class="nav-drop-item" href="#/simulations" data-warm="simulations">
               <span class="nav-chip nav-chip-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M12 2.5 3.5 7v10L12 21.5l8.5-4.5V7L12 2.5Z"/><path d="M3.5 7 12 11.5 20.5 7M12 11.5v10"/></svg>
-                <i>01</i>
               </span>
               <div class="nav-item-body">
                 <div class="nav-item-head">
@@ -172,7 +177,6 @@ export function mount(root) {
             <a class="nav-drop-item" href="#/live" data-warm="live">
               <span class="nav-chip nav-chip-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="13.5" height="12" rx="2"/><path d="m16 10.2 5.5-3.2v10L16 13.8"/><circle cx="9.25" cy="12" r="2.2"/></svg>
-                <i>02</i>
               </span>
               <div class="nav-item-body">
                 <div class="nav-item-head">
@@ -185,7 +189,6 @@ export function mount(root) {
             <a class="nav-drop-item" href="#/upload" data-warm="upload">
               <span class="nav-chip nav-chip-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M12 15.5V4.5m0 0-4 4m4-4 4 4"/><path d="M4 15.5v3a1.5 1.5 0 0 0 1.5 1.5h13a1.5 1.5 0 0 0 1.5-1.5v-3"/></svg>
-                <i>03</i>
               </span>
               <div class="nav-item-body">
                 <div class="nav-item-head">
@@ -198,7 +201,6 @@ export function mount(root) {
             <a class="nav-drop-item" href="#/delivery" data-warm="delivery">
               <span class="nav-chip nav-chip-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M4 6.5h16M4 12h10m-10 5.5h7"/><circle cx="17.5" cy="15.5" r="3.5"/><path d="m16.2 15.5 1 1 2-2"/></svg>
-                <i>04</i>
               </span>
               <div class="nav-item-body">
                 <div class="nav-item-head">
@@ -211,7 +213,6 @@ export function mount(root) {
             <a class="nav-drop-item" href="#/assembler" data-warm="assembler">
               <span class="nav-chip nav-chip-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="8.5" y="13.5" width="7" height="7" rx="1.5"/><path d="M10 7.5h4M6.5 11v4.5h2M17.5 11v4.5h-2"/></svg>
-                <i>05</i>
               </span>
               <div class="nav-item-body">
                 <div class="nav-item-head">
@@ -349,7 +350,6 @@ export function mount(root) {
             <a class="try" href="#/simulations" data-warm="simulations">
               <div class="try-head">
                 <svg class="try-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 3.5 7v10L12 21.5l8.5-4.5V7L12 2.5Z"/><path d="M3.5 7 12 11.5 20.5 7M12 11.5v10"/></svg>
-                <span class="try-tag">${T('try.simsTag')}</span>
               </div>
               <b><span class="only-wide">${T('try.sims')}</span><span class="only-narrow">${T('try.simsShort')}</span></b>
               <span class="try-sub">${T('try.simsSub')}</span>
@@ -358,7 +358,6 @@ export function mount(root) {
             <a class="try" href="#/live" data-warm="live">
               <div class="try-head">
                 <svg class="try-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="13.5" height="12" rx="2"/><path d="m16 10.2 5.5-3.2v10L16 13.8"/><circle cx="9.25" cy="12" r="2.2"/></svg>
-                <span class="try-tag">${T('try.liveTag')}</span>
               </div>
               <b><span class="only-wide">${T('try.live')}</span><span class="only-narrow">${T('try.liveShort')}</span></b>
               <span class="try-sub">${T('try.liveSub')}</span>
@@ -367,7 +366,6 @@ export function mount(root) {
             <a class="try" href="#/upload" data-warm="upload">
               <div class="try-head">
                 <svg class="try-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5V4.5m0 0-4 4m4-4 4 4"/><path d="M4 15.5v3a1.5 1.5 0 0 0 1.5 1.5h13a1.5 1.5 0 0 0 1.5-1.5v-3"/></svg>
-                <span class="try-tag">${T('try.uploadTag')}</span>
               </div>
               <b><span class="only-wide">${T('try.upload')}</span><span class="only-narrow">${T('try.uploadShort')}</span></b>
               <span class="try-sub">${T('try.uploadSub')}</span>
@@ -376,7 +374,6 @@ export function mount(root) {
             <a class="try" href="#/delivery" data-warm="delivery">
               <div class="try-head">
                 <svg class="try-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h16M4 12h10m-10 5.5h7"/><circle cx="17.5" cy="15.5" r="3.5"/><path d="m16.2 15.5 1 1 2-2"/></svg>
-                <span class="try-tag">${T('try.deliveryTag')}</span>
               </div>
               <b><span class="only-wide">${T('try.delivery')}</span><span class="only-narrow">${T('try.deliveryShort')}</span></b>
               <span class="try-sub">${T('try.deliverySub')}</span>
@@ -385,7 +382,6 @@ export function mount(root) {
             <a class="try" href="#/assembler" data-warm="assembler">
               <div class="try-head">
                 <svg class="try-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="8.5" y="13.5" width="7" height="7" rx="1.5"/><path d="M10 7.5h4M6.5 11v4.5h2M17.5 11v4.5h-2"/></svg>
-                <span class="try-tag">${T('try.assemblerTag')}</span>
               </div>
               <b><span class="only-wide">${T('try.assembler')}</span><span class="only-narrow">${T('try.assemblerShort')}</span></b>
               <span class="try-sub">${T('try.assemblerSub')}</span>
@@ -396,22 +392,22 @@ export function mount(root) {
       </div>
       <footer class="footer">
         <div class="foot-bar">
-          <div class="foot-brand">
-            <span class="wordmark" aria-label="Tridi">${LOGO}${WORDMARK}</span>
-            <p class="foot-tagline">${T('foot.tagline')}</p>
-          </div>
-          <div class="foot-right">
+          <div class="foot-main">
+            <div class="foot-brand">
+              <span class="wordmark" aria-label="Tridi">${LOGO}${WORDMARK}</span>
+              <p class="foot-tagline">${T('foot.tagline')}</p>
+            </div>
             <div class="foot-team-links">
               <a href="https://www.linkedin.com/in/pastor-jimenez" target="_blank" rel="noopener">Pastor Jiménez</a>
               <a href="https://www.linkedin.com/in/juanevillam" target="_blank" rel="noopener">Juan Villa</a>
               <a href="https://www.linkedin.com/in/cesarmartinez-dev" target="_blank" rel="noopener">César Martínez</a>
               <a href="https://www.linkedin.com/in/alehernandezt" target="_blank" rel="noopener">Ale Hernández</a>
             </div>
-            <button type="button" class="foot-top-btn" data-scroll-top>
-              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3m0 0L3.5 7.5M8 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span>${T('foot.top')}</span>
-            </button>
           </div>
+          <button type="button" class="foot-top-btn" data-scroll-top>
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3m0 0L3.5 7.5M8 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>${T('foot.top')}</span>
+          </button>
         </div>
       </footer>
     </section>
@@ -694,9 +690,10 @@ export function mount(root) {
       .then(async () => {
         if (gone || !view || (level === id && view.sim?.policy?.id === id && view.sim?.policy?.robot === 'unitree_g1')) return;
         const wasNonG1 = view.sim?.policy?.robot && view.sim.policy.robot !== 'unitree_g1';
+        const standing = !wasNonG1 && !view.clip() && !view.sim?.puppeted && view.sim?.bodyPosition('pelvis')[2] >= FALLEN_PELVIS_M;
         const { onnx, json } = policyUrls(id);
-        await view.loadPolicy(onnx, json);
-        if (wasNonG1 && view.sim) {
+        await view.loadPolicy(onnx, json, { reset: !standing });
+        if ((wasNonG1 || !standing) && view.sim) {
           const [px, py] = view.sim.bodyPosition('pelvis');
           view.viewer.controls.target.set(px, view.viewer.targetHeight, -py);
         }
@@ -1004,7 +1001,11 @@ export function mount(root) {
   }
   // Times are the simulation's own clock, not the wall's: a slow or hidden tab cannot fake them.
   function startGymRun() {
-    view.stop();
+    if (view.clip() || view.sim.puppeted || view.sim.bodyPosition('pelvis')[2] < FALLEN_PELVIS_M) {
+      view.stop();
+      const [px, py] = view.sim.bodyPosition('pelvis');
+      view.viewer.controls.target.set(px, view.viewer.targetHeight, -py);
+    }
     const [x, y] = view.sim.bodyPosition('pelvis');
     marks?.ring.position.set(x, marks.ring.position.y, -y);
     const t = view.sim.data.time;
@@ -1223,18 +1224,18 @@ export function mount(root) {
 
     // Capture: video, skeleton and robot are all on screen at once; the frames and the one text
     // rise in as the chapter arrives.
-    gsap.from('.capture-media .frame, .capture-caption > *', {
+    gsap.from('.capture-media .frame, .capture-caption', {
       opacity: 0,
-      y: 40,
-      stagger: 0.06,
+      y: 28,
+      stagger: 0.08,
       scrollTrigger: { trigger: '.capture', start: 'top 75%', end: 'top 15%', scrub: true },
     });
 
-    // Gym: its words come in once; the stages then follow the scroll (gymStage) and stop it (gymGate).
-    gsap.from('.gym-caption > *', { opacity: 0, y: 30, stagger: 0.08, duration: 0.6, scrollTrigger: { trigger: '.gym', start: 'top 60%', toggleActions: 'play none none none' } });
+    // Gym: card rises in as one unit so children never shift outside the panel border.
+    gsap.from('.gym-caption', { opacity: 0, y: 20, duration: 0.55, scrollTrigger: { trigger: '.gym', start: 'top 65%', toggleActions: 'play none none none' } });
 
-    // Policy: card rises in cleanly on arrival so all 4 specs and CTA button are immediately visible.
-    gsap.from('.policy-caption > *', { opacity: 0, y: 24, stagger: 0.06, duration: 0.55, scrollTrigger: { trigger: '.policy', start: 'top 65%', toggleActions: 'play none none none' } });
+    // Policy: card rises in cleanly as one unit so all 4 specs and CTA button stay inside the panel.
+    gsap.from('.policy-caption', { opacity: 0, y: 20, duration: 0.55, scrollTrigger: { trigger: '.policy', start: 'top 65%', toggleActions: 'play none none none' } });
 
     // Closing: the page closes over the film like a curtain, and the manifesto rises word by word.
     gsap.fromTo('.film-shade', { '--shade': 0 }, { '--shade': 0.88, immediateRender: false, scrollTrigger: { trigger: '.closing', start: 'top bottom', end: 'top 30%', scrub: true } });

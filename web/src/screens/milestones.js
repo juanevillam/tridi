@@ -2,7 +2,7 @@
 // 1. Milestone 02 (Nov 2026): First physical Sim-to-Real case study on Luigi D'Aquaro's differential robot
 //    (6 CAD STL meshes -> MuJoCo digital twin -> 50 Hz ONNX embedded on ATmega328P -> 40 Hz IR radar 0x9E & PCINT1).
 // 2. Milestone 01 (Oct 2026): Platanus Hack 26 Caracas origin story + official live demo & pitch video (2:53, before Q&A).
-import { langSwitch } from '../i18n.js';
+import { appHeaderHTML, mountAppHeader } from '../header.js';
 import { A, T, title } from './strings/milestones.js';
 
 export { title };
@@ -12,14 +12,13 @@ const MEDIA = `${import.meta.env.BASE_URL}media/`;
 export function mount(root) {
   root.innerHTML = `
     <section class="page milestones-page">
-      <header class="page-head milestones-head">
-        <a class="back" href="#/" ${A({ 'aria-label': 'back' })}>←<span class="only-wide">&nbsp;${T('back')}</span></a>
+      ${appHeaderHTML({ current: 'milestones' })}
+      <div class="milestones-head">
         <div class="milestones-title-group">
           <h1>${T('head')}</h1>
           <p class="lead milestones-lede">${T('lede')}</p>
         </div>
-        ${langSwitch()}
-      </header>
+      </div>
 
       <div class="milestone-tabs" role="tablist">
         <button type="button" class="milestone-tab" role="tab" data-tab="sim-to-real" aria-selected="true">
@@ -317,8 +316,10 @@ export function mount(root) {
       renderPhoto(activePhotoIdx + 1, true);
     }
   };
+  const unHeader = mountAppHeader(root);
   window.addEventListener('keydown', onKeyDown);
   return () => {
+    unHeader();
     if (closeTimer !== null) clearTimeout(closeTimer);
     window.removeEventListener('keydown', onKeyDown);
   };

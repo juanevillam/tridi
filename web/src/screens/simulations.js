@@ -1,11 +1,12 @@
 // Ver simulaciones: the gallery of preloaded clips and the stage with the person and the robot.
 import { mountGallery } from '../gallery.js';
+import { appHeaderHTML, mountAppHeader } from '../header.js';
 import { SCENES, WORLDS } from 'tridi-physics';
 import { FINAL_LEVEL, IMITATIONS, LEVELS, ROBOT_MODELS } from '../policies.js';
 import { robotPaneHTML } from '../robot-pane.js';
 import { ICONS, mountStage } from '../stage.js';
 import { mountTrainBox, trainBoxHTML } from '../training.js';
-import { langSwitch, option } from '../i18n.js';
+import { option } from '../i18n.js';
 import { A, T, X, t } from '../strings-stage.js';
 import { levelName, robotName, sceneName, worldName } from '../strings-names.js';
 
@@ -48,14 +49,7 @@ export function mount(root, { api }, [clipId] = []) {
   const initPolicy = DIRECT_ROBOTS[clipId] ?? FINAL_LEVEL;
   root.innerHTML = `
     <section class="page sims">
-      <header class="page-head">
-        <a class="back" href="#/" ${A({ 'aria-label': 'back' })}>←<span class="only-wide">&nbsp;${T('back')}</span></a>
-        <h1>${T('title')}</h1>
-        <div style="display:flex;align-items:center;gap:10px;margin-left:auto">
-          <a class="back" href="#/assembler" style="font-size:12px;padding:6px 12px;border:1px solid rgb(200 255 46 / 0.45);border-radius:999px;color:#c8ff2e;text-decoration:none;white-space:nowrap">${T('openAssembler')}</a>
-          ${langSwitch('page-head-lang')}
-        </div>
-      </header>
+      ${appHeaderHTML({ current: 'simulations' })}
       <div class="sims-grid">
         <div class="sims-main">
           <div id="stage" data-show="${isCustomRobotLink ? 'robot' : 'both'}">
@@ -229,11 +223,11 @@ export function mount(root, { api }, [clipId] = []) {
             </div>
           </section>
           ${trainBoxHTML()}
-          <h2 id="pick-heading">${T('pick')}</h2>
           <ul id="gallery"></ul>
         </aside>
       </div>
     </section>`;
+  const unHeader = mountAppHeader(root);
   // The physics sliders are open on wide screens; on phones they fold under "Ajustar la física"
   // (style.css hides the toggle on wide screens), so the scene and the clips come first.
   root.querySelector('.tune').open = !matchMedia('(max-width: 720px)').matches;
@@ -241,6 +235,7 @@ export function mount(root, { api }, [clipId] = []) {
   const trainBox = mountTrainBox(root.querySelector('.train-box'), api);
   mountGallery(root, stage, isCustomRobotLink ? undefined : clipId, trainBox.show, { hide: HIDDEN_CLIPS });
   return () => {
+    unHeader();
     trainBox.dispose();
     stage.dispose();
   };

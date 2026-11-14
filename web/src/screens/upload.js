@@ -3,10 +3,11 @@
 // goes straight to training (training.js), and the screen follows it to its delivery.
 // The server API is data/live's client (docs/contrato.md); this screen only draws it.
 import { chooseSubject, fetchClip, firstFrameUrl, UploadError, uploadVideo, watchJob } from '../../../data/live/src/upload.js';
+import { appHeaderHTML, mountAppHeader } from '../header.js';
 import { createVideoOverlay } from '../video-overlay.js';
 import { addUserClip } from '../preloaded.js';
 import { cannotTrain, mountTrainBox, startTraining, trainBoxHTML } from '../training.js';
-import { escapeHtml, langSwitch } from '../i18n.js';
+import { escapeHtml } from '../i18n.js';
 import { A, T } from './strings/upload.js';
 
 export { title } from './strings/upload.js';
@@ -48,11 +49,7 @@ function videoSeconds(file) {
 export function mount(root, { api }) {
   root.innerHTML = `
     <section class="page upload" data-step="checking">
-      <header class="page-head">
-        <a class="back" href="#/" ${A({ 'aria-label': 'back' })}>←<span class="only-wide">&nbsp;${T('back')}</span></a>
-        <h1>${T('head')}</h1>
-        ${langSwitch('page-head-lang')}
-      </header>
+      ${appHeaderHTML({ current: 'upload' })}
       <div class="upload-grid">
         <section class="pane example-pane">
           <p class="pane-label"><span class="only-wide">${T('exampleWide')}</span><span class="only-narrow">${T('exampleNarrow')}</span></p>
@@ -320,7 +317,9 @@ export function mount(root, { api }) {
     show('pick');
   });
 
+  const unHeader = mountAppHeader(root);
   return () => {
+    unHeader();
     gone = true;
     abort?.abort(); // stops polling; the server keeps processing
     cancelAnimationFrame(exampleFrame);

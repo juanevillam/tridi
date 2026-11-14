@@ -607,26 +607,14 @@ html.is-landing.lenis body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 34px;
+  width: 34px;
   height: 34px;
-  padding: 0 8px;
-  border: 1px solid rgb(200 255 46 / 0.32);
+  padding: 0;
+  border: 1px solid rgb(200 255 46 / 0.28);
   border-radius: 8px;
-  background: rgb(200 255 46 / 0.09);
-  font: 600 11px/1 var(--mono);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
+  background: rgb(200 255 46 / 0.08);
   color: var(--signal);
   transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
-}
-
-.nav-chip.nav-chip-icon {
-  position: relative;
-  flex-direction: column;
-  gap: 2px;
-  width: 38px;
-  height: 38px;
-  padding: 0;
 }
 
 .nav-chip.nav-chip-icon svg {
@@ -637,13 +625,6 @@ html.is-landing.lenis body {
   stroke-linecap: round;
   stroke-linejoin: round;
   fill: none;
-}
-
-.nav-chip.nav-chip-icon i {
-  font: 600 8.5px/1 var(--mono);
-  font-style: normal;
-  letter-spacing: 0.05em;
-  opacity: 0.85;
 }
 
 .nav-drop-item:hover .nav-chip,
@@ -678,12 +659,14 @@ html.is-landing.lenis body {
 }
 
 .nav-item-badge {
-  padding: 2.5px 7px;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 6.5px;
   border: 1px solid var(--line);
   border-radius: 999px;
-  background: rgb(8 9 11 / 0.55);
-  font: 600 9px/1 var(--mono);
-  letter-spacing: 0.06em;
+  background: rgb(8 9 11 / 0.6);
+  font: 600 7.5px/1 var(--mono);
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   white-space: nowrap;
   color: var(--fg-2);
@@ -1002,14 +985,14 @@ html.is-landing.lenis body {
   width: min(40vw, 640px);
 }
 
-.frame {
+.landing .frame {
   position: relative;
   overflow: hidden;
   border-radius: var(--r-2);
   background: #000;
 }
 
-.frame figcaption {
+.landing .frame figcaption {
   position: absolute;
   left: 10px;
   bottom: 8px;
@@ -1398,57 +1381,65 @@ html.is-landing.lenis body {
 /* Policy: the whole robot the network moves, the numbers beside it */
 
 .policy {
-  height: 175svh;
+  height: 190svh;
 }
 
 .policy-caption {
   right: var(--gutter);
   top: var(--card-top); /* as every chapter's card */
   width: var(--card-width);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  box-sizing: border-box;
+  padding: 20px 22px 22px;
 }
-
-
 
 .specs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 14px !important;
+  width: 100%;
+  gap: 8px;
+  margin-top: 12px !important;
 }
 
 .specs li {
   display: grid;
-  gap: 4px;
-  padding: 12px 14px;
+  gap: 3px;
+  padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: var(--r-1);
   background: rgb(241 243 238 / 0.03);
 }
 
 .specs b {
-  font: 500 clamp(22px, 2.2vw, 30px)/1 var(--display);
+  font: 500 clamp(20px, 2vw, 27px)/1 var(--display);
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
   color: var(--signal);
 }
 
 .specs span {
-  font-size: 13px;
+  font-size: 12.5px;
   line-height: 1.3;
   color: var(--fg-2);
 }
 
 .policy-note {
+  width: 100%;
   margin-top: 12px !important;
-  padding-top: 12px;
+  padding-top: 10px;
   border-top: 1px solid var(--line);
-  font-size: 13px;
+  font-size: 12.5px;
   line-height: 1.4;
 }
 
 /* The way into what the policy delivers (#/delivery): stays on phones, where the note above hides. */
 .policy-data {
-  min-width: 224px;
+  align-self: flex-start;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 210px;
   margin-top: 12px;
 }
 
@@ -1858,7 +1849,7 @@ html.is-landing.lenis body {
   width: 100%;
   max-width: 1200px;
   margin: 36px auto 0;
-  padding: 32px 36px 40px;
+  padding: 36px 36px 44px;
   border-top: 1px solid var(--line-dark);
   border-radius: 0;
   background: linear-gradient(180deg, rgb(8 9 11 / 0.94), rgb(8 9 11 / 1));
@@ -1869,44 +1860,48 @@ html.is-landing.lenis body {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 20px 32px;
+  gap: 24px 36px;
+}
+
+.foot-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 20px 56px;
 }
 
 .foot-brand {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 16px 22px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .footer .wordmark {
-  font-size: clamp(26px, 2.3vw, 32px);
+  margin-right: 0;
+  font-size: clamp(32px, 3vw, 40px);
 }
 
 .foot-tagline {
   margin: 0 !important;
-  font: 400 clamp(14.5px, 1.15vw, 16px)/1.45 var(--display);
+  max-width: 34ch;
+  font: 400 clamp(14px, 1.1vw, 15.5px)/1.45 var(--display);
   color: var(--fg-2) !important;
 }
 
-.foot-right {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 16px 24px;
-}
-
 .foot-team-links {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px 18px;
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  align-content: center;
+  gap: 8px 32px;
+  padding-top: 4px;
 }
 
 .foot-team-links a {
   color: var(--fg-2);
   font: 500 14px/1.35 var(--display);
   text-decoration: none;
+  white-space: nowrap;
   transition: color 0.18s ease;
 }
 
@@ -2153,7 +2148,7 @@ html.is-landing.lenis body {
     width: auto;
   }
 
-  .frame {
+  .landing .frame {
     border-radius: var(--r-1);
   }
 
@@ -2164,7 +2159,7 @@ html.is-landing.lenis body {
     box-shadow: none;
   }
 
-  .frame figcaption {
+  .landing .frame figcaption {
     left: 6px;
     bottom: 5px;
     font-size: 9px;

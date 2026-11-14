@@ -46,7 +46,7 @@ html.is-delivery body::before {
 }
 
 /* The app's buttons are big paper pills (style.css); here they are instrument controls. */
-.dl button {
+.dl button:not(.app-topbar button) {
   min-height: 0;
   padding: 0;
   border: 0;
@@ -58,7 +58,7 @@ html.is-delivery body::before {
   transition: none;
 }
 
-.dl button:hover:not(:disabled) {
+.dl button:not(.app-topbar button):hover:not(:disabled) {
   box-shadow: none;
 }
 
@@ -85,104 +85,74 @@ html.is-delivery body::before {
   color: var(--fg);
 }
 
-/* ---- Header ---- */
+/* ---- Header & Compact Toolbar ---- */
+
+.dl > .app-topbar,
+.dl-screen > .app-topbar {
+  margin: 0 calc(-1 * var(--gutter));
+}
 
 .dl-screen {
   display: flex;
   flex-direction: column;
 }
 
-.dl-top {
+.dl-toolbar {
   display: flex;
   align-items: center;
-  gap: 20px;
-  min-height: 64px;
-  padding: 10px 0;
+  gap: 12px 16px;
+  flex-wrap: wrap;
+  min-height: 52px;
+  padding: 8px 0;
   border-bottom: 1px solid var(--line);
 }
 
-.dl-back {
+.dl-switcher-wrap {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  flex: none;
-  min-height: 38px;
-  padding: 0 15px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgb(255 255 255 / 0.03);
-  font: 500 12px/1 var(--mono);
-  letter-spacing: 0.02em;
-  text-decoration: none;
-  color: var(--fg-2);
-  white-space: nowrap;
-  transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
 }
 
-.dl-back:hover {
-  border-color: rgb(200 255 46 / 0.45);
-  background: rgb(200 255 46 / 0.07);
-  color: var(--fg);
-  transform: translateX(-2px);
-}
-
-.dl-kicker {
-  margin-bottom: 5px !important;
-  font: 500 10px/1 var(--mono);
+.dl-switcher-label {
+  font: 600 9.5px/1 var(--mono);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   color: var(--dim);
 }
 
-.dl-name {
-  width: 240px;
-  min-width: 240px;
-  max-width: 240px;
-  flex: none;
-}
-
-.dl-name h1 {
-  margin: 0;
-  font: 600 20px/1.15 var(--display);
-  text-transform: uppercase;
-  letter-spacing: -0.02em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.dl-meta {
+.dl-meta-pills {
   display: flex;
-  gap: 20px;
-  min-width: 0;
-  margin-left: auto !important;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.dl-meta > div {
-  display: grid;
-  align-content: start;
-  gap: 5px;
-  min-width: 0;
-  flex: none;
+.dl-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.03);
+  font: 500 11.5px/1 var(--mono);
+  color: var(--fg);
+  white-space: nowrap;
 }
 
-.dl-meta > div:nth-child(2) {
-  min-width: 158px;
+.dl-pill small {
+  font: 500 9.5px/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--dim);
 }
 
-.dl-meta > div:nth-child(3) {
-  min-width: 84px;
+.dl-pill b {
+  font-weight: 500;
+  color: var(--fg);
 }
 
-.dl-meta > div:nth-child(4) {
-  min-width: 132px;
-}
-
-.dl-meta > div:nth-child(5) {
-  min-width: 148px;
-}
-
-.dl-meta dt,
 .dl-stats dt,
 .dl-train-facts dt {
   font: 500 9.5px/1 var(--mono);
@@ -191,25 +161,14 @@ html.is-delivery body::before {
   color: var(--dim);
 }
 
-.dl-meta dd {
-  font: 500 13px/1.2 var(--mono);
-  white-space: nowrap;
-}
-
-.dl-clip {
-  max-width: 24ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .dl-switcher {
-  width: 276px;
-  min-width: 276px;
-  max-width: 276px;
-  min-height: 36px;
-  padding: 4px 32px 4px 10px;
+  width: 268px;
+  min-width: 240px;
+  max-width: 280px;
+  min-height: 34px;
+  padding: 4px 30px 4px 10px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 999px;
   background-color: #14171a;
   background-position: right 10px center;
   color: var(--fg);
@@ -221,42 +180,6 @@ html.is-delivery body::before {
 .dl-switcher:focus-visible {
   border-color: var(--signal);
   background-color: #1a1e22;
-}
-
-.dl-explain {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  padding: 8px 0 6px;
-  border-bottom: 1px solid var(--line);
-}
-
-.dl-explain-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 6px 10px;
-  background: rgb(241 243 238 / 0.03);
-  border: 1px solid var(--hair);
-  border-radius: 3px;
-}
-
-.dl-explain-item strong {
-  font: 600 10.5px/1.2 var(--mono);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--signal);
-}
-
-.dl-explain-item span {
-  font: 400 11.5px/1.35 var(--display);
-  color: var(--fg-2);
-}
-
-@media (max-width: 900px) {
-  .dl-explain {
-    grid-template-columns: 1fr;
-  }
 }
 
 .dl-meter {
@@ -274,12 +197,20 @@ html.is-delivery body::before {
 }
 
 .dl .dl-jump {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   flex: none;
-  padding: 9px 14px;
+  margin-left: auto;
+  min-height: 34px;
+  padding: 0 14px;
   border: 1px solid var(--signal);
-  border-radius: var(--r-1);
-  font: 500 12px/1 var(--display);
+  border-radius: 999px;
+  background: rgb(200 255 46 / 0.1);
+  font: 600 12px/1 var(--display);
   color: var(--signal);
+  white-space: nowrap;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.16s ease;
 }
 
 .dl .dl-jump:hover {
@@ -287,18 +218,8 @@ html.is-delivery body::before {
   color: #0d0d0b;
 }
 
-.dl-status {
-  padding: 8px 0 !important;
-  border-bottom: 1px solid var(--line);
-  font: 400 11.5px/1.45 var(--mono);
-  color: var(--fg-2);
-}
-
-.dl-status b {
-  margin-right: 10px;
-  font-weight: 500;
-  text-transform: uppercase;
-  color: var(--signal);
+.dl .dl-jump:active {
+  transform: scale(0.97);
 }
 
 /* ---- Windows: a black bar with the technical name, like the landing's ---- */
@@ -474,10 +395,10 @@ html.is-delivery body::before {
   right: 10px;
   top: 44px;
   z-index: 4;
-  width: 148px;
+  width: 156px;
   border: 1px solid rgb(241 243 238 / 0.18);
   border-radius: 8px;
-  background: rgb(10 12 14 / 0.78);
+  background: rgb(10 12 14 / 0.84);
   backdrop-filter: blur(16px) saturate(1.8);
   -webkit-backdrop-filter: blur(16px) saturate(1.8);
   box-shadow:
@@ -501,20 +422,32 @@ html.is-delivery body::before {
 }
 
 .dl-source-pip.expanded {
-  width: 248px;
+  inset: 10px;
+  width: auto;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  z-index: 12;
+  background: rgb(8 10 13 / 0.94);
 }
 
 .dl-source-head {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 8px;
+  padding: 5px 8px;
   border-bottom: 1px solid rgb(241 243 238 / 0.1);
   background: rgb(0 0 0 / 0.65);
   font: 500 9.5px/1.2 var(--mono);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--fg-2);
+}
+
+.dl-source-toggle {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--dim);
 }
 
 .dl-source-dot {
@@ -528,9 +461,19 @@ html.is-delivery body::before {
 .dl-source-video {
   display: block;
   width: 100%;
-  aspect-ratio: 16 / 10;
-  object-fit: cover;
-  background: #08090b;
+  height: auto;
+  max-height: 156px;
+  object-fit: contain;
+  background: radial-gradient(circle at 50% 45%, #1d2430 0%, #090c10 100%);
+}
+
+.dl-source-pip.expanded .dl-source-video {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  object-fit: contain;
 }
 
 .dl-transport {

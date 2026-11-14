@@ -15,8 +15,8 @@ import {
   PID_SAMPLE_DXFS,
   validateHardwarePinout,
 } from 'tridi-physics';
-import { LOGO, WORDMARK } from '../brand.js';
-import { lang, langSwitch, onLang } from '../i18n.js';
+import { appHeaderHTML, mountAppHeader } from '../header.js';
+import { lang, onLang } from '../i18n.js';
 import { A, T, t, title } from './strings/assembler.js';
 
 export { title };
@@ -166,33 +166,22 @@ export function mount(root) {
     faultMotor: false,
   };
 
+  const modeToggleHTML = `
+    <div class="asm-modes" role="tablist" ${A({ 'aria-label': 'modeAria' })}>
+      <button type="button" class="asm-mode-btn" data-mode="pid" role="tab" aria-selected="true">${T('modePid')}</button>
+      <button type="button" class="asm-mode-btn" data-mode="cad" role="tab" aria-selected="false">${T('modeCad')}</button>
+    </div>`;
+
   root.innerHTML = `
     <div class="asm-page">
+      ${appHeaderHTML({ current: 'assembler', rightSlot: modeToggleHTML })}
       <div class="asm-shell">
-        <header class="asm-top">
-          <div class="asm-top-left">
-            <a class="asm-brand" href="#/">${LOGO}${WORDMARK}</a>
-            <div class="asm-modes" role="tablist" ${A({ 'aria-label': 'modeAria' })}>
-              <button type="button" class="asm-mode-btn" data-mode="pid" role="tab" aria-selected="true">${T('modePid')}</button>
-              <button type="button" class="asm-mode-btn" data-mode="cad" role="tab" aria-selected="false">${T('modeCad')}</button>
-            </div>
-          </div>
-          <div class="asm-nav">
-            <a class="asm-pill" href="#/">${T('backHome')}</a>
-            <a class="asm-pill signal" href="#/simulations">${T('goSims')} →</a>
-            ${langSwitch()}
-          </div>
-        </header>
-
-        <div class="asm-flow-bar" id="asm-flow-bar"></div>
-
         <div class="asm-grid" id="asm-content"></div>
       </div>
     </div>`;
 
-  const flowBarEl = root.querySelector('#asm-flow-bar');
   const contentEl = root.querySelector('#asm-content');
-  const cleanups = [];
+  const cleanups = [mountAppHeader(root)];
   const on = (target, type, fn, opts) => {
     target.addEventListener(type, fn, opts);
     cleanups.push(() => target.removeEventListener(type, fn, opts));
@@ -214,50 +203,50 @@ export function mount(root) {
     const servoPin = activePinout.SERVO ?? 9;
     const echoPin = activePinout.ECHO ?? 3;
     const isConflict = !pinAudit.valid;
-    const pwmColor = isConflict ? '#ff6b6b' : '#c8ff2e';
+    const pwmColor = isConflict ? '#ff6b6b' : '#d4d8df';
     return `
       <svg class="asm-pid-svg" viewBox="0 0 620 220" role="img" aria-label="Hardware & Pinout Schematic">
         <!-- Wires from MCU to peripherals -->
-        <path d="M210 64 H135" stroke="${pwmColor}" stroke-width="2.4" fill="none" stroke-dasharray="${isConflict ? '4 3' : 'none'}"/>
-        <path d="M210 106 H135" stroke="#32d583" stroke-width="2.2" fill="none"/>
-        <path d="M210 154 H135" stroke="#38bdf8" stroke-width="2.2" fill="none"/>
-        <path d="M410 74 H485" stroke="#c8ff2e" stroke-width="2.2" fill="none"/>
-        <path d="M410 142 H485" stroke="#a855f7" stroke-width="2.2" fill="none"/>
+        <path d="M210 64 H135" stroke="${pwmColor}" stroke-width="2" fill="none" stroke-dasharray="${isConflict ? '4 3' : 'none'}"/>
+        <path d="M210 106 H135" stroke="#8e96a4" stroke-width="1.8" fill="none"/>
+        <path d="M210 154 H135" stroke="#8e96a4" stroke-width="1.8" fill="none"/>
+        <path d="M410 74 H485" stroke="#d4d8df" stroke-width="1.8" fill="none"/>
+        <path d="M410 142 H485" stroke="#8e96a4" stroke-width="1.8" fill="none"/>
 
         <!-- Left: L298N Dual H-Bridge + TT Gearmotors -->
-        <rect x="20" y="34" width="115" height="92" rx="8" fill="#121417" stroke="${pwmColor}" stroke-width="1.8"/>
+        <rect x="20" y="34" width="115" height="92" rx="8" fill="#121417" stroke="${isConflict ? '#ff6b6b' : '#4a515d'}" stroke-width="1.5"/>
         <text x="77" y="56" text-anchor="middle" font-family="Geist Mono, monospace" font-size="11" font-weight="700" fill="#f5f5f5">L298N DRIVER</text>
-        <text x="77" y="74" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="${pwmColor}">ENA: D${esc(enaPin)} ${isConflict ? '⚠ TIMER1' : '(Timer0)'}</text>
-        <text x="77" y="90" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="#32d583">ENB: D${esc(enbPin)} (Timer0)</text>
-        <text x="77" y="108" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9" fill="#9ea6b5">Deadzone PWM ≥ 115</text>
+        <text x="77" y="74" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="${isConflict ? '#ff6b6b' : '#d4d8df'}">ENA: D${esc(enaPin)} ${isConflict ? '⚠ TIMER1' : '(Timer0)'}</text>
+        <text x="77" y="90" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="#bdbdbd">ENB: D${esc(enbPin)} (Timer0)</text>
+        <text x="77" y="108" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9" fill="#7a7a7a">Deadzone PWM ≥ 115</text>
 
         <!-- Left bottom: Dual TT Gearmotors -->
-        <rect x="20" y="138" width="115" height="52" rx="8" fill="#121417" stroke="#38bdf8" stroke-width="1.5"/>
+        <rect x="20" y="138" width="115" height="52" rx="8" fill="#121417" stroke="#383e49" stroke-width="1.4"/>
         <text x="77" y="160" text-anchor="middle" font-family="Geist Mono, monospace" font-size="10.5" font-weight="700" fill="#f5f5f5">2× TT 1:48 MOTORS</text>
-        <text x="77" y="176" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9" fill="#38bdf8">TPU Tires · 200 RPM</text>
+        <text x="77" y="176" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9" fill="#a3a3a3">TPU Tires · 200 RPM</text>
 
         <!-- Center: Arduino UNO (ATmega328P) -->
-        <rect x="210" y="28" width="200" height="164" rx="10" fill="#14181f" stroke="${isConflict ? '#ff6b6b' : '#8e96a4'}" stroke-width="2"/>
+        <rect x="210" y="28" width="200" height="164" rx="10" fill="#14181f" stroke="${isConflict ? '#ff6b6b' : '#636b78'}" stroke-width="1.8"/>
         <text x="310" y="54" text-anchor="middle" font-family="Geist Mono, monospace" font-size="12.5" font-weight="700" fill="#f5f5f5">ARDUINO UNO (ATmega328P)</text>
-        <text x="310" y="72" text-anchor="middle" font-family="Geist Mono, monospace" font-size="10" fill="#c8ff2e">50 Hz Non-Blocking C99 Loop</text>
+        <text x="310" y="72" text-anchor="middle" font-family="Geist Mono, monospace" font-size="10" fill="#bdbdbd">50 Hz Non-Blocking C99 Loop</text>
         <rect x="228" y="86" width="164" height="42" rx="6" fill="#0d0f13" stroke="#262a33"/>
         <text x="310" y="104" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="#f5f5f5">Timer0 (D5/D6): 976 Hz PWM</text>
-        <text x="310" y="120" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="${pwmColor}">Timer1 (D9/D10): &lt;Servo.h&gt; Lock</text>
+        <text x="310" y="120" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="${isConflict ? '#ff6b6b' : '#a3a3a3'}">Timer1 (D9/D10): &lt;Servo.h&gt; Lock</text>
         <rect x="228" y="138" width="164" height="38" rx="6" fill="#0d0f13" stroke="#262a33"/>
-        <text x="310" y="155" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="#32d583">ISR INT1 (D${esc(echoPin)}): 0 ms block</text>
-        <text x="310" y="169" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9" fill="#9ea6b5">SRAM: 461 B / 2048 B (22.5%)</text>
+        <text x="310" y="155" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="#d4d8df">ISR INT1 (D${esc(echoPin)}): 0 ms block</text>
+        <text x="310" y="169" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9" fill="#7a7a7a">SRAM: 461 B / 2048 B (22.5%)</text>
 
         <!-- Right top: SG90 Neck Radar Servo -->
-        <rect x="485" y="42" width="115" height="64" rx="8" fill="#121417" stroke="#c8ff2e" stroke-width="1.6"/>
+        <rect x="485" y="42" width="115" height="64" rx="8" fill="#121417" stroke="#4a515d" stroke-width="1.5"/>
         <text x="542" y="65" text-anchor="middle" font-family="Geist Mono, monospace" font-size="10.5" font-weight="700" fill="#f5f5f5">SG90 SERVO</text>
-        <text x="542" y="81" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="#c8ff2e">PWM: D${esc(servoPin)} (±65°)</text>
-        <text x="542" y="95" text-anchor="middle" font-family="Geist Mono, monospace" font-size="8.5" fill="#9ea6b5">Active Neck Sweep</text>
+        <text x="542" y="81" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="#d4d8df">PWM: D${esc(servoPin)} (±65°)</text>
+        <text x="542" y="95" text-anchor="middle" font-family="Geist Mono, monospace" font-size="8.5" fill="#7a7a7a">Active Neck Sweep</text>
 
         <!-- Right bottom: HC-SR04 + APDS-9960 -->
-        <rect x="485" y="118" width="115" height="68" rx="8" fill="#121417" stroke="#a855f7" stroke-width="1.6"/>
+        <rect x="485" y="118" width="115" height="68" rx="8" fill="#121417" stroke="#383e49" stroke-width="1.5"/>
         <text x="542" y="140" text-anchor="middle" font-family="Geist Mono, monospace" font-size="10.5" font-weight="700" fill="#f5f5f5">HC-SR04 + I2C</text>
-        <text x="542" y="156" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="#a855f7">TRIG D4 · ECHO D${esc(echoPin)}</text>
-        <text x="542" y="172" text-anchor="middle" font-family="Geist Mono, monospace" font-size="8.5" fill="#9ea6b5">APDS-9960 (0x9E)</text>
+        <text x="542" y="156" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="#bdbdbd">TRIG D4 · ECHO D${esc(echoPin)}</text>
+        <text x="542" y="172" text-anchor="middle" font-family="Geist Mono, monospace" font-size="8.5" fill="#7a7a7a">APDS-9960 (0x9E)</text>
       </svg>`;
   }
 
@@ -266,9 +255,9 @@ export function mount(root) {
     const fillPct = simState.faultLsh ? 96 : Math.min(90, Math.max(12, (simState.weightKg / 300) * 85));
     const fillY = 152 - (fillPct / 100) * 76;
     const fillH = (fillPct / 100) * 76;
-    const valveColor = !isFault && simState.stepIdx === 1 ? '#c8ff2e' : isFault ? '#ff6b6b' : '#58606e';
-    const motorColor = !isFault && simState.stepIdx === 2 ? '#c8ff2e' : simState.faultMotor ? '#ff6b6b' : '#32d583';
-    const outColor = !isFault && simState.stepIdx === 3 ? '#c8ff2e' : '#58606e';
+    const valveColor = !isFault && simState.stepIdx === 1 ? '#f5f5f5' : isFault ? '#ff6b6b' : '#4a515d';
+    const motorColor = !isFault && simState.stepIdx === 2 ? '#f5f5f5' : simState.faultMotor ? '#ff6b6b' : '#8e96a4';
+    const outColor = !isFault && simState.stepIdx === 3 ? '#f5f5f5' : '#4a515d';
     const tags = dag.nodes.map((n) => n.tag);
     const v1 = tags.find((x) => x.startsWith('FV-')) ?? 'FV-101';
     const v2 = tags.filter((x) => x.startsWith('FV-'))[1] ?? 'FV-102';
@@ -284,8 +273,8 @@ export function mount(root) {
     return `
       <svg class="asm-pid-svg" viewBox="0 0 620 220" role="img" aria-label="P&ID ISA-5.1 Live Schematic">
         <!-- Piping lines -->
-        <path d="M95 44 H250 V74 M95 88 H230 V74 M95 132 H270 V74" stroke="${valveColor}" stroke-width="2.2" fill="none" stroke-dasharray="${!isFault && simState.stepIdx === 1 ? '5 3' : 'none'}"/>
-        <path d="M300 154 V188 H495" stroke="${outColor}" stroke-width="2.5" fill="none"/>
+        <path d="M95 44 H250 V74 M95 88 H230 V74 M95 132 H270 V74" stroke="${valveColor}" stroke-width="2" fill="none" stroke-dasharray="${!isFault && simState.stepIdx === 1 ? '5 3' : 'none'}"/>
+        <path d="M300 154 V188 H495" stroke="${outColor}" stroke-width="2.2" fill="none"/>
         <!-- Feed Valves -->
         <g font-family="Geist Mono, monospace" font-size="10" fill="#f5f5f5">
           <rect x="32" y="30" width="62" height="26" rx="5" fill="#121417" stroke="${valveColor}" stroke-width="1.5"/>
@@ -296,24 +285,24 @@ export function mount(root) {
           <text x="63" y="135" text-anchor="middle">${esc(v3)}</text>
         </g>
         <!-- Main Mixing Vessel / Hopper -->
-        <rect x="218" y="72" width="164" height="82" rx="10" fill="#14181f" stroke="#8e96a4" stroke-width="2"/>
-        <rect x="222" y="${fillY.toFixed(1)}" width="156" height="${fillH.toFixed(1)}" rx="6" fill="${simState.faultLsh ? 'rgb(255 107 107 / 0.38)' : 'rgb(200 255 46 / 0.24)'}"/>
+        <rect x="218" y="72" width="164" height="82" rx="10" fill="#14181f" stroke="#636b78" stroke-width="1.8"/>
+        <rect x="222" y="${fillY.toFixed(1)}" width="156" height="${fillH.toFixed(1)}" rx="6" fill="${simState.faultLsh ? 'rgb(255 107 107 / 0.35)' : 'rgb(241 243 238 / 0.14)'}"/>
         <text x="300" y="112" text-anchor="middle" font-family="Geist Mono, monospace" font-size="13" font-weight="700" fill="#f5f5f5">${esc(tk)}</text>
-        <text x="300" y="128" text-anchor="middle" font-family="Geist Mono, monospace" font-size="10" fill="#c8ff2e">${esc(wt)}: ${simState.weightKg.toFixed(1)} kg</text>
+        <text x="300" y="128" text-anchor="middle" font-family="Geist Mono, monospace" font-size="10" fill="#d4d8df">${esc(wt)}: ${simState.weightKg.toFixed(1)} kg</text>
         <!-- Top Agitator / Conveying Motor -->
-        <circle cx="300" cy="36" r="18" fill="#121417" stroke="${motorColor}" stroke-width="2"/>
-        <line x1="300" y1="54" x2="300" y2="138" stroke="${motorColor}" stroke-width="2"/>
+        <circle cx="300" cy="36" r="18" fill="#121417" stroke="${motorColor}" stroke-width="1.8"/>
+        <line x1="300" y1="54" x2="300" y2="138" stroke="${motorColor}" stroke-width="1.8"/>
         <text x="300" y="40" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" font-weight="700" fill="${motorColor}">${esc(mot)}</text>
         <!-- Level Switches LSH & LSL -->
-        <rect x="404" y="74" width="76" height="24" rx="12" fill="#121417" stroke="${simState.faultLsh ? '#ff6b6b' : '#32d583'}" stroke-width="1.6"/>
+        <rect x="404" y="74" width="76" height="24" rx="12" fill="#121417" stroke="${simState.faultLsh ? '#ff6b6b' : '#4a515d'}" stroke-width="1.5"/>
         <text x="442" y="90" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="${simState.faultLsh ? '#ff6b6b' : '#f5f5f5'}">${esc(lsh)} ${simState.faultLsh ? 'TRIP' : 'OK'}</text>
-        <rect x="404" y="128" width="76" height="24" rx="12" fill="#121417" stroke="#eab308" stroke-width="1.4"/>
-        <text x="442" y="144" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="#f5f5f5">${esc(lsl)}</text>
+        <rect x="404" y="128" width="76" height="24" rx="12" fill="#121417" stroke="#4a515d" stroke-width="1.4"/>
+        <text x="442" y="144" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="#bdbdbd">${esc(lsl)}</text>
         <!-- Bottom Discharge Valve & Takeaway Conveyor -->
-        <rect x="334" y="174" width="66" height="26" rx="5" fill="#121417" stroke="${outColor}" stroke-width="1.6"/>
+        <rect x="334" y="174" width="66" height="26" rx="5" fill="#121417" stroke="${outColor}" stroke-width="1.5"/>
         <text x="367" y="191" text-anchor="middle" font-family="Geist Mono, monospace" font-size="10" fill="#f5f5f5">${esc(vOut)}</text>
-        <rect x="495" y="172" width="96" height="30" rx="6" fill="#121417" stroke="#c8ff2e" stroke-width="1.6"/>
-        <text x="543" y="191" text-anchor="middle" font-family="Geist Mono, monospace" font-size="10" fill="#c8ff2e">${esc(cv)}</text>
+        <rect x="495" y="172" width="96" height="30" rx="6" fill="#121417" stroke="#4a515d" stroke-width="1.5"/>
+        <text x="543" y="191" text-anchor="middle" font-family="Geist Mono, monospace" font-size="10" fill="#d4d8df">${esc(cv)}</text>
       </svg>`;
   }
 
@@ -329,22 +318,6 @@ export function mount(root) {
         : simState.faultMotor
           ? 'HOLD · MOTOR_OL_FAULT (CE-02)'
           : stateNames[simState.stepIdx];
-
-      flowBarEl.innerHTML = `
-        <div class="asm-step-item">
-          <span class="asm-step-num">01</span>
-          <div><b>${T('step1Pid')}</b><span>${T('step1PidSub')}</span></div>
-        </div>
-        <span class="asm-step-arrow" aria-hidden="true">→</span>
-        <div class="asm-step-item">
-          <span class="asm-step-num">02</span>
-          <div><b>${T('step2Pid')}</b><span>${T('step2PidSub')}</span></div>
-        </div>
-        <span class="asm-step-arrow" aria-hidden="true">→</span>
-        <div class="asm-step-item">
-          <span class="asm-step-num">03</span>
-          <div><b>${T('step3Pid')}</b><span>${T('step3PidSub')}</span></div>
-        </div>`;
 
       contentEl.innerHTML = `
         <div class="asm-col">
@@ -576,22 +549,6 @@ export function mount(root) {
     const meshRoles = classifyStlMeshes(stlNames);
     const compiledMjcf = generateMujocoXml({ preset: cadPreset, modelName: `${cadPreset}_assembled` });
     const catalog = listComponents();
-
-    flowBarEl.innerHTML = `
-      <div class="asm-step-item">
-        <span class="asm-step-num">01</span>
-        <div><b>${T('step1Cad')}</b><span>${T('step1CadSub')}</span></div>
-      </div>
-      <span class="asm-step-arrow" aria-hidden="true">→</span>
-      <div class="asm-step-item">
-        <span class="asm-step-num">02</span>
-        <div><b>${T('step2Cad')}</b><span>${T('step2CadSub')}</span></div>
-      </div>
-      <span class="asm-step-arrow" aria-hidden="true">→</span>
-      <div class="asm-step-item">
-        <span class="asm-step-num">03</span>
-        <div><b>${T('step3Cad')}</b><span>${T('step3CadSub')}</span></div>
-      </div>`;
 
     contentEl.innerHTML = `
       <div class="asm-col">

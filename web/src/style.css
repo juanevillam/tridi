@@ -732,21 +732,73 @@ select:disabled {
   text-align: center;
 }
 
-/* Over the robot, top right so the bottom 4-step narrator bar has full width. */
-.push {
+/* Floating push bar + Newtons force selector over the robot pane. */
+.push-group {
   position: absolute;
-  top: 12px;
   right: 14px;
-  bottom: auto;
+  bottom: 14px;
   z-index: 8;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: rgb(10 12 16 / 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 12px 28px -10px rgb(0 0 0 / 0.78);
+}
+
+.push-group[hidden] {
+  display: none !important;
+}
+
+.push-force-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding-left: 2px;
+}
+
+.push-force-pill {
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  font: 600 10.5px/1 var(--mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.push-force-pill:hover {
+  color: var(--ink);
+  background: rgb(241 243 238 / 0.08);
+}
+
+.push-force-pill.active {
+  color: var(--signal);
+  border-color: rgb(200 255 46 / 0.38);
+  background: rgb(200 255 46 / 0.14);
+}
+
+.push {
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
   border-color: transparent;
-  background: var(--signal); /* as the landing's push button */
+  background: var(--signal);
   color: var(--on-signal);
-  box-shadow: 0 10px 24px -10px rgb(0 0 0 / 0.7);
+  font: 600 11.5px/1 var(--display);
+  white-space: nowrap;
 }
 
 .push:disabled {
-  opacity: 0;
+  opacity: 0.35;
   pointer-events: none;
 }
 
@@ -985,16 +1037,16 @@ select:disabled {
   visibility: hidden;
 }
 
-/* Picture-in-Picture (PiP) source video preview: shows real video in top-right while 3D skeleton plays */
+/* Picture-in-Picture (PiP) source video preview: shows complete real video in top-right while 3D skeleton plays */
 .pane.has-pip-video .source-pip-wrap {
-  display: block;
+  display: flex;
+  flex-direction: column;
   inset: 12px 12px auto auto;
-  width: min(36%, 168px);
+  width: min(38%, 184px);
   height: auto;
-  aspect-ratio: 16 / 10;
   border-radius: 10px;
   border: 1px solid rgb(200 255 46 / 0.45);
-  background: #050608;
+  background: radial-gradient(circle at 50% 45%, #1d2430 0%, #090c10 100%);
   box-shadow: 0 10px 28px rgb(0 0 0 / 0.65);
   overflow: hidden;
   z-index: 3;
@@ -1008,7 +1060,11 @@ select:disabled {
 }
 
 .pane.has-pip-video .source-video {
-  object-fit: cover;
+  width: 100%;
+  height: auto;
+  max-height: 210px;
+  object-fit: contain;
+  background: transparent;
 }
 
 .pane.has-pip-video .source-pip-tag {
@@ -1028,18 +1084,21 @@ select:disabled {
   pointer-events: none;
 }
 
-/* Expanded PiP mode: fills the human pane when clicked */
+/* Expanded PiP mode: fills the human pane when clicked and shows the complete video */
 .pane.has-pip-video.pip-expanded .source-pip-wrap {
   inset: 0;
   width: 100%;
   height: 100%;
-  aspect-ratio: auto;
   border-radius: 0;
   border: none;
   transform: none;
+  background: radial-gradient(circle at 50% 45%, #1d2430 0%, #090c10 100%);
 }
 
 .pane.has-pip-video.pip-expanded .source-video {
+  width: 100%;
+  height: 100%;
+  max-height: none;
   object-fit: contain;
 }
 
@@ -2537,6 +2596,103 @@ select optgroup {
   color: #f1f3ee;
 }
 
+/* ---- Unified App Topbar across all Studio & Case Study screens (header.js) ---- */
+.app-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 18px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 14px 10px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+  background: rgb(12 14 18 / 0.84);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  box-shadow:
+    inset 0 0.75px 0 rgb(255 255 255 / 0.14),
+    0 14px 32px -18px rgb(0 0 0 / 0.75);
+}
+
+.app-topbar-left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  min-width: 0;
+}
+
+.app-topbar .wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.33em;
+  margin-right: 4px;
+  font: 700 22px/1 var(--display);
+  color: var(--ink);
+  text-decoration: none;
+  flex: none;
+}
+
+.app-topbar .wordmark .logo {
+  width: 1.15em;
+  height: 1.15em;
+}
+
+.app-topnav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.app-nav-sep {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: var(--line-strong);
+}
+
+.app-nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  font: 500 11.5px/1 var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+}
+
+.app-nav-link:hover,
+.app-nav-link:focus-visible {
+  color: var(--ink);
+  background: rgb(241 243 238 / 0.06);
+  border-color: var(--line);
+}
+
+.app-nav-link.active {
+  color: var(--signal);
+  background: rgb(200 255 46 / 0.1);
+  border-color: rgb(200 255 46 / 0.36);
+}
+
+.app-topbar-right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
 /* Page headers as the landing's captions: uppercase titles, a quiet back link. */
 .page h1 {
   font-weight: 500;
@@ -2731,13 +2887,17 @@ select optgroup {
   width: 100%;
   height: 360px;
   max-height: 360px;
-  object-fit: contain;
-  background: #050608;
+  object-fit: cover;
+  background: radial-gradient(circle at 50% 45%, #1d2430 0%, #090c10 100%);
 }
 
 .milestone-videos.two-col .milestone-video-box video {
   height: 310px;
   max-height: 310px;
+  object-fit: cover;
+}
+
+.milestone-video-box video:fullscreen {
   object-fit: contain;
 }
 
@@ -2769,7 +2929,7 @@ select optgroup {
   border: 1px solid var(--line);
   border-radius: var(--r-2);
   overflow: hidden;
-  background: #0a0c0f;
+  background: radial-gradient(circle at 50% 45%, #1a212c 0%, #0a0c0f 100%);
   cursor: zoom-in;
   transition: border-color 0.18s ease, transform 0.18s ease;
 }
@@ -2797,7 +2957,8 @@ select optgroup {
   width: 100%;
   aspect-ratio: 16 / 10;
   object-fit: cover;
-  background: #0d1014;
+  object-position: center;
+  background: radial-gradient(circle at 50% 45%, #1d2430 0%, #0b0e13 100%);
 }
 
 /* Fullscreen PhotoViewer Lightbox for Milestone Architecture Photos */
@@ -2811,7 +2972,7 @@ select optgroup {
   margin: 0;
   padding: 0;
   border: 0;
-  background: rgb(5 6 8 / 0.88);
+  background: radial-gradient(circle at 50% 42%, rgb(28 36 48 / 0.94) 0%, rgb(11 14 20 / 0.96) 62%, rgb(5 7 10 / 0.98) 100%);
   backdrop-filter: blur(22px) saturate(140%);
   -webkit-backdrop-filter: blur(22px) saturate(140%);
   color: var(--ink);
@@ -2838,9 +2999,10 @@ select optgroup {
   position: relative;
   width: 100%;
   height: 100%;
-  display: grid;
-  place-items: center;
-  padding: clamp(3.75rem, 7vh, 5rem) clamp(4.25rem, 7vw, 6.5rem) clamp(1.25rem, 3vh, 2.25rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(3.75rem, 6vh, 4.75rem) clamp(4.25rem, 7vw, 6.5rem) clamp(1.5rem, 3.5vh, 2.5rem);
   box-sizing: border-box;
   transform: scale(0.96);
   transition: transform 450ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -2851,13 +3013,18 @@ select optgroup {
 }
 
 .photo-viewer .frame {
-  margin: 0;
+  position: relative;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.9rem;
+  justify-content: center;
+  gap: 1rem;
   max-width: 100%;
   max-height: 100%;
+  border-radius: 0;
+  overflow: visible;
+  background: transparent;
 }
 
 .photo-viewer .stage {
@@ -2868,9 +3035,9 @@ select optgroup {
   height: auto;
   max-width: 84vw;
   max-height: 72vh;
-  border-radius: 14px;
+  border-radius: 0;
   overflow: hidden;
-  background: transparent;
+  background: radial-gradient(circle at 50% 45%, #1f2735 0%, #0d1117 100%);
   border: 1px solid rgb(241 243 238 / 0.22);
   box-shadow: 0 28px 68px -20px rgb(0 0 0 / 0.85);
 }
@@ -2900,23 +3067,31 @@ select optgroup {
   height: auto;
   object-fit: contain;
   display: block;
-  border-radius: 13px;
+  border-radius: 0;
   user-select: none;
 }
 
+.photo-viewer .frame figcaption,
 .photo-viewer figcaption {
+  position: static;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
   text-align: center;
-  width: min(82vw, 48rem);
-  padding: 0.7rem 1.2rem;
+  width: fit-content;
+  max-width: min(82vw, 48rem);
+  padding: 0.7rem 1.35rem;
   border-radius: 12px;
-  background: rgb(10 12 15 / 0.92);
+  background: rgb(12 15 20 / 0.92);
   border: 1px solid rgb(241 243 238 / 0.18);
   box-shadow: 0 12px 32px rgb(0 0 0 / 0.55);
+  font: 400 0.92rem/1.45 var(--display);
+  letter-spacing: 0;
+  text-transform: none;
+  text-shadow: none;
 }
 
 .photo-viewer .v-meta-top {
