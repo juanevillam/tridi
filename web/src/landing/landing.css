@@ -587,7 +587,7 @@ html.is-landing.lenis body {
 }
 
 .nav-drop-item b {
-  font: 600 13px/1.2 var(--display);
+  font: 600 13.5px/1.25 var(--display);
   letter-spacing: -0.01em;
   color: var(--fg);
 }
@@ -597,7 +597,7 @@ html.is-landing.lenis body {
   color: var(--signal);
 }
 
-.nav-drop-item span {
+.nav-drop-item > span {
   font: 400 11.5px/1.35 var(--display);
   color: var(--fg-2);
 }
@@ -1350,7 +1350,7 @@ html.is-landing.lenis body {
   position: relative;
   top: auto;
   z-index: 2;
-  padding-bottom: 4vh;
+  padding-bottom: 0;
 }
 
 .closing-inner {
@@ -1628,18 +1628,18 @@ html.is-landing.lenis body {
   }
 }
 
-/* The 5 Studio tools: each card has a clear step badge, screen name, 1-line explanation, and CTA pill. */
+/* The 5 Studio tools: each card has an icon + domain badge, large screen name, short 1-line sub, and CTA pill. */
 .try {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
   gap: 10px;
-  min-height: 210px;
+  min-height: 204px;
   padding: 20px;
   border: 1px solid var(--line-dark);
   border-radius: var(--r-2);
-  background: rgb(18 20 23 / 0.72);
-  backdrop-filter: blur(12px);
+  background: rgb(18 20 23 / 0.76);
+  backdrop-filter: blur(14px);
   color: var(--fg);
   text-decoration: none;
   transform: translateZ(0);
@@ -1657,13 +1657,30 @@ html.is-landing.lenis body {
   background-color: rgb(200 255 46 / 0.08);
 }
 
+.try-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.try-icon {
+  width: 28px;
+  height: 28px;
+  stroke: var(--signal);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  flex: none;
+}
+
 .try-tag {
-  align-self: flex-start;
-  padding: 3px 8px;
-  border: 1px solid rgb(200 255 46 / 0.3);
+  padding: 4px 8px;
+  border: 1px solid rgb(200 255 46 / 0.28);
   border-radius: 999px;
   background: rgb(200 255 46 / 0.07);
-  font: 600 10px/1 var(--mono);
+  font: 600 9.5px/1 var(--mono);
   letter-spacing: 0.07em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -1671,20 +1688,21 @@ html.is-landing.lenis body {
 }
 
 .try b {
-  font: 600 clamp(18px, 1.45vw, 21px)/1.15 var(--display);
-  letter-spacing: -0.02em;
+  margin-top: 2px;
+  font: 600 clamp(20px, 1.65vw, 24px)/1.12 var(--display);
+  letter-spacing: -0.025em;
   color: var(--fg);
 }
 
 .try-sub {
-  font: 400 13.5px/1.45 var(--display);
+  font: 400 13.5px/1.4 var(--display);
   color: var(--fg-2);
 }
 
 .try-go {
   align-self: flex-start;
   margin-top: auto;
-  padding: 8px 14px;
+  padding: 7px 14px;
   border: 1px solid var(--signal);
   border-radius: 999px;
   font: 500 12.5px/1 var(--display);
@@ -1718,92 +1736,81 @@ html.is-landing.lenis body {
 .footer {
   position: relative;
   z-index: 2;
-  display: grid;
-  gap: 28px;
   width: 100%;
   max-width: 1200px;
-  margin: clamp(64px, 10vh, 112px) auto 0;
-  padding: 40px 36px 48px;
+  margin: 24px auto 0;
+  padding: 22px 36px 28px;
   border-top: 1px solid var(--line-dark);
   border-radius: 0;
-  background: linear-gradient(180deg, rgb(8 9 11 / 0.96), rgb(8 9 11 / 1));
+  background: linear-gradient(180deg, rgb(8 9 11 / 0.94), rgb(8 9 11 / 1));
 }
 
-.foot-grid {
-  display: grid;
-  grid-template-columns: 1.4fr repeat(3, minmax(0, 1fr));
-  align-items: start;
-  gap: 32px;
-}
-
-@media (max-width: 960px) {
-  .foot-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 600px) {
-  .foot-grid {
-    grid-template-columns: 1fr;
-  }
+.foot-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px 28px;
 }
 
 .foot-brand {
-  display: grid;
-  align-content: start;
-  gap: 14px;
-}
-
-.wordmark.big {
-  font-size: clamp(52px, 6.5vw, 84px);
-  line-height: 0.92;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 18px;
 }
 
 .foot-tagline {
   margin: 0 !important;
-  max-width: 34ch;
-  font: 400 14px/1.5 var(--display);
+  font: 400 13.5px/1.4 var(--display);
   color: var(--fg-2) !important;
 }
 
-.foot-col {
-  display: grid;
-  align-content: start;
-  gap: 8px;
+.foot-right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 20px;
 }
 
-.foot-col-head {
-  margin: 0 0 4px !important;
-  font: 600 11px/1.3 var(--mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--dim) !important;
-}
-
-.foot-team-head {
-  margin-top: 12px !important;
-}
-
-.foot-col a {
-  color: var(--fg-2);
-  font: 500 13.5px/1.4 var(--display);
-  text-decoration: none;
-  transition: color 0.18s ease;
-}
-
-.foot-col a:hover,
-.foot-col a:focus-visible {
-  color: var(--fg);
-}
-
-.foot-col a.foot-accent {
+.foot-case-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 13px;
+  border: 1px solid rgb(200 255 46 / 0.4);
+  border-radius: 999px;
+  background: rgb(200 255 46 / 0.08);
   color: var(--signal);
+  font: 500 12.5px/1 var(--display);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.foot-case-pill:hover,
+.foot-case-pill:focus-visible {
+  background: var(--signal);
+  color: var(--on-signal);
 }
 
 .foot-team-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px 12px;
+  align-items: center;
+  gap: 8px 14px;
+}
+
+.foot-team-links a {
+  color: var(--fg-2);
+  font: 500 13px/1.3 var(--display);
+  text-decoration: none;
+  transition: color 0.18s ease;
+}
+
+.foot-team-links a:hover,
+.foot-team-links a:focus-visible {
+  color: var(--fg);
 }
 
 /* ---- Small tablets & phones: mobile accordion drawer ---- */
@@ -2183,6 +2190,16 @@ html.is-landing.lenis body {
     background: none;
   }
 
+  .try-head {
+    grid-column: 1;
+    justify-content: flex-start;
+  }
+
+  .try-icon {
+    width: 18px;
+    height: 18px;
+  }
+
   .try-tag {
     grid-column: 1;
     padding: 0;
@@ -2241,8 +2258,9 @@ html.is-landing.lenis body {
   }
 
   .footer {
-    gap: var(--s-5);
-    margin-top: var(--s-8);
+    gap: var(--s-4);
+    margin-top: var(--s-5);
+    padding: 18px 20px 24px;
   }
 
   .footer > p {

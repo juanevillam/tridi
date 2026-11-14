@@ -732,11 +732,13 @@ select:disabled {
   text-align: center;
 }
 
-/* Over the robot, bottom right: always on screen, whatever the page height (Ale's pitch beat). */
+/* Over the robot, top right so the bottom 4-step narrator bar has full width. */
 .push {
   position: absolute;
+  top: 12px;
   right: 14px;
-  bottom: 14px;
+  bottom: auto;
+  z-index: 8;
   border-color: transparent;
   background: var(--signal); /* as the landing's push button */
   color: var(--on-signal);

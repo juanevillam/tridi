@@ -68,7 +68,7 @@ export const { T, t, A, L, X, S } = dict({
   vertHumanoids: { es: '01 · Robots Humanoides y Bípedos', en: '01 · Humanoid & Bipedal Robots' },
   vertRovers: { es: '02 · Rovers Autónomos y Mecatrónica', en: '02 · Autonomous Rovers & Mechatronics' },
   vertIndustrial: { es: '03 · Celdas y Plantas Industriales (P&ID)', en: '03 · Industrial Cells & Plants (P&ID)' },
-  openAssembler: { es: 'Assembler P&ID / CAD →', en: 'P&ID / CAD Assembler →' },
+  openAssembler: { es: 'Factory Assembler →', en: 'Factory Assembler →' },
   world: { es: 'Mundo', en: 'World' },
   place: { es: 'Lugar', en: 'Place' },
   noFurniture: { es: 'Sin muebles', en: 'No furniture' },

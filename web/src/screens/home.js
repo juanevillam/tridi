@@ -118,7 +118,6 @@ export function mount(root) {
             <svg class="nav-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
           <div class="nav-drop-panel" role="menu">
-            <p class="nav-drop-head">${T('nav.groupChapters')}</p>
             <a class="nav-drop-item" href="#capture">
               <b>Tridi Capture</b>
               <span>${T('nav.captureSub')}</span>
@@ -139,14 +138,9 @@ export function mount(root) {
             <svg class="nav-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </button>
           <div class="nav-drop-panel" role="menu">
-            <p class="nav-drop-head">${T('nav.groupTools')}</p>
             <a class="nav-drop-item" href="#/simulations" data-warm="simulations">
               <b>${T('nav.simulations')}</b>
               <span>${T('nav.simsSub')}</span>
-            </a>
-            <a class="nav-drop-item" href="#/assembler" data-warm="assembler">
-              <b>${T('nav.assembler')}</b>
-              <span>${T('nav.assemblerSub')}</span>
             </a>
             <a class="nav-drop-item" href="#/live" data-warm="live">
               <b>${T('nav.live')}</b>
@@ -159,6 +153,10 @@ export function mount(root) {
             <a class="nav-drop-item" href="#/delivery" data-warm="delivery">
               <b>${T('nav.delivery')}</b>
               <span>${T('nav.deliverySub')}</span>
+            </a>
+            <a class="nav-drop-item" href="#/assembler" data-warm="assembler">
+              <b>${T('nav.assembler')}</b>
+              <span>${T('nav.assemblerSub')}</span>
             </a>
           </div>
         </div>
@@ -286,62 +284,61 @@ export function mount(root) {
 
           <nav class="tries" ${A({ 'aria-label': 'close.tries' })}>
             <a class="try" href="#/simulations" data-warm="simulations">
-              <span class="try-tag">${T('try.simsTag')}</span>
+              <div class="try-head">
+                <svg class="try-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 3.5 7v10L12 21.5l8.5-4.5V7L12 2.5Z"/><path d="M3.5 7 12 11.5 20.5 7M12 11.5v10"/></svg>
+                <span class="try-tag">${T('try.simsTag')}</span>
+              </div>
               <b><span class="only-wide">${T('try.sims')}</span><span class="only-narrow">${T('try.simsShort')}</span></b>
               <span class="try-sub">${T('try.simsSub')}</span>
               <span class="try-go">${T('try.simsGo')}</span>
             </a>
-            <a class="try" href="#/assembler" data-warm="assembler">
-              <span class="try-tag">${T('try.assemblerTag')}</span>
-              <b><span class="only-wide">${T('try.assembler')}</span><span class="only-narrow">${T('try.assemblerShort')}</span></b>
-              <span class="try-sub">${T('try.assemblerSub')}</span>
-              <span class="try-go">${T('try.assemblerGo')}</span>
-            </a>
             <a class="try" href="#/live" data-warm="live">
-              <span class="try-tag">${T('try.liveTag')}</span>
+              <div class="try-head">
+                <svg class="try-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="13.5" height="12" rx="2"/><path d="m16 10.2 5.5-3.2v10L16 13.8"/><circle cx="9.25" cy="12" r="2.2"/></svg>
+                <span class="try-tag">${T('try.liveTag')}</span>
+              </div>
               <b><span class="only-wide">${T('try.live')}</span><span class="only-narrow">${T('try.liveShort')}</span></b>
               <span class="try-sub">${T('try.liveSub')}</span>
               <span class="try-go">${T('try.liveGo')}</span>
             </a>
             <a class="try" href="#/upload" data-warm="upload">
-              <span class="try-tag">${T('try.uploadTag')}</span>
+              <div class="try-head">
+                <svg class="try-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5V4.5m0 0-4 4m4-4 4 4"/><path d="M4 15.5v3a1.5 1.5 0 0 0 1.5 1.5h13a1.5 1.5 0 0 0 1.5-1.5v-3"/></svg>
+                <span class="try-tag">${T('try.uploadTag')}</span>
+              </div>
               <b><span class="only-wide">${T('try.upload')}</span><span class="only-narrow">${T('try.uploadShort')}</span></b>
               <span class="try-sub">${T('try.uploadSub')}</span>
               <span class="try-go">${T('try.uploadGo')}</span>
             </a>
             <a class="try" href="#/delivery" data-warm="delivery">
-              <span class="try-tag">${T('try.deliveryTag')}</span>
+              <div class="try-head">
+                <svg class="try-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h16M4 12h10m-10 5.5h7"/><circle cx="17.5" cy="15.5" r="3.5"/><path d="m16.2 15.5 1 1 2-2"/></svg>
+                <span class="try-tag">${T('try.deliveryTag')}</span>
+              </div>
               <b><span class="only-wide">${T('try.delivery')}</span><span class="only-narrow">${T('try.deliveryShort')}</span></b>
               <span class="try-sub">${T('try.deliverySub')}</span>
               <span class="try-go">${T('try.deliveryGo')}</span>
+            </a>
+            <a class="try" href="#/assembler" data-warm="assembler">
+              <div class="try-head">
+                <svg class="try-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="8.5" y="13.5" width="7" height="7" rx="1.5"/><path d="M10 7.5h4M6.5 11v4.5h2M17.5 11v4.5h-2"/></svg>
+                <span class="try-tag">${T('try.assemblerTag')}</span>
+              </div>
+              <b><span class="only-wide">${T('try.assembler')}</span><span class="only-narrow">${T('try.assemblerShort')}</span></b>
+              <span class="try-sub">${T('try.assemblerSub')}</span>
+              <span class="try-go">${T('try.assemblerGo')}</span>
             </a>
           </nav>
         </div>
       </div>
       <footer class="footer">
-        <div class="foot-grid">
+        <div class="foot-bar">
           <div class="foot-brand">
-            <span class="wordmark big" aria-label="Tridi">${LOGO}${WORDMARK}</span>
+            <span class="wordmark" aria-label="Tridi">${LOGO}${WORDMARK}</span>
             <p class="foot-tagline">${T('foot.tagline')}</p>
           </div>
-          <div class="foot-col">
-            <p class="foot-col-head">${T('foot.colProduct')}</p>
-            <a href="#capture">Tridi Capture</a>
-            <a href="#gym">Tridi Gym</a>
-            <a href="#policy">Tridi Policy</a>
-          </div>
-          <div class="foot-col">
-            <p class="foot-col-head">${T('foot.colStudio')}</p>
-            <a href="#/simulations" data-warm="simulations">${T('nav.simulations')}</a>
-            <a href="#/assembler" data-warm="assembler">${T('nav.assembler')}</a>
-            <a href="#/live" data-warm="live">${T('nav.live')}</a>
-            <a href="#/upload" data-warm="upload">${T('nav.upload')}</a>
-            <a href="#/delivery" data-warm="delivery">${T('nav.delivery')}</a>
-          </div>
-          <div class="foot-col">
-            <p class="foot-col-head">${T('foot.milestones')}</p>
-            <a class="foot-accent" href="#/milestones" data-warm="milestones">${T('nav.milestones')} →</a>
-            <p class="foot-col-head foot-team-head">${T('foot.team')}</p>
+          <div class="foot-right">
+            <a class="foot-case-pill" href="#/milestones" data-warm="milestones">${T('foot.milestones')} →</a>
             <div class="foot-team-links">
               <a href="https://www.linkedin.com/in/pastor-jimenez" target="_blank" rel="noopener">Pastor Jiménez</a>
               <a href="https://www.linkedin.com/in/juanevillam" target="_blank" rel="noopener">Juan Villa</a>

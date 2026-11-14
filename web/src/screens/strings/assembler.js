@@ -1,12 +1,12 @@
 // #/assembler copy in Spanish and English (src/i18n.js).
 import { dict } from '../../i18n.js';
 
-export const title = { es: 'Assembler (P&ID y CAD)', en: 'Assembler (P&ID & CAD)' };
+export const title = { es: 'Factory Assembler', en: 'Factory Assembler' };
 
 export const { T, t, A } = dict({
   kicker: {
-    es: '// TRIDI ASSEMBLER STUDIO · LA IA RAZONA Y EL CÓDIGO ENSAMBLA',
-    en: '// TRIDI ASSEMBLER STUDIO · AI REASONS, CODE ASSEMBLES',
+    es: '// TRIDI FACTORY ASSEMBLER · LA IA RAZONA Y EL CÓDIGO ENSAMBLA',
+    en: '// TRIDI FACTORY ASSEMBLER · AI REASONS, CODE ASSEMBLES',
   },
   title: {
     es: 'De planos P&ID (.dxf) o piezas CAD (.stl + .ino) a gemelo físico, docs ISA-5.1 y código determinista',
@@ -17,8 +17,7 @@ export const { T, t, A } = dict({
     en: 'Deterministic architecture with zero black boxes: parses your ISA-5.1 tags or microcontroller pinout, verifies 100% of sources without hallucinating components, and generates field-ready engineering.',
   },
   backHome: { es: '← Inicio', en: '← Home' },
-  goSims: { es: 'Simulaciones 3D', en: '3D Simulations' },
-  goDelivery: { es: 'Entregas ONNX / PLC', en: 'ONNX / PLC Deliveries' },
+  goSims: { es: 'Simulaciones', en: 'Simulations' },
 
   modeAria: { es: 'Canal de ensamblaje', en: 'Assembly channel' },
   modePid: {

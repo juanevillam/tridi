@@ -179,8 +179,7 @@ export function mount(root) {
           </div>
           <div class="asm-nav">
             <a class="asm-pill" href="#/">${T('backHome')}</a>
-            <a class="asm-pill" href="#/simulations">${T('goSims')}</a>
-            <a class="asm-pill" href="#/delivery">${T('goDelivery')}</a>
+            <a class="asm-pill signal" href="#/simulations">${T('goSims')} →</a>
             ${langSwitch()}
           </div>
         </header>

@@ -8,7 +8,7 @@
 // playClip grounds and smooths a RobotMotion for display, which would stand a fallen robot back up.
 // A stones episode is shown on the stones floor, so its feet land where they did.
 import * as THREE from 'three';
-import { generatePlcFlatFile, parseDxfPid, PID_SAMPLE_DXFS, WORLDS } from 'tridi-physics';
+import { WORLDS } from 'tridi-physics';
 
 import { dressWorld } from '../looks/index.js';
 import { loader } from '../loader.js';
@@ -402,24 +402,6 @@ function showDelivery(root, { manifest: m, source, url }, signal) {
           <div class="dl-bar"><span>${T('guideBar')}</span><span>${T('formats')}</span></div>
           <div class="dl-guide-body">${guideHTML(m, episodes)}</div>
         </section>
-        <section class="dl-win dl-native" ${A({ 'aria-label': 'nativeAria' })}>
-          <div class="dl-bar"><span>${T('nativeBar')}</span><span>${T('nativeSub')}</span></div>
-          <div class="dl-guide-body">
-            <p class="dl-train-note">${T('nativeIntro')}</p>
-            <div class="dl-native-bar">
-              <div class="dl-seg" role="group">
-                <button type="button" data-ncode="ino" aria-pressed="true">${T('nativeTabIno')}</button>
-                <button type="button" data-ncode="scl" aria-pressed="false">${T('nativeTabScl')}</button>
-                <button type="button" data-ncode="l5k" aria-pressed="false">${T('nativeTabL5k')}</button>
-              </div>
-              <div class="dl-native-actions">
-                <button type="button" class="dl-get" id="dl-native-download">${T('nativeDlBtn')}</button>
-                <a class="dl-get" href="#/assembler">${T('nativeOpenAsm')}</a>
-              </div>
-            </div>
-            <pre class="dl-code"><code id="dl-native-pre"></code></pre>
-          </div>
-        </section>
       </div>
       <div class="dl-tip" role="tooltip" hidden></div>
     </section>`;
@@ -437,56 +419,6 @@ function showDelivery(root, { manifest: m, source, url }, signal) {
   if (switcher) {
     listen(switcher, 'change', (e) => {
       location.hash = `#/delivery/${encodeURIComponent(e.target.value)}`;
-    });
-  }
-
-  // ---- Native Hardware & PLC Code Export (Task C-2) ----
-  const pidSample = PID_SAMPLE_DXFS['01_batch_mixer.dxf'];
-  const pidPlc = generatePlcFlatFile(parseDxfPid(pidSample.dxf, { fileName: '01_batch_mixer.dxf' }));
-  const NATIVE_FILES = {
-    ino: {
-      name: 'luigi_lab4_50Hz_deterministic.ino',
-      code: `// Tridi Sim-to-Real — 50 Hz Non-Blocking C99 Firmware (Arduino UNO / ATmega328P)
-// Hardware Audit: Timer1 (<Servo.h> on D9) isolated from ENA/ENB PWM on Timer0 (D5/D6)
-#include <Arduino.h>
-#include <Servo.h>
-#define PIN_ENA 5
-#define PIN_ENB 6
-#define PIN_TRIG 4
-#define PIN_ECHO 3 // INT1 Hardware ISR (0 ms blocking vs pulseIn)
-#define PIN_SERVO 9
-#define PWM_MIN_MOVE 115 // Overcomes 1:48 TT gearbox deadzone on carpet
-#define CONTROL_DT_US 20000UL // 50 Hz control step (20 ms)`,
-    },
-    scl: { name: pidPlc.sclFileName, code: pidPlc.scl },
-    l5k: { name: pidPlc.l5kFileName, code: pidPlc.l5k },
-  };
-  let activeNativeKey = 'ino';
-  const nativePre = $('#dl-native-pre');
-  const syncNativeCode = () => {
-    if (nativePre) nativePre.textContent = NATIVE_FILES[activeNativeKey].code;
-  };
-  syncNativeCode();
-  for (const btn of $$('[data-ncode]')) {
-    listen(btn, 'click', () => {
-      activeNativeKey = btn.dataset.ncode;
-      for (const b of $$('[data-ncode]')) b.setAttribute('aria-pressed', String(b === btn));
-      syncNativeCode();
-    });
-  }
-  const nativeDlBtn = $('#dl-native-download');
-  if (nativeDlBtn) {
-    listen(nativeDlBtn, 'click', () => {
-      const item = NATIVE_FILES[activeNativeKey];
-      const blob = new Blob([item.code], { type: 'text/plain;charset=utf-8' });
-      const href = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = href;
-      a.download = item.name;
-      document.body.append(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(href), 1500);
     });
   }
 

@@ -21,8 +21,8 @@ export const FINAL_LEVEL = 'g1-stand';
 
 export const ROBOT_MODELS = [
   { id: 'unitree_g1', vertical: 'humanoids', label: 'Humanoide Unitree G1 (29 motores + manos 5 dedos)' },
-  { id: 'luigi_lab4', vertical: 'rovers', label: 'Rover Luigi v2 — Radar Servo Móvil (Arduino UNO + SG90 + HC-SR04)' },
   { id: 'luigi_lab3', vertical: 'rovers', label: 'Rover Luigi v1 — Sensores Fijos (Arduino UNO + HC-SR04 + APDS-9960)' },
+  { id: 'luigi_lab4', vertical: 'rovers', label: 'Rover Luigi v2 — Radar Servo Móvil (Arduino UNO + SG90 + HC-SR04)' },
   { id: 'factory_cell', vertical: 'industrial', label: 'Celda Industrial — Empaquetadora Cronometrada (PLC S7-1200 / PackML)' },
 ];
 
