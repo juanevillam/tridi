@@ -20,25 +20,23 @@
    - **Simulated Industrial Cell (`physics/models/factory_cell/scene.xml`):**
      - Closed-loop 3D sorting cell (`CV-101` conveyor, `PE-101` optical sensor, `LC-101` load cell `250 g / 500 g / 1 kg`, `PZ-101` reject pusher, `PZ-102` accept diverter) inside a 3-wall enclosed industrial bay (`dressIndustrialPlant` in `web/src/looks/index.js`).
 
-2. **Global UI/UX Standardization & Polish (`web/` + `physics/`):**
-   - **Unified Global Header (`web/src/header.js`):** All inner screens (`#/simulations`, `#/live`, `#/upload`, `#/delivery`, `#/assembler`, `#/milestones`) share `appHeaderHTML()` and `mountAppHeader()`.
-   - **Landing (`#/`, `web/src/screens/home.js`, `web/src/landing/landing.css`):**
-     - Hover-to-open dropdowns (`Product ▾` & `Studio ▾`) with SVG icons and compact category chips (`7.5px` font).
-     - `Tridi Gym` (`#gym`): eliminated vertical robot jump when switching between `10M`, `100M`, and `300M` steps (`loadPolicy` only updates `view.targetHeight` when `controls.enabled === true` and skips `sim.reset()` when `reset: false`).
-     - `Tridi Policy` (`#policy`): fixed `.policy-data` button overflow by animating `.policy-caption` as a single card unit.
-     - Closing & Footer (`#closing`): removed duplicate `.try-tag` chips on `.tries` cards; redesigned `.footer` with larger `tridi` wordmark + tagline stacked below, 2-column team grid next to brand, and `↑ Back to top` button on the right.
-   - **Simulations (`#/simulations`):**
-     - Matched camera zoom/scale across the source video PiP, 3D green skeleton (`SkeletonView`), and simulated Unitree G1 (`Viewer`).
-     - Added Newtons force selector (`100 N · 150 N · 300 N · 500 N`) next to `Push the robot`.
-     - Removed `"Pick a motion"` / `"Preloaded examples"` headers, removed bottom `.fio-narrator` boxes, and hid floating tags on `unitree_g1`, `luigi_lab3`, and `luigi_lab4` (kept only on `factory_cell`).
-   - **Deliveries (`#/delivery`) & Assembler (`#/assembler`):**
-     - `#/delivery`: replaced the crowded header, `.dl-status`, `.dl-explain`, and `.dl-guide` wall of text with a single compact `.dl-toolbar` (clip selector first, inline metric pills, and `↓ Download files` button without `(5)`).
-     - `#/assembler`: unified header with mode toggle, removed the 3-step banner in the header, and toned down excessive lime green (`--signal`) so tables, tabs, and SVG schematics use clean neutral monochrome contrast.
-   - **Source Video PiP & Expanded View (`#/simulations` & `#/delivery`) + Lightbox (`#/milestones`):**
-     - Source training video uses `object-fit: contain` with radial-gradient backdrop in both compact PiP and full-stage expanded view so the person's full body is always visible.
-     - `#/milestones` fullscreen lightbox (`.photo-viewer`) centers `figcaption` horizontally, uses a radial-gradient background instead of black, and sets `border-radius: 0` on fullscreen images.
+2. **Global UI/UX Standardization, Corporate Pages (`#/docs`, `#/team`), Scroll-Overflow Fade & Polish (`web/` + `physics/`):**
+   - **Unified Global Header & Standardized Shell (`web/src/header.js`, `web/src/style.css`):** All inner screens (`#/simulations`, `#/live`, `#/upload`, `#/delivery`, `#/assembler`, `#/milestones`, `#/docs`, `#/team`) share `appHeaderHTML()`, `width: min(1720px, 100%); margin: 0 auto; padding: 14px 20px 28px;`, and `.screen-toolbar` (`margin-top: 14px`).
+   - **Landing (`#/`, `web/src/screens/home.js`, `web/src/landing/landing.css`, `web/src/landing/city.js`):**
+     - Merged `.hud` and `.sim-readout` into a single bottom-right telemetry chip (`MuJoCo WASM · Unitree G1 · 29 DOF · 500 Hz`).
+     - Lighter 3D city (`city.js`): narrower sidewalk (`6 m`), shorter street (`44 m`), zero background skyscrapers (`TOWERS_N = 0`), 4 building GLBs, fewer parked cars.
+     - Fixed `Tridi Capture` (`#capture`) PiP skeleton specificity (`.landing .frame.frame-skeleton` `position: absolute`) so video never collides with `.capture-caption`.
+     - Fixed G1 robot state transitions (`setMode`, `useLevel`, `runGym`) so the robot stops walking immediately when leaving `#capture` and stays centered inside its `1.2 m` circle in `#gym`.
+     - Cinematic camera framing in `Tridi Policy` (`#policy`) and full-viewport `#closing` (`min-height: 100svh`) with a second-scroll multi-column corporate `.footer` (and `.wordmark` click scroll-to-top).
+   - **Dedicated `#/docs` & `#/team` Pages (`web/src/screens/docs.js`, `web/src/screens/team.js`):**
+     - `#/docs` auto-syncs dynamically with `WORLDS`, `SCENES`, `listComponents` from `tridi-physics` and `LEVELS`, `IMITATIONS`, `ROBOT_MODELS` from `web/src/policies.js`.
+   - **Active Hover Immunity & Scroll-Overflow Fade (`web/src/scroll-fade.js`, `web/src/style.css`):**
+     - Fixed `.push` hover contrast, locked active elements on `:hover` (`[aria-current="true"]`, `[aria-selected="true"]`, `[aria-pressed="true"]`), removed `translateY(-1px)` hover clipping inside scrollbars, and added `mountScrollFade()` (`mask-image` edge fades) on all scrollable containers.
 
-3. **2-Layer Documentation & Raw Archives (`docs/`):**
+3. **8-Command Tridi Audit Suite (`.agents/skills/tridi-*`, `.claude/commands/tridi-*.md`, `docs/audit-playbook.md`):**
+   - Ported from `~/Code/portfolio` and tailored to Tridi: `/tridi-craft-audit`, `/tridi-data-audit`, `/tridi-cache-audit`, `/tridi-perf-audit`, `/tridi-parity-audit`, `/tridi-a11y-audit`, `/tridi-share-audit`, and `/tridi-release-audit`.
+
+4. **2-Layer Documentation & Raw Archives (`docs/`):**
    - Standardized all documentation in [`docs/README.md`](docs/README.md) following `~/Code/portfolio` conventions, and archived the official Brand Manual by José Alejandro ([`docs/pitch/manual-de-marca-tridi.pdf`](docs/pitch/manual-de-marca-tridi.pdf)), Platanus Hack Pitch Deck ([`docs/pitch/tridi-pitch.pdf`](docs/pitch/tridi-pitch.pdf)), and ZAKA field meeting audio + raw transcript ([`docs/reuniones/`](docs/reuniones/)).
 
 ---
