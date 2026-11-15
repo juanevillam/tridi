@@ -1,8 +1,8 @@
 # Tridi — Context Handoff (`CONTEXT.md`)
 
 **Last updated:** 2026-11-14  
-**Active branch:** `juan/zaka-industrial-plan` (pushed to `origin/juan/zaka-industrial-plan`, **NOT yet merged to `main`** so `https://trytridi.com` is not deployed until final approval)  
-**Documentation index:** [`docs/README.md`](docs/README.md) | **Roadmap:** [`docs/ROADMAP.md`](docs/ROADMAP.md)  
+**Active branch:** `juan/zaka-industrial-plan` (shipped to `main` so `https://trytridi.com` and `tridi.vercel.app` are up to date)  
+**Documentation index:** [`docs/README.md`](docs/README.md) | **Roadmap:** [`docs/ROADMAP.md`](docs/ROADMAP.md) | **Sales & Community GTM:** [`docs/plan-ventas-y-comunidades.md`](docs/plan-ventas-y-comunidades.md)  
 **Latest session log:** [`docs/bitacora/2026-11-13-0045-juan-reunion-zaka-y-plan-industrial.md`](docs/bitacora/2026-11-13-0045-juan-reunion-zaka-y-plan-industrial.md)  
 **Quality playbook:** [`docs/audit-playbook.md`](docs/audit-playbook.md) | **Skill:** `.claude/skills/tridi-quality/SKILL.md`
 
@@ -20,16 +20,18 @@
    - **Simulated Industrial Cell (`physics/models/factory_cell/scene.xml`):**
      - Closed-loop 3D sorting cell (`CV-101` conveyor, `PE-101` optical sensor, `LC-101` load cell `250 g / 500 g / 1 kg`, `PZ-101` reject pusher, `PZ-102` accept diverter) inside a 3-wall enclosed industrial bay (`dressIndustrialPlant` in `web/src/looks/index.js`).
 
-2. **Global UI/UX Standardization, Corporate Pages (`#/docs`, `#/team`), Scroll-Overflow Fade & Polish (`web/` + `physics/`):**
-   - **Unified Global Header & Standardized Shell (`web/src/header.js`, `web/src/style.css`):** All inner screens (`#/simulations`, `#/live`, `#/upload`, `#/delivery`, `#/assembler`, `#/milestones`, `#/docs`, `#/team`) share `appHeaderHTML()`, `width: min(1720px, 100%); margin: 0 auto; padding: 14px 20px 28px;`, and `.screen-toolbar` (`margin-top: 14px`).
-   - **Landing (`#/`, `web/src/screens/home.js`, `web/src/landing/landing.css`, `web/src/landing/city.js`):**
-     - Merged `.hud` and `.sim-readout` into a single bottom-right telemetry chip (`MuJoCo WASM · Unitree G1 · 29 DOF · 500 Hz`).
-     - Lighter 3D city (`city.js`): narrower sidewalk (`6 m`), shorter street (`44 m`), zero background skyscrapers (`TOWERS_N = 0`), 4 building GLBs, fewer parked cars.
-     - Fixed `Tridi Capture` (`#capture`) PiP skeleton specificity (`.landing .frame.frame-skeleton` `position: absolute`) so video never collides with `.capture-caption`.
-     - Fixed G1 robot state transitions (`setMode`, `useLevel`, `runGym`) so the robot stops walking immediately when leaving `#capture` and stays centered inside its `1.2 m` circle in `#gym`.
-     - Cinematic camera framing in `Tridi Policy` (`#policy`) and full-viewport `#closing` (`min-height: 100svh`) with a second-scroll multi-column corporate `.footer` (and `.wordmark` click scroll-to-top).
-   - **Dedicated `#/docs` & `#/team` Pages (`web/src/screens/docs.js`, `web/src/screens/team.js`):**
-     - `#/docs` auto-syncs dynamically with `WORLDS`, `SCENES`, `listComponents` from `tridi-physics` and `LEVELS`, `IMITATIONS`, `ROBOT_MODELS` from `web/src/policies.js`.
+2. **Global UI/UX Standardization, Corporate Pages (`#/team`), 3D Worlds Matrix Horizon & Polish (`web/` + `physics/`):**
+   - **Unified Global Header & Centered Navbar (`web/src/header.js`, `web/src/landing/landing.css`, `web/src/style.css`):** Both `.topbar` and `.app-topbar` use a 3-column grid (`grid-template-columns: 1fr auto 1fr`) with `.wordmark` on the left, navigation centered in the middle, and `.topbar-right` on the right (`#/docs` removed).
+   - **Landing (`#/`, `web/src/screens/home.js`, `web/src/landing/landing.css`, `web/src/landing/city.js`, `web/src/landing/strings.js`):**
+     - Compact `.sim-readout` telemetry chip (`Live · standing · MuJoCo 500/50 Hz`) restricted exclusively to the `#home` Hero section (`data-shot="hero"`), fading out immediately when scrolling down.
+     - Optimized 3D dusk street (`city.js`): no Spanish shop signs or poster text, half the parked cars (`BAY_M = 14`), 2 café bistro tables, 2 potted plants, 2 bins, 5 building types (`a..e`) + 2 background towers, with a Matrix simulation grid horizon dissolving where the street ends (`±24 m`).
+     - Restored `Tridi Capture` (`#capture`) video & simulation framing (`width: min(40vw, 640px)`, `dist: 3.3, aim: 0.8`) and sticky parallax curtain entry for a vertically compact `.footer` inside `#closing` (`min-height: 148svh`), balanced `.wordmark.big` (`clamp(44px, 5.8vw, 72px)`), `"Team"` / `"Equipo"` link, and `© 2026 Tridi`.
+   - **Matrix Simulation Grid Horizon Dissolve (`web/src/looks/common.js`, `web/src/looks/index.js`, `web/src/props.js`, `web/src/skeleton.js`, `physics/src/viewer.js`, `web/src/landing/street.js`):**
+     - Removed all tall dark backdrop walls and replaced them with `createMatrixHorizon`: a GLSL `ShaderMaterial` that renders a glowing `#c8ff2e` wireframe grid and de-materializing cells right outside each physical world boundary (`SkeletonView`, `RobotView`, `cocina`, `deposito`, `vereda`, `factory_cell`, `luigi_lab3`, `luigi_lab4`, `city.js`) that dissolves smoothly into the dark void.
+   - **Co-Founders `#/team` Page (`web/src/screens/team.js`, `web/public/media/team/*.jpg`):**
+     - Concise co-founder grid with `52×52 px` circular avatars (`pastor.jpg`, `juan.jpg`, `cesar.jpg`, `ale.jpg`), no `@handles`, titles (`Co-Founder & CEO/CTO/CIO/COO`), 1-line focus areas, and LinkedIn + GitHub links.
+   - **Verified Capture-to-Simulation Flows (`#/upload`, `#/live`, `#/camera/<session>`):**
+     - Verified all three flows add `PoseClip` via `addUserClip()` and link directly to `#/simulations/<clip.id>` (`PHONE_WEB` updated to `https://trytridi.com/`).
    - **Active Hover Immunity & Scroll-Overflow Fade (`web/src/scroll-fade.js`, `web/src/style.css`):**
      - Fixed `.push` hover contrast, locked active elements on `:hover` (`[aria-current="true"]`, `[aria-selected="true"]`, `[aria-pressed="true"]`), removed `translateY(-1px)` hover clipping inside scrollbars, and added `mountScrollFade()` (`mask-image` edge fades) on all scrollable containers.
 

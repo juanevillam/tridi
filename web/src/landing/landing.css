@@ -24,11 +24,11 @@ html.is-landing.lenis body {
   --fg-2: var(--ink-soft);
   --dim: var(--muted);
   --gutter: clamp(var(--s-4), 3.4vw, var(--s-7));
-  /* Where the film's frame starts: the top bar ends at 68 px, and 20 px of air keep the live tag
-     and the corners from reading as part of the bar (they touched it before). */
-  --hud-top: 84px;
-  /* Every chapter's card starts at the exact same vertical height as the Hero's live chip. */
-  --card-top: calc(var(--hud-top) + var(--s-3));
+  /* Where the film's frame starts: the top bar ends at ~70 px, and 34 px of air keep the viewfinder
+     corners and chapter cards well clear of the bar. */
+  --hud-top: 104px;
+  /* Every chapter's card starts at the exact same vertical height below the top corners. */
+  --card-top: calc(var(--hud-top) + var(--s-2));
   --card-width: min(36vw, 500px);
   position: relative;
   color: var(--fg);
@@ -192,7 +192,13 @@ html.is-landing.lenis body {
   color: var(--fg-2);
   text-shadow: 0 1px 8px rgb(0 0 0 / 0.6);
   pointer-events: none;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, opacity 0.25s ease, visibility 0.25s ease;
+}
+
+.film-hud:not([data-shot='hero']) .sim-readout {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none !important;
 }
 
 .landing .sim-readout[data-state='push'] {
@@ -434,7 +440,8 @@ html.is-landing.lenis body {
   position: fixed;
   inset: 14px max(20px, calc((100vw - 1680px) / 2)) auto;
   z-index: 20;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 12px 18px;
   padding: 10px 14px 10px 16px;
@@ -450,6 +457,7 @@ html.is-landing.lenis body {
 }
 
 .topbar-right {
+  justify-self: end;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -464,10 +472,11 @@ html.is-landing.lenis body {
 
 /* Mark and word in em, so the footer's big wordmark is the header's exactly, only scaled. */
 .wordmark {
+  justify-self: start;
   display: inline-flex;
   align-items: center;
   gap: 0.33em;
-  margin-right: auto;
+  margin-right: 4px;
   font: 700 24px/1 var(--display);
   color: var(--fg);
   text-decoration: none;
@@ -489,12 +498,10 @@ html.is-landing.lenis body {
 }
 
 .topnav {
+  justify-self: center;
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-right: 4px;
-  padding-right: 12px;
-  border-right: 1px solid var(--line);
+  gap: 6px;
   font: 500 12px/1 var(--mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -568,7 +575,7 @@ html.is-landing.lenis body {
 .nav-drop-panel {
   position: absolute;
   top: calc(100% + 10px);
-  right: 0;
+  left: 50%;
   z-index: 40;
   display: grid;
   gap: 5px;
@@ -583,8 +590,8 @@ html.is-landing.lenis body {
     0 24px 48px -12px rgb(0 0 0 / 0.88);
   opacity: 0;
   visibility: hidden;
-  transform: translateY(-8px) scale(0.975);
-  transform-origin: top right;
+  transform: translateX(-50%) translateY(-8px) scale(0.975);
+  transform-origin: top center;
   pointer-events: none;
   transition:
     opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1),
@@ -612,7 +619,7 @@ html.is-landing.lenis body {
   .nav-drop.open .nav-drop-panel {
     opacity: 1;
     visibility: visible;
-    transform: translateY(0) scale(1);
+    transform: translateX(-50%) translateY(0) scale(1);
     pointer-events: auto;
   }
 }
@@ -1022,8 +1029,8 @@ html.is-landing.lenis body {
 .capture-media {
   position: absolute;
   left: var(--gutter);
-  bottom: clamp(28px, 6vh, 64px);
-  width: min(38vw, 520px, calc((100svh - 310px) * 16 / 9));
+  bottom: clamp(32px, 7vh, 72px);
+  width: min(40vw, 640px);
 }
 
 .landing .frame {
@@ -1486,27 +1493,22 @@ html.is-landing.lenis body {
   margin-top: 12px;
 }
 
-/* Closing: the manifesto and action cards fill the first viewport with generous top breathing room,
-   and the corporate footer enters on a second scroll. */
+/* Closing: the manifesto and action cards lock on screen while the footer scrolls into view as a parallax curtain. */
 
 .closing {
   position: relative;
-  min-height: auto;
+  min-height: 148svh;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
-  padding: 0 var(--gutter);
+  justify-content: space-between;
+  padding: 14vh var(--gutter) 0;
 }
 
 .closing-sticky {
-  position: relative;
-  top: auto;
-  z-index: 2;
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: clamp(112px, 15vh, 148px) 0 clamp(56px, 8vh, 84px);
+  position: sticky;
+  top: var(--card-top);
+  z-index: 1;
+  padding-bottom: 4vh;
 }
 
 .closing-inner {
@@ -1897,24 +1899,25 @@ html.is-landing.lenis body {
   z-index: 2;
   width: 100%;
   max-width: 1240px;
-  margin: 0 auto;
-  padding: 48px 36px 56px;
+  margin: clamp(56px, 9vh, 96px) auto 0;
+  padding: 24px 36px 26px;
   border-top: 1px solid var(--line-dark);
   border-radius: 0;
-  background: linear-gradient(180deg, rgb(8 9 11 / 0.94), rgb(8 9 11 / 1));
+  background: linear-gradient(180deg, rgb(8 9 11 / 0.96), rgb(8 9 11 / 1));
 }
 
 .foot-bar {
-  display: grid;
-  grid-template-columns: minmax(260px, 1.15fr) minmax(0, 2fr);
-  align-items: start;
-  gap: 36px 56px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px 48px;
 }
 
 .foot-brand-col {
   display: grid;
-  align-content: start;
-  gap: 12px;
+  align-content: end;
+  gap: 8px;
 }
 
 .footer .wordmark {
@@ -1927,24 +1930,22 @@ html.is-landing.lenis body {
   text-decoration: none;
 }
 
-.foot-tagline {
-  margin: 0 !important;
-  max-width: 38ch;
-  font: 400 13.5px/1.55 var(--display);
-  color: var(--fg-2) !important;
+.footer .wordmark.big {
+  font-size: clamp(44px, 5.8vw, 72px);
+  line-height: 0.92;
 }
 
 .foot-rights {
-  margin: 4px 0 0 !important;
-  font: 500 11px/1.4 var(--mono);
+  margin: 0 !important;
+  font: 500 12px/1.4 var(--mono);
   color: var(--dim) !important;
 }
 
 .foot-columns {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: start;
-  gap: 24px 32px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 28px 48px;
 }
 
 .foot-col {
@@ -1986,6 +1987,7 @@ html.is-landing.lenis body {
 
 @media (max-width: 1000px) {
   .topbar {
+    display: flex;
     flex-wrap: wrap;
   }
 

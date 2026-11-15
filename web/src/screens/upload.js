@@ -96,7 +96,8 @@ export function mount(root, { api }) {
             <p class="lead done-text"></p>
             ${trainBoxHTML()}
             <div class="row">
-              <button class="primary again" type="button">${T('again')}</button>
+              <a class="button primary see-clip" href="#/simulations">${T('seeSim')}</a>
+              <button class="again" type="button">${T('again')}</button>
               <a class="button" href="#/">${T('home')}</a>
             </div>
           </div>
@@ -233,6 +234,7 @@ export function mount(root, { api }) {
     // that cannot be trained (too little of the body seen) shows why instead; coming back to this
     // screen does not start it twice (startTraining keeps one run per clip).
     const item = { clip: session.clips[0].id, data: session.clips[0] };
+    $('.see-clip').href = `#/simulations/${encodeURIComponent(session.clips[0].id)}`;
     trainBox.show(item);
     if (!cannotTrain(item, api)) startTraining(item, api);
     show('done');

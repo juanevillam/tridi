@@ -2,6 +2,7 @@
 // layout as physics/viewer.js, in the web app's light colors (SCENE_THEME, also passed to it).
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { createMatrixHorizon } from './looks/common.js';
 
 // MediaPipe Pose bones between the 33 landmarks plus 8 derived anatomical trunk landmarks:
 // 33 pelvis root, 34 lumbar spine (L3), 35 thoracic spine (T8), 36 sternum / neck base (C7),
@@ -91,12 +92,46 @@ export class SkeletonView {
     scene.add(sun);
 
     const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(60, 60),
+      new THREE.PlaneGeometry(24, 24),
       new THREE.MeshStandardMaterial({ color: SCENE_THEME.ground, roughness: 0.95 }),
     );
     ground.rotation.x = -Math.PI / 2;
-    const grid = new THREE.GridHelper(60, 120, GRID_MAJOR, GRID_MINOR);
+    const grid = new THREE.GridHelper(24, 48, GRID_MAJOR, GRID_MINOR);
     grid.position.y = 0.001;
+    // Calibrated MoCap court delimiter framing the 24x24 m studio grid + 4 corner tracking pylons + Matrix horizon dissolve
+    const courtGroup = new THREE.Group();
+    const curbMat = new THREE.MeshStandardMaterial({ color: 0x23272b, roughness: 0.7, metalness: 0.3 });
+    const accentMat = new THREE.MeshBasicMaterial({ color: HUMAN_COLOR, transparent: true, opacity: 0.45 });
+    const half = 12;
+    const span = half * 2;
+    for (const [w, h, d, m, x, y, z] of [
+      [span + 0.24, 0.06, 0.12, curbMat, 0, 0.03, -half],
+      [span + 0.24, 0.06, 0.12, curbMat, 0, 0.03, half],
+      [0.12, 0.06, span + 0.24, curbMat, -half, 0.03, 0],
+      [0.12, 0.06, span + 0.24, curbMat, half, 0.03, 0],
+      [span, 0.004, 0.035, accentMat, 0, 0.062, -half],
+      [span, 0.004, 0.035, accentMat, 0, 0.062, half],
+      [0.035, 0.004, span, accentMat, -half, 0.062, 0],
+      [0.035, 0.004, span, accentMat, half, 0.062, 0],
+      // Inner 8x12 m active capture zone markings
+      [8, 0.003, 0.025, accentMat, 0, 0.003, -6],
+      [8, 0.003, 0.025, accentMat, 0, 0.003, 6],
+      [0.025, 0.003, 12, accentMat, -4, 0.003, 0],
+      [0.025, 0.003, 12, accentMat, 4, 0.003, 0],
+    ]) {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+      mesh.position.set(x, y, z);
+      courtGroup.add(mesh);
+    }
+    for (const [cx, cz] of [[-4, -6], [4, -6], [-4, 6], [4, 6]]) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.65, 12), curbMat);
+      post.position.set(cx, 0.325, cz);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.04, 12), accentMat);
+      cap.position.set(cx, 0.66, cz);
+      courtGroup.add(post, cap);
+    }
+    courtGroup.add(createMatrixHorizon({ center: [0, 0], halfSize: [half, half], fadeSpan: 14, color: HUMAN_COLOR }));
+    grid.add(courtGroup);
     scene.add(ground, grid);
     // The path of the hips on the floor, a ribbon drawn up to the current frame (setClip builds it).
     this.trail = new THREE.Mesh(

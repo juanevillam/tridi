@@ -10,7 +10,7 @@ export const { T, t, A } = dict({
   'boot.policy': { es: 'cargando la política entrenada', en: 'loading the trained policy' },
   'boot.failed': { es: 'No se pudo cargar el robot. Recarga la página.', en: 'The robot could not load. Reload the page.' },
   'sim.contacts': { es: 'contactos', en: 'contacts' },
-  'sim.rates': { es: 'MuJoCo · física {hz} Hz · política {policy} Hz', en: 'MuJoCo · physics {hz} Hz · policy {policy} Hz' },
+  'sim.rates': { es: 'MuJoCo {hz}/{policy} Hz', en: 'MuJoCo {hz}/{policy} Hz' },
   'sim.info': {
     es: 'Física 250 Hz: MuJoCo resuelve gravedad, contactos y torques 250 veces/s (cada 4 ms). Política 50 Hz: la red neuronal actualiza los motores 50 veces/s (cada 20 ms). t: tiempo simulado; contactos: puntos de apoyo activos.',
     en: 'Physics 250 Hz: MuJoCo solves gravity, contacts and joint torques 250 times/s (every 4 ms). Policy 50 Hz: the neural network updates motor targets 50 times/s (every 20 ms). t: simulation time; contacts: active collision points.',
@@ -21,7 +21,6 @@ export const { T, t, A } = dict({
   'nav.studio': { es: 'Studio', en: 'Studio' },
   'nav.simulations': { es: 'Simulaciones', en: 'Simulations' },
   'nav.milestones': { es: 'Casos de estudio', en: 'Case Studies' },
-  'nav.docs': { es: 'Docs', en: 'Docs' },
   'nav.team': { es: 'Equipo', en: 'Team' },
   'nav.menu': { es: 'Menú de navegación', en: 'Navigation menu' },
   'nav.try': { es: 'Studio', en: 'Studio' },
@@ -52,9 +51,9 @@ export const { T, t, A } = dict({
   'hero.push': { es: 'Empújalo', en: 'Push it' },
   'key.space': { es: 'espacio', en: 'space' },
   'hero.howLink': { es: 'Cómo aprende', en: 'How it learns' },
-  'hud.stand': { es: 'Simulación en vivo · física real de pie con su política', en: 'Live simulation · real physics standing on its policy' },
-  'hud.push': { es: 'Empujón de {n} N · la política lo atrapa', en: '{n} N push · the policy catches it' },
-  'hud.fall': { es: 'Esta vez se cayó. También pasa: se levanta y lo vuelve a intentar', en: 'It fell this time. That happens too: it gets up and tries again' },
+  'hud.stand': { es: 'En vivo · de pie', en: 'Live · standing' },
+  'hud.push': { es: 'Empujón {n} N', en: '{n} N push' },
+  'hud.fall': { es: 'Cayó · levantándose', en: 'Fell · recovering' },
   'hud.tally': { es: '{pushes} empujones · {falls} caídas', en: '{pushes} pushes · {falls} falls' },
 
   // Capture
@@ -148,18 +147,13 @@ export const { T, t, A } = dict({
   'try.assemblerShort': { es: 'Assembler', en: 'Assembler' },
   'try.assemblerSub': { es: 'Planos CAD y P&ID a simulación y código.', en: 'CAD & P&ID files to simulation & code.' },
   'try.assemblerGo': { es: 'Abrir →', en: 'Open →' },
-  'foot.tagline': {
-    es: 'Infraestructura de simulación física y despliegue Sim-to-Real desde video, CAD y planos P&ID hacia políticas ONNX, firmware C99 y código PLC.',
-    en: 'Physics simulation and Sim-to-Real deployment infrastructure turning video, CAD, and P&ID blueprints into ONNX policies, C99 firmware, and PLC code.',
-  },
-  'foot.colStudio': { es: 'Plataforma Studio', en: 'Studio Platform' },
-  'foot.colResources': { es: 'Recursos e Ingeniería', en: 'Resources & Engineering' },
+  'foot.colStudio': { es: 'Studio', en: 'Studio' },
+  'foot.colProduct': { es: 'Producto', en: 'Product' },
   'foot.colCompany': { es: 'Compañía', en: 'Company' },
   'foot.milestones': { es: 'Casos de estudio', en: 'Case Studies' },
-  'foot.docs': { es: 'Documentación técnica', en: 'Technical Documentation' },
-  'foot.team': { es: 'Equipo fundador', en: 'Founding Team' },
+  'foot.team': { es: 'Equipo', en: 'Team' },
   'foot.rights': {
-    es: '© 2026 Tridi · Física determinista en MuJoCo (250 Hz) y control Sim-to-Real (50 Hz).',
-    en: '© 2026 Tridi · Deterministic MuJoCo physics (250 Hz) & Sim-to-Real control (50 Hz).',
+    es: '© 2026 Tridi',
+    en: '© 2026 Tridi',
   },
 });

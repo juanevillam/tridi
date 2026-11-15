@@ -36,7 +36,7 @@ const MAX_RECORD_S = 30;
 const MIN_RECORD_S = 2;
 // The page the QR sends the phone to. The deployed web in development: the phone cannot reach a
 // dev server on this machine, and its camera needs HTTPS, which a LAN address does not have.
-const PHONE_WEB = ['localhost', '127.0.0.1'].includes(location.hostname) ? 'https://tridi-alpha.vercel.app/' : `${location.origin}${location.pathname}`;
+const PHONE_WEB = ['localhost', '127.0.0.1'].includes(location.hostname) ? 'https://trytridi.com/' : `${location.origin}${location.pathname}`;
 // A server on this machine is out of the phone's reach too.
 const LOCAL_API = /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/;
 

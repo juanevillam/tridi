@@ -43,13 +43,100 @@ export class RobotView {
     scene.add(sun, sun.target);
 
     const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(60, 60),
+      new THREE.PlaneGeometry(24, 24),
       new THREE.MeshStandardMaterial({ color: theme.ground, roughness: 0.95 }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
-    const grid = new THREE.GridHelper(60, 120, theme.gridMajor, theme.gridMinor);
+    const grid = new THREE.GridHelper(24, 48, theme.gridMajor, theme.gridMinor);
     grid.position.y = 0.001;
+    const courtGroup = new THREE.Group();
+    const curbMat = new THREE.MeshStandardMaterial({ color: 0x1e242b, roughness: 0.7, metalness: 0.3 });
+    const accentMat = new THREE.MeshBasicMaterial({ color: 0xc8ff2e, transparent: true, opacity: 0.42 });
+    const half = 12;
+    const span = half * 2;
+    for (const [w, h, d, m, x, y, z] of [
+      [span + 0.24, 0.06, 0.12, curbMat, 0, 0.03, -half],
+      [span + 0.24, 0.06, 0.12, curbMat, 0, 0.03, half],
+      [0.12, 0.06, span + 0.24, curbMat, -half, 0.03, 0],
+      [0.12, 0.06, span + 0.24, curbMat, half, 0.03, 0],
+      [span, 0.004, 0.035, accentMat, 0, 0.062, -half],
+      [span, 0.004, 0.035, accentMat, 0, 0.062, half],
+      [0.035, 0.004, span, accentMat, -half, 0.062, 0],
+      [0.035, 0.004, span, accentMat, half, 0.062, 0],
+      [8, 0.003, 0.025, accentMat, 0, 0.003, -6],
+      [8, 0.003, 0.025, accentMat, 0, 0.003, 6],
+      [0.025, 0.003, 12, accentMat, -4, 0.003, 0],
+      [0.025, 0.003, 12, accentMat, 4, 0.003, 0],
+    ]) {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+      mesh.position.set(x, y, z);
+      courtGroup.add(mesh);
+    }
+    for (const [cx, cz] of [[-4, -6], [4, -6], [-4, 6], [4, 6]]) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.03, 0.65, 12), curbMat);
+      post.position.set(cx, 0.325, cz);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.04, 12), accentMat);
+      cap.position.set(cx, 0.66, cz);
+      courtGroup.add(post, cap);
+    }
+    const horizonMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(56, 56),
+      new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        uniforms: {
+          uHalfSize: { value: new THREE.Vector2(half, half) },
+          uFadeSpan: { value: 14.0 },
+          uColor: { value: new THREE.Color(0xc8ff2e) },
+        },
+        vertexShader: `
+          varying vec2 vWorldXZ;
+          void main() {
+            vec4 worldPos = modelMatrix * vec4(position, 1.0);
+            vWorldXZ = worldPos.xz;
+            gl_Position = projectionMatrix * viewMatrix * worldPos;
+          }
+        `,
+        fragmentShader: `
+          varying vec2 vWorldXZ;
+          uniform vec2 uHalfSize;
+          uniform float uFadeSpan;
+          uniform vec3 uColor;
+          float hash21(vec2 p) {
+            p = fract(p * vec2(123.34, 456.21));
+            p += dot(p, p + 45.32);
+            return fract(p.x * p.y);
+          }
+          void main() {
+            vec2 dVec = abs(vWorldXZ) - uHalfSize;
+            float dist = length(max(dVec, 0.0));
+            if (dist <= 0.0 || dist >= uFadeSpan) discard;
+            float t = clamp(dist / uFadeSpan, 0.0, 1.0);
+            float env = smoothstep(0.0, 0.02, t) * pow(1.0 - t, 1.75);
+            vec2 p1 = vWorldXZ;
+            vec2 g1 = abs(fract(p1 - 0.5) - 0.5) / max(fwidth(p1), vec2(0.0001));
+            float majorLine = 1.0 - min(min(g1.x, g1.y), 1.0);
+            vec2 p4 = vWorldXZ * 4.0;
+            vec2 g4 = abs(fract(p4 - 0.5) - 0.5) / max(fwidth(p4), vec2(0.0001));
+            float minorLine = 1.0 - min(min(g4.x, g4.y), 1.0);
+            vec2 cellId = floor(vWorldXZ * 2.0);
+            float cellRand = hash21(cellId);
+            float cellAlive = step(t * 0.92, cellRand * 0.85 + 0.15);
+            float cellGlow = cellAlive * step(0.74, cellRand) * (1.0 - t) * 0.24;
+            float rim = exp(-dist * 3.2) * 0.72;
+            float alpha = (majorLine * 0.72 + minorLine * 0.25 * cellAlive + cellGlow + rim) * env;
+            if (alpha < 0.004) discard;
+            gl_FragColor = vec4(uColor, clamp(alpha, 0.0, 0.92));
+          }
+        `,
+      }),
+    );
+    horizonMesh.rotation.x = -Math.PI / 2;
+    horizonMesh.position.y = 0.003;
+    courtGroup.add(horizonMesh);
+    grid.add(courtGroup);
     scene.add(ground, grid);
 
     // MuJoCo is z-up and three.js is y-up: everything simulated hangs from this rotated group,
@@ -90,9 +177,14 @@ export class RobotView {
   // Redraws the robot after the Simulation loaded another model (its geoms are not the same).
   rebuild() {
     for (const { object } of this.geoms) {
+      object.traverse((child) => {
+        if (child !== object && child.material?.userData?.ownedByClone) {
+          child.material.dispose();
+        }
+      });
       this.world.remove(object);
       object.geometry.dispose();
-      object.material.dispose();
+      if (object.material?.visible !== false) object.material.dispose();
     }
     this.geoms = this.buildGeoms();
   }

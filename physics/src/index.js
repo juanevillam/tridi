@@ -1,7 +1,7 @@
 // Public API of physics/ for the web app: give it a canvas and it loads MuJoCo and the G1,
 // simulates in real time and draws every frame until dispose().
 import { Vector3 } from 'three';
-import { loadG1 } from './load.js';
+import { ensureModelFiles, loadG1 } from './load.js';
 import { LOOP_BLEND_S, motionDuration, retargetClipAsync, sampleLoopStart, sampleMotion, smoothForDisplay } from './motion.js';
 import { createPolicy } from './policy.js';
 import { createPoseTracker } from './pose.js';
@@ -63,6 +63,60 @@ export const SCENES = Object.values(SCENE_FILES).sort((a, b) => SCENE_ORDER.inde
 
 // The real-time ratio passed to onStats is averaged over this window so it reads steadily.
 const STATS_WINDOW_S = 1;
+
+// Module-level caches for policy bytes (.onnx), metadata/motion JSON, and smoothed display motions.
+const onnxBytesCache = new Map();
+const jsonAssetCache = new Map();
+const smoothedMotionCache = new WeakMap();
+
+export function fetchCachedOnnxBytes(url) {
+  if (!onnxBytesCache.has(url)) {
+    onnxBytesCache.set(
+      url,
+      fetch(url)
+        .then(async (res) => {
+          if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+          return new Uint8Array(await res.arrayBuffer());
+        })
+        .catch((err) => {
+          onnxBytesCache.delete(url);
+          throw err;
+        }),
+    );
+  }
+  return onnxBytesCache.get(url);
+}
+
+export function fetchCachedJson(url) {
+  if (!jsonAssetCache.has(url)) {
+    jsonAssetCache.set(
+      url,
+      fetch(url)
+        .then(async (res) => {
+          if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+          return res.json();
+        })
+        .catch((err) => {
+          jsonAssetCache.delete(url);
+          throw err;
+        }),
+    );
+  }
+  return jsonAssetCache.get(url);
+}
+
+function getSmoothedMotion(mujoco, model, motion, plantFeet) {
+  let byOption = smoothedMotionCache.get(motion);
+  if (!byOption) {
+    byOption = new Map();
+    smoothedMotionCache.set(motion, byOption);
+  }
+  const key = String(plantFeet);
+  if (!byOption.has(key)) {
+    byOption.set(key, smoothForDisplay(mujoco, model, motion, { plantFeet }));
+  }
+  return byOption.get(key);
+}
 
 /**
  * @param canvas  a <canvas> sized by CSS; the view follows its size. It can be moved between
@@ -310,7 +364,7 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
       if (motion.robot !== 'unitree_g1' || motion.qpos[0]?.length !== robotValues) {
         throw new Error(`This RobotMotion is not for the ${robotValues}-value G1 (robot: ${motion.robot}).`);
       }
-      clip = { motion: smoothForDisplay(sim.mujoco, kinematicModel(), motion, { plantFeet }), duration: motionDuration(motion), loop, shown: 0, wrapped: false };
+      clip = { motion: getSmoothedMotion(sim.mujoco, kinematicModel(), motion, plantFeet), duration: motionDuration(motion), loop, shown: 0, wrapped: false };
       clipTime = 0;
       if (!motion.hands) dex3?.show(false);
     },
@@ -343,13 +397,14 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
      * few KB of JavaScript).
      */
     async loadPolicy(onnx, meta, { motion, reset = true } = {}) {
-      const bytes = typeof onnx === 'string' ? new Uint8Array(await (await fetch(onnx)).arrayBuffer()) : new Uint8Array(onnx);
-      if (typeof meta === 'string') meta = await (await fetch(meta)).json();
-      if (typeof motion === 'string') motion = await (await fetch(motion)).json();
+      const bytes = typeof onnx === 'string' ? await fetchCachedOnnxBytes(onnx) : new Uint8Array(onnx);
+      if (typeof meta === 'string') meta = await fetchCachedJson(meta);
+      if (typeof motion === 'string') motion = await fetchCachedJson(motion);
       // The policy's scene ('unitree_g1/scene_mjx.xml' -> 'scene_mjx.xml'; 'unitree_h1/scene.xml'
       // and 'luigi_lab3/scene.xml' stay in their subfolder), or the current world's version of it for the G1.
       const isCustomRobot = meta.robot !== 'unitree_g1';
       const sceneFile = isCustomRobot ? meta.mjcf : world ? worldScene(world) : meta.mjcf.slice(meta.mjcf.indexOf('/') + 1);
+      if (isCustomRobot) await ensureModelFiles(sim.files, sceneFile);
       const { loadOrt } = await import('./ort.js');
       const ort = await loadOrt();
       const previous = { sceneFile: baseScene, keyName: sim.keyName };

@@ -9,7 +9,7 @@ import { atmosphere, canvasTexture, disposeGroup, floor, hideViewerFloor, random
 const TILE_M = 0.5;
 const TILE_PERIOD_M = 4 * TILE_M; // 4 x 4 tiles per texture
 const MOP_PERIOD_M = 5; // compact mop strokes around the test corridor
-const HALL = { halfWidth: 3.6, height: 3.6, near: 4.8, far: -9.2 }; // compact, detailed lobby hall along the walk (-z)
+const HALL = { halfWidth: 7.8, height: 4.5, near: 9.8, far: -18.5 }; // wide enclosed lobby hall so camera never orbits outside walls
 
 function drawTiles(ctx, size) {
   const rand = random(3);
@@ -184,10 +184,13 @@ function mopBucket() {
   return bucket;
 }
 
-/** The hall: walls facing in (unseen from outside), a ceiling with light strips, two rows of columns. */
+/** The hall: solid enclosed walls, ceiling with light strips, two rows of columns, and a delimited slip-test court. */
 function hall() {
   const group = new THREE.Group();
-  const plaster = new THREE.MeshStandardMaterial({ color: 0xa59d90, roughness: 0.9 });
+  const plaster = new THREE.MeshStandardMaterial({ color: 0xa59d90, roughness: 0.9, side: THREE.DoubleSide });
+  const dado = new THREE.MeshStandardMaterial({ color: 0x5c574f, roughness: 0.75, side: THREE.DoubleSide });
+  const hazardYellow = new THREE.MeshStandardMaterial({ color: 0xf2c31b, roughness: 0.42 });
+  const darkMetal = new THREE.MeshStandardMaterial({ color: 0x26282b, roughness: 0.5, metalness: 0.6 });
   const length = HALL.near - HALL.far;
   const midZ = (HALL.near + HALL.far) / 2;
   for (const side of [-1, 1]) {
@@ -195,14 +198,15 @@ function hall() {
     wall.rotation.y = (-side * Math.PI) / 2;
     wall.position.set(side * HALL.halfWidth, HALL.height / 2, midZ);
     group.add(wall);
-    // Tall windows on the left wall, glowing with the day outside.
-    if (side < 0) {
-      for (let z = HALL.near - 2.2; z > HALL.far + 1.8; z -= 2.8) {
-        const window = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 2.2), new THREE.MeshBasicMaterial({ color: 0xdbe9f5 }));
-        window.rotation.y = Math.PI / 2;
-        window.position.set(-HALL.halfWidth + 0.02, 1.75, z);
-        group.add(window);
-      }
+    const baseboard = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.9, length), dado);
+    baseboard.position.set(side * (HALL.halfWidth - 0.03), 0.45, midZ);
+    group.add(baseboard);
+    // Tall windows on both side walls, glowing with daylight outside.
+    for (let z = HALL.near - 2.4; z > HALL.far + 2.0; z -= 3.4) {
+      const windowMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 2.3), new THREE.MeshBasicMaterial({ color: 0xdbe9f5 }));
+      windowMesh.rotation.y = (-side * Math.PI) / 2;
+      windowMesh.position.set(side * (HALL.halfWidth - 0.02), 2.15, z);
+      group.add(windowMesh);
     }
   }
   for (const [z, ry] of [[HALL.far, 0], [HALL.near, Math.PI]]) {
@@ -210,27 +214,60 @@ function hall() {
     end.position.set(0, HALL.height / 2, z);
     end.rotation.y = ry;
     group.add(end);
+    const endBase = new THREE.Mesh(new THREE.BoxGeometry(2 * HALL.halfWidth, 0.9, 0.06), dado);
+    endBase.position.set(0, 0.45, z + (z < 0 ? 0.03 : -0.03));
+    group.add(endBase);
   }
-  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(2 * HALL.halfWidth, length), new THREE.MeshStandardMaterial({ color: 0xbdb8af, roughness: 1 }));
-  ceiling.rotation.x = Math.PI / 2; // faces down: from above the hall it is not drawn
+  const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(2 * HALL.halfWidth, length), new THREE.MeshStandardMaterial({ color: 0xbdb8af, roughness: 1, side: THREE.DoubleSide }));
+  ceiling.rotation.x = Math.PI / 2;
   ceiling.position.set(0, HALL.height, midZ);
   group.add(ceiling);
   const strip = new THREE.MeshBasicMaterial({ color: 0xfff6e6 });
-  for (let z = HALL.near - 1.5; z > HALL.far; z -= 2.2) {
-    for (const x of [-1.8, 0, 1.8]) {
-      const light = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.04, 1.3), strip);
+  for (let z = HALL.near - 1.8; z > HALL.far; z -= 2.8) {
+    for (const x of [-3.2, 0, 3.2]) {
+      const light = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.04, 1.5), strip);
       light.position.set(x, HALL.height - 0.03, z);
       group.add(light);
     }
   }
   const column = new THREE.MeshStandardMaterial({ color: 0xcfc8bc, roughness: 0.55 });
-  for (let z = HALL.near - 1.8; z > HALL.far + 1.2; z -= 2.6) {
-    for (const x of [-2.45, 2.45]) {
-      const c = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, HALL.height, 24), column);
+  for (let z = HALL.near - 2.0; z > HALL.far + 1.4; z -= 3.2) {
+    for (const x of [-4.2, 4.2]) {
+      const c = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, HALL.height, 24), column);
       c.position.set(x, HALL.height / 2, z);
       c.castShadow = c.receiveShadow = true;
       group.add(c);
     }
+  }
+
+  // Delimited wet-floor test court around the walk lane (x: ±2.35 m, z: -13.5..+3.8 m):
+  // yellow floor boundary tape + safety stanchion posts & rail along both sides.
+  const courtW = 4.7;
+  const courtNear = 3.8;
+  const courtFar = -13.5;
+  const courtLen = courtNear - courtFar;
+  const courtMidZ = (courtNear + courtFar) / 2;
+  const addBar = (w, h, d, m, x, y, z) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+    mesh.position.set(x, y, z);
+    group.add(mesh);
+  };
+  addBar(courtW, 0.005, 0.05, hazardYellow, 0, 0.003, courtNear);
+  addBar(courtW, 0.005, 0.05, hazardYellow, 0, 0.003, courtFar);
+  addBar(0.05, 0.005, courtLen, hazardYellow, -courtW / 2, 0.003, courtMidZ);
+  addBar(0.05, 0.005, courtLen, hazardYellow, courtW / 2, 0.003, courtMidZ);
+  for (const side of [-1, 1]) {
+    const sx = side * (courtW / 2);
+    for (let z = courtNear; z >= courtFar; z -= 2.88) {
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.15, 0.03, 16), darkMetal);
+      base.position.set(sx, 0.015, z);
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.86, 12), darkMetal);
+      post.position.set(sx, 0.43, z);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.06, 12), hazardYellow);
+      cap.position.set(sx, 0.87, z);
+      group.add(base, post, cap);
+    }
+    addBar(0.015, 0.045, courtLen, hazardYellow, sx, 0.82, courtMidZ);
   }
   return group;
 }

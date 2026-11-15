@@ -55,6 +55,27 @@ function switcherLabel(item, l = lang()) {
     : (item.policy?.id ?? item.clip_id);
   return `${tObj[l]} · ${ver} · ${stepsM}`;
 }
+// Bounded LRU cache (max 3 entries) for parsed replay.json payloads (~2.1-2.9 MB each) so switching
+// between deliveries is instant without unbounded RAM growth.
+const MAX_CACHED_REPLAYS = 3;
+const replayCache = new Map();
+
+function getCachedReplay(replayUrl) {
+  if (!replayCache.has(replayUrl)) return null;
+  const entry = replayCache.get(replayUrl);
+  replayCache.delete(replayUrl);
+  replayCache.set(replayUrl, entry);
+  return entry;
+}
+
+function setCachedReplay(replayUrl, entry) {
+  if (replayCache.has(replayUrl)) replayCache.delete(replayUrl);
+  else if (replayCache.size >= MAX_CACHED_REPLAYS) {
+    replayCache.delete(replayCache.keys().next().value);
+  }
+  replayCache.set(replayUrl, entry);
+}
+
 // Clip ids as data/server.py makes them (its CLIP_ID); nothing else is asked of the server.
 const CLIP_ID = /^clip_[A-Za-z0-9_-]+$/;
 // A file of a delivery: a bare name, so it can only point inside the delivery's folder.
@@ -286,7 +307,7 @@ function showDelivery(root, { manifest: m, url }, signal) {
                 <span class="dl-source-tag">${langSpans({ es: 'Video original', en: 'Source video' })}</span>
                 <span class="dl-source-toggle" aria-hidden="true">⤢</span>
               </div>
-              <video class="dl-source-video" src="${esc(sourceVideoUrl)}" autoplay muted loop playsinline preload="auto"></video>
+              <video class="dl-source-video" src="${esc(sourceVideoUrl)}" autoplay muted loop playsinline preload="metadata"></video>
             </div>` : ''}
           </div>
           <div class="dl-transport">
@@ -587,57 +608,70 @@ function showDelivery(root, { manifest: m, url }, signal) {
 
   const replayUrl = url(m.replay);
   if (replayUrl) {
-    fetch(replayUrl, { signal })
-      .then((response) => {
-        if (!response.ok) throw new Error(`replay.json: HTTP ${response.status}`);
-        return response.json();
-      })
-      .then((data) => {
-        if (gone) return;
-        const hz = data.hz;
-        replay = {
-          hz,
-          series: data.episodes.map((ep, index) => {
-            const n = ep.qpos.length;
-            const seconds = episodes[index]?.seconds;
-            const times = Array.from({ length: n }, (_, r) => FIRST_ROW_S + r / hz);
-            // More rows than the rule fits in the episode: the last one was appended, at its end.
-            if (n > 1 && seconds > 0 && times[n - 1] > seconds + ROW_SLACK_S) times[n - 1] = Math.max(seconds, times[n - 2]);
-            return {
-              n,
-              times,
-              // Where the replay stops: the episode's own end, as the matrix and the HUD say it, also
-              // when halving dropped its last row (the pose holds the row before).
-              end: Math.max(times[n - 1], seconds > 0 ? seconds : 0),
-              qpos: ep.qpos,
-              left: ep.foot_force.map((f) => f[0]),
-              right: ep.foot_force.map((f) => f[1]),
-              pose: ep.pose_error,
-              pelvis: ep.pelvis_error,
-              height: ep.qpos.map((q) => q[2]),
-            };
-          }),
-        };
-        const top = (key) => Math.max(...replay.series.flatMap((s) => s[key]));
-        const force = niceCeil(Math.max(top('left'), top('right')));
-        scales = {
-          left: force,
-          right: force,
-          pose: niceCeil(top('pose')),
-          pelvis: niceCeil(Math.max(top('pelvis'), OFF_PATH_M * 1.15)), // room above the cut line for its label
-          height: niceCeil(top('height')),
-        };
-        $('.dl-plot-msg').hidden = true;
-        $('.dl-tele-title').innerHTML = T('teleBar', { n: LANES.length, hz });
-        $('.dl-sim-info').innerHTML = T('simInfo', { a: DATASET_HZ, b: hz });
-        renderEpisode(); // the shared force peak can now say when it happened
-        renderTelemetry();
-      })
-      .catch((error) => {
-        if (gone || signal.aborted) return;
-        console.error(error);
-        $('.dl-plot-msg').innerHTML = T('replayFailed');
-      });
+    const applyReplay = (cached) => {
+      if (gone) return;
+      replay = cached.replay;
+      scales = cached.scales;
+      $('.dl-plot-msg').hidden = true;
+      $('.dl-tele-title').innerHTML = T('teleBar', { n: LANES.length, hz: replay.hz });
+      $('.dl-sim-info').innerHTML = T('simInfo', { a: DATASET_HZ, b: replay.hz });
+      renderEpisode(); // the shared force peak can now say when it happened
+      renderTelemetry();
+    };
+    const cached = getCachedReplay(replayUrl);
+    if (cached) {
+      applyReplay(cached);
+    } else {
+      fetch(replayUrl, { signal })
+        .then((response) => {
+          if (!response.ok) throw new Error(`replay.json: HTTP ${response.status}`);
+          return response.json();
+        })
+        .then((data) => {
+          if (gone) return;
+          const hz = data.hz;
+          const parsedReplay = {
+            hz,
+            series: data.episodes.map((ep, index) => {
+              const n = ep.qpos.length;
+              const seconds = episodes[index]?.seconds;
+              const times = Array.from({ length: n }, (_, r) => FIRST_ROW_S + r / hz);
+              // More rows than the rule fits in the episode: the last one was appended, at its end.
+              if (n > 1 && seconds > 0 && times[n - 1] > seconds + ROW_SLACK_S) times[n - 1] = Math.max(seconds, times[n - 2]);
+              return {
+                n,
+                times,
+                // Where the replay stops: the episode's own end, as the matrix and the HUD say it, also
+                // when halving dropped its last row (the pose holds the row before).
+                end: Math.max(times[n - 1], seconds > 0 ? seconds : 0),
+                qpos: ep.qpos,
+                left: ep.foot_force.map((f) => f[0]),
+                right: ep.foot_force.map((f) => f[1]),
+                pose: ep.pose_error,
+                pelvis: ep.pelvis_error,
+                height: ep.qpos.map((q) => q[2]),
+              };
+            }),
+          };
+          const top = (key) => Math.max(...parsedReplay.series.flatMap((s) => s[key]));
+          const force = niceCeil(Math.max(top('left'), top('right')));
+          const parsedScales = {
+            left: force,
+            right: force,
+            pose: niceCeil(top('pose')),
+            pelvis: niceCeil(Math.max(top('pelvis'), OFF_PATH_M * 1.15)), // room above the cut line for its label
+            height: niceCeil(top('height')),
+          };
+          const entry = { replay: parsedReplay, scales: parsedScales };
+          setCachedReplay(replayUrl, entry);
+          applyReplay(entry);
+        })
+        .catch((error) => {
+          if (gone || signal.aborted) return;
+          console.error(error);
+          $('.dl-plot-msg').innerHTML = T('replayFailed');
+        });
+    }
   } else {
     $('.dl-plot-msg').innerHTML = T('noReplay');
   }

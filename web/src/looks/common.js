@@ -169,3 +169,78 @@ export function disposeGroup(group) {
 
 /** Where the walk goes: the clips start at the origin and head along three.js -z (MuJoCo +y). */
 export const inWalk = (x, z, margin = 0) => Math.abs(x) < 2.2 + margin && z > -13 - margin && z < 3.5 + margin;
+
+/**
+ * Digital "Matrix construct ending" horizon grid that surrounds a bounded physical world
+ * (`center`, `halfSize = [hx, hz]`) and dissolves smoothly into the void over `fadeSpan` meters.
+ */
+export function createMatrixHorizon({ center = [0, 0], halfSize = [12, 12], fadeSpan = 14, color = 0xc8ff2e, y = 0.003 } = {}) {
+  const spanX = (halfSize[0] + fadeSpan) * 2 + 4;
+  const spanZ = (halfSize[1] + fadeSpan) * 2 + 4;
+  const geometry = new THREE.PlaneGeometry(spanX, spanZ);
+  const material = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    uniforms: {
+      uCenter: { value: new THREE.Vector2(center[0], center[1]) },
+      uHalfSize: { value: new THREE.Vector2(halfSize[0], halfSize[1]) },
+      uFadeSpan: { value: fadeSpan },
+      uColor: { value: new THREE.Color(color) },
+    },
+    vertexShader: /* glsl */ `
+      varying vec2 vWorldXZ;
+      void main() {
+        vec4 worldPos = modelMatrix * vec4(position, 1.0);
+        vWorldXZ = worldPos.xz;
+        gl_Position = projectionMatrix * viewMatrix * worldPos;
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      varying vec2 vWorldXZ;
+      uniform vec2 uCenter;
+      uniform vec2 uHalfSize;
+      uniform float uFadeSpan;
+      uniform vec3 uColor;
+
+      float hash21(vec2 p) {
+        p = fract(p * vec2(123.34, 456.21));
+        p += dot(p, p + 45.32);
+        return fract(p.x * p.y);
+      }
+
+      void main() {
+        vec2 dVec = abs(vWorldXZ - uCenter) - uHalfSize;
+        float dist = length(max(dVec, 0.0));
+        if (dist <= 0.0 || dist >= uFadeSpan) discard;
+
+        float t = clamp(dist / uFadeSpan, 0.0, 1.0);
+        float env = smoothstep(0.0, 0.02, t) * pow(1.0 - t, 1.75);
+
+        vec2 p1 = vWorldXZ;
+        vec2 g1 = abs(fract(p1 - 0.5) - 0.5) / max(fwidth(p1), vec2(0.0001));
+        float majorLine = 1.0 - min(min(g1.x, g1.y), 1.0);
+
+        vec2 p4 = vWorldXZ * 4.0;
+        vec2 g4 = abs(fract(p4 - 0.5) - 0.5) / max(fwidth(p4), vec2(0.0001));
+        float minorLine = 1.0 - min(min(g4.x, g4.y), 1.0);
+
+        vec2 cellId = floor(vWorldXZ * 2.0);
+        float cellRand = hash21(cellId);
+        float cellAlive = step(t * 0.92, cellRand * 0.85 + 0.15);
+        float cellGlow = cellAlive * step(0.74, cellRand) * (1.0 - t) * 0.24;
+
+        float rim = exp(-dist * 3.2) * 0.72;
+
+        float alpha = (majorLine * 0.72 + minorLine * 0.25 * cellAlive + cellGlow + rim) * env;
+        if (alpha < 0.004) discard;
+        gl_FragColor = vec4(uColor, clamp(alpha, 0.0, 0.92));
+      }
+    `,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.set(center[0], y, center[1]);
+  mesh.name = 'matrix-horizon';
+  return mesh;
+}

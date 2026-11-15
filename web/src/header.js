@@ -15,7 +15,6 @@ const { T, A } = dict({
   delivery: { es: 'Entregas', en: 'Deliveries' },
   assembler: { es: 'Assembler', en: 'Assembler' },
   milestones: { es: 'Casos de estudio', en: 'Case Studies' },
-  docs: { es: 'Docs', en: 'Docs' },
   team: { es: 'Equipo', en: 'Team' },
 });
 
@@ -26,7 +25,6 @@ const NAV_ITEMS = [
   { id: 'delivery', href: '#/delivery', key: 'delivery' },
   { id: 'assembler', href: '#/assembler', key: 'assembler' },
   { id: 'milestones', href: '#/milestones', key: 'milestones', sepBefore: true },
-  { id: 'docs', href: '#/docs', key: 'docs' },
   { id: 'team', href: '#/team', key: 'team' },
 ];
 
@@ -35,14 +33,14 @@ export function appHeaderHTML({ current, rightSlot = '' } = {}) {
   <header class="app-topbar" data-screen="${current ?? ''}">
     <div class="app-topbar-left">
       <a class="wordmark" href="#/" ${A({ 'aria-label': 'home' })}>${LOGO}${WORDMARK}</a>
-      <nav class="app-topnav" ${A({ 'aria-label': 'nav' })}>
-        ${NAV_ITEMS.map((item) => {
-          const isCurrent = item.id === current;
-          const sep = item.sepBefore ? '<i class="app-nav-sep" aria-hidden="true"></i>' : '';
-          return `${sep}<a class="app-nav-link${isCurrent ? ' active' : ''}" href="${item.href}" data-warm="${item.id}"${isCurrent ? ' aria-current="page"' : ''}>${T(item.key)}</a>`;
-        }).join('')}
-      </nav>
     </div>
+    <nav class="app-topnav" ${A({ 'aria-label': 'nav' })}>
+      ${NAV_ITEMS.map((item) => {
+        const isCurrent = item.id === current;
+        const sep = item.sepBefore ? '<i class="app-nav-sep" aria-hidden="true"></i>' : '';
+        return `${sep}<a class="app-nav-link${isCurrent ? ' active' : ''}" href="${item.href}" data-warm="${item.id}"${isCurrent ? ' aria-current="page"' : ''}>${T(item.key)}</a>`;
+      }).join('')}
+    </nav>
     <div class="app-topbar-right">
       ${rightSlot}
       ${langSwitch()}

@@ -20,6 +20,7 @@ const walkPolicy = Object.values(import.meta.glob('../../../training/policies/g1
 import { fetchClip, preloaded } from '../preloaded.js';
 import { LOGO, WORDMARK } from '../brand.js';
 import { createPushArrow } from '../push-arrow.js';
+import { fetchCachedJson, fetchCachedOnnxBytes } from 'tridi-physics';
 import { attachRobot, onRobotProgress, robotView } from '../robot-host.js';
 import { prefetch } from '../router.js';
 import { SkeletonView } from '../skeleton.js';
@@ -75,7 +76,7 @@ const narrow = () => innerWidth < 860;
 // the one behind the body. Policy shows the whole robot the network moves, slightly from above.
 const SHOTS = {
   hero: { az: 22, el: 3, dist: 1.35, aim: 1.08, shift: 0.2, follow: 0.5 },
-  capture: { az: -90, el: 6, dist: 2.85, aim: 0.82, shift: 0.24, follow: 0.15 },
+  capture: { az: -90, el: 6, dist: 3.3, aim: 0.8, shift: 0.24, follow: 0.15 },
   gym: { az: 38, el: 12, dist: 3.5, aim: 0.78, shift: 0.2, follow: 0.6 },
   policy: { az: -26, el: 6, dist: 2.25, aim: 0.86, shift: -0.22, follow: 0.25 },
   close: { az: 140, el: 16, dist: 6.2, aim: 0.8, shift: 0, follow: 1.2 },
@@ -99,7 +100,7 @@ export function mount(root) {
         <div class="boot-track"><i class="boot-bar"></i></div>
       </div>
     </div>
-    <div class="film-hud">
+    <div class="film-hud" data-shot="hero">
       <i class="corner tl" aria-hidden="true"></i><i class="corner tr" aria-hidden="true"></i><i class="corner bl" aria-hidden="true"></i><i class="corner br" aria-hidden="true"></i>
       <div class="sim-readout" data-state="stand">
         <span class="sim-live-pill"><i class="sim-state-dot" aria-hidden="true"></i><span data-sim="state">${T('hud.stand')}</span></span>
@@ -180,7 +181,6 @@ export function mount(root) {
         </div>
         <i class="topnav-sep" aria-hidden="true"></i>
         <a class="nav-direct" href="#/milestones" data-warm="milestones">${T('nav.milestones')}</a>
-        <a class="nav-direct" href="#/docs" data-warm="docs">${T('nav.docs')}</a>
         <a class="nav-direct" href="#/team" data-warm="team">${T('nav.team')}</a>
       </nav>
       <div class="topbar-right">
@@ -213,11 +213,11 @@ export function mount(root) {
       <div class="sticky">
         <div class="capture-media">
           <figure class="frame frame-video">
-            <video class="walk-video" src="${WALK_VIDEO}" muted playsinline loop preload="auto"></video>
+            <video class="walk-video" src="${WALK_VIDEO}" muted playsinline loop preload="metadata"></video>
             <canvas class="walk-overlay" aria-hidden="true"></canvas>
           </figure>
           <figure class="frame frame-skeleton">
-            <canvas class="skeleton-canvas"></canvas>
+            <canvas class="skeleton-canvas" role="img" aria-label="3D human pose skeleton"></canvas>
           </figure>
         </div>
         <div class="caption capture-caption panel">
@@ -347,8 +347,7 @@ export function mount(root) {
       <footer class="footer">
         <div class="foot-bar">
           <div class="foot-brand-col">
-            <a class="wordmark" href="#home" ${A({ 'aria-label': 'nav.home' })}>${LOGO}${WORDMARK}</a>
-            <p class="foot-tagline">${T('foot.tagline')}</p>
+            <a class="wordmark big" href="#home" ${A({ 'aria-label': 'nav.home' })}>${LOGO}${WORDMARK}</a>
             <p class="foot-rights">${T('foot.rights')}</p>
           </div>
           <div class="foot-columns">
@@ -361,20 +360,15 @@ export function mount(root) {
               <a href="#/assembler" data-warm="assembler">${T('nav.assembler')}</a>
             </div>
             <div class="foot-col">
-              <h4>${T('foot.colResources')}</h4>
-              <a href="#/docs" data-warm="docs">${T('foot.docs')}</a>
-              <a href="#/milestones" data-warm="milestones">${T('foot.milestones')}</a>
+              <h4>${T('foot.colProduct')}</h4>
               <a href="#capture">Tridi Capture</a>
               <a href="#gym">Tridi Gym</a>
               <a href="#policy">Tridi Policy</a>
             </div>
             <div class="foot-col">
               <h4>${T('foot.colCompany')}</h4>
+              <a href="#/milestones" data-warm="milestones">${T('foot.milestones')}</a>
               <a href="#/team" data-warm="team">${T('foot.team')}</a>
-              <a href="https://www.linkedin.com/in/pastor-jimenez/" target="_blank" rel="noopener noreferrer">Pastor Jiménez · CEO</a>
-              <a href="https://www.linkedin.com/in/juanevillam/" target="_blank" rel="noopener noreferrer">Juan Villa · CTO</a>
-              <a href="https://www.linkedin.com/in/cesar-martinez-info/" target="_blank" rel="noopener noreferrer">César Martínez · CIO</a>
-              <a href="https://www.linkedin.com/in/jose-alejandro-hernandez-torres/" target="_blank" rel="noopener noreferrer">Ale Hernández · COO</a>
             </div>
           </div>
         </div>
@@ -659,7 +653,7 @@ export function mount(root) {
       .then(async () => {
         if (gone || !view) return;
         const wasNonG1 = view.sim?.policy?.robot && view.sim.policy.robot !== 'unitree_g1';
-        const hadClip = Boolean(view.clip() || view.sim?.puppeted);
+        const hadClip = Boolean(view.clipTime?.() > 0 || view.sim?.puppeted);
         if (hadClip) view.stop();
         const [px0, py0, pz0] = view.sim ? view.sim.bodyPosition('pelvis') : [0, 0, 0.78];
         const drifted = Math.hypot(px0, py0) > 0.35;
@@ -696,7 +690,7 @@ export function mount(root) {
     Object.assign(gym, { since: 0, shownAt: 0 });
     // Immediately stop any active walking clip whenever leaving Capture ('walk') so a rapid scroll
     // through chapters can never leave the robot walking in Hero, Gym, or Policy.
-    if (kind !== 'walk' && (view.clip() || view.sim?.puppeted)) {
+    if (kind !== 'walk' && (view.clipTime?.() > 0 || view.sim?.puppeted)) {
       view.stop();
       const [px, py] = view.sim.bodyPosition('pelvis');
       view.viewer.controls.target.set(px, view.viewer.targetHeight, -py);
@@ -920,9 +914,9 @@ export function mount(root) {
     }),
   );
   // Phone arrows: one screen per chapter, and inside the Gym one stage per tap.
-  const chapterIndex = () => Math.max(0, chapters.findLastIndex((c) => c.offsetTop <= scrollY + innerHeight * 0.4));
-  const goTo = (chapter) => {
-    const top = chapter.offsetTop;
+  const chapterIndex = () => Math.max(0, layout.tops.findLastIndex((top) => top <= scrollY + innerHeight * 0.4));
+  const goTo = (chapterIdx) => {
+    const top = layout.tops[chapterIdx] ?? 0;
     if (lenis) lenis.scrollTo(top, { duration: 0.8 });
     else window.scrollTo({ top, behavior: reducedMotion ? 'auto' : 'smooth' });
   };
@@ -932,10 +926,11 @@ export function mount(root) {
       const next = phone.stage + direction;
       if (next >= 0 && next < GYM_STAGES.length) return void (phone.stage = next);
     }
-    const target = chapters[i + direction];
+    const targetIdx = i + direction;
+    const target = chapters[targetIdx];
     if (!target) return;
     if (target === gymEl) phone.stage = direction > 0 ? 0 : GYM_STAGES.length - 1;
-    goTo(target);
+    goTo(targetIdx);
   }
   on($('.arrow-up'), 'click', () => step(-1));
   on($('.arrow-down'), 'click', () => step(1));
@@ -1110,7 +1105,10 @@ export function mount(root) {
         if (isCurrent) link.setAttribute('aria-current', 'true');
         else link.removeAttribute('aria-current');
       }
-      if (hudEl) hudEl.classList.toggle('is-closing', chapter.dataset.shot === 'close');
+      if (hudEl) {
+        hudEl.dataset.shot = chapter.dataset.shot || 'hero';
+        hudEl.classList.toggle('is-closing', chapter.dataset.shot === 'close');
+      }
     }
     const [left, right] = WASH[chapter.dataset.shot] ?? [0, 0];
     const goal = narrow() ? { left: 0, right: 0, floor: chapter.dataset.shot === 'close' ? 0 : 1 } : { left, right, floor: 0 };
@@ -1162,14 +1160,23 @@ export function mount(root) {
       saved = { offset: camera.position.clone().sub(controls.target), targetHeight: view.viewer.targetHeight, maxPolarAngle: controls.maxPolarAngle };
       controls.enabled = false; // the scroll directs the camera here
       // Trailer lighting while the landing has the robot: a key light that rides with the camera
-      // (directCamera moves it), so every shot is lit from the front whatever the angle, and a
-      // rim from behind that draws the silhouette. Taken out again on unmount.
+      // (directCamera moves it), so every shot is lit from the front whatever the angle, while
+      // reusing viewer.sun and viewer.scene's existing HemisphereLight instead of adding duplicates.
       key = new THREE.PointLight(0xffffff, 9, 0, 1.2);
-      const rim = new THREE.DirectionalLight(0xfff1e6, 2.2);
-      rim.position.set(-3, 2.5, 2);
-      // Ambient sky light and a brighter exposure, so the dark scene never swallows the robot.
-      const sky = new THREE.HemisphereLight(0xffffff, 0x3a3833, 1.4);
-      lights = [key, rim, sky];
+      const sunLight = view.viewer.sun;
+      const hemiLight = view.viewer.scene.children.find((o) => o.isHemisphereLight);
+      saved.sun = sunLight && { color: sunLight.color.getHex(), intensity: sunLight.intensity, pos: sunLight.position.clone() };
+      saved.hemi = hemiLight && { color: hemiLight.color.getHex(), ground: hemiLight.groundColor.getHex(), intensity: hemiLight.intensity };
+      if (sunLight) {
+        sunLight.color.setHex(0xfff1e6);
+        sunLight.intensity = 2.2;
+      }
+      if (hemiLight) {
+        hemiLight.color.setHex(0xffffff);
+        hemiLight.groundColor.setHex(0x3a3833);
+        hemiLight.intensity = 1.4;
+      }
+      lights = [key];
       saved.exposure = view.viewer.renderer.toneMappingExposure;
       saved.pixelRatio = view.viewer.renderer.getPixelRatio();
       view.viewer.renderer.setPixelRatio(Math.min(devicePixelRatio, FILM_PIXEL_RATIO));
@@ -1200,7 +1207,8 @@ export function mount(root) {
     idle(() => {
       for (const stage of GYM_STAGES) {
         const { onnx, json } = policyUrls(stage.level);
-        for (const url of [onnx, json]) if (url) fetch(url).catch(() => {});
+        if (onnx) fetchCachedOnnxBytes(onnx).catch(() => {});
+        if (json) fetchCachedJson(json).catch(() => {});
       }
     }, { timeout: 3000 });
   }
@@ -1303,6 +1311,18 @@ export function mount(root) {
       controls.enabled = true;
       view.viewer.followTau = 0; // the app screens follow the robot rigidly
       lights.forEach((light) => view.viewer.scene.remove(light));
+      const sunLight = view.viewer.sun;
+      const hemiLight = view.viewer.scene.children.find((o) => o.isHemisphereLight);
+      if (sunLight && saved.sun) {
+        sunLight.color.setHex(saved.sun.color);
+        sunLight.intensity = saved.sun.intensity;
+        sunLight.position.copy(saved.sun.pos);
+      }
+      if (hemiLight && saved.hemi) {
+        hemiLight.color.setHex(saved.hemi.color);
+        hemiLight.groundColor.setHex(saved.hemi.ground);
+        hemiLight.intensity = saved.hemi.intensity;
+      }
       view.viewer.renderer.toneMappingExposure = saved.exposure;
       view.viewer.renderer.setPixelRatio(saved.pixelRatio);
       view.viewer.resize();

@@ -9,6 +9,8 @@ import { SCENE_THEME } from './skeleton.js';
 
 const canvas = document.createElement('canvas');
 canvas.className = 'robot-canvas';
+canvas.setAttribute('role', 'img');
+canvas.setAttribute('aria-label', '3D MuJoCo physics simulation viewport');
 
 let ready = null;
 let view = null;

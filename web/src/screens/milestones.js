@@ -211,6 +211,7 @@ export function mount(root) {
   let activePhotoIdx = 0;
   let activeLayer = 0;
   let closeTimer = null;
+  let lastTriggerEl = null;
 
   const paintLayer = (layer, src, alt) => {
     const fill = layer?.querySelector('.fill');
@@ -259,15 +260,19 @@ export function mount(root) {
     }
   };
 
-  const openPhoto = async (idx) => {
+  const openPhoto = async (idx, triggerEl = photoCards[idx]) => {
     if (!dialog) return;
+    lastTriggerEl = triggerEl || document.activeElement;
     if (closeTimer !== null) {
       clearTimeout(closeTimer);
       closeTimer = null;
     }
     await renderPhoto(idx, false);
     if (!dialog.open) dialog.showModal();
-    requestAnimationFrame(() => dialog.classList.add('is-visible'));
+    requestAnimationFrame(() => {
+      dialog.classList.add('is-visible');
+      lbClose?.focus();
+    });
   };
 
   const closeLightbox = () => {
@@ -277,6 +282,7 @@ export function mount(root) {
     closeTimer = window.setTimeout(() => {
       dialog.close();
       closeTimer = null;
+      lastTriggerEl?.focus?.();
     }, 450);
   };
 
