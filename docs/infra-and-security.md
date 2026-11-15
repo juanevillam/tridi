@@ -27,7 +27,7 @@
 
 1. **Sin bloqueo por autor de commit en repositorios privados:** En el plan gratuito (Hobby) de Vercel, cuando un repositorio privado de GitHub tiene varios colaboradores (`Juan`, `Pastor`, `César`), Vercel **bloquea los despliegues** cuyos commits hayan sido hechos por cualquier miembro que no sea el dueño de la cuenta de Vercel (exigiendo pagar USD 20/mes por asiento en Vercel Pro).
 2. **Despliegue colaborativo gratuito:** Con **Cloudflare Pages** + [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml), cualquier push a `main` (o `juan/experimental`) de **Juan, Pastor o César** corre primero las suites de verificación (`npm --prefix physics run check && npm --prefix web run check && npm --prefix web run build`) y despliega `web/dist` a Cloudflare Pages sin restricciones de asiento.
-3. **Límites holgados de archivos:** Cloudflare Pages permite hasta **25 MiB por archivo** y **20.000 archivos** en el plan gratis. El archivo más pesado de `web/dist` es `media/luigi-hardware.mp4` (**16,2 MB**), seguido por `media/luigi-sim2real.mp4` (**12,0 MB**), `media/platanus-pitch.mp4` (**11,0 MB**) y `mujoco.wasm` (**10,75 MB**); total: **236 archivos**.
+3. **Límites holgados de archivos:** Cloudflare Pages permite hasta **25 MiB por archivo** y **20.000 archivos** en el plan gratis. Tras la optimización de `/tridi-data-audit`, `web/dist` pesa **107 MB** en total (**270 archivos**), donde el archivo más pesado es `mujoco.wasm` (**10,75 MB**), seguido por los videos optimizados `media/luigi-sim2real.mp4` (**6,8 MB**), `media/platanus-pitch.mp4` (**5,9 MB**) y `media/luigi-hardware.mp4` (**4,8 MB**).
 4. **DDoS, WAF y Seguridad de Borde incluidos gratis:** Al estar el dominio en Cloudflare con nube naranja (`Proxied`), `trytridi.com` recibe mitigación DDoS L3/L4/L7 ilimitada, HSTS en el borde, AI Labyrinth, Turnstile y DNSSEC sin costo.
 
 ---
@@ -69,6 +69,7 @@ Se eliminaron los 5 registros `MX` basura que Namecheap pone por defecto (`eforw
 | Type | Name | Content | Razón técnica |
 | :--- | :--- | :--- | :--- |
 | `TXT` | `@` | `"v=spf1 -all"` | Declara que ningún servidor está autorizado a enviar correo desde `@trytridi.com`. |
+| `TXT` | `@` | `"google-site-verification=Cy_4JLz2S7WS9MCtz35HXpGQw9ViuvfWRDeHVPvr7xc"` | Verifica la propiedad del dominio `trytridi.com` en **Google Search Console** (`juanesvillamendoza@gmail.com`) y Google Cloud. |
 | `TXT` | `_dmarc` | `"v=DMARC1; p=reject; sp=reject; adkim=s; aspf=s;"` | Ordena a los proveedores de correo rechazar el 100% de correos falsificados de `@trytridi.com` y subdominios (`p=reject; sp=reject`). No lleva `rua=mailto:...@gmail.com` porque RFC 7489 exige autorización TXT del dominio externo y Gmail no la publica. |
 | `MX` | *(ninguno)* | *(vacío)* | Sin servidores MX mientras no se reciba correo. |
 
@@ -129,8 +130,9 @@ Ambos archivos están sincronizados para que cualquier despliegue sirva exactame
 - `Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()`
   *(Permite únicamente el acceso a la cámara web en el propio origen `trytridi.com` para la captura de pose en vivo, y bloquea en el navegador micrófono, geolocalización, pagos y WebUSB).*
 - `/assets/*`: `Cache-Control: public, max-age=31536000, immutable` (archivos con hash de Vite).
+- `/models/*`: `Cache-Control: public, max-age=31536000, immutable` (modelos 3D `.glb` de Kenney en `web/public/models/`).
 - `/media/*`: `Cache-Control: public, max-age=604800, stale-while-revalidate=86400` (videos `.mp4` e imágenes de `#/milestones`).
-- `/og.png`: imagen Open Graph (`1200 × 627`, [`web/public/og.png`](../web/public/og.png)) con el hero real de la landing (regenerable con `bash web/scripts/render-og.sh`), declarada en [`web/index.html`](../web/index.html) (`og:image`, `og:image:width`, `og:image:height`, `twitter:image`) para que LinkedIn, X y mensajería carguen la miniatura automáticamente al compartir `https://trytridi.com`.
+- `/og.png`: imagen Open Graph (`1200 × 630`, **278 KB**, [`web/public/og.png`](../web/public/og.png)) con el hero real de la landing (optimizada `< 300 KB` para preview instantáneo en WhatsApp, LinkedIn y X), declarada en [`web/index.html`](../web/index.html) (`og:image`, `og:image:width`, `og:image:height`, `twitter:image`, `JSON-LD`) junto con [`web/public/robots.txt`](../web/public/robots.txt).
 
 ### 6.2 Cómo desplegar a `https://trytridi.com`
 

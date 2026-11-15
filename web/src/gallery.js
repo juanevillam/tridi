@@ -30,7 +30,7 @@ export function mountGallery(root, stage, initialClip, onSelect, { hide = [] } =
   if (userClips.length > 0) appendSectionHeader('groupUser');
 
   items.forEach((item, idx) => {
-    if (idx === userClips.length) appendSectionHeader('groupPreloaded');
+    if (userClips.length > 0 && idx === userClips.length) appendSectionHeader('groupPreloaded');
     const isUser = Boolean(item.data);
     const li = document.createElement('li');
     const button = document.createElement('button');

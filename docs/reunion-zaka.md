@@ -2,7 +2,8 @@
 
 > **Fecha:** 12 de noviembre de 2026 · Barquisimeto (2 horas de sesión grabada y transcrita)  
 > **Con quién:** **Ing. José González** (Fundador y Director de **ZAKA, C.A.**, [`zakasys.com`](https://zakasys.com), Ingeniero en Computación UFT con casi 30 años automatizando plantas en Venezuela, representante/integrador de **Rockwell Automation**, papá de José Miguel).  
-> **Estado:** ✅ **Reunión realizada con éxito.** Próximo paso: investigar y construir 100 % de nuestro lado el estándar de documentación **ISA (`isa.org`)** + prototipo `P&ID (.dxf) → Docs + Simulación 3D + PLC` para mostrárselo funcionando.
+> **Fuentes Raw en el Repo:** 🎙️ **Audio íntegro (`.m4a`, 42 MB):** [`docs/reuniones/2026-11-12-reunion-zaka-audio.m4a`](reuniones/2026-11-12-reunion-zaka-audio.m4a) · 📄 **Transcripción íntegra raw (`.txt`, Whisper):** [`docs/reuniones/2026-11-12-reunion-zaka-transcripcion-raw.txt`](reuniones/2026-11-12-reunion-zaka-transcripcion-raw.txt)  
+> **Estado:** ✅ **Reunión realizada con éxito y prototipo `P&ID (.dxf) → Docs ISA-5.1 + Simulación 3D + PLC` construido en `#/assembler`.**
 
 ---
 

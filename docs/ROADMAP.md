@@ -1,120 +1,99 @@
-# Plan de Producto y Pipeline de Tareas — Tridi (Noviembre 2026)
+# Roadmap Ejecutivo y Estado del Producto — Tridi (Noviembre 2026)
 
-> **Propuesta inicial para iterar en equipo (Juan, Pastor, César y Ale):**  
-> Este documento reúne las ideas que hemos hablado por voz y chat para bajar Tridi a tierra como un producto real.  
-> **Cómo usamos este archivo:** Igual que hicimos en Platanus Hack, **cada tarea tiene un único dueño y toca archivos separados** para que nadie pise el código de otro y las IAs de cada uno sepan exactamente qué construir. **Nada está escrito en piedra:** pásenle este archivo a su IA, véanlo y si alguien quiere cambiar, sumar o intercambiar una tarea, lo ajustamos entre todos.
-
----
-
-## 1. La Visión General vs. Cómo bajamos Tridi a tierra hoy
-
-**La visión general:**  
-Cualquier sistema robótico o línea de automatización física que tenga motores/actuadores, sensores y tiempos reales puede ser simulado y entrenado por Tridi. Eso nos abre **4 verticales claras**:
-
-1. **Robots móviles y logística de almacén (AMR / estilo robots de Amazon que mueven anaqueles / rovers como los de Luigi):** robots que navegan pisos reales, esquivan obstáculos o mueven estantes y cargas de un punto a otro sin chocar ni frenarse por bloqueos de sensores.
-2. **Pipelines de fábricas, empaquetadoras y líneas cronometradas:** celdas industriales con varios pasos secuenciales (cintas transportadoras, brazos posicionadores, llenado y cierres en tiempos exactos) donde hoy un pequeño cambio de fricción, peso o retardo de un sensor traba toda la línea.
-3. **Brazos robóticos y manipulación:** agarre de objetos rígidos y líquidos (como nuestra prueba de la taza con agua en seco vs. jabonoso) para clasificación y empaque.
-4. **Robots humanoides aprendiendo de video humano (`Tridi Capture` — `Unitree G1 / H1`):** convertir un video de celular en políticas de cuerpo completo y manos de 5 dedos.
-
-**Por qué esto vuelve a Tridi un negocio viable desde ya (y no un side project eterno):**  
-Llegarle mañana en frío a Tesla Optimus o Figure desde Venezuela sin un portafolio previo es casi imposible. En cambio, en nuestra propia ciudad y región **sí hay fábricas (empaquetadoras, alimentos, café), talleres de automatización, universidades y agencias de robótica** con máquinas reales. Si Tridi resuelve la simulación y calibración física de cualquier máquina o robot, podemos conseguir clientes y casos reales desde ahora mismo mientras avanzamos con YC.
-
-```
-CANAL A — De Videos de Internet a Habilidad General       CANAL B — Tu Máquina/Robot y Código a Sim-to-Real (Tridi Assembler)
-  100–10.000 videos de internet de una misma acción         Subes el CAD de tu robot/celda (.stl/.step) + tu código (.ino/.py/PLC)
-  (distintos ángulos, frenadas, esquives, tropiezos)                                       │
-                 │                                                                         ▼
-                 ▼                                           Gemelo digital MuJoCo calibrado con motores, sensores y tiempos reales
-   Extracción masiva 3D + manos (GVHMR + WiLoR)                                            │
-                 └──────────────────────────────┬──────────────────────────────────────────┘
-                                                ▼
-                      MOTOR TRIDI (MuJoCo + Entrenamiento Multi-Clip en GPU)
-            Combina todos los videos + casos borde (obstáculo cruzándose, cambio de piso,
-            frenada de emergencia, motor/pata dañada) hasta consolidar 1 sola política robusta
-                                                │
-                                                ▼
-                                     ENTREGA SIM-TO-REAL
-                   1. Política neuronal generalista (ONNX a 50 Hz) + Dataset físico
-                   2. Puente en vivo por WebSerial USB desde el navegador
-                   3. Controlador / firmware nativo calibrado (.ino / C / Python) sin bloqueos
-```
-
-### Por qué una habilidad real requiere Múltiples Videos de Internet + Casos Borde (y la diferencia entre Entorno Abierto vs. Fábrica)
-
-- **Escalar con videos de internet, no grabándonos nosotros:** Nosotros no podemos grabarnos 10.000 veces. La verdadera escala de Tridi está en tomar **cientos o miles de videos de internet** de una misma habilidad (ej. personas caminando en distintos ángulos, frenando porque alguien se atraviesa, esquivando un obstáculo, subiendo un desnivel) y entrenar **una sola política generalista** que combine todo ese conocimiento, sumándole en MuJoCo fallos extremos (¿qué pasa si se atraviesa algo de golpe?, ¿qué pasa si un motor pierde fuerza o se daña una pata?).
-- **Por qué hoy en 2026 las grandes empresas siguen usando teleoperación (control remoto) en humanoides, y dónde entra Tridi:**
-  - Soltar un humanoide de 50 kg con una red neuronal pura en un entorno libre lleno de gente todavía es peligroso si la red solo aprendió a caminar recto en un piso vacío. Por eso incluso los gigantes siguen teleoperando en demos públicas.
-  - **En humanoides (entorno abierto):** Tridi les resuelve justamente el entrenamiento en los miles de casos borde (frenar, esquivar, cojear si falla un actuador) que necesitan superar en simulación antes de apagar el control remoto.
-  - **En fábricas, empaquetadoras y almacenes (entorno controlado):** A diferencia de un humanoide en la calle, una línea de empaquetado o un robot de almacén opera en un espacio cerrado, predecible y seguro. Ahí nuestras políticas se pueden desplegar **100 % autónomas hoy mismo sin peligro**.
+> **Para leer en 3 minutos:** Este es el documento principal de estado de **Tridi (`juanevillam/tridi`)**. Resume cómo funciona nuestro ecosistema sobre **1 motor físico compartido (`MuJoCo` Python + WebAssembly)** y **3 verticales de negocio** (Humanoides, Robots/Mecatrónica y Plantas Industriales P&ID), qué está desplegado hoy en producción (`trytridi.com`) y qué tareas tiene asignadas cada integrante (**Juan, Pastor, César y Ale**).
+> Para detalles de implementación a nivel de código, pines o infraestructura, consulta los manuales de Capa 2 en [`docs/architecture-and-sim2real.md`](architecture-and-sim2real.md) y [`docs/infra-and-security.md`](infra-and-security.md).
 
 ---
 
-## 2. Qué hicimos exactamente con el robot de Luigi (`luigi_lab3`)
+## 1. Reglas de Oro del Ecosistema y las 3 Verticales de Tridi
 
-Para que todos tengamos claro el flujo técnico que queremos automatizar en la web:
-
-1. **Lo que ya tenía Luigi:** Su robot armado con **6 piezas CAD (`.stl`)** y su **programa en Arduino (`robot_gestos_original.ino`)** con los movimientos que él había programado (avanzar con dos motores en un puente H `L298N`, medir distancia con el ultrasónico `HC-SR04` y usar el sensor óptico `APDS-9960`).
-2. **Por qué fallaba en el piso real:** Las llantas de TPU no vencían la fricción estática con `PWM < 115`, el comando `pulseIn()` congelaba el procesador por `47,1 ms` en cada lectura sin eco, y la librería estándar apagaba su sensor `APDS-9960` porque era un clon con `Chip ID = 0x9E`.
-3. **Lo que hizo Tridi:** Conectamos sus piezas `.stl` a nuestra simulación en MuJoCo (`luigi.xml`), **reentrenamos en física real los mismos movimientos que él quería hacer** con una política a **50 Hz (`luigi-lab3.onnx`)** y le devolvimos el programa calibrado para su Arduino (`robot_gestos.ino`, ocupando solo 461 bytes de RAM, con interrupción `PCINT1` no bloqueante y radar IR directo a 40 Hz).
-
----
-
-## 3. Pipeline de Tareas (1 Tarea = 1 Persona, sin pisarnos archivos)
-
-Igual que en la hackathon: **una sola persona por tarea** y cada área en sus propios archivos/carpetas. Si alguien quiere intercambiar una tarea con otro o proponer una distinta después de analizarlo con su IA, lo cambiamos aquí.
-
-### 🟧 Juan (`web/` visual & landing, `training/` GPU & compiladorMCU, `data/`)
-
-| ID | Tarea | Archivos / Carpeta | Qué entrega |
-| --- | --- | --- | --- |
-| **J-1** ✅ | **Pulido visual de Landing, Simulaciones y `#/milestones` (Listo)** | `web/src/screens/home.js`, `web/src/landing/`, `web/src/screens/simulations.js`, `web/src/stage.js`, `web/src/screens/delivery.js` | Refinados todos los detalles visuales en desktop y móvil (`trytridi.com`), footer de la landing más amplio sin colisión, controles de Simulaciones contextualizados (agarre líquido solo en Cocina, botón Empujar solo en humanoide con física, sin selector redundante en Playback, sin Vereda, nombres claros `Rover Luigi v1/v2` y `Política activa (cerebro ONNX)`), postura erguida en `#/delivery` y guía de preparación industrial ZAKA en `docs/reunion-zaka.md`. |
-| **J-2** ✅ | **Pipeline en GPU Cloud + Entrenamiento Multi-Video con Casos Borde (Listo)** | `training/multiclip.py`, `training/cloud_gpu.sh`, `training/env.py`, `training/imitate.py`, `training/ppo.py` | (1) `resolve_clips()` + muestreo adaptativo ponderado por fallos (`clip_fail_ema`) sobre múltiples clips simultáneos (`all-walks`, `all-g1` o carpetas de videos), (2) inyección de fallas de actuador (`--fault-prob`: un motor de pierna pierde 25–65 % de torque) y frenadas de emergencia por obstáculo (`--sudden-stop-prob`: pausa de 1–2 s a mitad de caminata) y (3) script `training/cloud_gpu.sh` para correr en GPU Cloud con pre-flight C1/C2. |
-| **J-3** ✅ | **Compilador automático `ONNX → C / Arduino (.ino)` (Listo)** | `training/export_mcu.py`, `physics/models/luigi_lab4/firmware/LAB4_Tridi_Autonomo.ino`, `physics/models/luigi_lab3/firmware/robot_gestos_onnx.ino` | Compila cualquier grafo `.onnx` (`luigi-lab3`, `g1-stand`, `g1-walk`) a C99 (`tridi_policy_forward`) con paridad numérica $< 10^{-5}$ verificada con `clang` vs `onnxruntime`, valida conflictos de hardware (`Timer1 <Servo.h>` vs PWM en `D9/D10`), genera `ISR` no bloqueante (`INT0/INT1` o `PCINT1` en vez de `pulseIn`), barrido radar asíncrono del servo SG90 y compensación de zona muerta (`PWM 115..200`). |
-| **J-4** ✅ | **Entrenamiento de la policy `luigi-lab4.onnx` (Escaneo activo en movimiento) (Listo)** | `training/luigi_lab4_env.py`, `training/policies/luigi-lab4.*`, `physics/models/luigi_lab4/firmware/LAB4_Tridi_Autonomo.ino` | Entorno MuJoCo `LuigiLab4Env` (`obs_dim=18, nu=3`) + política `luigi-lab4.onnx` (2.353 bytes) que coordina las 2 ruedas diferenciales + el barrido activo del cuello servo SG90 (`96,06°` de cobertura sin frenar), verificada en `onnx-lite.js` (`check-assembler.mjs`) y transpilada a C99 en `LAB4_Tridi_Autonomo.ino` con `export_mcu.py`. |
-| **J-5** | **Rediseño Corporativo Dual (`Humanoids` + `Industrial Plants`) y Navbar Acordeón** | `web/src/screens/home.js`, `web/src/landing/`, `web/src/nav.js` | Unificar toda la navegación dispersa entre header y footer en un **Navbar corporativo con acordeones/menús desplegables** (`Solutions`, `Platform`, `Case Studies`) y estructurar la landing con enfoque dual claro: **`Tridi for Humanoid Robots`** y **`Tridi for Industrial Plants`**. |
-| **J-6** | **Pipeline `P&ID (.dxf) → Documentación ISA-5.1 + Simulación 3D + Bloques PLC` (Piloto ZAKA)** | `data/pid_parser.py`, `physics/src/pid_assembler.js`, `training/export_plc.py` | Inspirado en la arquitectura *Low-Token DSL + catálogo cerrado* de `mus3o` y validado con el Ing. José González (ZAKA, C.A.): (1) parser determinista de planos AutoCAD `.dxf` (`ISA-5.1`), (2) generador de memoria descriptiva/documentación de automatización, (3) ensamblador de escena 3D estilo *Factory I/O* en MuJoCo y (4) exportador de archivo plano/bloques PLC (`Studio 5000` / `TIA Portal`). |
+1. **Un solo motor físico, tres verticales claramente separadas en producto y UI:**
+   - **Vertical 1 · Robótica Humanoide (`Unitree G1` / `H1`):** Su entrada es **video humano** (`#/live` cámara en vivo / teléfono por QR o `#/upload` archivo `.mp4`). Entrega el dataset físico y la política `ONNX` en `#/delivery`.
+   - **Vertical 2 · Rovers Autónomos y Mecatrónica (`luigi_lab3` / `luigi_lab4`):** Su entrada son **mallas CAD 3D (`.stl`) + código `.ino`** en `#/assembler`. Audita conflictos de timers/interrupciones (`Timer1` vs `<Servo.h>`, `pulseIn` de `47,1 ms` → `ISR < 4 µs`) y entrega firmware C99 determinista sin memoria dinámica (`training/export_mcu.py`).
+   - **Vertical 3 · Plantas Industriales y Celdas PLC (`factory_cell` / `P&ID .dxf`):** Validada con el **Ing. José González (ZAKA, C.A. / Rockwell Automation)** ([`docs/reunion-zaka.md`](reunion-zaka.md)). Su entrada es el plano **P&ID de AutoCAD (`.dxf`)** en `#/assembler` y entrega en orden estricto de valor industrial: **1. Documentación de Ingeniería `ISA-5.1 / ISA-88` (`FDS`)**, **2. Simulación 3D interactiva en MuJoCo**, y **3. Archivo plano de bloques tipo "Lego" para PLC** (`Siemens TIA Portal .scl` y `Rockwell Studio 5000 .L5K`).
+2. **Principio de Arquitectura (`mus3o`): *"La IA razona la topología; el código determinista ensambla la física y el control"*:**
+   - Ningún LLM inventa números flotantes de un XML de MuJoCo ni escribe directo registros críticos de un PLC o Arduino. La IA o el parser lee el input (video, `.stl` o `.dxf`), produce un grafo semántico validado contra nuestros catálogos (`physics/components/catalog.json` e `isa_standard.json`), y nuestros ensambladores deterministas (`assembler.js`, `pid_assembler.js`, `export_mcu.py`, `export_plc.py`) compilan el XML, la documentación `ISA-5.1` y el código de control con paridad numérica comprobada (`max_abs_diff < 1e-5`).
+3. **Estándar Visual de Laboratorio (`trytridi.com`):**
+   - Todas las simulaciones en `#/simulations` (`Unitree G1`, `Rover Luigi v1`, `Rover Luigi v2`, `Industrial Cell`) corren dentro de entornos 3D de planta/laboratorio con iluminación física, **tags 3D proyectados en tiempo real sobre cada actuador/sensor** y una **barra narradora en vivo de 4 etapas** que explica qué está decidiendo la política en cada instante.
+4. **Frontera Estricta de Privacidad (`yc/`):**
+   - La carpeta [`yc/`](../yc/README.md) vive exclusivamente en el repositorio privado `juanevillam/tridi` y jamás se sube a ningún mirror público.
 
 ---
 
-### 🟦 Pastor (`physics/` motor y catálogo de hardware, backend/sistema del Assembler)
+## 2. Estado Actual de las Superficies y Verticales en Producción
 
-| ID | Tarea | Archivos / Carpeta | Qué entrega |
-| --- | --- | --- | --- |
-| **P-1** ✅ | **Catálogo de Componentes de Hardware (`physics/components/`) (Listo)** | `physics/components/catalog.json`, `physics/components/index.js`, `physics/models/components/*.xml` | Esquema JSON determinista, **14 escenas MuJoCo 3D individuales** (`nq=1, nu=1`) para previsualizar cada placa/sensor/actuador, y API CRUD (`listComponents`, `getComponent`, `registerComponent`, `removeComponent`, `validateHardwarePinout`) uniendo física MuJoCo con reglas MCU (`deadzone_pwm: 115`, conflicto `Timer1` `<Servo.h>` vs PWM en `D9/D10`, interrupciones `INT0/INT1` vs `PCINT`). |
-| **P-2** ✅ | **Gemelo Digital MuJoCo de `luigi_lab4` (Robot con cuello servo SG90) (Listo)** | `physics/models/luigi_lab4/luigi_lab4.xml`, `physics/models/luigi_lab4/scene.xml`, `physics/src/`, `web/src/stage.js` | Modelo MuJoCo (`nq=10, nu=3`) con las 7 mallas `.stl` de Lab 4, articulación revoluta del cuello (`neck_servo_joint`, `±90°` rad) con `7_cabeza_sensor_servo.stl` y sensor `HC-SR04` cuyo cono de rayos gira solidario con el cuello en tiempo real, conectado también en `#/simulations/luigi_lab4`. |
-| **P-3** ✅ | **Motor del `Assembler`: Generador automático de MuJoCo XML desde piezas subidas (Listo)** | `physics/src/assembler.js`, `data/server.py` (`GET/POST /components`) | Parser determinista de `.ino` (`parseArduinoSketch`: detecta MCU `arduino_uno/esp32/plc`, drivers `l298n/tb6612fng`, pines, `<Servo.h>`, `pulseIn` y `delay`), clasificador de mallas `.stl` (`classifyStlMeshes`: rovers + celdas industriales) y generador automático `generateMujocoXml` validado en MuJoCo WASM (`check-assembler.mjs`). |
-| **P-4** ✅ | **Escena de prueba de Celda Industrial / Empaquetadora en MuJoCo (Listo)** | `physics/models/factory_cell/factory_cell.xml`, `physics/models/factory_cell/scene.xml`, `training/policies/factory-cell.onnx` | Celda industrial en MuJoCo (`nq=10, nu=3`) con cinta transportadora (`conveyor_feed_joint`), cilindro neumático desviador (`pusher_slide_joint`), prensa selladora vertical (`sealer_press_joint`), política cerrada `factory-cell.onnx` sincronizada por sensores ópticos (`0 %` merma) y simulador interactivo de falla de cinta vs. PLC por timer fijo en `#/simulations/factory_cell`. |
-
----
-
-### 🟩 César (`web/src/screens/` — Pantallas de aplicación aisladas de la landing)
-
-| ID | Tarea | Archivos / Carpeta | Qué entrega |
-| --- | --- | --- | --- |
-| **C-1** | **Pantalla Web del `Tridi Assembler` (`#/assembler`)** | `web/src/screens/assembler.js`, `web/src/screens/strings/assembler.js` (nuevos) | Interfaz self-serve donde el usuario sube su `.zip` (`.stl` + `.ino` opcional), previsualiza las piezas 3D y selecciona en cada pieza qué motor, sensor y pines usa (leyendo el catálogo `P-1` de Pastor) para lanzar la simulación. |
-| **C-2** | **Mejora de `#/delivery`: Descarga Dual (ONNX + Código Nativo Explicable)** | `web/src/screens/delivery.js`, `web/src/screens/strings/delivery.js` | Agregar en la pantalla de entrega de robots físicos la pestaña para ver y descargar el código `.ino` / C generado por `J-3`, con explicación bloque por bloque para que cualquier ingeniero o estudiante entienda qué hace cada parte. |
-| **C-3** | **Selector de vertical en `#/simulations` (Humanoides · Rovers · Fábrica)** | `web/src/screens/simulations.js`, `web/src/stage.js` | Organizar el selector de modelos en Simulaciones por categoría (`Humanoides: G1 / H1`, `Robots Móviles: Luigi Lab 3 / Lab 4`, `Industrial`) para que no quede como una lista plana cuando sumemos más máquinas. |
+| Superficie / Vertical | Estado Hoy (Noviembre 2026) | Manual Técnico (Capa 2) |
+| :--- | :--- | :--- |
+| **Infraestructura & Dominio (`trytridi.com`)** | **100% Operativo.** Cloudflare Pages (`tridi-18p.pages.dev`) con deploy automático desde `main`, SSL `Full (Strict)`, TLS 1.3, HSTS `max-age=31536000; includeSubDomains; preload`, `SPF -all`, `DMARC p=reject`, Google Search Console verificado y WAF activo. | [`docs/infra-and-security.md`](infra-and-security.md) |
+| **Landing & Navegación (`#/` y `#/milestones`)** | **100% Operativo.** Hero con `Unitree G1` en vivo (`Stand v2`), dropdowns `Product ▾` y `Studio ▾` con apertura por hover y tipografía unificada, sección `.tries` con distinción explícita entre herramientas de **Humanoides** (`Live Camera`, `Upload Video`, `Delivery & Code`) vs. **CAD & P&ID** (`Factory Assembler`), footer compacto en 1 barra y página **Case Studies** (`#/milestones`) con los 3 casos reales. | [`docs/architecture-and-sim2real.md`](architecture-and-sim2real.md) |
+| **Estudio de Simulaciones 3D (`#/simulations`)** | **100% Operativo.** Soporta los 4 modelos físicos en orden lógico (`Unitree G1`, `Rover Luigi v1 — Lab 3`, `Rover Luigi v2 — Lab 4`, `Industrial Cell`), todos con entorno 3D de bahía/laboratorio/planta, etiquetas 3D flotantes de telemetría proyectadas desde coordenadas MuJoCo y narrador en vivo de 4 pasos. | [`docs/architecture-and-sim2real.md`](architecture-and-sim2real.md) |
+| **Vertical 1: Humanoides (`data/` + `physics/` + `training/`)** | **100% Operativo.** Captura 2.0 (`GVHMR` cuerpo SMPL-X en coordenadas de mundo + `WiLoR` manos 3D de 21 puntos), retargeting `< 3,2 cm` con manos Inspire de 5 dedos, 9 políticas ONNX en producción (`g1-stand`, `g1-walk`, `g1-run`, `g1-jacks`, `g1-saludar`, `g1-dedos`, `g1-bailar`, `g1-frente`, `g1-sentarse`, `h1-walk`) y entrenamiento multi-clip con fallas de actuador (`training/multiclip.py`). | [`docs/architecture-and-sim2real.md`](architecture-and-sim2real.md) |
+| **Vertical 2: Rovers & Mecatrónica (`luigi_lab3` y `luigi_lab4`)** | **100% Operativo.** Catálogo de 14 componentes con escenas 3D aisladas (`physics/components/catalog.json`), gemelos digitales `luigi_lab3` (`nq=9, nu=2`) y `luigi_lab4` (`nq=10, nu=3` con cuello servo SG90 y cono ultrasónico dinámico), política `luigi-lab4.onnx` (`2.353 B`) y compilador `ONNX → C99 / Arduino (.ino)` (`training/export_mcu.py`) con paridad `0.00e+00`. | [`docs/caso-luigi-sim2real.md`](caso-luigi-sim2real.md) |
+| **Vertical 3: Plantas Industriales & P&ID (`#/assembler`)** | **100% Operativo.** Catálogo `ISA-5.1` (`physics/components/isa_standard.json` con 14 clases de equipos industriales), parser de planos AutoCAD `.dxf` (`data/pid_parser.py` y `physics/src/pid_assembler.js`), 2 planos `.dxf` de prueba (`01_batch_mixer.dxf`, `02_silo_packaging.dxf`) y exportación instantánea de: **1. Docs `ISA-5.1 / ISA-88` (`FDS`)**, **2. Escena 3D MuJoCo** y **3. Código PLC** (`Siemens .scl` y `Rockwell .L5K`). | [`docs/reunion-zaka.md`](reunion-zaka.md) · [`docs/plan-v4-industrial-y-verticales.md`](plan-v4-industrial-y-verticales.md) |
 
 ---
 
-### 🟨 Ale (`docs/`, `yc/` — Lógica de Negocio, Economía de Planta y Clientes Reales)
-
-| ID | Tarea | Archivos / Carpeta | Qué entrega |
-| --- | --- | --- | --- |
-| **A-1** | **Arquitectura de Casos Industriales (Fábricas, Empaquetadoras y Almacenes)** | `docs/verticales-industriales.md` (nuevo) | Traducir cómo funciona una línea real (empaquetadora con pasos cronometrados, embotelladora o robots de almacén) a especificaciones concretas para nosotros: qué pasos tiene el ciclo, dónde se traba hoy por culpa de `delays` fijos o sensores, y qué métrica (cajas/minuto, % de merma) le importa al dueño de la fábrica. |
-| **A-2** | **Unit Economics y Modelo de Precios de Tridi (B2B / Agencias / Fábricas)** | `docs/unit-economics.md` (nuevo) | Definir la estructura financiera del producto: cuánto nos cuesta una corrida de GPU en la nube vs. cómo cobramos en cada escalón (cobro por robot/celda calibrada en el Assembler, membresía para agencias de robótica, contratos de datos para humanoides). |
-| **A-3** | **Directorio y Contacto de Primeros Clientes / Robots Reales (Pipeline Comercial)** | `docs/clientes-potenciales.md` (nuevo) | Lista accionable de: (1) 5 equipos/laboratorios con robots físicos listos para meter en `#/milestones` ya mismo, (2) 10 agencias/integradores de robótica y (3) 5 plantas/empaquetadoras locales donde podamos ver una línea real en persona, más el mensaje corto de entrada con `trytridi.com/#/milestones`. |
-| **A-4** | **Narrativa de Evolución Post-YC y Guion de Casos Reales** | `yc/entrevista.md` | Actualizar la preparación de entrevista de YC W27 con nuestra evolución desde el 2 de noviembre: cómo pasamos de "solo video para humanoides" a resolver Sim-to-Real físico en hardware real (`luigi_lab3`, `luigi_lab4`, `Tridi Assembler` y automatización industrial). |
-
----
-
-## 4. Cómo analizar este plan con tu IA (Prompt para el equipo)
-
-Cuando hagas `git pull` en `main`, pásale este prompt a tu agente (Claude Code / Antigravity / Cursor):
+## 3. Cómo se Conectan las Superficies y el Motor Físico (Diagrama ASCII)
 
 ```text
-Lee `docs/ROADMAP.md`, `docs/README.md` y `docs/estado.md`.
-Soy [Pastor / César / Ale / Juan]. Hazme un resumen de:
-1. Cómo quedó planteada la visión de Tridi (los 2 canales de entrada y las 4 verticales, incluyendo robots móviles y líneas de fábricas/empaquetadoras).
-2. Cuáles son mis tareas asignadas (`P-*`, `C-*`, `A-*` o `J-*`), qué archivos exactos me toca crear o editar para no chocar con los demás, y dime qué ideas o mejoras le propondrías tú a este plan antes de empezar a programar.
+                      ┌──────────────────────────────────────────────────────────┐
+                      │               trytridi.com (Cloudflare Pages)            │
+                      │     Landing (#/) · Simulations (#/simulations) ·         │
+                      │     Factory Assembler (#/assembler) · Case Studies       │
+                      └─────────────┬──────────────────────────┬─────────────────┘
+                                    │                          │
+        ┌───────────────────────────▼──────┐            ┌──────▼───────────────────────────────┐
+        │   VERTICAL 1: HUMANOIDES         │            │   VERTICALES 2 & 3: CAD / P&ID       │
+        │   (#/live · #/upload · #/delivery)│            │   (#/assembler · Factory Assembler)  │
+        │   • Input: Video celular / QR    │            │   • Modo A: Planos P&ID (.dxf)       │
+        │   • Captura 2.0 (GVHMR + WiLoR)  │            │     → Grafo ISA-5.1 (isa_standard)   │
+        │   • PoseClip v2 → RobotMotion    │            │   • Modo B: Mallas CAD (.stl) + .ino │
+        └───────────────────────────┬──────┘            │     → Catálogo 14 comp. (catalog)    │
+                                    │                   └──────┬───────────────────────────────┘
+                                    ▼                          ▼
+                      ┌──────────────────────────────────────────────────────────┐
+                      │         MOTOR FÍSICO COMPARTIDO (MuJoCo + PPO RL)        │
+                      │   • WebAssembly a 500 Hz en navegador + Three.js 60 fps  │
+                      │   • Entornos 3D con Tags Flotantes + Narrador en Vivo    │
+                      │   • Entrenamiento PPO / DeepMimic a 50 Hz en Python      │
+                      └──────┬──────────────────────────┬───────────────────┬────┘
+                             │                          │                   │
+              ┌──────────────▼─────────┐   ┌────────────▼───────────┐   ┌───▼────────────────────────┐
+              │ Entregable Humanoides  │   │ Entregable Mecatrónica │   │ Entregable Planta / PLC    │
+              │ • policy.onnx (265 KB) │   │ • export_mcu.py        │   │ • 1. Docs FDS ISA-5.1 (.md)│
+              │ • motion.json          │   │ • Firmware C99 (.ino)  │   │ • 2. Escena 3D MuJoCo (.xml│
+              │ • dataset.zip (#/deliv)│   │ • Paridad < 1e-5       │   │ • 3. PLC (.scl / .L5K)     │
+              └────────────────────────┘   └────────────────────────┘   └────────────────────────────┘
 ```
+
+---
+
+## 4. Tablero de Tareas por Integrante (Juan · Pastor · César · Ale)
+
+### 🟢 Juan (`data/`, `training/`, `web/`, `docs/`) — CTO
+- [x] **`J-1` · Infraestructura y Seguridad de Producción (`trytridi.com`):** DNS en Cloudflare, SSL Strict, HSTS preload, `SPF`/`DMARC`, Google Search Console, WAF y CI/CD en GitHub Actions.
+- [x] **`J-2` · Entrenamiento Multi-Video + Casos Borde (`training/multiclip.py`):** Muestreo ponderado por tasa de caída (`clip_fail_ema`), degradación parcial de actuadores (`--fault-prob`) y frenadas de emergencia (`--sudden-stop-prob`).
+- [x] **`J-3` · Compilador Automático `ONNX → C99 / Arduino (.ino)` (`training/export_mcu.py`):** Emisión de inferencia C99 sin heap (`O(1)` SRAM), paridad `max_abs_diff < 1e-5` contra `onnxruntime`, detección de conflicto `Timer1` (`<Servo.h>` vs `D9/D10`) e interrupciones `ISR` sin `pulseIn()`.
+- [x] **`J-4` · Política `luigi-lab4.onnx` + Caso de Estudio Lab 4:** Entorno `training/luigi_lab4_env.py` (`obs_dim=18, nu=3`), política `training/policies/luigi-lab4.onnx` (`2.353 B`), firmware `LAB4_Tridi_Autonomo.ino` y página `Case Studies` (`#/milestones`).
+- [x] **`J-5` · Pulido Integral de UI/UX, Jerarquía de Producto y Escenarios 3D (`web/`):** Dropdowns con apertura por hover, separación clara entre herramientas de Humanoides vs. `Factory Assembler`, entorno 3D de fábrica/laboratorio + tags 3D flotantes + barra narradora en las 4 simulaciones (`Unitree G1`, `Luigi v1`, `Luigi v2`, `Industrial Cell`).
+- [x] **`J-6` · Parser Industrial `P&ID (.dxf)` y Exportador `PLC (.scl / .L5K)` (`data/pid_parser.py`, `training/export_plc.py`):** Ingesta de entidades `INSERT`/`TEXT`/`MTEXT`/`LINE`/`LWPOLYLINE`, planos de prueba `.dxf` y exportación de bloques modulares tipo "Lego" para Rockwell `Studio 5000 (.L5K)` y Siemens `TIA Portal (.scl)`.
+- [x] **`J-7` · Estandarización Documental en 2 Capas y Respaldo de Fuentes Raw (`docs/`):** Unificación con el estándar de `~/Code/portfolio`, archivo del manual de marca de **José Alejandro**, pitch deck de Platanus Hack 26, y audio `.m4a` + transcripción raw `.txt` de la reunión con **ZAKA**.
+
+### 🟢 Pastor (`physics/`, `training/`) — CEO
+- [x] **`P-1` · Catálogo Unificado de Componentes de Hardware (`physics/components/catalog.json` + `index.js`):** 14 componentes industriales y embebidos con parámetros físicos de MuJoCo y restricciones eléctricas de MCU/PLC + 14 escenas 3D aisladas (`physics/models/components/*.xml`).
+- [x] **`P-2` · Gemelo Digital `luigi_lab4` (`physics/models/luigi_lab4/`):** Modelo MuJoCo (`nq=10, nu=3`) con las 7 mallas `.stl` de Laboratorio IV y rotación en vivo del cono ultrasónico junto al cuello servo SG90 (`qpos[9]`).
+- [x] **`P-3` · Motor Determinista del `Tridi Assembler` (`physics/src/assembler.js`):** `parseArduinoSketch`, `classifyStlMeshes` y `generateMujocoXml`.
+- [x] **`P-4` · Celda Industrial de Empaque (`physics/models/factory_cell/` + `factory-cell.onnx`):** Cinta transportadora, desviador neumático y selladora vertical sincronizados por sensores ópticos (`0 %` de cajas aplastadas frente a timer fijo de PLC).
+- [x] **`P-5` · Catálogo `ISA-5.1` y Ensamblador 3D de Plantas desde `P&ID (.dxf)` (`physics/components/isa_standard.json`, `physics/src/pid_assembler.js`):** 14 clases de equipos ISA (`FV`, `WT`, `LT`, `LSH`, `LSL`, `PT`, `TT`, `M`, `P`, `TK`, `SL`, `SC`, `CV`, `PK`), generación automática de escena 3D MuJoCo desde el P&ID e inyección de fallas de proceso (`sim.injectProcessFault`).
+- [ ] **`P-6` · Simulación Multi-Silo a Escala (Caso Real 22 Silos → 6 Empacadoras):** Ampliar `pid_assembler.js` con el layout completo del caso expuesto por el Ing. José González (ruteo combinatorio de silos con detección de cuellos de botella de flujo).
+
+### 🟢 César (`web/`) — CIO/CTO
+- [x] **`C-1` · Pantalla Interactiva `#/assembler` (`web/src/screens/assembler.js`):** Flujo completo con selector de modo (**Modo Planta P&ID `.dxf`** y **Modo Robot CAD `.stl` + `.ino`**), presets interactivos (`Batch Mixer`, `Silo Packaging Line`, `Rover Luigi v1`, `Rover Luigi v2`, `Industrial Cell`) y lanzamiento en 1 clic hacia `#/simulations`.
+- [x] **`C-2` · Visor y Descarga de los 3 Entregables Industriales ZAKA en `#/assembler`:** Pestañas interactivas y botones de descarga para **1. Documentación FDS `ISA-5.1 / ISA-88` (`.md`)**, **2. Escena 3D MuJoCo (`.xml`)** y **3. Archivo Plano PLC (`.scl` / `.L5K`)**.
+- [x] **`C-3` · Controles de Inyección de Fallas en `#/simulations` (`web/src/screens/simulations.js`):** Panel de prueba de estrés en vivo para comparar modo timer fijo vs. política cerrada Tridi y disparar fallas de sensores/actuadores.
+- [ ] **`C-4` · Editor Visual de Tags ISA sobre el Plano 2D ↔ Escena 3D:** Permitir hacer clic sobre un tag (`LT-102`, `FV-101`, `SC-201`) en la tabla `I/O Schedule` de `#/assembler` y resaltar la tubería/equipo correspondiente en la vista previa.
+
+### 🟢 Ale (`docs/`, `yc/`) — COO
+- [x] **`A-1` · Dossier de la Reunión con ZAKA (`docs/reunion-zaka.md`), Plan Maestro v4 (`docs/plan-v4-industrial-y-verticales.md`) y Plan de Ventas y Comunidades (`docs/plan-ventas-y-comunidades.md`):** Sistematización de las 2 horas de entrevista con el Ing. José González, las 3 prioridades del producto industrial, posicionamiento de las 3 verticales y playbook GTM de adquisición ("de menos a más" en comunidades de automatización/PLC y robótica).
+- [ ] **`A-2` · Segunda Sesión de Validación en Vivo con el Ing. José González (ZAKA, C.A.):** Presentarle `#/assembler` corriendo en vivo con los planos `.dxf` (`01_batch_mixer.dxf` y `02_silo_packaging.dxf`), validar la plantilla `FDS ISA-5.1` generada y el archivo plano `.L5K` para `Rockwell Studio 5000`, y recoger su feedback con un plano `.dxf` propio de ZAKA.
+- [ ] **`A-3` · Ejecución Semanal de Prospección B2B y Modelo de Precios SaaS + *Pay-per-Compute* Industrial:** Ejecutar la meta semanal de 30–50 integradoras contactadas (`CSIA`, Siemens/Rockwell Solution Partners, CIEL/Venezuela, México y Colombia) siguiendo [`docs/plan-ventas-y-comunidades.md`](plan-ventas-y-comunidades.md) y cerrar los primeros pilotos.

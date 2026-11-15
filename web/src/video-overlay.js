@@ -110,7 +110,7 @@ export function createVideoOverlay(pane) {
   const pipWrap = Object.assign(document.createElement('div'), { className: 'source-pip-wrap', hidden: true });
   const pipTag = Object.assign(document.createElement('span'), { className: 'source-pip-tag' });
   pipTag.innerHTML = '<span class="t" lang="es">Video origen · Clic para ampliar</span><span class="t" lang="en">Source video · Click to expand</span>';
-  const video = Object.assign(document.createElement('video'), { muted: true, playsInline: true, loop: true, preload: 'auto' });
+  const video = Object.assign(document.createElement('video'), { muted: true, playsInline: true, loop: true, preload: 'metadata' });
   video.className = 'source-video';
   const canvas = Object.assign(document.createElement('canvas'), { className: 'source-overlay' });
   pipWrap.append(video, pipTag);

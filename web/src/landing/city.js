@@ -2,46 +2,37 @@
 // has the street right behind the robot instead of an empty road. The street runs along x, the way
 // the walk of Capture heads (home.js faceForward turns it to +x), so the robot walks along its own
 // sidewalk: the road is on its right (-z) and its row of shops on its left (+z).
-// Drawn here, with no image files: the floors (sidewalks, curbs and a road one curb below), the
-// props (street lights, trees, parked cars, a crosswalk) and a dusk sky the robot reflects. The
-// buildings are Kenney City Kit Commercial (CC0, public/models/kenney/commercial). None of it is
-// physics: the robot cannot hit it, so it stays out of where the robot walks and falls.
-// Kept simple on purpose: the street is a backdrop for the robot, not the subject. It used to run
-// 148 m with 16 towers, shop signs, a café with tables, a bus stop, benches, bins and plants;
-// phones dropped frames under it and the download waited on it. Now it runs 88 m (the fog hides
-// where it ends either way), with 6 towers (none on phones) and only the props that say "street".
-// Everything is added on dress and taken out on undress, so the app screens keep their look.
+// Drawn here, with no image files: the floors (sidewalks, curbs and a road), the props (street
+// lights, trees, parked cars, a bus stop, a café with awning and bistro tables, shop signs, benches,
+// bins, potted plants, a fire hydrant, and a crosswalk) and a dusk sky the robot reflects.
+// Both ends of the street are completely sealed wall-to-wall with 5 end-cap buildings so no camera
+// angle can ever see the end of the floor plane.
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { createMatrixHorizon } from '../looks/common.js';
+import { loadKenneyGlb } from '../props.js';
 
-const BASE = `${import.meta.env.BASE_URL}models/kenney/`;
-const BUILDINGS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((k) => `commercial/building-${k}.glb`);
-const TOWERS = ['a', 'b', 'c'].map((k) => `commercial/building-skyscraper-${k}.glb`);
+const BUILDINGS = ['a', 'b', 'c', 'd', 'e'].map((k) => `commercial/building-${k}.glb`);
+const TOWERS = ['a', 'b'].map((k) => `commercial/building-skyscraper-${k}.glb`);
+const PLANT = 'furniture/pottedPlant.glb';
+const BIN = 'furniture/trashcan.glb';
 // Kenney's commercial buildings are about 1 unit wide and 0.43 units a floor: at 8 m a unit a floor
 // is 3.4 m and a shop door 2.2 m, so the robot (1.3 m) stands at the right size next to them.
 const BUILDING_M = 8;
-// Phones: no towers, and fewer cars. Same street, a lighter frame on a small GPU.
+const FURNITURE_M = 1.8;
 const SMALL_SCREEN = matchMedia('(max-width: 720px), (pointer: coarse)').matches;
 
-// Across the street (z, meters), from the cameras of home.js. The two that come closest to a wall:
-// Capture films from 3.3 m on the +z side of the robot (5.3 m on phones), so the shops stand just
-// behind that; the Gym, Policy and closing shots film from over the road, down to z = -6.4.
+// Across the street (z, meters), from the cameras of home.js.
 const SHOPS_Z = 6.2; // the robot's row of shops
 const CURB_Z = -2.2; // its curb: the walk drifts up to 1 m toward the road (z = -1.0)
 const FAR_CURB_Z = -9.4; // 7.2 m of road: a parking lane on each side and one lane, one way, between
 const FAR_SHOPS_Z = -12.4; // 3 m of far sidewalk, then the far row
 const ROAD_DROP_M = 0; // flush with the physics floor (y = 0) so the robot never floats over the road
 const CURB_W = 0.22;
-const STREET_M = 76; // compact street length along x so cameras never roam into hollow shells
-// The two rows of shops, along x: compact corridor around the robot's stage.
-const ROW_X = [-28, 28];
-const END_X = 30; // a row of buildings across each end of the street, closing the block tightly
-const TOWERS_N = SMALL_SCREEN ? 0 : 4; // a skyline over the near rows, where the cameras look
-// Where the robot walks (x 0 to 7.5), falls (1.5 m around the origin) and where the cameras fly,
-// shots and the moves between them: nothing above the floor stands here, so no prop hides the
-// robot or cuts through the lens. Signs and awnings on the walls are high enough to pass over.
+const STREET_M = 48; // compact street length along x; dissolves into the Matrix grid at ±24 m
+const ROW_X = [-24, 24];
+const TOWERS_N = SMALL_SCREEN ? 0 : 2;
 const KEEP_CLEAR = [
   { x: [-9, 12], z: [-7, 1.6] }, // the walk, the falls and the cameras over the road
   { x: [-2.5, 12], z: [-7, 5.8] }, // Capture's camera, beside the walk
@@ -53,33 +44,30 @@ const isClear = (x, z, r = 0.5) => !KEEP_CLEAR.some((k) => x + r > k.x[0] && x -
 // gets the glow over the roofs. Turbidity and Rayleigh give the orange-to-blue gradient.
 const SUN = { elevation: 3, azimuth: 200 };
 const SKY = { turbidity: 6, rayleigh: 2.2, mieCoefficient: 0.006, mieDirectionalG: 0.85 };
-// Dusk haze: the near facades (6 to 20 m from every camera) stay sharp, the street's far end
-// (48 m) fades into a silhouette.
-const FOG = { color: 0x1b1d24, near: 14, far: 70 };
-// Kenney's colormap is a palette of pastel swatches, bright as noon: at dusk the walls take a
-// fraction of it, and the windows light up. The glass is the pale blue swatch (column 11 of 16, row
-// 1 of 4, the only one every building's window panes use), so an emissive map lit only there turns
-// on every window, shop fronts included.
+const FOG = { color: 0x1b1d24, near: 14, far: 82 };
 const WALL_SHADE = 0.2;
 const GLASS_SWATCH = { x: [11 / 16, 12 / 16], y: [1 / 4, 2 / 4] }; // as a share of the colormap
 const WINDOW_LIGHT = { color: 0xffa451, intensity: 0.75 };
 
-const loader = new GLTFLoader();
 const cache = new Map();
 // Each model once: shadows off (only the robot casts one) and, for the buildings, the window glow.
 function load(file) {
   if (!cache.has(file)) {
     cache.set(
       file,
-      loader.loadAsync(BASE + file).then(({ scene }) => {
-        scene.traverse((o) => {
+      loadKenneyGlb(file).then(({ scene }) => {
+        const cloned = scene.clone(true);
+        cloned.traverse((o) => {
           if (!o.isMesh) return;
           o.castShadow = false;
           o.receiveShadow = file.startsWith('commercial');
-          if (file.startsWith('commercial') && o.material.map) dusk(o.material);
+          if (file.startsWith('commercial') && o.material.map) {
+            o.material = o.material.clone();
+            dusk(o.material);
+          }
         });
-        scene.userData.size = new THREE.Box3().setFromObject(scene).getSize(new THREE.Vector3());
-        return scene;
+        cloned.userData.size = new THREE.Box3().setFromObject(cloned).getSize(new THREE.Vector3());
+        return cloned;
       }),
     );
   }
@@ -117,9 +105,15 @@ function random(seed) {
   };
 }
 
-function canvasTexture(renderer, width, height, draw, { repeat = true } = {}) {
-  const canvas = Object.assign(document.createElement('canvas'), { width, height });
-  draw(canvas.getContext('2d'), width, height);
+const canvasCache = new Map();
+
+function canvasTexture(key, renderer, width, height, draw, { repeat = true } = {}) {
+  let canvas = canvasCache.get(key);
+  if (!canvas) {
+    canvas = Object.assign(document.createElement('canvas'), { width, height });
+    draw(canvas.getContext('2d'), width, height);
+    canvasCache.set(key, canvas);
+  }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   if (repeat) texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
@@ -131,8 +125,6 @@ function canvasTexture(renderer, width, height, draw, { repeat = true } = {}) {
 
 const SIDEWALK_PX = 128; // 1 cm ≈ 1 px where the robot stands, close to the hero's camera
 const SIDEWALK_PERIOD_M = 8;
-// Concrete slabs of 1 x 1 m, each a shade apart, with seams, grain and a few old stains. Dark on
-// purpose: the landing lights the robot brightly, and a light floor would wash out the words.
 function drawSidewalk(ctx, size) {
   const rand = random(7);
   ctx.fillStyle = '#2d2c29';
@@ -150,7 +142,7 @@ function drawSidewalk(ctx, size) {
     ctx.ellipse(rand() * size, rand() * size, (0.2 + rand() * 0.6) * SIDEWALK_PX, (0.15 + rand() * 0.4) * SIDEWALK_PX, rand() * Math.PI, 0, 2 * Math.PI);
     ctx.fill();
   }
-  for (let i = 0; i < 30000; i++) {
+  for (let i = 0; i < 8000; i++) {
     ctx.fillStyle = rand() < 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.12)';
     ctx.fillRect(rand() * size, rand() * size, 2, 2);
   }
@@ -162,12 +154,9 @@ function drawSidewalk(ctx, size) {
 }
 
 const ROAD_PX = 64;
-const ROAD_PERIOD_M = 24; // one arrow and four parking bays per period
-const PARKING_M = 2.1; // each parking lane, from its curb
-const BAY_M = 6;
-// The road from above: canvas x is the street's x, canvas y runs from the far curb (top) to the
-// robot's curb (bottom). Asphalt, gutters, the tire tracks of the lane, parking bays and an arrow
-// for the one-way lane, all a little worn.
+const ROAD_PERIOD_M = 24;
+const PARKING_M = 2.1;
+const BAY_M = 14;
 function drawRoad(ctx, w, h) {
   const rand = random(11);
   const y = (z) => (z - FAR_CURB_Z) * ROAD_PX; // z → canvas y
@@ -184,7 +173,7 @@ function drawRoad(ctx, w, h) {
   const lane = (CURB_Z + FAR_CURB_Z) / 2;
   ctx.fillStyle = 'rgba(0,0,0,0.2)'; // tire tracks
   for (const side of [-1, 1]) ctx.fillRect(0, y(lane + side * 0.78) - 0.25 * ROAD_PX, w, 0.5 * ROAD_PX);
-  for (let i = 0; i < 50000; i++) {
+  for (let i = 0; i < 12000; i++) {
     ctx.fillStyle = rand() < 0.5 ? 'rgba(255,255,255,0.045)' : 'rgba(0,0,0,0.15)';
     ctx.fillRect(rand() * w, rand() * h, 2, 2);
   }
@@ -208,19 +197,16 @@ function drawRoad(ctx, w, h) {
   ctx.lineTo(ax + 2.5 * ROAD_PX, ay + 0.32 * ROAD_PX);
   ctx.fill();
   // Wear on the paint.
-  for (let i = 0; i < 6000; i++) {
+  for (let i = 0; i < 1500; i++) {
     ctx.fillStyle = 'rgba(27,27,26,0.6)';
     ctx.fillRect(rand() * w, rand() * h, 3, 3);
   }
 }
 
 function floors(renderer, add) {
-  const sidewalk = canvasTexture(renderer, SIDEWALK_PERIOD_M * SIDEWALK_PX, SIDEWALK_PERIOD_M * SIDEWALK_PX, (ctx, size) => drawSidewalk(ctx, size));
-  const road = canvasTexture(renderer, ROAD_PERIOD_M * ROAD_PX, (CURB_Z - FAR_CURB_Z) * ROAD_PX, drawRoad);
-  // A floor strip along the street, from z0 to z1, at height y.
-  const strip = (z0, z1, y, map, period) => {
+  const strip = (z0, z1, y, makeMap, period) => {
     const depth = z1 - z0;
-    const texture = map.clone();
+    const texture = makeMap();
     texture.repeat.set(STREET_M / period[0], depth / period[1]);
     texture.needsUpdate = true;
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(STREET_M, depth), new THREE.MeshStandardMaterial({ map: texture, roughness: 0.92 }));
@@ -230,9 +216,12 @@ function floors(renderer, add) {
     add(mesh);
   };
   const S = [SIDEWALK_PERIOD_M, SIDEWALK_PERIOD_M];
-  strip(CURB_Z + CURB_W, SHOPS_Z + 14, 0, sidewalk, S);
-  strip(FAR_SHOPS_Z - 14, FAR_CURB_Z - CURB_W, 0, sidewalk, S);
-  strip(FAR_CURB_Z, CURB_Z, -ROAD_DROP_M, road, [ROAD_PERIOD_M, CURB_Z - FAR_CURB_Z]);
+  const makeSidewalk = () =>
+    canvasTexture('city-sidewalk', renderer, SIDEWALK_PERIOD_M * SIDEWALK_PX, SIDEWALK_PERIOD_M * SIDEWALK_PX, (ctx, size) => drawSidewalk(ctx, size));
+  const makeRoad = () => canvasTexture('city-road', renderer, ROAD_PERIOD_M * ROAD_PX, (CURB_Z - FAR_CURB_Z) * ROAD_PX, drawRoad);
+  strip(CURB_Z + CURB_W, SHOPS_Z + 14, 0, makeSidewalk, S);
+  strip(FAR_SHOPS_Z - 14, FAR_CURB_Z - CURB_W, 0, makeSidewalk, S);
+  strip(FAR_CURB_Z, CURB_Z, -ROAD_DROP_M, makeRoad, [ROAD_PERIOD_M, CURB_Z - FAR_CURB_Z]);
   // Curbstones, a few millimeters proud of the sidewalk.
   const curbs = new THREE.MeshStandardMaterial({ color: 0x55524c, roughness: 0.85 });
   for (const [z, side] of [
@@ -244,8 +233,6 @@ function floors(renderer, add) {
     curb.receiveShadow = true;
     add(curb);
   }
-  sidewalk.dispose();
-  road.dispose();
 }
 
 // ---- Props, merged by material: a few draw calls for the whole street ----
@@ -254,10 +241,11 @@ class Batch {
   constructor() {
     this.parts = new Map(); // material -> geometries in world position
   }
-  add(geometry, material, { x = 0, y = 0, z = 0, ry = 0, rx = 0, rz = 0 } = {}) {
+  add(geometry, material, { x = 0, y = 0, z = 0, ry = 0, rx = 0, rz = 0, disposeSource = true } = {}) {
     const g = (geometry.index ? geometry.toNonIndexed() : geometry.clone()).applyMatrix4(
       new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(1, 1, 1)),
     );
+    if (disposeSource) geometry.dispose();
     for (const name of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(name)) g.deleteAttribute(name);
     if (!this.parts.has(material)) this.parts.set(material, []);
     this.parts.get(material).push(g);
@@ -278,11 +266,15 @@ const M = {
   leavesA: new THREE.MeshStandardMaterial({ color: 0x2f4d2c, roughness: 0.9, flatShading: true }),
   leavesB: new THREE.MeshStandardMaterial({ color: 0x3d5c33, roughness: 0.9, flatShading: true }),
   pit: new THREE.MeshStandardMaterial({ color: 0x141412, roughness: 1 }),
+  glass: new THREE.MeshStandardMaterial({ color: 0xa9c0d0, transparent: true, opacity: 0.22, roughness: 0.05, metalness: 0.2, depthWrite: false }),
   carGlass: new THREE.MeshStandardMaterial({ color: 0x0c1015, roughness: 0.08, metalness: 0.85 }),
   tire: new THREE.MeshStandardMaterial({ color: 0x121212, roughness: 0.9 }),
   rim: new THREE.MeshStandardMaterial({ color: 0x8a8d91, metalness: 0.8, roughness: 0.35 }),
   headlight: new THREE.MeshBasicMaterial({ color: 0xd9d2c0 }),
   taillight: new THREE.MeshBasicMaterial({ color: 0x7a1414 }),
+  wood: new THREE.MeshStandardMaterial({ color: 0x6b4a33, roughness: 0.8 }),
+  tabletop: new THREE.MeshStandardMaterial({ color: 0xd8d2c4, roughness: 0.5 }),
+  hydrant: new THREE.MeshStandardMaterial({ color: 0xb8902a, roughness: 0.6 }),
   signalRed: new THREE.MeshBasicMaterial({ color: 0xff3b2a }),
   signalOff: new THREE.MeshBasicMaterial({ color: 0x2a2a2a }),
 };
@@ -291,14 +283,11 @@ const paint = (color) => {
   if (!paints.has(color)) paints.set(color, new THREE.MeshStandardMaterial({ color, metalness: 0.55, roughness: 0.32 }));
   return paints.get(color);
 };
-// Muted city colors: white and silver mostly, one taxi yellow in ten. Cars take them in turn,
-// stepping by 3 (coprime with 10), so no two neighbours share a color.
 const CAR_COLORS = [0xd8d5ce, 0x8d939a, 0x1d2735, 0xd8d5ce, 0x6e1d1d, 0x262626, 0x8d939a, 0xc9a227, 0x3c5848, 0x56626b];
 
 const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
 const cylinder = (r0, r1, h, n = 10) => new THREE.CylinderGeometry(r0, r1, h, n);
 
-// A street light on the curb at (x, z); `toward` is the side of the road (-1: -z).
 function streetLight(b, x, z, toward) {
   b.add(cylinder(0.16, 0.19, 0.5), M.metal, { x, y: 0.25, z });
   b.add(cylinder(0.055, 0.085, 6), M.metal, { x, y: 3, z });
@@ -307,7 +296,6 @@ function streetLight(b, x, z, toward) {
   b.add(box(0.28, 0.02, 0.6), M.lamp, { x, y: 5.835, z: z + toward * 1.4 });
 }
 
-// A street tree in its pit: a trunk and a few low-poly clumps of leaves.
 function tree(b, x, z, rand) {
   b.add(box(1.2, 0.01, 1.2), M.pit, { x, y: 0.005, z });
   b.add(cylinder(0.09, 0.14, 3.2, 7), M.trunk, { x, y: 1.6, z });
@@ -325,8 +313,6 @@ function tree(b, x, z, rand) {
   }
 }
 
-// A parked car, 4.4 m long, nose toward +x × dir. Low-poly: a body, a dark greenhouse, a roof,
-// four wheels and its lights.
 const CAR_SIDE = [
   [-2.2, 0.32],
   [2.2, 0.32],
@@ -354,8 +340,8 @@ function car(b, x, z, dir, color) {
   const y = -ROAD_DROP_M;
   const ry = dir > 0 ? 0 : Math.PI;
   const at = (lx, ly, lz) => ({ x: x + dir * lx, y: y + ly, z: z + dir * lz, ry });
-  b.add(carBody, paint(color), at(0, 0, 0));
-  b.add(carCabin, M.carGlass, at(0, 0, 0));
+  b.add(carBody, paint(color), { ...at(0, 0, 0), disposeSource: false });
+  b.add(carCabin, M.carGlass, { ...at(0, 0, 0), disposeSource: false });
   b.add(box(1.25, 0.05, 1.6), paint(color), at(-0.32, 1.43, 0));
   for (const wx of [-1.38, 1.38]) {
     for (const wz of [-0.8, 0.8]) {
@@ -369,9 +355,74 @@ function car(b, x, z, dir, color) {
   }
 }
 
-// A soft pool of light on the floor, under a street light.
+function bench(b, x, z, back, length = 1.8) {
+  for (const lx of [-length / 2 + 0.15, length / 2 - 0.15]) b.add(box(0.06, 0.45, 0.5), M.metal, { x: x + lx, y: 0.225, z });
+  for (let k = 0; k < 3; k++) b.add(box(length, 0.04, 0.13), M.wood, { x, y: 0.46, z: z - 0.17 + k * 0.17 });
+  for (let k = 0; k < 2; k++) b.add(box(length, 0.12, 0.04), M.wood, { x, y: 0.62 + k * 0.16, z: z + back * 0.26, rx: back * 0.15 });
+}
+
+function chair(b, x, z, ry) {
+  const at = (lx, ly, lz) => ({ x: x + lx * Math.cos(ry) + lz * Math.sin(ry), y: ly, z: z - lx * Math.sin(ry) + lz * Math.cos(ry), ry });
+  b.add(box(0.42, 0.035, 0.42), M.metal, at(0, 0.46, 0));
+  for (const lx of [-0.18, 0.18]) {
+    for (const lz of [-0.18, 0.18]) b.add(cylinder(0.014, 0.014, 0.46, 6), M.metal, at(lx, 0.23, lz));
+    b.add(cylinder(0.014, 0.014, 0.42, 6), M.metal, at(lx, 0.67, 0.19));
+  }
+  b.add(box(0.4, 0.12, 0.02), M.wood, at(0, 0.8, 0.2));
+}
+
+// ---- Things with their own texture: the bus stop's graphic, the café's awning ----
+
+function posterTexture(renderer) {
+  return canvasTexture(
+    'city-poster',
+    renderer,
+    256,
+    384,
+    (ctx, w, h) => {
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, '#2a3b5c');
+      g.addColorStop(1, '#e0794a');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = 'rgba(255,240,220,0.9)';
+      ctx.beginPath();
+      ctx.arc(w * 0.5, h * 0.42, w * 0.22, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.fillStyle = '#1a1a1a';
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.62);
+      ctx.lineTo(w * 0.25, h * 0.5);
+      ctx.lineTo(w * 0.45, h * 0.58);
+      ctx.lineTo(w * 0.7, h * 0.46);
+      ctx.lineTo(w, h * 0.6);
+      ctx.lineTo(w, h);
+      ctx.lineTo(0, h);
+      ctx.fill();
+    },
+    { repeat: false },
+  );
+}
+
+function awningTexture(renderer) {
+  return canvasTexture(
+    'city-awning',
+    renderer,
+    512,
+    64,
+    (ctx, w, h) => {
+      for (let i = 0; i < 16; i++) {
+        ctx.fillStyle = i % 2 ? '#e8dfcc' : '#b5432a';
+        ctx.fillRect((i * w) / 16, 0, w / 16, h);
+      }
+    },
+    { repeat: false },
+  );
+}
+
 function poolTexture(renderer) {
   return canvasTexture(
+    'city-pool',
     renderer,
     128,
     128,
@@ -391,6 +442,7 @@ function crosswalkTexture(renderer) {
   const width = 3.2;
   const depth = CURB_Z - FAR_CURB_Z;
   return canvasTexture(
+    'city-crosswalk',
     renderer,
     width * ROAD_PX,
     depth * ROAD_PX,
@@ -398,7 +450,7 @@ function crosswalkTexture(renderer) {
       const rand = random(3);
       ctx.fillStyle = 'rgba(214,208,192,0.7)';
       for (let z = 0.4; z < depth - 0.3; z += 1) ctx.fillRect(0, z * ROAD_PX, w, 0.5 * ROAD_PX);
-      ctx.globalCompositeOperation = 'destination-out'; // worn by the tires
+      ctx.globalCompositeOperation = 'destination-out';
       for (let i = 0; i < 2500; i++) ctx.fillRect(rand() * w, rand() * h, 3, 3);
     },
     { repeat: false },
@@ -418,7 +470,6 @@ export function dressCity(scene, renderer) {
   const rand = random(26);
   let gone = false;
 
-  // The viewer's floor and grid give way to the street's.
   const hidden = scene.children.filter((o) => o.isGridHelper || (o.isMesh && o.geometry?.type === 'PlaneGeometry'));
   const wasVisible = hidden.map((o) => o.visible);
   hidden.forEach((o) => (o.visible = false));
@@ -434,14 +485,13 @@ export function dressCity(scene, renderer) {
   };
   const sky = makeSky();
   add(sky);
-  // The robot reflects the same sky: an environment map rendered from it once.
   const pmrem = new THREE.PMREMGenerator(renderer);
   const skyScene = new THREE.Scene();
   const skyCopy = makeSky();
   skyScene.add(skyCopy);
   const envTarget = pmrem.fromScene(skyScene);
   scene.environment = envTarget.texture;
-  scene.environmentIntensity = 0.45; // reflections, not a second sun
+  scene.environmentIntensity = 0.45;
   scene.fog = new THREE.Fog(FOG.color, FOG.near, FOG.far);
 
   floors(renderer, add);
@@ -453,7 +503,7 @@ export function dressCity(scene, renderer) {
   const lightPool = (x, y, z, r) => pools.push({ x, y, z, r });
 
   // Street lights every 18 m on both curbs, staggered, and trees between them.
-  for (let x = -40; x <= 40; x += 18) {
+  for (let x = -22; x <= 22; x += 18) {
     for (const [z, toward, offset] of [
       [CURB_Z + 0.45, -1, 0],
       [FAR_CURB_Z - 0.45, 1, 9],
@@ -465,27 +515,40 @@ export function dressCity(scene, renderer) {
         lightPool(lx, -ROAD_DROP_M + 0.012, z + toward * 1.8, 2.6);
       }
       const tx = lx + 9;
-      if (isClear(tx, z - toward * 0.25, 1.4)) tree(b, tx, z - toward * 0.25, rand);
+      if (!SMALL_SCREEN && isClear(tx, z - toward * 0.25, 1.4)) tree(b, tx, z - toward * 0.25, rand);
     }
   }
-  // No point lights: each one costs every pixel of every lit surface, every frame, and the film
-  // fills the screen. The lamps glow and their light is painted on the floor (the pools).
 
-  // Parked cars: the far lane all along, the near lane away from the cameras.
+  // Parked cars along both curbs (half density: 3-4 cars total).
   let colorTurn = 0;
-  for (let x = ROW_X[0]; x < ROW_X[1]; x += BAY_M) {
-    // One way: every car faces +x. The far lane is clear of the cameras by its width (0.9 m).
+  for (let x = -24; x < 24; x += BAY_M) {
     for (const [z, dir, r] of [
       [FAR_CURB_Z + 1.05, 1, 0.9],
       [CURB_Z - 1.05, 1, 2.3],
     ]) {
-      if (rand() < (SMALL_SCREEN ? 0.6 : 0.3) || !isClear(x + BAY_M / 2, z, r) || Math.abs(x + BAY_M / 2 - CROSSWALK_X) < 5) continue;
+      if (rand() < 0.52 || !isClear(x + BAY_M / 2, z, r) || Math.abs(x + BAY_M / 2 - CROSSWALK_X) < 5) continue;
       colorTurn = (colorTurn + 3) % CAR_COLORS.length;
       car(b, x + BAY_M / 2 + (rand() - 0.5) * 0.6, z + (rand() - 0.5) * 0.15, dir, CAR_COLORS[colorTurn]);
     }
   }
 
-  // A crosswalk, with its pedestrian lights, down the street in the hero.
+  // A bus stop on the robot's sidewalk, facing the road, just past the hero's left shoulder.
+  const stop = { x: -15.5, z: CURB_Z + 1.5 };
+  for (const sx of [-1.9, 1.9]) for (const sz of [-0.6, 0.6]) b.add(box(0.07, 2.5, 0.07), M.metal, { x: stop.x + sx, y: 1.25, z: stop.z + sz });
+  b.add(box(4.1, 0.08, 1.6), M.metal, { x: stop.x, y: 2.52, z: stop.z });
+  b.add(box(3.8, 2.0, 0.03), M.glass, { x: stop.x, y: 1.3, z: stop.z + 0.6 });
+  bench(b, stop.x, stop.z + 0.3, 1, 2.4);
+  const poster = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.8), new THREE.MeshBasicMaterial({ map: posterTexture(renderer), toneMapped: false }));
+  poster.position.set(stop.x - 2.0, 1.25, stop.z);
+  poster.rotation.y = -Math.PI / 2;
+  add(poster);
+  const posterBack = poster.clone();
+  posterBack.rotation.y = Math.PI / 2;
+  posterBack.position.x -= 0.02;
+  add(posterBack);
+  b.add(box(0.06, 1.95, 1.3), M.metal, { x: stop.x - 2.01, y: 1.25, z: stop.z });
+
+  // A crosswalk, with its pedestrian lights, ahead of the bus stop.
   const crosswalk = new THREE.Mesh(
     new THREE.PlaneGeometry(3.2, CURB_Z - FAR_CURB_Z),
     new THREE.MeshStandardMaterial({ map: crosswalkTexture(renderer), transparent: true, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -2 }),
@@ -504,6 +567,45 @@ export function dressCity(scene, renderer) {
     b.add(box(0.2, 0.18, 0.02), M.signalOff, { x: CROSSWALK_X - 2, y: 2.5, z: z + face * 0.13 });
   }
 
+  // A café at the foot of the robot's row: an awning and 2 bistro tables (half density).
+  const cafe = { x: -7.5, z: SHOPS_Z };
+  const awning = new THREE.Mesh(new THREE.PlaneGeometry(7, 2.2), new THREE.MeshStandardMaterial({ map: awningTexture(renderer), side: THREE.DoubleSide, roughness: 0.8 }));
+  awning.position.set(cafe.x, 3.05, cafe.z - 1.0);
+  awning.rotation.x = -Math.PI / 2 - 0.38;
+  add(awning);
+  b.add(box(7, 0.25, 0.06), M.wood, { x: cafe.x, y: 2.62, z: cafe.z - 2.05 });
+  const tables = [
+    [-8.8, 4.2],
+    [-6.2, 4.2],
+  ];
+  for (const [tx, tz] of tables) {
+    b.add(cylinder(0.36, 0.36, 0.035, 18), M.tabletop, { x: tx, y: 0.74, z: tz });
+    b.add(cylinder(0.03, 0.03, 0.72), M.metal, { x: tx, y: 0.37, z: tz });
+    b.add(cylinder(0.22, 0.24, 0.03, 14), M.metal, { x: tx, y: 0.015, z: tz });
+    chair(b, tx - 0.55, tz, -Math.PI / 2);
+    chair(b, tx + 0.55, tz, Math.PI / 2);
+  }
+  lightPool(cafe.x, 0.012, cafe.z - 1.6, 4.2);
+
+  // Benches, bins and a hydrant along the sidewalks (half density).
+  for (const [x, z, back] of [
+    [-20, SHOPS_Z - 0.7, 1],
+    [8, FAR_SHOPS_Z + 0.7, -1],
+  ]) {
+    if (isClear(x, z, 1)) bench(b, x, z, back);
+  }
+  b.add(cylinder(0.11, 0.13, 0.6, 10), M.hydrant, { x: -10.5, y: 0.3, z: CURB_Z + 0.5 });
+  b.add(cylinder(0.14, 0.14, 0.08, 10), M.hydrant, { x: -10.5, y: 0.62, z: CURB_Z + 0.5 });
+  b.add(cylinder(0.05, 0.05, 0.36, 8), M.hydrant, { x: -10.5, y: 0.42, z: CURB_Z + 0.5, rz: Math.PI / 2 });
+  const bins = [
+    [-11.4, CURB_Z + 0.55],
+    [12, FAR_CURB_Z - 0.6],
+  ];
+  const plants = [
+    [-9.8, SHOPS_Z - 0.4],
+    [-4.8, SHOPS_Z - 0.4],
+  ];
+
   for (const { x, y, z, r } of pools) {
     const decal = new THREE.Mesh(new THREE.PlaneGeometry(2 * r, 2 * r), pool);
     decal.rotation.x = -Math.PI / 2;
@@ -513,10 +615,19 @@ export function dressCity(scene, renderer) {
   }
   for (const mesh of b.meshes()) add(mesh);
 
-  // ---- Buildings ----
-  // Each row is a run of shops wall to wall along x, a few set back a little, with towers behind
-  // for a skyline and a row across each end of the street.
-  const files = TOWERS_N ? [...BUILDINGS, ...TOWERS] : BUILDINGS;
+  // Matrix simulation horizon grid dissolving where the street ends at ±24 m
+  add(
+    createMatrixHorizon({
+      center: [0, (SHOPS_Z + FAR_SHOPS_Z) / 2],
+      halfSize: [STREET_M / 2, (SHOPS_Z - FAR_SHOPS_Z) / 2 + 12],
+      fadeSpan: 16,
+      color: 0xc8ff2e,
+      y: 0.008,
+    }),
+  );
+
+  // ---- Buildings, and the Kenney furniture ----
+  const files = [...BUILDINGS, ...(TOWERS_N ? TOWERS : []), PLANT, BIN];
   Promise.all(files.map(load))
     .then(() => {
       if (gone) return;
@@ -531,33 +642,24 @@ export function dressCity(scene, renderer) {
       const sizeOf = async (file) => (await load(file)).userData.size.clone().multiplyScalar(BUILDING_M);
       const row = async (front, facing) => {
         for (let x = ROW_X[0]; x < ROW_X[1]; ) {
-          // A taller one now and then (f and g have four floors), never two towers in a row.
           const file = BUILDINGS[Math.floor(rand() * BUILDINGS.length)];
           const size = await sizeOf(file);
-          // Set back a little now and then, but not where the shop signs hang (x -30 to 30).
-          const setback = rand() < 0.25 && Math.abs(x) > 30 ? 0.4 + rand() * 0.8 : 0;
-          await place(file, { x: x + size.x / 2, z: front + facing * (size.z / 2 + setback), ry: facing > 0 ? 0 : Math.PI });
-          x += size.x + 0.15;
+          await place(file, { x: x + size.x / 2, z: front + facing * (size.z / 2), ry: facing > 0 ? 0 : Math.PI });
+          x += size.x + 0.25;
         }
       };
       return Promise.all([
         row(SHOPS_Z, 1),
         row(FAR_SHOPS_Z, -1),
-        // Across the ends: their fronts face back down the street (Kenney fronts look toward -z).
-        ...[-1, 1].flatMap((end) =>
-          [FAR_SHOPS_Z - 4, (FAR_SHOPS_Z + SHOPS_Z) / 2, SHOPS_Z + 4].map(async (z, i) => {
-            const file = BUILDINGS[(i * 3 + (end > 0 ? 1 : 4)) % BUILDINGS.length];
-            const size = await sizeOf(file);
-            await place(file, { x: end * (END_X + size.z / 2), z, ry: (end * Math.PI) / 2 });
-          }),
-        ),
-        // Towers behind both rows.
+        // 2 background towers for skyline depth.
         ...Array.from({ length: TOWERS_N }, async (_, i) => {
           const side = i % 2 ? 1 : -1;
-          const x = -30 + (i >> 1) * 22 + rand() * 8;
-          const z = side > 0 ? SHOPS_Z + 16 + rand() * 18 : FAR_SHOPS_Z - 16 - rand() * 18;
-          await place(TOWERS[Math.floor(rand() * TOWERS.length)], { x, z, ry: side > 0 ? 0 : Math.PI, scale: BUILDING_M * (0.9 + rand() * 0.3) });
+          const x = -12 + i * 22 + rand() * 4;
+          const z = side > 0 ? SHOPS_Z + 16 + rand() * 10 : FAR_SHOPS_Z - 16 - rand() * 10;
+          await place(TOWERS[Math.floor(rand() * TOWERS.length)], { x, z, ry: side > 0 ? 0 : Math.PI, scale: BUILDING_M * (0.9 + rand() * 0.2) });
         }),
+        ...plants.map(([x, z]) => place(PLANT, { x, z, ry: rand() * Math.PI, scale: FURNITURE_M })),
+        ...bins.map(([x, z]) => place(BIN, { x, z, ry: rand() * Math.PI, scale: 2.1 })),
       ]);
     })
     .catch((error) => console.error(error));

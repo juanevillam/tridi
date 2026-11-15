@@ -10,6 +10,13 @@ import {
   validateHardwarePinout,
 } from '../components/index.js';
 import { classifyStlMeshes, generateMujocoXml, parseArduinoSketch } from '../src/assembler.js';
+import {
+  generateIsaEngineeringDocs,
+  generatePidMujocoXml,
+  generatePlcFlatFile,
+  parseDxfPid,
+  PID_SAMPLE_DXFS,
+} from '../src/pid_assembler.js';
 import * as ort from '../src/onnx-lite.js';
 import { createPolicy } from '../src/policy.js';
 import { loadG1Node } from './node-model.mjs';
@@ -127,6 +134,24 @@ const pusherPos = sim.data.qpos[8];
 const sealerPos = sim.data.qpos[9];
 assert(feedPos > 0.25 && pusherPos > 0.08 && sealerPos > 0.06, `factory_cell actuators did not reach targets (${feedPos.toFixed(2)}, ${pusherPos.toFixed(2)}, ${sealerPos.toFixed(2)})`);
 console.log(`P-4 factory_cell: conveyor=${feedPos.toFixed(2)} m, pusher=${pusherPos.toFixed(2)} m, sealer=${sealerPos.toFixed(2)} m`);
+
+// 5. J-6: Verify P&ID (.dxf) Parser, ISA-5.1 Docs Generator, 3D Plant MuJoCo XML & PLC Flat-File Exporter
+for (const sampleId of ['01_batch_mixer.dxf', '02_silo_packaging.dxf']) {
+  const sample = PID_SAMPLE_DXFS[sampleId];
+  const dag = parseDxfPid(sample.dxf, { fileName: sampleId });
+  assert(dag.nodes.length >= 12, `${sampleId}: expected >= 12 ISA-5.1 tags, got ${dag.nodes.length}`);
+  assert(dag.sourceVerification.verified, `${sampleId}: verifyPidSources failed (${JSON.stringify(dag.sourceVerification)})`);
+  const docs = generateIsaEngineeringDocs(dag, { lang: 'en' });
+  assert(docs.markdown.includes('FUNCTIONAL DESIGN SPECIFICATION') && docs.causeEffectMatrix.length === 4, `${sampleId}: ISA FDS docs incomplete`);
+  const plc = generatePlcFlatFile(dag);
+  assert(plc.scl.includes('FB_Motor_Standard') && plc.l5k.includes('ADD_ON_INSTRUCTION_DEFINITION'), `${sampleId}: PLC flat-file export incomplete`);
+  const pid3d = generatePidMujocoXml(dag);
+  const xmlPath = `factory_cell/${pid3d.modelName}.xml`;
+  sim.files[xmlPath] = new TextEncoder().encode(pid3d.sceneXml);
+  sim.load(xmlPath, 'home');
+  assert(sim.model.nq === 10 && sim.model.nu === 3, `${sampleId}: compiled 3D P&ID XML expected nq=10 nu=3, got nq=${sim.model.nq} nu=${sim.model.nu}`);
+}
+console.log('J-6 pid_assembler: parsed 01_batch_mixer.dxf & 02_silo_packaging.dxf, verified 100% ISA-5.1 tags, generated FDS + SCL/L5K + valid MuJoCo 3D XML');
 
 sim.delete();
 if (failures.length) {

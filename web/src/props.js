@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { dressFloor, dressStreet } from './landing/street.js';
+import { createMatrixHorizon } from './looks/common.js';
 
 const BASE = `${import.meta.env.BASE_URL}models/kenney/`;
 // The label of a place object (physics/scenes/*.json) -> its model. `tile` repeats the model along
@@ -37,20 +38,37 @@ const SURFACES = {
 };
 
 const loader = new GLTFLoader();
+const rawGlbCache = new Map();
 const cache = new Map();
+
+/** Shared GLTFLoader cache by file path under `/models/kenney/` so props.js and city.js share one loader. */
+export function loadKenneyGlb(file) {
+  if (!rawGlbCache.has(file)) {
+    rawGlbCache.set(
+      file,
+      loader.loadAsync(BASE + file).catch((err) => {
+        rawGlbCache.delete(file);
+        throw err;
+      }),
+    );
+  }
+  return rawGlbCache.get(file);
+}
+
 // Each model once, already turned z-up (Kenney models are y-up; MuJoCo and the viewer's geoms are
 // z-up) and centered on its bounding box.
 function loadModel(file) {
   if (!cache.has(file)) {
     cache.set(
       file,
-      loader.loadAsync(BASE + file).then(({ scene }) => {
+      loadKenneyGlb(file).then(({ scene }) => {
+        const cloned = scene.clone(true);
         const model = new THREE.Group();
-        scene.rotation.x = Math.PI / 2;
-        model.add(scene);
+        cloned.rotation.x = Math.PI / 2;
+        model.add(cloned);
         model.updateMatrixWorld(true);
         const box = new THREE.Box3().setFromObject(model);
-        scene.position.sub(box.getCenter(new THREE.Vector3()));
+        cloned.position.sub(box.getCenter(new THREE.Vector3()));
         model.userData.size = box.getSize(new THREE.Vector3());
         model.traverse((o) => {
           if (o.isMesh) o.castShadow = o.receiveShadow = true;
@@ -80,6 +98,7 @@ export async function dressPlace(view, { dim = 1 } = {}) {
     const surface = SURFACES[match?.[1] ?? name];
     if (surface && !object.userData.dressed) {
       object.userData.dressed = true;
+      object.material?.dispose?.();
       object.material = new THREE.MeshStandardMaterial(surface);
       continue;
     }
@@ -108,10 +127,12 @@ export async function dressPlace(view, { dim = 1 } = {}) {
               if (!o.isMesh) return;
               o.material = o.material.clone();
               o.material.color.multiplyScalar(dim);
+              o.material.userData.ownedByClone = true;
             });
           }
           object.add(copy);
         }
+        object.material?.dispose?.();
         object.material = hidden; // the collision shape stays, unseen, under the model
       }),
     );
@@ -122,8 +143,12 @@ export async function dressPlace(view, { dim = 1 } = {}) {
 // Floors for the places, drawn in code like the landing's street (no image files).
 const PX_PER_M = 128;
 
+let cachedKitchenFloor = null;
+let cachedWarehouseFloor = null;
+
 // Kitchen: light 30 cm tiles with dark grout.
 function kitchenFloor() {
+  if (cachedKitchenFloor) return cachedKitchenFloor;
   const tile = 0.3;
   const canvas = Object.assign(document.createElement('canvas'), { width: 4 * tile * PX_PER_M, height: 4 * tile * PX_PER_M });
   const ctx = canvas.getContext('2d');
@@ -138,11 +163,13 @@ function kitchenFloor() {
     ctx.fillRect(k * tile * PX_PER_M - 2, 0, 4, canvas.height);
     ctx.fillRect(0, k * tile * PX_PER_M - 2, canvas.width, 4);
   }
-  return { canvas, period: 4 * tile };
+  cachedKitchenFloor = { canvas, period: 4 * tile };
+  return cachedKitchenFloor;
 }
 
 // Warehouse: troweled concrete with a yellow aisle line every 4 m.
 function warehouseFloor() {
+  if (cachedWarehouseFloor) return cachedWarehouseFloor;
   const period = 4;
   const canvas = Object.assign(document.createElement('canvas'), { width: period * PX_PER_M, height: period * PX_PER_M });
   const ctx = canvas.getContext('2d');
@@ -157,7 +184,74 @@ function warehouseFloor() {
   ctx.fillStyle = 'rgba(0,0,0,0.25)';
   ctx.fillRect(0, 0, canvas.width, 3); // slab joints every 4 m
   ctx.fillRect(0, 0, 3, canvas.height);
-  return { canvas, period };
+  cachedWarehouseFloor = { canvas, period };
+  return cachedWarehouseFloor;
+}
+
+function dressEnclosedRoomFloor(scene, renderer, canvas, periodM, { width, depth, cx = 0.15, cz = -1.0, trimColor = 0xc8ff2e }) {
+  const grid = scene.children.find((object) => object.isGridHelper || object.type === 'GridHelper');
+  const ground = scene.children.find((object) => object.isMesh && object.geometry?.type === 'PlaneGeometry');
+  if (!ground) return () => {};
+
+  const group = new THREE.Group();
+  group.name = 'tridi-room-enclosure';
+  const disposables = [];
+
+  // 1. Exact room floor slab inside the 4 perimeter walls (no tile bleed outside the room)
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  texture.repeat.set(width / periodM, depth / periodM);
+  disposables.push(texture);
+
+  const roomFloorGeo = new THREE.PlaneGeometry(width, depth);
+  const roomFloorMat = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.88 });
+  disposables.push(roomFloorGeo, roomFloorMat);
+  const roomFloor = new THREE.Mesh(roomFloorGeo, roomFloorMat);
+  roomFloor.rotation.x = -Math.PI / 2;
+  roomFloor.position.set(cx, 0.002, cz);
+  roomFloor.receiveShadow = true;
+  group.add(roomFloor);
+
+  // 2. Calibrated perimeter threshold strip around the 4 room walls
+  const trimMat = new THREE.MeshStandardMaterial({ color: trimColor, emissive: trimColor, emissiveIntensity: 0.28, roughness: 0.4 });
+  disposables.push(trimMat);
+  const addBar = (w, h, d, x, y, z) => {
+    const g = new THREE.BoxGeometry(w, h, d);
+    disposables.push(g);
+    const m = new THREE.Mesh(g, trimMat);
+    m.position.set(x, y, z);
+    group.add(m);
+  };
+  addBar(width + 0.18, 0.008, 0.04, cx, 0.004, cz - depth / 2 - 0.06);
+  addBar(width + 0.18, 0.008, 0.04, cx, 0.004, cz + depth / 2 + 0.06);
+  addBar(0.04, 0.008, depth + 0.18, cx - width / 2 - 0.06, 0.004, cz);
+  addBar(0.04, 0.008, depth + 0.18, cx + width / 2 + 0.06, 0.004, cz);
+
+  // 3. Matrix simulation grid horizon outside the room boundary (no giant black walls)
+  const horizon = createMatrixHorizon({
+    center: [cx, cz],
+    halfSize: [width / 2 + 0.08, depth / 2 + 0.08],
+    fadeSpan: 12,
+    color: trimColor,
+    y: 0.003,
+  });
+  disposables.push(horizon.geometry, horizon.material);
+  group.add(horizon);
+
+  scene.add(group);
+  const groundWasVisible = ground.visible;
+  ground.visible = false;
+  const gridWasVisible = grid?.visible;
+  if (grid) grid.visible = false;
+
+  return () => {
+    scene.remove(group);
+    disposables.forEach((d) => d.dispose());
+    ground.visible = groundWasVisible;
+    if (grid) grid.visible = gridWasVisible;
+  };
 }
 
 const FLOORS = {
@@ -169,11 +263,11 @@ const FLOORS = {
   },
   cocina: (scene, renderer) => {
     const { canvas, period } = kitchenFloor();
-    return dressFloor(scene, renderer, canvas, period);
+    return dressEnclosedRoomFloor(scene, renderer, canvas, period, { width: 7.3, depth: 7.4, cx: 0.15, cz: -1.0, trimColor: 0xc8ff2e });
   },
   deposito: (scene, renderer) => {
     const { canvas, period } = warehouseFloor();
-    return dressFloor(scene, renderer, canvas, period);
+    return dressEnclosedRoomFloor(scene, renderer, canvas, period, { width: 7.5, depth: 7.6, cx: 0.15, cz: -1.0, trimColor: 0xeab308 });
   },
 };
 
@@ -219,6 +313,13 @@ export async function syncSitChair(view, show) {
   }
 }
 
+function disposeOwnedPropChildren(root) {
+  root.traverse((o) => {
+    if (o.userData.ownedGeometry) o.geometry?.dispose();
+    if (o.material?.userData?.ownedByClone) o.material.dispose();
+  });
+}
+
 /**
  * Places a 3D kitchen sink counter (`furniture/kitchenCabinet.glb` + stainless basin, faucet, and dishes)
  * directly in front of the robot's hands when viewing `clip_lavar-04-gvhmr` ("Washing dishes").
@@ -229,7 +330,10 @@ export async function syncWashSink(view, show) {
   const world = view.viewer.world;
   const existing = world.getObjectByName('tridi-wash-sink');
   if (!wantSink) {
-    if (existing) world.remove(existing);
+    if (existing) {
+      disposeOwnedPropChildren(existing);
+      world.remove(existing);
+    }
     return;
   }
   if (existing) return;
@@ -250,29 +354,40 @@ export async function syncWashSink(view, show) {
 
     // Stainless steel sink rim & soapy water basin on top of the counter (z = 0.84..0.88 m)
     const steelMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.65, roughness: 0.25 });
+    steelMat.userData.ownedByClone = true;
     const basinRim = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.36, 0.03), steelMat);
+    basinRim.userData.ownedGeometry = true;
     basinRim.position.set(0, 0.02, 0.855);
     const waterMat = new THREE.MeshStandardMaterial({ color: 0x7dd3fc, roughness: 0.12, metalness: 0.05, transparent: true, opacity: 0.85 });
+    waterMat.userData.ownedByClone = true;
     const water = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.30, 0.02), waterMat);
+    water.userData.ownedGeometry = true;
     water.position.set(0, 0.02, 0.865);
 
     // Gooseneck faucet at the back of the sink
     const faucetPost = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.016, 0.22, 12), steelMat);
+    faucetPost.userData.ownedGeometry = true;
     faucetPost.rotation.x = Math.PI / 2;
     faucetPost.position.set(0, -0.14, 0.96);
     const faucetSpout = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.14, 12), steelMat);
+    faucetSpout.userData.ownedGeometry = true;
     faucetSpout.position.set(0, -0.08, 1.05);
 
     // Ceramic plates and mug in the scrubbing zone right under the robot's hands
     const plateMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2 });
+    plateMat.userData.ownedByClone = true;
     const plate1 = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.08, 0.022, 20), plateMat);
+    plate1.userData.ownedGeometry = true;
     plate1.rotation.x = Math.PI / 2 - 0.35;
     plate1.position.set(-0.02, 0.08, 0.92);
     const plate2 = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.08, 0.022, 20), plateMat);
+    plate2.userData.ownedGeometry = true;
     plate2.rotation.x = Math.PI / 2;
     plate2.position.set(0.32, 0.02, 0.86);
     const mugMat = new THREE.MeshStandardMaterial({ color: 0xe85d3c, roughness: 0.28 });
+    mugMat.userData.ownedByClone = true;
     const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.04, 0.095, 16), mugMat);
+    mug.userData.ownedGeometry = true;
     mug.rotation.x = Math.PI / 2;
     mug.position.set(-0.34, 0.04, 0.89);
 

@@ -15,10 +15,10 @@ Private company repo of **Tridi** (`juanevillam/tridi`): Juan, Pastor, César an
 | --- | --- |
 | **Product Roadmap, Customer Strategy & Team Task Board** | [`docs/plan-v4-industrial-y-verticales.md`](docs/plan-v4-industrial-y-verticales.md), [`docs/ROADMAP.md`](docs/ROADMAP.md), [`docs/plan-v3-assembler.md`](docs/plan-v3-assembler.md) |
 | **Clean index of all `docs/`** | [`docs/README.md`](docs/README.md) |
-| **Real-World Cases, Field Meetings & Manuals** | [`docs/reunion-zaka.md`](docs/reunion-zaka.md), [`docs/caso-luigi-sim2real.md`](docs/caso-luigi-sim2real.md), [`docs/architecture-and-sim2real.md`](docs/architecture-and-sim2real.md), [`docs/infra-and-security.md`](docs/infra-and-security.md) |
+| **Real-World Cases, Field Meetings & Manuals** | [`docs/reunion-zaka.md`](docs/reunion-zaka.md) (+ raw audio/transcript in [`docs/reuniones/`](docs/reuniones/)), [`docs/caso-luigi-sim2real.md`](docs/caso-luigi-sim2real.md), [`docs/architecture-and-sim2real.md`](docs/architecture-and-sim2real.md), [`docs/infra-and-security.md`](docs/infra-and-security.md) |
 | What each area does and how to run it | `data/README.md`, `physics/README.md`, `training/README.md`, `web/` |
 | Where each part is now | [`docs/estado.md`](docs/estado.md), newest [`docs/bitacora/`](docs/bitacora) |
-| Brand manual & official pitch deck | [`docs/marca.md`](docs/marca.md), [`docs/pitch/manual-de-marca-tridi.pdf`](docs/pitch/manual-de-marca-tridi.pdf), [`docs/pitch/tridi-pitch.pdf`](docs/pitch/tridi-pitch.pdf) |
+| Brand manual (by José Alejandro) & official pitch deck | [`docs/marca.md`](docs/marca.md), [`docs/pitch/manual-de-marca-tridi.pdf`](docs/pitch/manual-de-marca-tridi.pdf), [`docs/pitch/tridi-pitch.pdf`](docs/pitch/tridi-pitch.pdf) |
 | Shared JSON schemas between areas | [`docs/contrato.md`](docs/contrato.md) |
 | The YC application & industry voices | [`yc/README.md`](yc/README.md), [`yc/competidores.md`](yc/competidores.md), [`yc/investigacion/voces/`](yc/investigacion/voces/README.md) |
 | Web & Physics Quality Audit Playbook | [`docs/audit-playbook.md`](docs/audit-playbook.md), [`.claude/skills/tridi-quality/SKILL.md`](.claude/skills/tridi-quality/SKILL.md) |

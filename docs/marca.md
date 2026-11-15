@@ -1,9 +1,9 @@
 # Manual de Marca e Identidad Visual — Tridi (Noviembre 2026)
 
-> **PDF Oficial Completo (25 páginas):** [`docs/pitch/manual-de-marca-tridi.pdf`](pitch/manual-de-marca-tridi.pdf)  
+> **PDF Oficial Completo (25 páginas, diseñado por José Alejandro):** [`docs/pitch/manual-de-marca-tridi.pdf`](pitch/manual-de-marca-tridi.pdf)  
 > **Pitch Deck Oficial (Platanus Hack 26):** [`docs/pitch/tridi-pitch.pdf`](pitch/tridi-pitch.pdf)
 
-Tridi es una marca de deep tech para los equipos que construyen y entrenan robots. Su identidad visual funciona como un instrumento de laboratorio: oscura, precisa, con un solo color de acento (`Señal #C8FF2E`) y con el producto en vivo —el robot en simulación física MuJoCo— como imagen principal.
+Tridi es una marca de deep tech para los equipos que construyen y entrenan robots y plantas físicas. Su identidad visual —diseñada en el manual original por **José Alejandro**— funciona como un instrumento de laboratorio: oscura, precisa, con un solo color de acento (`Señal #C8FF2E`) y con el producto en vivo —el robot o la planta en simulación física MuJoCo— como imagen principal.
 
 ---
 
