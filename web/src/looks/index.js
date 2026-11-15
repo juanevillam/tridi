@@ -6,7 +6,7 @@
 // the wind's currents, which follow the physics' wind in every world.
 import * as THREE from 'three';
 import { dressCity } from '../landing/city.js';
-import { createMatrixHorizon, hideViewerFloor } from './common.js';
+import { hideViewerFloor } from './common.js';
 import { createCurrents, windNow } from './currents.js';
 import { dressMeadow } from './meadow.js';
 import { dressRocks } from './rocks.js';
@@ -14,13 +14,11 @@ import { dressWet } from './wet.js';
 
 /**
  * 3D Factory Plant Map surrounding the Industrial Cell (factory_cell):
- * Open industrial bay slab (5.4m x 3.3m) with OSHA yellow safety curbs, bollards,
- * storage racks, S7-1200 MCC cabinet, pallet staging bay, and a Matrix digital simulation
- * horizon grid dissolving smoothly outside the cell boundary (no solid walls blocking the view).
+ * OSHA safety yellow floor bay markings, bollards, storage racks, S7-1200 MCC cabinet,
+ * and pallet staging bays over the open studio floor.
  */
 function dressIndustrialPlant(view) {
   const { scene, renderer } = view.viewer;
-  const showFloor = hideViewerFloor(view);
   const group = new THREE.Group();
   group.name = 'industrial-plant-map';
   const disposables = [];
@@ -49,7 +47,6 @@ function dressIndustrialPlant(view) {
     return mesh;
   };
 
-  const mFloor = mat({ color: 0x141922, roughness: 0.78, metalness: 0.18 });
   const mYellow = mat({ color: 0xeab308, roughness: 0.42, metalness: 0.15 });
   const mDarkSteel = mat({ color: 0x161d27, roughness: 0.58, metalness: 0.52 });
   const mCardboard = mat({ color: 0xc58b4e, roughness: 0.78, metalness: 0.05 });
@@ -58,23 +55,8 @@ function dressIndustrialPlant(view) {
   const mCabinet = mat({ color: 0x334155, roughness: 0.45, metalness: 0.5 });
   const mGlow = mat({ color: 0xc8ff2e, emissive: 0xc8ff2e, emissiveIntensity: 0.9, roughness: 0.2 });
 
-  const bayW = 5.4;
-  const bayD = 3.3;
-  const cx0 = 0.1;
-  const cz0 = 0.2;
-  const leftX = cx0 - bayW / 2;   // -2.60
-  const rightX = cx0 + bayW / 2;  // +2.80
-  const backZ = cz0 + bayD / 2;   // +1.85
-
-  // 1. Polished epoxy factory cell slab + perimeter curb
-  box(bayW, 0.004, bayD, mFloor, cx0, 0.001, cz0);
-  box(bayW, 0.025, 0.05, mYellow, cx0, 0.012, -1.45);
-  box(bayW, 0.025, 0.05, mYellow, cx0, 0.012, backZ);
-  box(0.05, 0.025, bayD, mYellow, leftX, 0.012, cz0);
-  box(0.05, 0.025, bayD, mYellow, rightX, 0.012, cz0);
-
-  // Inner OSHA safety yellow zone around the active packaging cell
-  const stripeY = 0.004;
+  // 1. Inner OSHA safety yellow zone around the active packaging cell
+  const stripeY = 0.003;
   box(3.9, 0.004, 0.038, mYellow, 0.1, stripeY, -0.95);
   box(3.9, 0.004, 0.038, mYellow, 0.1, stripeY, 0.95);
   box(0.038, 0.004, 1.94, mYellow, -1.85, stripeY, 0);
@@ -112,17 +94,6 @@ function dressIndustrialPlant(view) {
   box(0.28, 0.23, 0.23, mCardboard, 2.44, 0.175, 0.56);
   box(0.28, 0.23, 0.23, mCardboard, 2.32, 0.405, 0.47);
 
-  // 5. Matrix simulation horizon dissolving outside the factory cell slab
-  const horizon = createMatrixHorizon({
-    center: [cx0, cz0],
-    halfSize: [bayW / 2, bayD / 2],
-    fadeSpan: 12,
-    color: 0xc8ff2e,
-    y: 0.002,
-  });
-  disposables.push(horizon.geometry, horizon.material);
-  group.add(horizon);
-
   scene.add(group);
   const prevExposure = renderer.toneMappingExposure;
   renderer.toneMappingExposure = 1.18;
@@ -133,19 +104,16 @@ function dressIndustrialPlant(view) {
       renderer.toneMappingExposure = prevExposure;
       scene.remove(group);
       disposables.forEach((d) => d.dispose());
-      showFloor();
     },
   };
 }
 
 /**
  * 3D Sim-to-Real Robotics Test Lab surrounding the 3.4m x 3.4m Rover Arena (luigi_lab3 & luigi_lab4):
- * Open rover arena pad, calibrated metric perimeter border, 4 corner motion-capture / UWB
- * telemetry beacons, hardware calibration bench, and Matrix simulation grid dissolving outside.
+ * Calibrated metric perimeter border, 4 corner motion-capture / UWB telemetry beacons, and lab bench.
  */
 function dressRoboticsBay(view, robot) {
   const { scene, renderer } = view.viewer;
-  const showFloor = hideViewerFloor(view);
   const group = new THREE.Group();
   group.name = 'robotics-lab-bay';
   const disposables = [];
@@ -179,13 +147,9 @@ function dressRoboticsBay(view, robot) {
   const mDark = mat({ color: 0x161920, roughness: 0.55, metalness: 0.6 });
   const mBench = mat({ color: 0x222731, roughness: 0.5, metalness: 0.45 });
   const mScreen = mat({ color: 0x0f172a, emissive: 0x38bdf8, emissiveIntensity: 0.35, roughness: 0.25 });
-  const mArenaMat = mat({ color: 0x1b212b, roughness: 0.72, metalness: 0.18 });
-
-  // 3.64m x 3.64m rover arena pad
-  box(3.64, 0.006, 3.64, mArenaMat, 0, 0.002, 0);
 
   // Outer perimeter calibration frame around the 3.4m x 3.4m arena walls (±1.8m)
-  const py = 0.006;
+  const py = 0.003;
   box(3.66, 0.012, 0.045, mAccent, 0, py, -1.81);
   box(3.66, 0.012, 0.045, mAccent, 0, py, 1.81);
   box(0.045, 0.012, 3.66, mAccent, -1.81, py, 0);
@@ -206,17 +170,6 @@ function dressRoboticsBay(view, robot) {
   box(0.38, 0.26, 0.04, mScreen, -0.32, 0.72, 2.28); // Telemetry monitor
   box(0.28, 0.16, 0.22, mDark, 0.32, 0.66, 2.28); // Bench power supply
 
-  // Matrix simulation horizon grid dissolving outside the 3.64m x 3.64m rover arena
-  const horizon = createMatrixHorizon({
-    center: [0, 0],
-    halfSize: [1.82, 1.82],
-    fadeSpan: 11,
-    color: accentHex,
-    y: 0.002,
-  });
-  disposables.push(horizon.geometry, horizon.material);
-  group.add(horizon);
-
   scene.add(group);
   const prevExposure = renderer.toneMappingExposure;
   renderer.toneMappingExposure = 1.16;
@@ -231,7 +184,6 @@ function dressRoboticsBay(view, robot) {
       renderer.toneMappingExposure = prevExposure;
       scene.remove(group);
       disposables.forEach((d) => d.dispose());
-      showFloor();
     },
   };
 }

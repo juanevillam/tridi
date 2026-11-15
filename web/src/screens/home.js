@@ -116,6 +116,10 @@ export function mount(root) {
     <header class="topbar">
       <a class="wordmark" href="#home" ${A({ 'aria-label': 'nav.home' })}>${LOGO}${WORDMARK}</a>
       <nav class="topnav" ${A({ 'aria-label': 'nav.menu' })}>
+        <a class="nav-direct" href="#capture">Capture</a>
+        <a class="nav-direct" href="#gym">Gym</a>
+        <a class="nav-direct" href="#policy">Policy</a>
+        <i class="topnav-sep" aria-hidden="true"></i>
         <div class="nav-drop" data-drop="studio">
           <button type="button" class="nav-drop-btn" aria-expanded="false">
             <span>${T('nav.studio')}</span>
@@ -179,9 +183,7 @@ export function mount(root) {
             </a>
           </div>
         </div>
-        <i class="topnav-sep" aria-hidden="true"></i>
         <a class="nav-direct" href="#/milestones" data-warm="milestones">${T('nav.milestones')}</a>
-        <a class="nav-direct" href="#/team" data-warm="team">${T('nav.team')}</a>
       </nav>
       <div class="topbar-right">
         ${langSwitch()}
@@ -364,11 +366,14 @@ export function mount(root) {
               <a href="#capture">Tridi Capture</a>
               <a href="#gym">Tridi Gym</a>
               <a href="#policy">Tridi Policy</a>
+              <a href="#/milestones" data-warm="milestones">${T('foot.milestones')}</a>
             </div>
             <div class="foot-col">
-              <h4>${T('foot.colCompany')}</h4>
-              <a href="#/milestones" data-warm="milestones">${T('foot.milestones')}</a>
-              <a href="#/team" data-warm="team">${T('foot.team')}</a>
+              <h4>${T('foot.team')}</h4>
+              <a href="https://www.linkedin.com/in/pastor-jimenez" target="_blank" rel="noopener">Pastor Jiménez</a>
+              <a href="https://www.linkedin.com/in/juanevillam" target="_blank" rel="noopener">Juan Villa</a>
+              <a href="https://www.linkedin.com/in/cesarmartinez-dev" target="_blank" rel="noopener">César Martínez</a>
+              <a href="https://www.linkedin.com/in/alehernandezt" target="_blank" rel="noopener">Ale Hernández</a>
             </div>
           </div>
         </div>

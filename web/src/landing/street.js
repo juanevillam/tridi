@@ -3,7 +3,6 @@
 // sidewalk place of Simulaciones lies on it (props.js); the landing builds its own street in 3D,
 // with a real curb and the city around it (city.js).
 import * as THREE from 'three';
-import { createMatrixHorizon } from '../looks/common.js';
 
 const PX_PER_M = 128; // 1 cm ≈ 1 px: seams and speckle stay crisp up close
 const PERIOD_M = 16; // the street repeats every 16 m across; the fog hides the repeat
@@ -111,14 +110,9 @@ export function dressFloor(scene, renderer, canvas, periodM, originU = 0) {
   texture.offset.x = (originU - (span / PERIOD_M) * 0.5) % 1;
   const before = ground.material;
   ground.material = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.92 });
-  const horizon = createMatrixHorizon({ center: [0, 0], halfSize: [span / 2, span / 2], fadeSpan: 14, color: 0xc8ff2e, y: 0.003 });
-  scene.add(horizon);
   const gridWasVisible = grid?.visible;
   if (grid) grid.visible = false;
   return () => {
-    scene.remove(horizon);
-    horizon.geometry.dispose();
-    horizon.material.dispose();
     ground.material.dispose();
     texture.dispose();
     ground.material = before;

@@ -21,11 +21,10 @@ const ROUTES = {
   camera: () => import('./screens/phone.js'), // the phone as the live camera, opened from the QR on #/live
   net: () => import('./screens/net.js'), // a training's policy network in 3D, linked from the training box
   milestones: () => import('./screens/milestones.js'), // field notes: Sim-to-Real case study + Platanus Hack 26 origin
-  team: () => import('./screens/team.js'), // company mission & co-founders
 };
 // Routes are always in English, whatever the page's language. The Spanish ones the app used until
 // 2026-11 still open (links in docs, QR codes, bookmarks): the address is rewritten to the English one.
-const OLD_NAMES = { 'en-vivo': 'live', subir: 'upload', simulaciones: 'simulations', ensamblador: 'assembler', entrega: 'delivery', camara: 'camera', red: 'net', avances: 'milestones', equipo: 'team' };
+const OLD_NAMES = { 'en-vivo': 'live', subir: 'upload', simulaciones: 'simulations', ensamblador: 'assembler', entrega: 'delivery', camara: 'camera', red: 'net', avances: 'milestones' };
 
 // The fade between screens; long enough to read as a transition, short enough not to wait on it.
 const FADE_MS = 180;

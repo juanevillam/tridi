@@ -2,11 +2,11 @@
 // and the Platanus Hack 26 Caracas origin story + live pitch video.
 import { dict } from '../../i18n.js';
 
-export const title = { es: 'Casos reales', en: 'Case Studies' };
+export const title = { es: 'Avances', en: 'Milestones' };
 
 export const { T, t, A } = dict({
   back: { es: 'Volver al inicio', en: 'Back to home' },
-  head: { es: 'Casos reales', en: 'Case Studies' },
+  head: { es: 'Avances y casos reales', en: 'Milestones & Case Studies' },
   lede: {
     es: 'De 36 horas en Platanus Hack 26 Caracas al primer robot físico guiado en el suelo por una política de Tridi.',
     en: 'From 36 hours at Platanus Hack 26 Caracas to the first physical robot driven on the floor by a Tridi policy.',
