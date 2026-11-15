@@ -5,7 +5,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { dressFloor, dressStreet } from './landing/street.js';
-import { createMatrixHorizon } from './looks/common.js';
 
 const BASE = `${import.meta.env.BASE_URL}models/kenney/`;
 // The label of a place object (physics/scenes/*.json) -> its model. `tile` repeats the model along
@@ -188,72 +187,6 @@ function warehouseFloor() {
   return cachedWarehouseFloor;
 }
 
-function dressEnclosedRoomFloor(scene, renderer, canvas, periodM, { width, depth, cx = 0.15, cz = -1.0, trimColor = 0xc8ff2e }) {
-  const grid = scene.children.find((object) => object.isGridHelper || object.type === 'GridHelper');
-  const ground = scene.children.find((object) => object.isMesh && object.geometry?.type === 'PlaneGeometry');
-  if (!ground) return () => {};
-
-  const group = new THREE.Group();
-  group.name = 'tridi-room-enclosure';
-  const disposables = [];
-
-  // 1. Exact room floor slab inside the 4 perimeter walls (no tile bleed outside the room)
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-  texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  texture.repeat.set(width / periodM, depth / periodM);
-  disposables.push(texture);
-
-  const roomFloorGeo = new THREE.PlaneGeometry(width, depth);
-  const roomFloorMat = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.88 });
-  disposables.push(roomFloorGeo, roomFloorMat);
-  const roomFloor = new THREE.Mesh(roomFloorGeo, roomFloorMat);
-  roomFloor.rotation.x = -Math.PI / 2;
-  roomFloor.position.set(cx, 0.002, cz);
-  roomFloor.receiveShadow = true;
-  group.add(roomFloor);
-
-  // 2. Calibrated perimeter threshold strip around the 4 room walls
-  const trimMat = new THREE.MeshStandardMaterial({ color: trimColor, emissive: trimColor, emissiveIntensity: 0.28, roughness: 0.4 });
-  disposables.push(trimMat);
-  const addBar = (w, h, d, x, y, z) => {
-    const g = new THREE.BoxGeometry(w, h, d);
-    disposables.push(g);
-    const m = new THREE.Mesh(g, trimMat);
-    m.position.set(x, y, z);
-    group.add(m);
-  };
-  addBar(width + 0.18, 0.008, 0.04, cx, 0.004, cz - depth / 2 - 0.06);
-  addBar(width + 0.18, 0.008, 0.04, cx, 0.004, cz + depth / 2 + 0.06);
-  addBar(0.04, 0.008, depth + 0.18, cx - width / 2 - 0.06, 0.004, cz);
-  addBar(0.04, 0.008, depth + 0.18, cx + width / 2 + 0.06, 0.004, cz);
-
-  // 3. Matrix simulation grid horizon outside the room boundary (no giant black walls)
-  const horizon = createMatrixHorizon({
-    center: [cx, cz],
-    halfSize: [width / 2 + 0.08, depth / 2 + 0.08],
-    fadeSpan: 12,
-    color: trimColor,
-    y: 0.003,
-  });
-  disposables.push(horizon.geometry, horizon.material);
-  group.add(horizon);
-
-  scene.add(group);
-  const groundWasVisible = ground.visible;
-  ground.visible = false;
-  const gridWasVisible = grid?.visible;
-  if (grid) grid.visible = false;
-
-  return () => {
-    scene.remove(group);
-    disposables.forEach((d) => d.dispose());
-    ground.visible = groundWasVisible;
-    if (grid) grid.visible = gridWasVisible;
-  };
-}
-
 const FLOORS = {
   // The texture's curb lines up with the place's real one (its "cordon" object), so the robot's
   // sidewalk is on this side of it and the road beyond.
@@ -263,11 +196,11 @@ const FLOORS = {
   },
   cocina: (scene, renderer) => {
     const { canvas, period } = kitchenFloor();
-    return dressEnclosedRoomFloor(scene, renderer, canvas, period, { width: 7.3, depth: 7.4, cx: 0.15, cz: -1.0, trimColor: 0xc8ff2e });
+    return dressFloor(scene, renderer, canvas, period);
   },
   deposito: (scene, renderer) => {
     const { canvas, period } = warehouseFloor();
-    return dressEnclosedRoomFloor(scene, renderer, canvas, period, { width: 7.5, depth: 7.6, cx: 0.15, cz: -1.0, trimColor: 0xeab308 });
+    return dressFloor(scene, renderer, canvas, period);
   },
 };
 

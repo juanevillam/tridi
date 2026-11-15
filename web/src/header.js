@@ -14,8 +14,7 @@ const { T, A } = dict({
   upload: { es: 'Subir video', en: 'Upload Video' },
   delivery: { es: 'Entregas', en: 'Deliveries' },
   assembler: { es: 'Assembler', en: 'Assembler' },
-  milestones: { es: 'Casos de estudio', en: 'Case Studies' },
-  team: { es: 'Equipo', en: 'Team' },
+  milestones: { es: 'Avances', en: 'Milestones' },
 });
 
 const NAV_ITEMS = [
@@ -25,7 +24,6 @@ const NAV_ITEMS = [
   { id: 'delivery', href: '#/delivery', key: 'delivery' },
   { id: 'assembler', href: '#/assembler', key: 'assembler' },
   { id: 'milestones', href: '#/milestones', key: 'milestones', sepBefore: true },
-  { id: 'team', href: '#/team', key: 'team' },
 ];
 
 export function appHeaderHTML({ current, rightSlot = '' } = {}) {
