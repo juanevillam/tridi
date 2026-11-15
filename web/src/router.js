@@ -2,6 +2,7 @@
 // does not wait for MuJoCo, the robot or MediaPipe.
 import * as home from './screens/home.js';
 import { lang, onLang } from './i18n.js';
+import { mountScrollFade } from './scroll-fade.js';
 
 const titleOf = (screen) => {
   const title = typeof screen.title === 'object' ? (screen.title[lang()] ?? screen.title.es) : screen.title;
@@ -20,10 +21,12 @@ const ROUTES = {
   camera: () => import('./screens/phone.js'), // the phone as the live camera, opened from the QR on #/live
   net: () => import('./screens/net.js'), // a training's policy network in 3D, linked from the training box
   milestones: () => import('./screens/milestones.js'), // field notes: Sim-to-Real case study + Platanus Hack 26 origin
+  docs: () => import('./screens/docs.js'), // interactive technical documentation synced with tridi-physics
+  team: () => import('./screens/team.js'), // company mission & co-founders
 };
 // Routes are always in English, whatever the page's language. The Spanish ones the app used until
 // 2026-11 still open (links in docs, QR codes, bookmarks): the address is rewritten to the English one.
-const OLD_NAMES = { 'en-vivo': 'live', subir: 'upload', simulaciones: 'simulations', ensamblador: 'assembler', entrega: 'delivery', camara: 'camera', red: 'net', avances: 'milestones' };
+const OLD_NAMES = { 'en-vivo': 'live', subir: 'upload', simulaciones: 'simulations', ensamblador: 'assembler', entrega: 'delivery', camara: 'camera', red: 'net', avances: 'milestones', documentacion: 'docs', equipo: 'team' };
 
 // The fade between screens; long enough to read as a transition, short enough not to wait on it.
 const FADE_MS = 180;
@@ -86,6 +89,7 @@ export function startRouter(app, context) {
     unmount?.();
     app.replaceChildren();
     unmount = screen.mount(app, context, params);
+    mountScrollFade(app);
     current = screen;
     document.title = titleOf(screen);
     window.scrollTo(0, 0);

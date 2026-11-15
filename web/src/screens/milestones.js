@@ -18,15 +18,14 @@ export function mount(root) {
           <h1>${T('head')}</h1>
           <p class="lead milestones-lede">${T('lede')}</p>
         </div>
-      </div>
-
-      <div class="milestone-tabs" role="tablist">
-        <button type="button" class="milestone-tab" role="tab" data-tab="sim-to-real" aria-selected="true">
-          ${T('tabSim2Real')}
-        </button>
-        <button type="button" class="milestone-tab" role="tab" data-tab="platanus-hack" aria-selected="false">
-          ${T('tabHackathon')}
-        </button>
+        <div class="milestone-tabs" role="tablist">
+          <button type="button" class="milestone-tab" role="tab" data-tab="sim-to-real" aria-selected="true">
+            ${T('tabSim2Real')}
+          </button>
+          <button type="button" class="milestone-tab" role="tab" data-tab="platanus-hack" aria-selected="false">
+            ${T('tabHackathon')}
+          </button>
+        </div>
       </div>
 
       <article class="milestone-card" id="sim-to-real" data-panel="sim-to-real">

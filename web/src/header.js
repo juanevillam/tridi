@@ -15,6 +15,8 @@ const { T, A } = dict({
   delivery: { es: 'Entregas', en: 'Deliveries' },
   assembler: { es: 'Assembler', en: 'Assembler' },
   milestones: { es: 'Casos de estudio', en: 'Case Studies' },
+  docs: { es: 'Docs', en: 'Docs' },
+  team: { es: 'Equipo', en: 'Team' },
 });
 
 const NAV_ITEMS = [
@@ -24,6 +26,8 @@ const NAV_ITEMS = [
   { id: 'delivery', href: '#/delivery', key: 'delivery' },
   { id: 'assembler', href: '#/assembler', key: 'assembler' },
   { id: 'milestones', href: '#/milestones', key: 'milestones', sepBefore: true },
+  { id: 'docs', href: '#/docs', key: 'docs' },
+  { id: 'team', href: '#/team', key: 'team' },
 ];
 
 export function appHeaderHTML({ current, rightSlot = '' } = {}) {

@@ -174,7 +174,16 @@ export function mount(root) {
 
   root.innerHTML = `
     <div class="asm-page">
-      ${appHeaderHTML({ current: 'assembler', rightSlot: modeToggleHTML })}
+      ${appHeaderHTML({ current: 'assembler' })}
+      <div class="screen-toolbar">
+        <div class="screen-toolbar-copy">
+          <h1>Assembler</h1>
+          <p class="screen-toolbar-sub">${T('title')}</p>
+        </div>
+        <div class="screen-toolbar-actions">
+          ${modeToggleHTML}
+        </div>
+      </div>
       <div class="asm-shell">
         <div class="asm-grid" id="asm-content"></div>
       </div>

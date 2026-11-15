@@ -176,21 +176,55 @@ html.is-landing.lenis body {
 .landing .sim-readout {
   position: absolute;
   right: var(--gutter);
-  bottom: 32px; /* the film's own numbers sit low, inside the bottom corner, away from the bar */
+  bottom: 32px; /* single unified readout chip in the bottom-right corner */
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
+  gap: 10px 14px;
   padding: 10px 16px;
   border: 1px solid var(--line);
   border-radius: var(--r-2);
-  background: rgb(8 9 11 / 0.72);
-  backdrop-filter: blur(12px);
+  background: rgb(8 9 11 / 0.78);
+  backdrop-filter: blur(14px);
   font: 500 11px/1 var(--mono);
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--fg-2);
   text-shadow: 0 1px 8px rgb(0 0 0 / 0.6);
   pointer-events: none;
+  transition: border-color 0.2s ease;
+}
+
+.landing .sim-readout[data-state='push'] {
+  border-color: var(--signal);
+}
+
+.sim-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 12px;
+  border-right: 1px solid var(--line);
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+.landing .sim-readout[data-state='push'] .sim-live-pill {
+  color: var(--signal);
+}
+
+.sim-state-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #6fcf8a;
+  flex: none;
+}
+
+.landing .sim-readout[data-state='push'] .sim-state-dot,
+.landing .sim-readout[data-state='fall'] .sim-state-dot {
+  background: var(--signal);
+  box-shadow: 0 0 10px var(--signal);
 }
 
 .film.ready ~ .film-hud:not(.is-closing) .sim-readout {
@@ -394,25 +428,32 @@ html.is-landing.lenis body {
   }
 }
 
-/* ---- Top bar ---- */
+/* ---- Top bar (matches .app-topbar geometry across Studio screens) ---- */
 
 .topbar {
   position: fixed;
-  inset: var(--s-3) var(--gutter) auto;
+  inset: 14px max(20px, calc((100vw - 1680px) / 2)) auto;
   z-index: 20;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: var(--s-2) var(--s-2) var(--s-2) var(--s-3);
+  gap: 12px 18px;
+  padding: 10px 14px 10px 16px;
   border: 1px solid var(--line);
   border-radius: var(--r-2);
-  /* Detached from the edges and always on its own dark glass: over the hero the street behind it
-     is bright (shop windows, the sky), and the words and the button need the same ground there
-     as everywhere else. */
-  background: rgb(8 9 11 / 0.62);
-  backdrop-filter: blur(16px) saturate(1.2);
-  box-shadow: 0 16px 40px -20px rgb(0 0 0 / 0.8);
+  background: rgb(12 14 18 / 0.78);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  box-shadow:
+    inset 0 0.75px 0 rgb(255 255 255 / 0.14),
+    0 14px 32px -18px rgb(0 0 0 / 0.75);
   transition: background-color 0.3s;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
 }
 
 /* Past the hero the chapters' words scroll under the bar (home.js): a denser ground keeps the
@@ -981,8 +1022,8 @@ html.is-landing.lenis body {
 .capture-media {
   position: absolute;
   left: var(--gutter);
-  bottom: clamp(32px, 7vh, 72px);
-  width: min(40vw, 640px);
+  bottom: clamp(28px, 6vh, 64px);
+  width: min(38vw, 520px, calc((100svh - 310px) * 16 / 9));
 }
 
 .landing .frame {
@@ -1024,7 +1065,9 @@ html.is-landing.lenis body {
   pointer-events: none;
 }
 
-/* The skeleton sits over the video's corner, picture in picture. */
+/* The skeleton sits over the video's corner, picture in picture.
+   Scoped to .landing .frame.frame-skeleton so .landing .frame (position: relative) never overrides it. */
+.landing .frame.frame-skeleton,
 .frame-skeleton {
   position: absolute;
   right: -18%;
@@ -1381,7 +1424,7 @@ html.is-landing.lenis body {
 /* Policy: the whole robot the network moves, the numbers beside it */
 
 .policy {
-  height: 190svh;
+  height: 220svh;
 }
 
 .policy-caption {
@@ -1443,7 +1486,8 @@ html.is-landing.lenis body {
   margin-top: 12px;
 }
 
-/* Closing: the manifesto and action cards lock on screen while the footer scrolls into view */
+/* Closing: the manifesto and action cards fill the first viewport with generous top breathing room,
+   and the corporate footer enters on a second scroll. */
 
 .closing {
   position: relative;
@@ -1451,18 +1495,23 @@ html.is-landing.lenis body {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  padding: clamp(36px, 5vh, 64px) var(--gutter) 0;
+  padding: 0 var(--gutter);
 }
 
 .closing-sticky {
   position: relative;
   top: auto;
   z-index: 2;
-  padding-bottom: 0;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(112px, 15vh, 148px) 0 clamp(56px, 8vh, 84px);
 }
 
 .closing-inner {
-  max-width: 1200px;
+  width: 100%;
+  max-width: 1240px;
   margin: 0 auto;
 }
 
@@ -1847,107 +1896,90 @@ html.is-landing.lenis body {
   position: relative;
   z-index: 2;
   width: 100%;
-  max-width: 1200px;
-  margin: 36px auto 0;
-  padding: 36px 36px 44px;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 48px 36px 56px;
   border-top: 1px solid var(--line-dark);
   border-radius: 0;
   background: linear-gradient(180deg, rgb(8 9 11 / 0.94), rgb(8 9 11 / 1));
 }
 
 .foot-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px 36px;
+  display: grid;
+  grid-template-columns: minmax(260px, 1.15fr) minmax(0, 2fr);
+  align-items: start;
+  gap: 36px 56px;
 }
 
-.foot-main {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 20px 56px;
-}
-
-.foot-brand {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
+.foot-brand-col {
+  display: grid;
+  align-content: start;
+  gap: 12px;
 }
 
 .footer .wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.33em;
   margin-right: 0;
-  font-size: clamp(32px, 3vw, 40px);
+  font: 700 clamp(26px, 2.4vw, 32px) / 1 var(--display);
+  color: var(--fg);
+  text-decoration: none;
 }
 
 .foot-tagline {
   margin: 0 !important;
-  max-width: 34ch;
-  font: 400 clamp(14px, 1.1vw, 15.5px)/1.45 var(--display);
+  max-width: 38ch;
+  font: 400 13.5px/1.55 var(--display);
   color: var(--fg-2) !important;
 }
 
-.foot-team-links {
+.foot-rights {
+  margin: 4px 0 0 !important;
+  font: 500 11px/1.4 var(--mono);
+  color: var(--dim) !important;
+}
+
+.foot-columns {
   display: grid;
-  grid-template-columns: repeat(2, auto);
-  align-content: center;
-  gap: 8px 32px;
-  padding-top: 4px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 24px 32px;
 }
 
-.foot-team-links a {
-  color: var(--fg-2);
-  font: 500 14px/1.35 var(--display);
-  text-decoration: none;
-  white-space: nowrap;
-  transition: color 0.18s ease;
+.foot-col {
+  display: grid;
+  align-content: start;
+  gap: 9px;
 }
 
-.foot-team-links a:hover,
-.foot-team-links a:focus-visible {
-  color: var(--fg);
-}
-
-.landing .foot-top-btn,
-.foot-top-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 36px;
-  padding: 0 14px;
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  background: rgb(241 243 238 / 0.05);
-  color: var(--fg);
-  font: 500 12.5px/1 var(--display);
-  white-space: nowrap;
-  cursor: pointer;
-  transform: none;
-  box-shadow: none;
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
-}
-
-.landing .foot-top-btn svg,
-.foot-top-btn svg {
-  width: 14px;
-  height: 14px;
-  flex: none;
-}
-
-.landing .foot-top-btn:hover:not(:disabled),
-.foot-top-btn:hover {
-  border-color: var(--signal);
-  background-color: rgb(200 255 46 / 0.12);
+.foot-col h4 {
+  margin: 0 0 4px;
+  font: 600 10.5px/1.2 var(--mono);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
   color: var(--signal);
-  box-shadow: none;
-  transform: none;
 }
 
-.landing .foot-top-btn:active:not(:disabled),
-.foot-top-btn:active {
-  transform: scale(0.97);
+.foot-col a {
+  color: var(--fg-2);
+  font: 400 13.5px/1.35 var(--display);
+  text-decoration: none;
+  transition: color 0.16s ease;
+}
+
+.foot-col a:hover,
+.foot-col a:focus-visible {
+  color: var(--fg);
+}
+
+@media (max-width: 960px) {
+  .foot-bar {
+    grid-template-columns: 1fr;
+  }
+  .foot-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* ---- Small tablets & phones: mobile accordion drawer ---- */
@@ -2152,6 +2184,7 @@ html.is-landing.lenis body {
     border-radius: var(--r-1);
   }
 
+  .landing .frame.frame-skeleton,
   .frame-skeleton {
     position: static;
     width: auto;

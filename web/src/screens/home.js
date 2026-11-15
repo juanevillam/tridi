@@ -75,10 +75,10 @@ const narrow = () => innerWidth < 860;
 // the one behind the body. Policy shows the whole robot the network moves, slightly from above.
 const SHOTS = {
   hero: { az: 22, el: 3, dist: 1.35, aim: 1.08, shift: 0.2, follow: 0.5 },
-  capture: { az: -90, el: 6, dist: 3.3, aim: 0.8, shift: 0.24, follow: 0.15 },
-  gym: { az: 38, el: 12, dist: 3.7, aim: 0.75, shift: 0.2, follow: 1 },
-  policy: { az: 60, el: 15, dist: 3.3, aim: 0.72, shift: -0.24, follow: 1.5 },
-  close: { az: 140, el: 16, dist: 6.5, aim: 0.8, shift: 0, follow: 1.5 },
+  capture: { az: -90, el: 6, dist: 2.85, aim: 0.82, shift: 0.24, follow: 0.15 },
+  gym: { az: 38, el: 12, dist: 3.5, aim: 0.78, shift: 0.2, follow: 0.6 },
+  policy: { az: -26, el: 6, dist: 2.25, aim: 0.86, shift: -0.22, follow: 0.25 },
+  close: { az: 140, el: 16, dist: 6.2, aim: 0.8, shift: 0, follow: 1.2 },
 };
 // On phones the words sit low: no sideways shift, farther away, and aimed below the robot so it
 // stands in the upper half of the screen.
@@ -101,8 +101,11 @@ export function mount(root) {
     </div>
     <div class="film-hud">
       <i class="corner tl" aria-hidden="true"></i><i class="corner tr" aria-hidden="true"></i><i class="corner bl" aria-hidden="true"></i><i class="corner br" aria-hidden="true"></i>
-      <div class="sim-readout">
-        <span data-sim="rates">MuJoCo</span><span>t <b data-sim="time">0,0</b> s</span><span>${T('sim.contacts')} <b data-sim="contacts">0</b></span>
+      <div class="sim-readout" data-state="stand">
+        <span class="sim-live-pill"><i class="sim-state-dot" aria-hidden="true"></i><span data-sim="state">${T('hud.stand')}</span></span>
+        <span data-sim="rates">MuJoCo</span>
+        <span>t <b data-sim="time">0,0</b> s</span>
+        <span>${T('sim.contacts')} <b data-sim="contacts">0</b></span>
         <button type="button" class="sim-info-btn" aria-label="Info">ⓘ<span class="sim-tooltip" role="tooltip">${T('sim.info')}</span></button>
       </div>
     </div>
@@ -110,52 +113,8 @@ export function mount(root) {
     <div class="film-wash" aria-hidden="true"></div>
 
     <header class="topbar">
-      <a class="wordmark" href="#/" ${A({ 'aria-label': 'nav.home' })}>${LOGO}${WORDMARK}</a>
+      <a class="wordmark" href="#home" ${A({ 'aria-label': 'nav.home' })}>${LOGO}${WORDMARK}</a>
       <nav class="topnav" ${A({ 'aria-label': 'nav.menu' })}>
-        <div class="nav-drop" data-drop="product">
-          <button type="button" class="nav-drop-btn" aria-expanded="false">
-            <span>${T('nav.product')}</span>
-            <svg class="nav-chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-          <div class="nav-drop-panel" role="menu">
-            <a class="nav-drop-item" href="#capture">
-              <span class="nav-chip nav-chip-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><circle cx="12" cy="5.5" r="2.2"/><path d="M8 10.5h8m-4 0v5m0 0-3 4.5m3-4.5 3 4.5"/></svg>
-              </span>
-              <div class="nav-item-body">
-                <div class="nav-item-head">
-                  <b>Tridi Capture</b>
-                  <span class="nav-item-badge">${T('nav.tagStep')} 01</span>
-                </div>
-                <span>${T('nav.captureSub')}</span>
-              </div>
-            </a>
-            <a class="nav-drop-item" href="#gym">
-              <span class="nav-chip nav-chip-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M3.5 12h3.5l2.2-5.5 4.6 11 2.4-5.5h4.3"/></svg>
-              </span>
-              <div class="nav-item-body">
-                <div class="nav-item-head">
-                  <b>Tridi Gym</b>
-                  <span class="nav-item-badge">${T('nav.tagStep')} 02</span>
-                </div>
-                <span>${T('nav.gymSub')}</span>
-              </div>
-            </a>
-            <a class="nav-drop-item" href="#policy">
-              <span class="nav-chip nav-chip-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><rect x="6.5" y="6.5" width="11" height="11" rx="2"/><path d="M9.5 3.5v3m5-3v3m-5 11v3m5-3v3m-11-11h3m-3 5h3m11-5h3m-3 5h3"/></svg>
-              </span>
-              <div class="nav-item-body">
-                <div class="nav-item-head">
-                  <b>Tridi Policy</b>
-                  <span class="nav-item-badge">${T('nav.tagStep')} 03</span>
-                </div>
-                <span>${T('nav.policySub')}</span>
-              </div>
-            </a>
-          </div>
-        </div>
         <div class="nav-drop" data-drop="studio">
           <button type="button" class="nav-drop-btn" aria-expanded="false">
             <span>${T('nav.studio')}</span>
@@ -169,7 +128,6 @@ export function mount(root) {
               <div class="nav-item-body">
                 <div class="nav-item-head">
                   <b>${T('nav.simulations')}</b>
-                  <span class="nav-item-badge">${T('nav.tag3d')}</span>
                 </div>
                 <span>${T('nav.simsSub')}</span>
               </div>
@@ -181,7 +139,6 @@ export function mount(root) {
               <div class="nav-item-body">
                 <div class="nav-item-head">
                   <b>${T('nav.live')}</b>
-                  <span class="nav-item-badge">${T('nav.tagHumanoids')}</span>
                 </div>
                 <span>${T('nav.liveSub')}</span>
               </div>
@@ -193,7 +150,6 @@ export function mount(root) {
               <div class="nav-item-body">
                 <div class="nav-item-head">
                   <b>${T('nav.upload')}</b>
-                  <span class="nav-item-badge">${T('nav.tagHumanoids')}</span>
                 </div>
                 <span>${T('nav.uploadSub')}</span>
               </div>
@@ -205,7 +161,6 @@ export function mount(root) {
               <div class="nav-item-body">
                 <div class="nav-item-head">
                   <b>${T('nav.delivery')}</b>
-                  <span class="nav-item-badge">${T('nav.tagHumanoids')}</span>
                 </div>
                 <span>${T('nav.deliverySub')}</span>
               </div>
@@ -217,7 +172,6 @@ export function mount(root) {
               <div class="nav-item-body">
                 <div class="nav-item-head">
                   <b>${T('nav.assembler')}</b>
-                  <span class="nav-item-badge">${T('nav.tagPlants')}</span>
                 </div>
                 <span>${T('nav.assemblerSub')}</span>
               </div>
@@ -226,12 +180,16 @@ export function mount(root) {
         </div>
         <i class="topnav-sep" aria-hidden="true"></i>
         <a class="nav-direct" href="#/milestones" data-warm="milestones">${T('nav.milestones')}</a>
+        <a class="nav-direct" href="#/docs" data-warm="docs">${T('nav.docs')}</a>
+        <a class="nav-direct" href="#/team" data-warm="team">${T('nav.team')}</a>
       </nav>
-      ${langSwitch()}
-      <a class="btn btn-signal btn-small" href="#/simulations" data-warm="simulations"><span class="only-wide">${T('nav.tryLive')}</span><span class="only-narrow">${T('nav.try')}</span></a>
-      <button type="button" class="nav-mobile-btn" aria-expanded="false" ${A({ 'aria-label': 'nav.menu' })}>
-        <svg viewBox="0 0 20 20" aria-hidden="true"><path class="i-bars" d="M3 5.5h14M3 10h14M3 14.5h14"/><path class="i-close" d="M4.5 4.5l11 11M15.5 4.5l-11 11"/></svg>
-      </button>
+      <div class="topbar-right">
+        ${langSwitch()}
+        <a class="btn btn-signal btn-small" href="#/simulations" data-warm="simulations"><span class="only-wide">${T('nav.tryLive')}</span><span class="only-narrow">${T('nav.try')}</span></a>
+        <button type="button" class="nav-mobile-btn" aria-expanded="false" ${A({ 'aria-label': 'nav.menu' })}>
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path class="i-bars" d="M3 5.5h14M3 10h14M3 14.5h14"/><path class="i-close" d="M4.5 4.5l11 11M15.5 4.5l-11 11"/></svg>
+        </button>
+      </div>
     </header>
 
     <section class="chapter hero" id="home" data-shot="hero" data-mode="stand">
@@ -247,10 +205,6 @@ export function mount(root) {
           <button class="btn btn-signal hero-push" type="button" disabled>${T('hero.push')} <kbd>${T('key.space')}</kbd></button>
           <a class="btn btn-ghost" href="#capture">${T('hero.howLink')}</a>
         </div>
-      </div>
-      <div class="hud">
-        <p class="state" data-state="stand"><i></i><span>${T('hud.stand')}</span></p>
-        <p class="tally">${T('hud.tally', { pushes: '<span data-hud="pushes">0</span>', falls: '<span data-hud="falls">0</span>' })}</p>
       </div>
       <div class="scroll-cue" aria-hidden="true"><span></span></div>
     </section>
@@ -317,7 +271,7 @@ export function mount(root) {
       </div>
     </section>
 
-    <section class="chapter policy" id="policy" data-shot="policy" data-mode="stand" data-rest="0.6">
+    <section class="chapter policy" id="policy" data-shot="policy" data-mode="stand" data-hold="0.82" data-rest="0.55">
       <div class="sticky">
         <div class="caption policy-caption panel">
           <p class="product">Tridi Policy</p>
@@ -342,7 +296,7 @@ export function mount(root) {
 
     <section class="chapter closing" id="teams" data-shot="close" data-mode="stand">
       <div class="closing-sticky">
-        <div class="closing-inner" id="try" data-offset="-112">
+        <div class="closing-inner" id="try" data-offset="-80">
           <h2 class="manifesto">${T('close.manifesto')}</h2>
           <p class="closing-text">${T('close.text')}</p>
 
@@ -392,22 +346,37 @@ export function mount(root) {
       </div>
       <footer class="footer">
         <div class="foot-bar">
-          <div class="foot-main">
-            <div class="foot-brand">
-              <span class="wordmark" aria-label="Tridi">${LOGO}${WORDMARK}</span>
-              <p class="foot-tagline">${T('foot.tagline')}</p>
+          <div class="foot-brand-col">
+            <a class="wordmark" href="#home" ${A({ 'aria-label': 'nav.home' })}>${LOGO}${WORDMARK}</a>
+            <p class="foot-tagline">${T('foot.tagline')}</p>
+            <p class="foot-rights">${T('foot.rights')}</p>
+          </div>
+          <div class="foot-columns">
+            <div class="foot-col">
+              <h4>${T('foot.colStudio')}</h4>
+              <a href="#/simulations" data-warm="simulations">${T('nav.simulations')}</a>
+              <a href="#/live" data-warm="live">${T('nav.live')}</a>
+              <a href="#/upload" data-warm="upload">${T('nav.upload')}</a>
+              <a href="#/delivery" data-warm="delivery">${T('nav.delivery')}</a>
+              <a href="#/assembler" data-warm="assembler">${T('nav.assembler')}</a>
             </div>
-            <div class="foot-team-links">
-              <a href="https://www.linkedin.com/in/pastor-jimenez" target="_blank" rel="noopener">Pastor Jiménez</a>
-              <a href="https://www.linkedin.com/in/juanevillam" target="_blank" rel="noopener">Juan Villa</a>
-              <a href="https://www.linkedin.com/in/cesarmartinez-dev" target="_blank" rel="noopener">César Martínez</a>
-              <a href="https://www.linkedin.com/in/alehernandezt" target="_blank" rel="noopener">Ale Hernández</a>
+            <div class="foot-col">
+              <h4>${T('foot.colResources')}</h4>
+              <a href="#/docs" data-warm="docs">${T('foot.docs')}</a>
+              <a href="#/milestones" data-warm="milestones">${T('foot.milestones')}</a>
+              <a href="#capture">Tridi Capture</a>
+              <a href="#gym">Tridi Gym</a>
+              <a href="#policy">Tridi Policy</a>
+            </div>
+            <div class="foot-col">
+              <h4>${T('foot.colCompany')}</h4>
+              <a href="#/team" data-warm="team">${T('foot.team')}</a>
+              <a href="https://www.linkedin.com/in/pastor-jimenez/" target="_blank" rel="noopener noreferrer">Pastor Jiménez · CEO</a>
+              <a href="https://www.linkedin.com/in/juanevillam/" target="_blank" rel="noopener noreferrer">Juan Villa · CTO</a>
+              <a href="https://www.linkedin.com/in/cesar-martinez-info/" target="_blank" rel="noopener noreferrer">César Martínez · CIO</a>
+              <a href="https://www.linkedin.com/in/jose-alejandro-hernandez-torres/" target="_blank" rel="noopener noreferrer">Ale Hernández · COO</a>
             </div>
           </div>
-          <button type="button" class="foot-top-btn" data-scroll-top>
-            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3m0 0L3.5 7.5M8 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <span>${T('foot.top')}</span>
-          </button>
         </div>
       </footer>
     </section>
@@ -685,12 +654,24 @@ export function mount(root) {
   // ---- What the robot does in each chapter ----
   let level = null; // checked against view.sim.policy.id so returning from another robot always reloads G1
   let queue = Promise.resolve();
-  function useLevel(id) {
+  function useLevel(id, { forceReset = false } = {}) {
     queue = queue
       .then(async () => {
-        if (gone || !view || (level === id && view.sim?.policy?.id === id && view.sim?.policy?.robot === 'unitree_g1')) return;
+        if (gone || !view) return;
         const wasNonG1 = view.sim?.policy?.robot && view.sim.policy.robot !== 'unitree_g1';
-        const standing = !wasNonG1 && !view.clip() && !view.sim?.puppeted && view.sim?.bodyPosition('pelvis')[2] >= FALLEN_PELVIS_M;
+        const hadClip = Boolean(view.clip() || view.sim?.puppeted);
+        if (hadClip) view.stop();
+        const [px0, py0, pz0] = view.sim ? view.sim.bodyPosition('pelvis') : [0, 0, 0.78];
+        const drifted = Math.hypot(px0, py0) > 0.35;
+        const standing = !forceReset && !wasNonG1 && !hadClip && !drifted && pz0 >= FALLEN_PELVIS_M;
+        if (level === id && view.sim?.policy?.id === id && !wasNonG1) {
+          if (!standing && view.sim) {
+            view.stop();
+            const [px, py] = view.sim.bodyPosition('pelvis');
+            view.viewer.controls.target.set(px, view.viewer.targetHeight, -py);
+          }
+          return;
+        }
         const { onnx, json } = policyUrls(id);
         await view.loadPolicy(onnx, json, { reset: !standing });
         if ((wasNonG1 || !standing) && view.sim) {
@@ -710,32 +691,36 @@ export function mount(root) {
   async function setMode(next) {
     if (!view || mode === next) return;
     const [kind, wanted = FINAL_LEVEL] = next.split(':');
-    const previous = mode?.split(':')[0];
     mode = next;
     const token = ++modeToken;
     Object.assign(gym, { since: 0, shownAt: 0 });
+    // Immediately stop any active walking clip whenever leaving Capture ('walk') so a rapid scroll
+    // through chapters can never leave the robot walking in Hero, Gym, or Policy.
+    if (kind !== 'walk' && (view.clip() || view.sim?.puppeted)) {
+      view.stop();
+      const [px, py] = view.sim.bodyPosition('pelvis');
+      view.viewer.controls.target.set(px, view.viewer.targetHeight, -py);
+    }
     if (kind === 'walk') {
       await useLevel(FINAL_LEVEL);
       const motion = await walkMotion;
-      // From the first frame, with the video: resuming where the video was paused made the robot
-      // jump along the walk (1.9 m) the moment it started. Coming back up from below, it starts
-      // at the end instead and walks backward to where the story began (updateWalk).
       walk.t = walk.dir < 0 ? walkDuration() : 0;
       video.currentTime = walk.t;
-      // plantFeet 'auto', as Simulations plays it: GVHMR's path already matches the stride. Forcing it
-      // was for MediaPipe's walk, whose path was too short and slid the planted foot backward.
       if (token === modeToken && motion) view.playClip(motion);
     } else if (kind === 'gym') {
       gym.loading = true;
-      await useLevel(gymLevel());
+      await useLevel(gymLevel(), { forceReset: true });
       gym.loading = false;
       if (token === modeToken && mode === 'gym') startGymRun();
     } else {
-      await useLevel(wanted);
-      // Stood back up only when it is not already standing on its own: on the first visit, after
-      // the walk (a puppet) or lying on the floor. From the Gym it keeps standing, with no jump.
-      const fallen = view.sim.bodyPosition('pelvis')[2] < FALLEN_PELVIS_M;
-      if (token === modeToken && (previous !== 'gym' || fallen)) view.stop();
+      userOrbit.az = 0;
+      userOrbit.el = 0;
+      await useLevel(wanted, { forceReset: true });
+      if (token === modeToken && view.sim) {
+        view.stop();
+        const [px, py] = view.sim.bodyPosition('pelvis');
+        view.viewer.controls.target.set(px, view.viewer.targetHeight, -py);
+      }
     }
   }
   const modeAt = () => {
@@ -748,10 +733,11 @@ export function mount(root) {
   // Hero: the robot stands on its own with the trained policy; a push shows it catching itself.
   // fallenAt: when the robot was first seen on the floor (0 while standing), to stand it up again.
   const hero = { pushes: 0, falls: 0, pushedAt: 0, fallen: false, fallenAt: 0 };
-  const stateEl = $('.hud .state');
+  const readoutEl = $('.sim-readout');
+  const stateSpan = $('[data-sim="state"]');
   const say = (state, key, vars) => {
-    stateEl.dataset.state = state;
-    stateEl.querySelector('span').innerHTML = T(key, vars);
+    if (readoutEl) readoutEl.dataset.state = state;
+    if (stateSpan) stateSpan.innerHTML = T(key, vars);
   };
   let heroTimer = 0;
   // The hero's push is the one the trained robot holds, spaced as in training (push.js); the
@@ -766,7 +752,6 @@ export function mount(root) {
     hero.pushes += 1;
     hero.pushedAt = performance.now();
     hero.fallen = false;
-    $('[data-hud="pushes"]').textContent = hero.pushes;
     say('push', 'hud.push', { n: STANDING_PUSH_N });
     for (const button of $$('.hero-push')) {
       button.classList.remove('kick');
@@ -782,7 +767,14 @@ export function mount(root) {
   // coming back to the hero with it fallen), is stood up again after GYM_RESTART_S, as in the Gym:
   // before, only a timer 5 s after the push did it, so a later fall left it lying until a reload.
   function standHeroUp(now) {
-    const down = view.sim.bodyPosition('pelvis')[2] < FALLEN_PELVIS_M;
+    const [px, py, pz] = view.sim.bodyPosition('pelvis');
+    const down = pz < FALLEN_PELVIS_M;
+    // Also keep the standing robot anchored inside its stage origin in Hero/Policy if a push moved it far.
+    if (!down && Math.hypot(px, py) > RING_M * 0.95 && now - hero.pushedAt > 2400) {
+      view.reset();
+      view.viewer.controls.target.set(0, view.viewer.targetHeight, 0);
+      return;
+    }
     if (!down) {
       hero.fallenAt = 0;
       return;
@@ -792,11 +784,11 @@ export function mount(root) {
       if (hero.pushedAt && !hero.fallen) {
         hero.fallen = true; // the policy misses some pushes (training/README.md): say so
         hero.falls += 1;
-        $('[data-hud="falls"]').textContent = hero.falls;
         say('fall', 'hud.fall');
       }
     } else if (now - hero.fallenAt > GYM_RESTART_S * 1000) {
       view.reset();
+      view.viewer.controls.target.set(0, view.viewer.targetHeight, 0);
       hero.fallenAt = 0;
       hero.fallen = false;
       say('stand', 'hud.stand');
@@ -1001,13 +993,9 @@ export function mount(root) {
   }
   // Times are the simulation's own clock, not the wall's: a slow or hidden tab cannot fake them.
   function startGymRun() {
-    if (view.clip() || view.sim.puppeted || view.sim.bodyPosition('pelvis')[2] < FALLEN_PELVIS_M) {
-      view.stop();
-      const [px, py] = view.sim.bodyPosition('pelvis');
-      view.viewer.controls.target.set(px, view.viewer.targetHeight, -py);
-    }
-    const [x, y] = view.sim.bodyPosition('pelvis');
-    marks?.ring.position.set(x, marks.ring.position.y, -y);
+    view.stop();
+    marks?.ring.position.set(0, marks.ring.position.y, 0);
+    view.viewer.controls.target.set(0, view.viewer.targetHeight, 0);
     const t = view.sim.data.time;
     $('[data-gym="status"]').innerHTML = T('gym.live'); // not the last checkpoint's fall
     // The first push comes at GYM_FIRST_PUSH_S, then every GYM_PUSH_EVERY_S.
@@ -1020,7 +1008,7 @@ export function mount(root) {
       Object.assign(gym, { since: 0, shownAt: 0 }); // a new checkpoint has shown nothing yet
       gym.loading = true;
       const token = modeToken;
-      useLevel(wanted).then(() => {
+      useLevel(wanted, { forceReset: true }).then(() => {
         gym.loading = false;
         if (token === modeToken && mode === 'gym') startGymRun();
       });
@@ -1030,12 +1018,19 @@ export function mount(root) {
     const now = view.sim.data.time;
     const up = now - gym.since;
     $('[data-gym="up"]').textContent = `${fmt(up, 1)(lang())} s`;
-    if (view.sim.bodyPosition('pelvis')[2] < FALLEN_PELVIS_M) {
+    const [px, py, pz] = view.sim.bodyPosition('pelvis');
+    if (pz < FALLEN_PELVIS_M) {
       gym.fallen = true;
       gym.shownAt ||= performance.now() + GYM_SHOWN_FALL_S * 1000;
       $('[data-gym="status"]').innerHTML = T('gym.fell');
       setTimeout(() => mode === 'gym' && level === wanted && startGymRun(), GYM_RESTART_S * 1000);
       return;
+    }
+    // Keep the robot inside its 1.2 m training ring: if recovery steps carry it out of the circle,
+    // recenter it cleanly inside the ring so it never wanders down the street.
+    if (Math.hypot(px, py) > RING_M * 0.85) {
+      view.reset();
+      view.viewer.controls.target.set(0, view.viewer.targetHeight, 0);
     }
     if (now - gym.lastPush > GYM_PUSH_EVERY_S) {
       gym.lastPush = pushed.lastT = now;
@@ -1215,7 +1210,7 @@ export function mount(root) {
     if (reducedMotion) return;
     // Hero words: lines rise in on load; the whole caption drifts up and fades as you leave.
     gsap.from('.hero-caption > *', { y: 40, opacity: 0, duration: 1.2, ease: 'expo.out', stagger: 0.08, delay: 0.2 });
-    gsap.to('.hero-caption, .hud', {
+    gsap.to('.hero-caption', {
       y: -80,
       opacity: 0,
       ease: 'none',

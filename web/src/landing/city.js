@@ -17,36 +17,30 @@ import { Sky } from 'three/addons/objects/Sky.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const BASE = `${import.meta.env.BASE_URL}models/kenney/`;
-const BUILDINGS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((k) => `commercial/building-${k}.glb`);
-const TOWERS = ['a', 'b', 'c'].map((k) => `commercial/building-skyscraper-${k}.glb`);
+const BUILDINGS = ['a', 'b', 'c', 'd'].map((k) => `commercial/building-${k}.glb`);
+const TOWERS = [];
 // Kenney's commercial buildings are about 1 unit wide and 0.43 units a floor: at 8 m a unit a floor
 // is 3.4 m and a shop door 2.2 m, so the robot (1.3 m) stands at the right size next to them.
 const BUILDING_M = 8;
-// Phones: no towers, and fewer cars. Same street, a lighter frame on a small GPU.
 const SMALL_SCREEN = matchMedia('(max-width: 720px), (pointer: coarse)').matches;
 
-// Across the street (z, meters), from the cameras of home.js. The two that come closest to a wall:
-// Capture films from 3.3 m on the +z side of the robot (5.3 m on phones), so the shops stand just
-// behind that; the Gym, Policy and closing shots film from over the road, down to z = -6.4.
-const SHOPS_Z = 6.2; // the robot's row of shops
-const CURB_Z = -2.2; // its curb: the walk drifts up to 1 m toward the road (z = -1.0)
-const FAR_CURB_Z = -9.4; // 7.2 m of road: a parking lane on each side and one lane, one way, between
-const FAR_SHOPS_Z = -12.4; // 3 m of far sidewalk, then the far row
+// Compact street geometry: narrower sidewalk, tighter road, fewer buildings and props so Three.js
+// renders only the immediate stage around the robot.
+const SHOPS_Z = 4.6; // narrower sidewalk behind the robot, clear of mobile capture camera
+const CURB_Z = -1.4; // closer curb
+const FAR_CURB_Z = -7.0; // compact 5.6 m road width
+const FAR_SHOPS_Z = -9.4; // compact 2.4 m far sidewalk
 const ROAD_DROP_M = 0; // flush with the physics floor (y = 0) so the robot never floats over the road
 const CURB_W = 0.22;
-const STREET_M = 76; // compact street length along x so cameras never roam into hollow shells
-// The two rows of shops, along x: compact corridor around the robot's stage.
-const ROW_X = [-28, 28];
-const END_X = 30; // a row of buildings across each end of the street, closing the block tightly
-const TOWERS_N = SMALL_SCREEN ? 0 : 4; // a skyline over the near rows, where the cameras look
-// Where the robot walks (x 0 to 7.5), falls (1.5 m around the origin) and where the cameras fly,
-// shots and the moves between them: nothing above the floor stands here, so no prop hides the
-// robot or cuts through the lens. Signs and awnings on the walls are high enough to pass over.
+const STREET_M = 44; // compact street length along x
+const ROW_X = [-16, 18]; // tight corridor of buildings around the stage
+const END_X = 20; // end-cap buildings closing the block
+const TOWERS_N = 0; // zero background skyscrapers (pure decorative overhead)
 const KEEP_CLEAR = [
-  { x: [-9, 12], z: [-7, 1.6] }, // the walk, the falls and the cameras over the road
-  { x: [-2.5, 12], z: [-7, 5.8] }, // Capture's camera, beside the walk
+  { x: [-9, 12], z: [-6, 1.6] }, // the walk, the falls and the cameras over the road
+  { x: [-2.5, 12], z: [-6, 3.6] }, // Capture's camera, beside the walk
 ];
-const CROSSWALK_X = -25; // past the bus stop, in the hero's view down the street
+const CROSSWALK_X = -13;
 const isClear = (x, z, r = 0.5) => !KEEP_CLEAR.some((k) => x + r > k.x[0] && x - r < k.x[1] && z + r > k.z[0] && z - r < k.z[1]);
 
 // Dusk: the sun just above the horizon, behind the far row (-z), so Capture, which films toward it,
@@ -150,7 +144,7 @@ function drawSidewalk(ctx, size) {
     ctx.ellipse(rand() * size, rand() * size, (0.2 + rand() * 0.6) * SIDEWALK_PX, (0.15 + rand() * 0.4) * SIDEWALK_PX, rand() * Math.PI, 0, 2 * Math.PI);
     ctx.fill();
   }
-  for (let i = 0; i < 30000; i++) {
+  for (let i = 0; i < 8000; i++) {
     ctx.fillStyle = rand() < 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.12)';
     ctx.fillRect(rand() * size, rand() * size, 2, 2);
   }
@@ -162,9 +156,9 @@ function drawSidewalk(ctx, size) {
 }
 
 const ROAD_PX = 64;
-const ROAD_PERIOD_M = 24; // one arrow and four parking bays per period
-const PARKING_M = 2.1; // each parking lane, from its curb
-const BAY_M = 6;
+const ROAD_PERIOD_M = 24;
+const PARKING_M = 1.9;
+const BAY_M = 14;
 // The road from above: canvas x is the street's x, canvas y runs from the far curb (top) to the
 // robot's curb (bottom). Asphalt, gutters, the tire tracks of the lane, parking bays and an arrow
 // for the one-way lane, all a little worn.
@@ -184,7 +178,7 @@ function drawRoad(ctx, w, h) {
   const lane = (CURB_Z + FAR_CURB_Z) / 2;
   ctx.fillStyle = 'rgba(0,0,0,0.2)'; // tire tracks
   for (const side of [-1, 1]) ctx.fillRect(0, y(lane + side * 0.78) - 0.25 * ROAD_PX, w, 0.5 * ROAD_PX);
-  for (let i = 0; i < 50000; i++) {
+  for (let i = 0; i < 12000; i++) {
     ctx.fillStyle = rand() < 0.5 ? 'rgba(255,255,255,0.045)' : 'rgba(0,0,0,0.15)';
     ctx.fillRect(rand() * w, rand() * h, 2, 2);
   }
@@ -208,7 +202,7 @@ function drawRoad(ctx, w, h) {
   ctx.lineTo(ax + 2.5 * ROAD_PX, ay + 0.32 * ROAD_PX);
   ctx.fill();
   // Wear on the paint.
-  for (let i = 0; i < 6000; i++) {
+  for (let i = 0; i < 1500; i++) {
     ctx.fillStyle = 'rgba(27,27,26,0.6)';
     ctx.fillRect(rand() * w, rand() * h, 3, 3);
   }
@@ -230,8 +224,8 @@ function floors(renderer, add) {
     add(mesh);
   };
   const S = [SIDEWALK_PERIOD_M, SIDEWALK_PERIOD_M];
-  strip(CURB_Z + CURB_W, SHOPS_Z + 14, 0, sidewalk, S);
-  strip(FAR_SHOPS_Z - 14, FAR_CURB_Z - CURB_W, 0, sidewalk, S);
+  strip(CURB_Z + CURB_W, SHOPS_Z + 8, 0, sidewalk, S);
+  strip(FAR_SHOPS_Z - 8, FAR_CURB_Z - CURB_W, 0, sidewalk, S);
   strip(FAR_CURB_Z, CURB_Z, -ROAD_DROP_M, road, [ROAD_PERIOD_M, CURB_Z - FAR_CURB_Z]);
   // Curbstones, a few millimeters proud of the sidewalk.
   const curbs = new THREE.MeshStandardMaterial({ color: 0x55524c, roughness: 0.85 });
@@ -452,37 +446,30 @@ export function dressCity(scene, renderer) {
   const pools = [];
   const lightPool = (x, y, z, r) => pools.push({ x, y, z, r });
 
-  // Street lights every 18 m on both curbs, staggered, and trees between them.
-  for (let x = -40; x <= 40; x += 18) {
+  // Minimal street lights and trees along the compact stage block.
+  for (let x = -16; x <= 16; x += 24) {
     for (const [z, toward, offset] of [
-      [CURB_Z + 0.45, -1, 0],
-      [FAR_CURB_Z - 0.45, 1, 9],
+      [CURB_Z + 0.4, -1, 0],
+      [FAR_CURB_Z - 0.4, 1, 10],
     ]) {
       const lx = x + offset;
       if (isClear(lx, z, 0.6)) {
         streetLight(b, lx, z, toward);
-        lightPool(lx, 0.012, z - toward * 0.6, 3.2);
-        lightPool(lx, -ROAD_DROP_M + 0.012, z + toward * 1.8, 2.6);
+        lightPool(lx, 0.012, z - toward * 0.5, 2.8);
+        lightPool(lx, -ROAD_DROP_M + 0.012, z + toward * 1.5, 2.2);
       }
-      const tx = lx + 9;
-      if (isClear(tx, z - toward * 0.25, 1.4)) tree(b, tx, z - toward * 0.25, rand);
+      const tx = lx + 10;
+      if (!SMALL_SCREEN && isClear(tx, z - toward * 0.25, 1.4)) tree(b, tx, z - toward * 0.25, rand);
     }
   }
-  // No point lights: each one costs every pixel of every lit surface, every frame, and the film
-  // fills the screen. The lamps glow and their light is painted on the floor (the pools).
 
-  // Parked cars: the far lane all along, the near lane away from the cameras.
+  // Minimal parked cars: at most 1-2 on the far curb only so the scene stays light and uncluttered.
   let colorTurn = 0;
   for (let x = ROW_X[0]; x < ROW_X[1]; x += BAY_M) {
-    // One way: every car faces +x. The far lane is clear of the cameras by its width (0.9 m).
-    for (const [z, dir, r] of [
-      [FAR_CURB_Z + 1.05, 1, 0.9],
-      [CURB_Z - 1.05, 1, 2.3],
-    ]) {
-      if (rand() < (SMALL_SCREEN ? 0.6 : 0.3) || !isClear(x + BAY_M / 2, z, r) || Math.abs(x + BAY_M / 2 - CROSSWALK_X) < 5) continue;
-      colorTurn = (colorTurn + 3) % CAR_COLORS.length;
-      car(b, x + BAY_M / 2 + (rand() - 0.5) * 0.6, z + (rand() - 0.5) * 0.15, dir, CAR_COLORS[colorTurn]);
-    }
+    const z = FAR_CURB_Z + 0.95;
+    if (SMALL_SCREEN || rand() < 0.45 || !isClear(x + BAY_M / 2, z, 0.9) || Math.abs(x + BAY_M / 2 - CROSSWALK_X) < 5) continue;
+    colorTurn = (colorTurn + 3) % CAR_COLORS.length;
+    car(b, x + BAY_M / 2, z, 1, CAR_COLORS[colorTurn]);
   }
 
   // A crosswalk, with its pedestrian lights, down the street in the hero.
@@ -543,21 +530,14 @@ export function dressCity(scene, renderer) {
       return Promise.all([
         row(SHOPS_Z, 1),
         row(FAR_SHOPS_Z, -1),
-        // Across the ends: their fronts face back down the street (Kenney fronts look toward -z).
+        // Across the ends: two buildings closing each end of the compact street.
         ...[-1, 1].flatMap((end) =>
-          [FAR_SHOPS_Z - 4, (FAR_SHOPS_Z + SHOPS_Z) / 2, SHOPS_Z + 4].map(async (z, i) => {
-            const file = BUILDINGS[(i * 3 + (end > 0 ? 1 : 4)) % BUILDINGS.length];
+          [FAR_SHOPS_Z - 2, SHOPS_Z + 2].map(async (z, i) => {
+            const file = BUILDINGS[(i * 2 + (end > 0 ? 1 : 2)) % BUILDINGS.length];
             const size = await sizeOf(file);
             await place(file, { x: end * (END_X + size.z / 2), z, ry: (end * Math.PI) / 2 });
           }),
         ),
-        // Towers behind both rows.
-        ...Array.from({ length: TOWERS_N }, async (_, i) => {
-          const side = i % 2 ? 1 : -1;
-          const x = -30 + (i >> 1) * 22 + rand() * 8;
-          const z = side > 0 ? SHOPS_Z + 16 + rand() * 18 : FAR_SHOPS_Z - 16 - rand() * 18;
-          await place(TOWERS[Math.floor(rand() * TOWERS.length)], { x, z, ry: side > 0 ? 0 : Math.PI, scale: BUILDING_M * (0.9 + rand() * 0.3) });
-        }),
       ]);
     })
     .catch((error) => console.error(error));
