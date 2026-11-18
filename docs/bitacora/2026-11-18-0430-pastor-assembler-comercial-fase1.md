@@ -24,4 +24,8 @@
 
 ## Qué sigue
 
+- **Actualización (Motor In-House Opción 1 para `.dxf`, `.pdf` e imágenes `.jpg/.png` + Geometría 2D `AC1009`):**
+  - Se actualizaron los planos en `data/pid_samples/*.dxf` (`01` a `06`) al estándar estricto **AutoCAD R12 (`AC1009`)** con geometría 2D completa (`LINE`, `CIRCLE`, `TEXT`, borde de lámina, cajetín y `$EXTMIN`/`$EXTMAX`) para que se visualicen en visores CAD externos como ShareCAD y LibreCAD.
+  - Se amplió `isa_standard.json` (`AT` Analizador de pH/Conductividad y `FT` Caudalímetro) y se implementó el normalizador de alias reales de planta (`TANK <N>`, `BV<N>`, `PP<N>`, `AOD<N>`, `FILTER PRESS <N>`, `SIR <N>` y notas al pie de sensores de nivel y pH).
+  - Se implementaron `extractTextFromPdfBytes()`, `convertNodesToStrictDxf()` y `extractBlueprintFromUpload()` en `physics/src/pid_assembler.js` para procesar archivos `.dxf`, `.pdf` vectoriales e imágenes `.jpg`/`.png` 100 % en el navegador sin APIs de terceros, incluyendo vista previa del plano subido y descarga del `.dxf` convertido en `#/assembler`.
 - Fase 2 (`P-6`): modularizar `pid_assembler.js` y construir el generador 3D de procesos en MuJoCo (layout real desde el grafo y caso de 22 silos → 6 empaquetadoras).

@@ -197,6 +197,30 @@
       "failSafe": "Fail Open Clamp / Heater Off on E-Stop",
       "plcBlock": "FB_Valve_Standard",
       "geometry3d": { "kind": "packager", "size": [0.26, 0.26, 0.38], "color": [0.78, 0.98, 0.22, 1] }
+    },
+    "AT": {
+      "prefix": "AT",
+      "category": "sensor",
+      "isaName": "Analytical / pH / Conductivity Transmitter (Mettler-Toledo / Endress+Hauser)",
+      "isaNameEs": "Transmisor analítico de pH / conductividad (Mettler-Toledo)",
+      "ioRequirements": [
+        { "suffix": "PV", "type": "AI", "signal": "4-20 mA (0-14 pH)", "description": "Analytical pH / concentration process variable" }
+      ],
+      "failSafe": "Out-of-Range / Probe Fault (< 3.6 mA inhibits chemical dosing)",
+      "plcBlock": "FB_Analog_Scale",
+      "geometry3d": { "kind": "sensor", "radius": 0.04, "length": 0.12, "color": [0.78, 0.42, 0.96, 1] }
+    },
+    "FT": {
+      "prefix": "FT",
+      "category": "sensor",
+      "isaName": "Electromagnetic / Coriolis Flow Transmitter",
+      "isaNameEs": "Transmisor de caudal en línea",
+      "ioRequirements": [
+        { "suffix": "PV", "type": "AI", "signal": "4-20 mA + Pulse", "description": "Volumetric / mass flow rate" }
+      ],
+      "failSafe": "Zero-flow / pipe empty detection",
+      "plcBlock": "FB_Analog_Scale",
+      "geometry3d": { "kind": "sensor", "radius": 0.045, "length": 0.12, "color": [0.22, 0.85, 0.92, 1] }
     }
   }
 }

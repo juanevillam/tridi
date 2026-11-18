@@ -4,6 +4,7 @@
 import './assembler.css';
 import {
   classifyStlMeshes,
+  extractBlueprintFromUpload,
   generateIsaEngineeringDocs,
   generateMujocoXml,
   generatePidMujocoXml,
@@ -151,6 +152,7 @@ export function mount(root) {
   let sampleId = '01_batch_mixer.dxf';
   let dxfText = PID_SAMPLE_DXFS[sampleId].dxf;
   let processGoal = '';
+  let previewImageUrl = null;
   let pidTab = 'p1io'; // 'p1io' | 'p3' | 'diagram' | 'p2'
   let plcDialect = 'scl'; // 'scl' | 'l5k'
   let cadPreset = 'luigi_lab4';
@@ -328,7 +330,7 @@ export function mount(root) {
             <p class="asm-drop-lead">${T('dropLead')}</p>
 
             <label class="asm-dropzone" id="asm-dropzone">
-              <input type="file" id="asm-dxf-file" accept=".dxf,.txt" hidden />
+              <input type="file" id="asm-dxf-file" accept=".dxf,.pdf,.png,.jpg,.jpeg,.webp,.txt" hidden />
               <strong>${T('dropBoxTitle')}</strong>
               <span>${T('dropBoxSub')}</span>
             </label>
@@ -366,10 +368,17 @@ export function mount(root) {
 
         const loadFile = async (file) => {
           if (!file) return;
+          if (previewImageUrl) {
+            URL.revokeObjectURL(previewImageUrl);
+            previewImageUrl = null;
+          }
           sampleId = file.name;
-          dxfText = await file.text();
+          const extracted = await extractBlueprintFromUpload(file, lang());
+          dxfText = extracted.dxfText;
+          previewImageUrl = extracted.previewImageUrl;
           if (!processGoal.trim()) {
-            processGoal = `Automated ISA-5.1 / ISA-88 engineering specification for ${file.name}`;
+            processGoal =
+              extracted.processGoal || `Automated ISA-5.1 / ISA-88 engineering specification for ${file.name}`;
           }
           pidStep = 'result';
           render();
@@ -396,6 +405,10 @@ export function mount(root) {
 
         for (const sBtn of contentEl.querySelectorAll('[data-sample-pick]')) {
           sBtn.onclick = () => {
+            if (previewImageUrl) {
+              URL.revokeObjectURL(previewImageUrl);
+              previewImageUrl = null;
+            }
             sampleId = sBtn.dataset.samplePick;
             dxfText = PID_SAMPLE_DXFS[sampleId].dxf;
             processGoal = PID_SAMPLE_DXFS[sampleId].processGoal[lang()] ?? PID_SAMPLE_DXFS[sampleId].processGoal.es;
@@ -429,6 +442,7 @@ export function mount(root) {
           <div class="asm-row">
             <button type="button" class="asm-pill signal" id="asm-dl-fds">${T('dlFdsBtn')}</button>
             <button type="button" class="asm-pill" id="asm-dl-csv">${T('dlCsvBtn')}</button>
+            <button type="button" class="asm-pill" id="asm-dl-dxf">${T('dlDxfBtn')}</button>
             <button type="button" class="asm-pill" id="asm-print-pdf">${T('printPdfBtn')}</button>
             <button type="button" class="asm-pill" id="asm-copy-fds">${T('copyBtn')}</button>
             <a class="asm-pill signal" href="#/simulations/factory_cell">${T('pidOpen3dSim')}</a>
@@ -438,6 +452,12 @@ export function mount(root) {
         <section class="asm-win">
           <div class="asm-bar"><span>${T('docReadyBar')}</span><b>${esc(dag.projectId)}</b></div>
           <div class="asm-body">
+            ${
+              previewImageUrl
+                ? `<h3 class="asm-sec-title">${T('secSourcePreview')}</h3>
+                   <img class="asm-preview-img" src="${esc(previewImageUrl)}" alt="${esc(dag.fileName)}" />`
+                : ''
+            }
             <h3 class="asm-sec-title">${T('secOverview')}</h3>
             <p class="asm-doc-objective">${esc(dag.processGoal)}</p>
 
@@ -597,6 +617,11 @@ export function mount(root) {
       if (dlFds) dlFds.onclick = () => downloadText(docs.fileName, docs.markdown, 'text/markdown;charset=utf-8');
       const dlCsv = contentEl.querySelector('#asm-dl-csv');
       if (dlCsv) dlCsv.onclick = () => downloadText(docs.ioCsvFileName, docs.ioCsv, 'text/csv;charset=utf-8');
+      const dlDxf = contentEl.querySelector('#asm-dl-dxf');
+      if (dlDxf) {
+        const outDxfName = sampleId.endsWith('.dxf') ? sampleId : `${dag.projectId.toLowerCase()}.dxf`;
+        dlDxf.onclick = () => downloadText(outDxfName, dxfText, 'application/dxf;charset=utf-8');
+      }
       const dlCsvInner = contentEl.querySelector('#asm-dl-csv-inner');
       if (dlCsvInner) dlCsvInner.onclick = () => downloadText(docs.ioCsvFileName, docs.ioCsv, 'text/csv;charset=utf-8');
       const printBtn = contentEl.querySelector('#asm-print-pdf');

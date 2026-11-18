@@ -72,6 +72,22 @@ def parse_dxf_pid(dxf_text: str, file_name: str = "blueprint.dxf") -> dict[str, 
     curr: dict[str, Any] | None = None
 
     for idx, (code, val) in enumerate(pairs):
+        if code == 999:
+            if val.startswith("TRIDI_PROJECT="):
+                project_id = val.split("=", 1)[1].strip()
+            elif val.startswith("TRIDI_NODE|"):
+                parts = val.split("|")
+                if len(parts) >= 7:
+                    _, layer, block, x, y, tag, desc = parts[:7]
+                    raw_nodes.append(
+                        {"type": "INSERT", "layer": layer, "block": block, "x": float(x or 0), "y": float(y or 0), "tag": tag, "description": desc}
+                    )
+            elif val.startswith("TRIDI_EDGE|"):
+                parts = val.split("|")
+                if len(parts) >= 4:
+                    _, layer, frm, to = parts[:4]
+                    raw_edges.append({"from": frm, "to": to, "layer": layer or "PID_PIPING"})
+            continue
         if code == 9 and val == "$PROJECT" and idx + 1 < len(pairs) and pairs[idx + 1][0] == 1:
             project_id = pairs[idx + 1][1]
         if code == 0:
