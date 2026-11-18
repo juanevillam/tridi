@@ -45,15 +45,20 @@
   transform: scale(0.97);
 }
 
-.asm-pill.signal {
-  border-color: var(--signal, #c8ff2e);
-  background: rgb(200 255 46 / 0.1);
-  color: var(--signal, #c8ff2e);
+.asm-pill.signal,
+.asm-pill.signal span {
+  border-color: #f1f3ee;
+  background: #f1f3ee;
+  color: #08090b;
+  font-weight: 600;
 }
 
 .asm-pill.signal:hover,
-.asm-pill.signal:focus-visible {
-  background: var(--signal, #c8ff2e);
+.asm-pill.signal:focus-visible,
+.asm-pill.signal:hover span,
+.asm-pill.signal:focus-visible span {
+  background: #ffffff;
+  border-color: #ffffff;
   color: #08090b;
 }
 
@@ -89,9 +94,9 @@
 
 .asm-mode-btn[aria-selected='true'],
 .asm-mode-btn[aria-selected='true']:hover:not(:disabled) {
-  border-color: rgb(200 255 46 / 0.35);
-  background: rgb(200 255 46 / 0.14);
-  color: var(--signal, #c8ff2e);
+  border-color: rgb(241 243 238 / 0.35);
+  background: rgb(241 243 238 / 0.14);
+  color: var(--fg, #f5f5f5);
   cursor: default;
 }
 
@@ -456,7 +461,7 @@
   font: 600 11px/1.2 var(--mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--signal, #c8ff2e);
+  color: var(--fg-2, #a3a3a3);
 }
 
 .asm-drop-card h2 {
@@ -473,38 +478,60 @@
 }
 
 .asm-dropzone {
-  display: grid;
-  place-items: center;
-  gap: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
   min-height: 168px;
-  padding: 26px 20px;
+  padding: 28px 20px;
   border: 1.5px dashed rgb(241 243 238 / 0.24);
   border-radius: 12px;
   background: rgb(8 9 11 / 0.65);
+  text-align: center;
   cursor: pointer;
   transition: border-color 0.2s, background-color 0.2s, transform 0.15s;
 }
 
 .asm-dropzone:hover,
 .asm-dropzone.dragging {
-  border-color: var(--signal, #c8ff2e);
-  background: rgb(200 255 46 / 0.06);
+  border-color: rgb(241 243 238 / 0.55);
+  background: rgb(241 243 238 / 0.05);
+}
+
+.asm-dropzone strong,
+.asm-dropzone strong span {
+  color: #08090b;
+  font: 600 13.5px/1.2 var(--display);
 }
 
 .asm-dropzone strong {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 10px 18px;
+  margin: 0 auto;
+  padding: 12px 24px;
+  border: 1px solid #f1f3ee;
   border-radius: 999px;
-  background: var(--signal, #c8ff2e);
-  color: #08090b;
-  font: 600 13px/1 var(--mono);
+  background: #f1f3ee;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.35);
+  text-align: center;
+  transition: background-color 0.18s, transform 0.15s;
 }
 
-.asm-dropzone span {
+.asm-dropzone:hover strong {
+  background: #ffffff;
+  border-color: #ffffff;
+}
+
+.asm-dropzone > span {
+  display: block;
+  margin: 0 auto;
   font: 400 12.5px/1.4 var(--display);
   color: var(--fg-2, #a3a3a3);
+  text-align: center;
 }
 
 .asm-samples-box {
