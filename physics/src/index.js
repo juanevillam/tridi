@@ -30,6 +30,7 @@ export {
   generateIsaEngineeringDocs,
   generatePidMujocoXml,
   generatePlcFlatFile,
+  generatePlcIoCsv,
   ISA_STANDARD,
   parseDxfPid,
   PID_SAMPLE_DXFS,

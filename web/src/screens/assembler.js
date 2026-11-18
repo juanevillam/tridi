@@ -146,10 +146,12 @@ function downloadText(filename, content, mime = 'text/plain;charset=utf-8') {
 
 export function mount(root) {
   let mode = 'pid'; // 'pid' | 'cad'
+  let pidStep = 'pick'; // 'pick' | 'result'
+  let techOpen = false;
   let sampleId = '01_batch_mixer.dxf';
   let dxfText = PID_SAMPLE_DXFS[sampleId].dxf;
-  let processGoal = PID_SAMPLE_DXFS[sampleId].processGoal[lang()] ?? PID_SAMPLE_DXFS[sampleId].processGoal.es;
-  let pidTab = 'p1'; // 'p1' | 'p1io' | 'p3' | 'p2'
+  let processGoal = '';
+  let pidTab = 'p1io'; // 'p1io' | 'p3' | 'diagram' | 'p2'
   let plcDialect = 'scl'; // 'scl' | 'l5k'
   let cadPreset = 'luigi_lab4';
   let cadTab = 'audit'; // 'audit' | 'ino' | 'xml'
@@ -316,7 +318,95 @@ export function mount(root) {
   }
 
   function render() {
+    contentEl.className = mode === 'pid' ? 'asm-simple-wrap' : 'asm-grid';
     if (mode === 'pid') {
+      if (pidStep === 'pick') {
+        contentEl.innerHTML = `
+          <section class="asm-drop-card">
+            <p class="asm-drop-kicker">${T('dropKicker')}</p>
+            <h2>${T('dropTitle')}</h2>
+            <p class="asm-drop-lead">${T('dropLead')}</p>
+
+            <label class="asm-dropzone" id="asm-dropzone">
+              <input type="file" id="asm-dxf-file" accept=".dxf,.txt" hidden />
+              <strong>${T('dropBoxTitle')}</strong>
+              <span>${T('dropBoxSub')}</span>
+            </label>
+
+            <div class="asm-field" style="text-align:left">
+              <label class="asm-label" for="asm-goal-input">${T('pidGoalLabel')}</label>
+              <input
+                type="text"
+                id="asm-goal-input"
+                class="asm-input"
+                value="${esc(processGoal)}"
+                ${A({ placeholder: 'dropGoalPlaceholder' })}
+              />
+            </div>
+
+            <div class="asm-samples-box">
+              <p>${T('dropSamplesLabel')}</p>
+              <div class="asm-samples-row">
+                ${Object.values(PID_SAMPLE_DXFS)
+                  .map(
+                    (s) =>
+                      `<button type="button" class="asm-pill" data-sample-pick="${esc(s.id)}">${esc(s.title[lang()] ?? s.title.es)}</button>`,
+                  )
+                  .join('')}
+              </div>
+            </div>
+          </section>`;
+
+        const goalIn = contentEl.querySelector('#asm-goal-input');
+        if (goalIn) {
+          goalIn.oninput = () => {
+            processGoal = goalIn.value;
+          };
+        }
+
+        const loadFile = async (file) => {
+          if (!file) return;
+          sampleId = file.name;
+          dxfText = await file.text();
+          if (!processGoal.trim()) {
+            processGoal = `Automated ISA-5.1 / ISA-88 engineering specification for ${file.name}`;
+          }
+          pidStep = 'result';
+          render();
+        };
+
+        const fileIn = contentEl.querySelector('#asm-dxf-file');
+        if (fileIn) {
+          fileIn.onchange = () => loadFile(fileIn.files?.[0]);
+        }
+
+        const dropzone = contentEl.querySelector('#asm-dropzone');
+        if (dropzone) {
+          dropzone.ondragover = (e) => {
+            e.preventDefault();
+            dropzone.classList.add('dragging');
+          };
+          dropzone.ondragleave = () => dropzone.classList.remove('dragging');
+          dropzone.ondrop = (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragging');
+            loadFile(e.dataTransfer?.files?.[0]);
+          };
+        }
+
+        for (const sBtn of contentEl.querySelectorAll('[data-sample-pick]')) {
+          sBtn.onclick = () => {
+            sampleId = sBtn.dataset.samplePick;
+            dxfText = PID_SAMPLE_DXFS[sampleId].dxf;
+            processGoal = PID_SAMPLE_DXFS[sampleId].processGoal[lang()] ?? PID_SAMPLE_DXFS[sampleId].processGoal.es;
+            pidStep = 'result';
+            render();
+          };
+        }
+        return;
+      }
+
+      // Step 2: Executive Engineering Document + Collapsible Technical Details
       const dag = parseDxfPid(dxfText, { fileName: sampleId, processGoal });
       const docs = generateIsaEngineeringDocs(dag, { lang: lang() });
       const pid3d = generatePidMujocoXml(dag);
@@ -329,26 +419,121 @@ export function mount(root) {
           : stateNames[simState.stepIdx];
 
       contentEl.innerHTML = `
-        <div class="asm-col">
-          <section class="asm-win">
-            <div class="asm-bar"><span>${T('pidSourceBar')}</span><b>${dag.nodes.length} TAGS · ${dag.ioSummary.totalIoPoints} I/O</b></div>
-            <div class="asm-body">
-              <div class="asm-row">
-                <select id="asm-sample-select" class="asm-select" style="flex:1">
-                  ${Object.values(PID_SAMPLE_DXFS)
+        <div class="asm-doc-header">
+          <div class="asm-row">
+            <button type="button" class="asm-pill" id="asm-back-pick">${T('changeFileBtn')}</button>
+            <span class="asm-badge ok">${esc(dag.fileName)}</span>
+            <span class="asm-badge ok">${T('pidVerifiedBadge')} (${dag.nodes.length})</span>
+            <span class="asm-badge">PLC I/O: ${dag.ioSummary.totalIoPoints} (DI:${dag.ioSummary.DI} · DO:${dag.ioSummary.DO} · AI:${dag.ioSummary.AI})</span>
+          </div>
+          <div class="asm-row">
+            <button type="button" class="asm-pill signal" id="asm-dl-fds">${T('dlFdsBtn')}</button>
+            <button type="button" class="asm-pill" id="asm-dl-csv">${T('dlCsvBtn')}</button>
+            <button type="button" class="asm-pill" id="asm-print-pdf">${T('printPdfBtn')}</button>
+            <button type="button" class="asm-pill" id="asm-copy-fds">${T('copyBtn')}</button>
+            <a class="asm-pill signal" href="#/simulations/factory_cell">${T('pidOpen3dSim')}</a>
+          </div>
+        </div>
+
+        <section class="asm-win">
+          <div class="asm-bar"><span>${T('docReadyBar')}</span><b>${esc(dag.projectId)}</b></div>
+          <div class="asm-body">
+            <h3 class="asm-sec-title">${T('secOverview')}</h3>
+            <p class="asm-doc-objective">${esc(dag.processGoal)}</p>
+
+            <h3 class="asm-sec-title">${T('secEquip')} (${dag.nodes.length})</h3>
+            <div class="asm-table-wrap">
+              <table class="asm-table">
+                <thead>
+                  <tr>
+                    <th>${T('colTag')}</th>
+                    <th>${T('colCat')}</th>
+                    <th>${T('colFunc')}</th>
+                    <th>${T('colBlock')}</th>
+                    <th>${T('colFailSafe')}</th>
+                    <th>${T('colDesc')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${dag.nodes
                     .map(
-                      (s) =>
-                        `<option value="${esc(s.id)}" ${s.id === sampleId ? 'selected' : ''}>${esc(s.title[lang()] ?? s.title.es)}</option>`,
+                      (n) =>
+                        `<tr><td><code>${esc(n.tag)}</code></td><td>${esc(n.category)}</td><td>${esc(n.isaName)}</td><td><code>${esc(n.plcBlock)}</code></td><td>${esc(n.failSafe)}</td><td>${esc(n.description)}</td></tr>`,
                     )
                     .join('')}
-                </select>
-                <label class="asm-pill" style="cursor:pointer">
-                  <span>${T('pidUploadBtn')}</span>
-                  <input type="file" id="asm-dxf-file" accept=".dxf,.txt" hidden />
-                </label>
-                <a class="asm-pill signal" href="#/simulations/factory_cell">${T('pidOpen3dSim')}</a>
-              </div>
+                </tbody>
+              </table>
+            </div>
 
+            <h3 class="asm-sec-title">${T('secNarrative')}</h3>
+            <ul class="asm-narrative-list">
+              ${docs.controlNarrative.map((s) => `<li><b>${esc(s.step)} — ${esc(s.title)}</b><p>${esc(s.logic)}</p></li>`).join('')}
+            </ul>
+
+            <h3 class="asm-sec-title">${T('secMatrix')}</h3>
+            <div class="asm-table-wrap">
+              <table class="asm-table">
+                <thead><tr><th>ID</th><th>${T('colTag')}</th><th>${T('colCause')}</th><th>${T('colEffect')}</th><th>${T('colSev')}</th></tr></thead>
+                <tbody>
+                  ${docs.causeEffectMatrix
+                    .map(
+                      (ce) =>
+                        `<tr><td><code>${esc(ce.id)}</code></td><td><code>${esc(ce.causeTag)}</code></td><td>${esc(ce.causeCondition)}</td><td>${esc(ce.effects)}</td><td><code>${esc(ce.severity)}</code></td></tr>`,
+                    )
+                    .join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <details class="asm-tech-drawer" id="asm-tech-details" ${techOpen ? 'open' : ''}>
+          <summary>
+            <span>${T('techDrawerTitle')}</span>
+            <span>▾</span>
+          </summary>
+          <div class="asm-tabs" role="tablist">
+            <button type="button" class="asm-tab" data-ptab="p1io" aria-selected="${pidTab === 'p1io'}">${T('tabP1Io')} (${dag.ioSummary.totalIoPoints})</button>
+            <button type="button" class="asm-tab" data-ptab="p3" aria-selected="${pidTab === 'p3'}">${T('tabP3')}</button>
+            <button type="button" class="asm-tab" data-ptab="diagram" aria-selected="${pidTab === 'diagram'}">${T('tabDiagram')}</button>
+            <button type="button" class="asm-tab" data-ptab="p2" aria-selected="${pidTab === 'p2'}">${T('tabP2')}</button>
+          </div>
+          <div class="asm-body">
+            ${
+              pidTab === 'p1io'
+                ? `
+              <div class="asm-row" style="justify-content:space-between">
+                <h3 class="asm-sec-title">${T('secIo')}</h3>
+                <button type="button" class="asm-pill signal" id="asm-dl-csv-inner">${T('dlCsvBtn')}</button>
+              </div>
+              <div class="asm-table-wrap">
+                <table class="asm-table">
+                  <thead><tr><th>${T('colPlcTag')}</th><th>${T('colTag')}</th><th>${T('colIoType')}</th><th>${T('colAddr')}</th><th>${T('colSignal')}</th><th>${T('colBlock')}</th></tr></thead>
+                  <tbody>
+                    ${dag.ioSchedule
+                      .map(
+                        (io) =>
+                          `<tr><td><code>${esc(io.plcTag)}</code></td><td><code>${esc(io.isaTag)}</code></td><td><b>${esc(io.ioType)}</b></td><td><code>${esc(io.address)}</code></td><td>${esc(io.signal)}</td><td><code>${esc(io.plcBlock)}</code></td></tr>`,
+                      )
+                      .join('')}
+                  </tbody>
+                </table>
+              </div>`
+                : pidTab === 'p3'
+                  ? `
+              <div class="asm-row" style="justify-content:space-between">
+                <div class="asm-row">
+                  <button type="button" class="asm-tab" data-dialect="scl" aria-selected="${plcDialect === 'scl'}">${T('plcSclTab')}</button>
+                  <button type="button" class="asm-tab" data-dialect="l5k" aria-selected="${plcDialect === 'l5k'}">${T('plcL5kTab')}</button>
+                </div>
+                <div class="asm-row">
+                  <button type="button" class="asm-pill signal" id="asm-dl-scl">${T('dlSclBtn')}</button>
+                  <button type="button" class="asm-pill" id="asm-dl-l5k">${T('dlL5kBtn')}</button>
+                </div>
+              </div>
+              <pre class="asm-code"><code>${esc(plcDialect === 'scl' ? plc.scl : plc.l5k)}</code></pre>`
+                  : pidTab === 'diagram'
+                    ? `
               <div class="asm-pid-stage">
                 <div class="asm-pid-hud">
                   <div class="asm-hud-card">
@@ -370,147 +555,52 @@ export function mount(root) {
                   <button type="button" class="asm-pill" id="asm-fault-motor">${T('pidFaultMotor')}</button>
                   <button type="button" class="asm-pill" id="asm-fault-reset">${T('pidFaultReset')}</button>
                 </div>
+              </div>`
+                    : `
+              <div class="asm-row" style="justify-content:space-between">
+                <button type="button" class="asm-pill signal" id="asm-dl-pid-xml">${T('dlXmlBtn')}</button>
+                <a class="asm-pill signal" href="#/simulations/factory_cell">${T('pidOpen3dSim')}</a>
               </div>
+              <pre class="asm-code"><code>${esc(pid3d.sceneXml)}</code></pre>`
+            }
+          </div>
+        </details>`;
 
-              <div class="asm-badges">
-                <span class="asm-badge ok">${T('pidVerifiedBadge')}</span>
-                <span class="asm-badge">DI: ${dag.ioSummary.DI}</span>
-                <span class="asm-badge">DO: ${dag.ioSummary.DO}</span>
-                <span class="asm-badge">AI (4-20 mA): ${dag.ioSummary.AI}</span>
-                <span class="asm-badge">Pipes: ${dag.edges.length}</span>
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <div class="asm-col">
-          <section class="asm-win">
-            <div class="asm-bar"><span>${T('pidOutBar')}</span><b>${esc(dag.projectId)}</b></div>
-            <div class="asm-tabs" role="tablist">
-              <button type="button" class="asm-tab" data-ptab="p1" aria-selected="${pidTab === 'p1'}">${T('tabP1')}</button>
-              <button type="button" class="asm-tab" data-ptab="p1io" aria-selected="${pidTab === 'p1io'}">${T('tabP1Io')} (${dag.ioSummary.totalIoPoints})</button>
-              <button type="button" class="asm-tab" data-ptab="p3" aria-selected="${pidTab === 'p3'}">${T('tabP3')}</button>
-              <button type="button" class="asm-tab" data-ptab="p2" aria-selected="${pidTab === 'p2'}">${T('tabP2')}</button>
-            </div>
-            <div class="asm-body">
-              ${
-                pidTab === 'p1'
-                  ? `
-                <div class="asm-row" style="justify-content:space-between">
-                  <button type="button" class="asm-pill signal" id="asm-dl-fds">${T('dlFdsBtn')}</button>
-                  <button type="button" class="asm-pill" id="asm-copy-fds">${T('copyBtn')}</button>
-                </div>
-                <h3 class="asm-sec-title">${T('secMatrix')}</h3>
-                <div class="asm-table-wrap">
-                  <table class="asm-table">
-                    <thead><tr><th>ID</th><th>${T('colTag')}</th><th>${T('colCause')}</th><th>${T('colEffect')}</th><th>${T('colSev')}</th></tr></thead>
-                    <tbody>
-                      ${docs.causeEffectMatrix
-                        .map(
-                          (ce) =>
-                            `<tr><td><code>${esc(ce.id)}</code></td><td><code>${esc(ce.causeTag)}</code></td><td>${esc(ce.causeCondition)}</td><td>${esc(ce.effects)}</td><td><code>${esc(ce.severity)}</code></td></tr>`,
-                        )
-                        .join('')}
-                    </tbody>
-                  </table>
-                </div>
-                <h3 class="asm-sec-title">${T('secNarrative')}</h3>
-                <ul class="asm-narrative-list">
-                  ${docs.controlNarrative.map((s) => `<li><b>${esc(s.step)} — ${esc(s.title)}</b><p>${esc(s.logic)}</p></li>`).join('')}
-                </ul>`
-                  : pidTab === 'p1io'
-                    ? `
-                <div class="asm-row" style="justify-content:space-between">
-                  <button type="button" class="asm-pill signal" id="asm-dl-fds">${T('dlFdsBtn')}</button>
-                  <button type="button" class="asm-pill" id="asm-copy-fds">${T('copyBtn')}</button>
-                </div>
-                <h3 class="asm-sec-title">${T('secIo')}</h3>
-                <div class="asm-table-wrap">
-                  <table class="asm-table">
-                    <thead><tr><th>${T('colPlcTag')}</th><th>${T('colTag')}</th><th>${T('colIoType')}</th><th>${T('colAddr')}</th><th>${T('colSignal')}</th></tr></thead>
-                    <tbody>
-                      ${dag.ioSchedule
-                        .map(
-                          (io) =>
-                            `<tr><td><code>${esc(io.plcTag)}</code></td><td><code>${esc(io.isaTag)}</code></td><td><b>${esc(io.ioType)}</b></td><td><code>${esc(io.address)}</code></td><td>${esc(io.signal)}</td></tr>`,
-                        )
-                        .join('')}
-                    </tbody>
-                  </table>
-                </div>`
-                    : pidTab === 'p2'
-                      ? `
-                <div class="asm-row" style="justify-content:space-between">
-                  <button type="button" class="asm-pill signal" id="asm-dl-pid-xml">${T('dlXmlBtn')}</button>
-                  <a class="asm-pill signal" href="#/simulations/factory_cell">${T('pidOpen3dSim')}</a>
-                </div>
-                <pre class="asm-code"><code>${esc(pid3d.sceneXml)}</code></pre>`
-                      : `
-                <div class="asm-row" style="justify-content:space-between">
-                  <div class="asm-row">
-                    <button type="button" class="asm-tab" data-dialect="scl" aria-selected="${plcDialect === 'scl'}">${T('plcSclTab')}</button>
-                    <button type="button" class="asm-tab" data-dialect="l5k" aria-selected="${plcDialect === 'l5k'}">${T('plcL5kTab')}</button>
-                  </div>
-                  <div class="asm-row">
-                    <button type="button" class="asm-pill signal" id="asm-dl-scl">${T('dlSclBtn')}</button>
-                    <button type="button" class="asm-pill" id="asm-dl-l5k">${T('dlL5kBtn')}</button>
-                  </div>
-                </div>
-                <pre class="asm-code"><code>${esc(plcDialect === 'scl' ? plc.scl : plc.l5k)}</code></pre>`
-              }
-            </div>
-          </section>
-        </div>`;
-
-      const sel = contentEl.querySelector('#asm-sample-select');
-      if (sel) {
-        sel.onchange = () => {
-          sampleId = sel.value;
-          dxfText = PID_SAMPLE_DXFS[sampleId].dxf;
-          processGoal = PID_SAMPLE_DXFS[sampleId].processGoal[lang()] ?? PID_SAMPLE_DXFS[sampleId].processGoal.es;
+      const backBtn = contentEl.querySelector('#asm-back-pick');
+      if (backBtn) {
+        backBtn.onclick = () => {
+          pidStep = 'pick';
           render();
         };
       }
-      const fileIn = contentEl.querySelector('#asm-dxf-file');
-      if (fileIn) {
-        fileIn.onchange = async () => {
-          const file = fileIn.files?.[0];
-          if (!file) return;
-          sampleId = file.name;
-          dxfText = await file.text();
-          processGoal = `Custom P&ID Blueprint (${file.name})`;
-          render();
-        };
-      }
-      const goalIn = contentEl.querySelector('#asm-goal-input');
-      if (goalIn) {
-        goalIn.onchange = () => {
-          processGoal = goalIn.value;
-          render();
-        };
-      }
-      const reparseBtn = contentEl.querySelector('#asm-reparse-btn');
-      if (reparseBtn) {
-        reparseBtn.onclick = () => {
-          const rawEl = contentEl.querySelector('#asm-dxf-raw');
-          if (rawEl) dxfText = rawEl.value;
-          render();
+      const detailsEl = contentEl.querySelector('#asm-tech-details');
+      if (detailsEl) {
+        detailsEl.ontoggle = () => {
+          techOpen = detailsEl.open;
         };
       }
       for (const tabBtn of contentEl.querySelectorAll('[data-ptab]')) {
         tabBtn.onclick = () => {
           pidTab = tabBtn.dataset.ptab;
+          techOpen = true;
           render();
         };
       }
       for (const dBtn of contentEl.querySelectorAll('[data-dialect]')) {
         dBtn.onclick = () => {
           plcDialect = dBtn.dataset.dialect;
+          techOpen = true;
           render();
         };
       }
       const dlFds = contentEl.querySelector('#asm-dl-fds');
       if (dlFds) dlFds.onclick = () => downloadText(docs.fileName, docs.markdown, 'text/markdown;charset=utf-8');
+      const dlCsv = contentEl.querySelector('#asm-dl-csv');
+      if (dlCsv) dlCsv.onclick = () => downloadText(docs.ioCsvFileName, docs.ioCsv, 'text/csv;charset=utf-8');
+      const dlCsvInner = contentEl.querySelector('#asm-dl-csv-inner');
+      if (dlCsvInner) dlCsvInner.onclick = () => downloadText(docs.ioCsvFileName, docs.ioCsv, 'text/csv;charset=utf-8');
+      const printBtn = contentEl.querySelector('#asm-print-pdf');
+      if (printBtn) printBtn.onclick = () => window.print();
       const copyFds = contentEl.querySelector('#asm-copy-fds');
       if (copyFds) {
         copyFds.onclick = () => {
@@ -718,9 +808,9 @@ export function mount(root) {
 
   render();
 
-  // Live P&ID process ticker (updates weight, step & SVG smoothly every 900 ms when in P&ID mode)
+  // Live P&ID process ticker (updates weight, step & SVG smoothly every 900 ms when the 2D schematic tab is open)
   const ticker = setInterval(() => {
-    if (mode !== 'pid' || simState.faultLsh || simState.faultMotor) return;
+    if (mode !== 'pid' || pidStep !== 'result' || !techOpen || pidTab !== 'diagram' || simState.faultLsh || simState.faultMotor) return;
     if (simState.stepIdx === 1) {
       simState.weightKg += 18.5;
       if (simState.weightKg >= 300) {
