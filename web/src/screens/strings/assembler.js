@@ -50,20 +50,28 @@ export const { T, t, A } = dict({
     en: 'AUTOMATED ENGINEERING FROM AUTOCAD · ISA-5.1 / ISA-88',
   },
   dropTitle: {
-    es: 'Sube tu plano P&ID (.dxf, .pdf o imagen) y genera la documentación de ingeniería',
-    en: 'Upload your P&ID blueprint (.dxf, .pdf, or image) to generate engineering documentation',
+    es: 'Sube tu plano P&ID (.dxf o .pdf) y genera la documentación de ingeniería',
+    en: 'Upload your P&ID blueprint (.dxf or .pdf) to generate engineering documentation',
   },
   dropLead: {
-    es: 'Procesamiento 100 % local en tu navegador (sin APIs externas): reconoce etiquetas ISA-5.1 y alias industriales (TANK, BV, PP, AOD, FILTER PRESS), y entrega la memoria descriptiva (FDS), tabla I/O y código PLC.',
-    en: '100% local in-browser processing (zero external APIs): recognizes ISA-5.1 tags and plant aliases (TANK, BV, PP, AOD, FILTER PRESS), and delivers the Functional Design Specification (FDS), I/O table, and PLC code.',
+    es: 'Procesamiento 100 % local en tu navegador: lee entidades CAD (.dxf) y textos vectoriales (.pdf), reconoce etiquetas ISA-5.1 y alias industriales (TANK, BV, PP, AOD, FILTER PRESS) sin inventar componentes, y entrega la memoria descriptiva (FDS), tabla I/O y código PLC.',
+    en: '100% local in-browser processing: reads CAD entities (.dxf) and vector text (.pdf), recognizes ISA-5.1 tags and plant aliases (TANK, BV, PP, AOD, FILTER PRESS) with zero hallucinated components, and delivers the Functional Design Specification (FDS), I/O table, and PLC code.',
   },
   dropBoxTitle: {
-    es: 'Seleccionar plano P&ID (.dxf · .pdf · .jpg · .png)',
-    en: 'Choose P&ID blueprint (.dxf · .pdf · .jpg · .png)',
+    es: 'Seleccionar plano P&ID (.dxf · .pdf)',
+    en: 'Choose P&ID blueprint (.dxf · .pdf)',
   },
   dropBoxSub: {
-    es: 'o arrastra y suelta aquí tu archivo .dxf de AutoCAD, PDF vectorial o imagen del P&ID',
-    en: 'or drag and drop your AutoCAD .dxf, vector PDF, or P&ID diagram image here',
+    es: 'o arrastra y suelta aquí tu archivo .dxf de AutoCAD o PDF vectorial con texto seleccionable',
+    en: 'or drag and drop your AutoCAD .dxf or vector PDF with selectable text here',
+  },
+  dropErrEmptyPdf: {
+    es: 'Este PDF no contiene etiquetas de texto CAD seleccionables (está escaneado como imagen o sus fuentes fueron vectorizadas a curvas). Por favor exporta el plano desde AutoCAD en formato .dxf.',
+    en: 'This PDF contains no selectable CAD text tags (it is a scanned image or its fonts were outlined to curves). Please export the blueprint from AutoCAD in .dxf format.',
+  },
+  dropErrEmptyDxf: {
+    es: 'No se detectaron etiquetas de equipos ni instrumentación ISA-5.1 en este archivo. Verifica que sea un archivo .dxf ASCII válido.',
+    en: 'No ISA-5.1 equipment or instrumentation tags were detected in this file. Please verify it is a valid ASCII .dxf blueprint.',
   },
   dropGoalPlaceholder: {
     es: 'Ej. Dosificar 3 ingredientes por peso en TK-101, agitar 120 s y descargar a cinta...',

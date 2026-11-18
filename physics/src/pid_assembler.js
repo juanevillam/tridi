@@ -1826,13 +1826,12 @@ PID_SAMPLE_DXFS['06_pilot_plant_hydromet.dxf'] = {
 };
 
 /**
- * 100% In-House Client-Side Blueprint Extractor for `.dxf`, `.pdf`, `.png`, `.jpg`, `.webp`.
- * Uses zero external cloud APIs:
- *   - `.dxf` / `.txt`: direct CAD + alias parser
+ * 100% In-House Client-Side Blueprint Extractor for `.dxf` and `.pdf` (zero fake fallbacks).
+ *   - `.dxf`: direct AutoCAD entity + alias parser
  *   - `.pdf`: vector stream inflation + text operator extraction
- *   - `.png` / `.jpg` / `.webp`: Canvas 2D color-piping & vessel contour analysis + native TextDetector
+ * Returns `{ ok: false, errorCode }` if the uploaded file contains zero recognizable P&ID tags.
  */
-export async function extractBlueprintFromUpload(file, langCode = 'es') {
+export async function extractBlueprintFromUpload(file) {
   const name = file?.name || 'blueprint.dxf';
   const ext = name.split('.').pop()?.toLowerCase() || '';
 
@@ -1840,108 +1839,41 @@ export async function extractBlueprintFromUpload(file, langCode = 'es') {
     const ab = await file.arrayBuffer();
     const pdfText = await extractTextFromPdfBytes(new Uint8Array(ab));
     const parsed = parseDxfPid(pdfText, { fileName: name });
-    if (parsed.nodes.length > 0) {
-      const dxf = convertNodesToStrictDxf(parsed.projectId, parsed.nodes, parsed.edges, name.replace(/\.pdf$/i, '.dxf'));
+    if (parsed.nodes.length === 0) {
       return {
-        dxfText: dxf,
-        processGoal: parsed.processGoal,
+        ok: false,
+        errorCode: 'empty_pdf',
+        dxfText: '',
+        processGoal: '',
         sourceKind: 'pdf',
-        previewImageUrl: null,
       };
     }
-  }
-
-  if (ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp') {
-    const previewImageUrl = URL.createObjectURL(file);
-    let ocrText = '';
-    if (typeof window !== 'undefined' && 'TextDetector' in window) {
-      try {
-        const bitmap = await createImageBitmap(file);
-        const detector = new window.TextDetector();
-        const blocks = await detector.detect(bitmap);
-        ocrText = blocks.map((b) => b.rawValue).join('\n');
-      } catch {
-        // Native TextDetector not enabled; fall back to Canvas 2D geometric/chromatic analyzer
-      }
-    }
-
-    // Analyze image on offscreen 2D canvas (color-coded piping lines & white schematic background)
-    let isMultiColorPidSheet = false;
-    if (typeof document !== 'undefined') {
-      try {
-        const bitmap = await createImageBitmap(file);
-        const canvas = document.createElement('canvas');
-        const w = Math.min(512, bitmap.width);
-        const h = Math.max(1, Math.round((bitmap.height / bitmap.width) * w));
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(bitmap, 0, 0, w, h);
-        const { data } = ctx.getImageData(0, 0, w, h);
-        let whiteBg = 0;
-        let redPipe = 0;
-        let yellowPipe = 0;
-        let greenPipe = 0;
-        let purplePipe = 0;
-        const total = w * h;
-        for (let i = 0; i < data.length; i += 4) {
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-          if (r > 235 && g > 235 && b > 235) whiteBg++;
-          else if (r > 170 && g < 90 && b < 90) redPipe++;
-          else if (r > 190 && g > 160 && b < 90) yellowPipe++;
-          else if (g > 150 && r < 110 && b < 110) greenPipe++;
-          else if (r > 140 && b > 140 && g < 100) purplePipe++;
-        }
-        if (whiteBg / total > 0.65 && redPipe > 80 && yellowPipe > 80 && (greenPipe > 40 || purplePipe > 40)) {
-          isMultiColorPidSheet = true;
-        }
-      } catch {
-        // Ignore canvas error in headless environment
-      }
-    }
-
-    if (
-      isMultiColorPidSheet ||
-      /PILOT\s+PLANT|FILTER\s+PRESS|DAYTANK|ALS\s+SUPPLY/i.test(ocrText) ||
-      /pilot|hydromet|scale/i.test(name)
-    ) {
-      return {
-        dxfText: PID_SAMPLE_DXFS['06_pilot_plant_hydromet.dxf'].dxf,
-        processGoal: PILOT_PLANT_HYDROMET_SPEC.processGoal[langCode] ?? PILOT_PLANT_HYDROMET_SPEC.processGoal.es,
-        sourceKind: 'image',
-        previewImageUrl,
-      };
-    }
-
-    if (ocrText.trim()) {
-      const parsed = parseDxfPid(ocrText, { fileName: name });
-      if (parsed.nodes.length > 0) {
-        const dxf = convertNodesToStrictDxf(parsed.projectId, parsed.nodes, parsed.edges, `${parsed.projectId}.dxf`);
-        return {
-          dxfText: dxf,
-          processGoal: parsed.processGoal,
-          sourceKind: 'image',
-          previewImageUrl,
-        };
-      }
-    }
-
-    // Fallback for generic P&ID image without native TextDetector enabled
+    const dxf = convertNodesToStrictDxf(parsed.projectId, parsed.nodes, parsed.edges, name.replace(/\.pdf$/i, '.dxf'));
     return {
-      dxfText: PID_SAMPLE_DXFS['06_pilot_plant_hydromet.dxf'].dxf,
-      processGoal: PILOT_PLANT_HYDROMET_SPEC.processGoal[langCode] ?? PILOT_PLANT_HYDROMET_SPEC.processGoal.es,
-      sourceKind: 'image',
-      previewImageUrl,
+      ok: true,
+      errorCode: null,
+      dxfText: dxf,
+      processGoal: parsed.processGoal,
+      sourceKind: 'pdf',
     };
   }
 
   const rawText = await file.text();
+  const parsed = parseDxfPid(rawText, { fileName: name });
+  if (parsed.nodes.length === 0) {
+    return {
+      ok: false,
+      errorCode: 'empty_dxf',
+      dxfText: '',
+      processGoal: '',
+      sourceKind: 'dxf',
+    };
+  }
   return {
+    ok: true,
+    errorCode: null,
     dxfText: rawText,
     processGoal: '',
     sourceKind: 'dxf',
-    previewImageUrl: null,
   };
 }
