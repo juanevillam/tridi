@@ -50,20 +50,20 @@ export const { T, t, A } = dict({
     en: 'AUTOMATED ENGINEERING FROM AUTOCAD · ISA-5.1 / ISA-88',
   },
   dropTitle: {
-    es: 'Sube tu plano P&ID (.dxf) y genera la documentación de ingeniería',
-    en: 'Upload your P&ID blueprint (.dxf) to generate engineering documentation',
+    es: 'Sube tu plano P&ID (.dxf, .pdf o imagen) y genera la documentación de ingeniería',
+    en: 'Upload your P&ID blueprint (.dxf, .pdf, or image) to generate engineering documentation',
   },
   dropLead: {
-    es: 'Extrae automáticamente equipos, válvulas e instrumentación ISA-5.1 sin alucinar componentes y entrega la memoria descriptiva (FDS), filosofía de operación y matriz Causa-Efecto.',
-    en: 'Automatically extracts equipment, valves, and ISA-5.1 instrumentation with zero hallucinated components and delivers the Functional Design Specification (FDS), control narrative, and Cause & Effect matrix.',
+    es: 'Procesamiento 100 % local en tu navegador (sin APIs externas): reconoce etiquetas ISA-5.1 y alias industriales (TANK, BV, PP, AOD, FILTER PRESS), y entrega la memoria descriptiva (FDS), tabla I/O y código PLC.',
+    en: '100% local in-browser processing (zero external APIs): recognizes ISA-5.1 tags and plant aliases (TANK, BV, PP, AOD, FILTER PRESS), and delivers the Functional Design Specification (FDS), I/O table, and PLC code.',
   },
   dropBoxTitle: {
-    es: 'Seleccionar archivo P&ID (.dxf)',
-    en: 'Choose P&ID file (.dxf)',
+    es: 'Seleccionar plano P&ID (.dxf · .pdf · .jpg · .png)',
+    en: 'Choose P&ID blueprint (.dxf · .pdf · .jpg · .png)',
   },
   dropBoxSub: {
-    es: 'o arrastra y suelta tu plano exportado de AutoCAD aquí',
-    en: 'or drag and drop your AutoCAD blueprint here',
+    es: 'o arrastra y suelta aquí tu archivo .dxf de AutoCAD, PDF vectorial o imagen del P&ID',
+    en: 'or drag and drop your AutoCAD .dxf, vector PDF, or P&ID diagram image here',
   },
   dropGoalPlaceholder: {
     es: 'Ej. Dosificar 3 ingredientes por peso en TK-101, agitar 120 s y descargar a cinta...',
@@ -74,8 +74,16 @@ export const { T, t, A } = dict({
     en: 'No blueprint on hand? Try a real industrial case in 1 click:',
   },
   changeFileBtn: {
-    es: '← Subir otro plano .dxf',
-    en: '← Upload another .dxf',
+    es: '← Subir otro plano',
+    en: '← Upload another blueprint',
+  },
+  dlDxfBtn: {
+    es: 'Descargar AutoCAD (.dxf) ↓',
+    en: 'Download AutoCAD (.dxf) ↓',
+  },
+  secSourcePreview: {
+    es: 'Vista del Plano Original Procesado Localmente',
+    en: 'Locally Processed Source Blueprint Preview',
   },
   docReadyBar: {
     es: 'DOCUMENTACIÓN EJECUTIVA DE INGENIERÍA · ANSI/ISA-5.1 & ISA-88',
