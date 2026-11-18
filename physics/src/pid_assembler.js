@@ -1813,8 +1813,8 @@ export const PILOT_PLANT_HYDROMET_SPEC = {
 PID_SAMPLE_DXFS['06_pilot_plant_hydromet.dxf'] = {
   id: '06_pilot_plant_hydromet.dxf',
   title: {
-    es: '06_pilot_plant_hydromet.dxf — Planta Piloto Hidrometalúrgica (13 Tanques, 3 SIR, 2 Filtros Prensa)',
-    en: '06_pilot_plant_hydromet.dxf — Hydrometallurgical Pilot Plant (13 Tanks, 3 SIR, 2 Filter Presses)',
+    es: '06_pilot_plant_hydromet.dxf — Planta Piloto Hidrometalúrgica (ISA-5.1)',
+    en: '06_pilot_plant_hydromet.dxf — Hydrometallurgical Pilot Plant (ISA-5.1)',
   },
   processGoal: PILOT_PLANT_HYDROMET_SPEC.processGoal,
   dxf: convertNodesToStrictDxf(
