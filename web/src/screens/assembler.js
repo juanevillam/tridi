@@ -152,7 +152,7 @@ export function mount(root) {
   let sampleId = '01_batch_mixer.dxf';
   let dxfText = PID_SAMPLE_DXFS[sampleId].dxf;
   let processGoal = '';
-  let previewImageUrl = null;
+  let uploadErrorKey = null;
   let pidTab = 'p1io'; // 'p1io' | 'p3' | 'diagram' | 'p2'
   let plcDialect = 'scl'; // 'scl' | 'l5k'
   let cadPreset = 'luigi_lab4';
@@ -330,10 +330,11 @@ export function mount(root) {
             <p class="asm-drop-lead">${T('dropLead')}</p>
 
             <label class="asm-dropzone" id="asm-dropzone">
-              <input type="file" id="asm-dxf-file" accept=".dxf,.pdf,.png,.jpg,.jpeg,.webp,.txt" hidden />
+              <input type="file" id="asm-dxf-file" accept=".dxf,.pdf" hidden />
               <strong>${T('dropBoxTitle')}</strong>
               <span>${T('dropBoxSub')}</span>
             </label>
+            ${uploadErrorKey ? `<p class="asm-upload-error" role="alert">${T(uploadErrorKey)}</p>` : ''}
 
             <div class="asm-field" style="text-align:left">
               <label class="asm-label" for="asm-goal-input">${T('pidGoalLabel')}</label>
@@ -368,14 +369,15 @@ export function mount(root) {
 
         const loadFile = async (file) => {
           if (!file) return;
-          if (previewImageUrl) {
-            URL.revokeObjectURL(previewImageUrl);
-            previewImageUrl = null;
+          uploadErrorKey = null;
+          const extracted = await extractBlueprintFromUpload(file);
+          if (!extracted.ok) {
+            uploadErrorKey = extracted.errorCode === 'empty_pdf' ? 'dropErrEmptyPdf' : 'dropErrEmptyDxf';
+            render();
+            return;
           }
           sampleId = file.name;
-          const extracted = await extractBlueprintFromUpload(file, lang());
           dxfText = extracted.dxfText;
-          previewImageUrl = extracted.previewImageUrl;
           if (!processGoal.trim()) {
             processGoal =
               extracted.processGoal || `Automated ISA-5.1 / ISA-88 engineering specification for ${file.name}`;
@@ -405,10 +407,7 @@ export function mount(root) {
 
         for (const sBtn of contentEl.querySelectorAll('[data-sample-pick]')) {
           sBtn.onclick = () => {
-            if (previewImageUrl) {
-              URL.revokeObjectURL(previewImageUrl);
-              previewImageUrl = null;
-            }
+            uploadErrorKey = null;
             sampleId = sBtn.dataset.samplePick;
             dxfText = PID_SAMPLE_DXFS[sampleId].dxf;
             processGoal = PID_SAMPLE_DXFS[sampleId].processGoal[lang()] ?? PID_SAMPLE_DXFS[sampleId].processGoal.es;
@@ -452,12 +451,6 @@ export function mount(root) {
         <section class="asm-win">
           <div class="asm-bar"><span>${T('docReadyBar')}</span><b>${esc(dag.projectId)}</b></div>
           <div class="asm-body">
-            ${
-              previewImageUrl
-                ? `<h3 class="asm-sec-title">${T('secSourcePreview')}</h3>
-                   <img class="asm-preview-img" src="${esc(previewImageUrl)}" alt="${esc(dag.fileName)}" />`
-                : ''
-            }
             <h3 class="asm-sec-title">${T('secOverview')}</h3>
             <p class="asm-doc-objective">${esc(dag.processGoal)}</p>
 
