@@ -1,24 +1,24 @@
 # Tridi — Context Handoff (`CONTEXT.md`)
 
-**Last updated:** 2026-11-14  
-**Active branch:** `juan/zaka-industrial-plan` (shipped to `main` so `https://trytridi.com` and `tridi.vercel.app` are up to date)  
-**Documentation index:** [`docs/README.md`](docs/README.md) | **Roadmap:** [`docs/ROADMAP.md`](docs/ROADMAP.md) | **Sales & Community GTM:** [`docs/plan-ventas-y-comunidades.md`](docs/plan-ventas-y-comunidades.md)  
-**Latest session log:** [`docs/bitacora/2026-11-13-0045-juan-reunion-zaka-y-plan-industrial.md`](docs/bitacora/2026-11-13-0045-juan-reunion-zaka-y-plan-industrial.md)  
+**Last updated:** 2026-11-18  
+**Active branch:** `juan/roadmap-y-mercado` (rebased onto `origin/main` commit `aaedfbd` with Pastor's new 2-step commercial `#/assembler` and `.dxf`/`.pdf` flexible ISA extractor)  
+**Documentation index:** [`docs/README.md`](docs/README.md) | **Roadmap (To-Dos Only):** [`docs/ROADMAP.md`](docs/ROADMAP.md) | **Sales & Community GTM:** [`docs/plan-ventas-y-comunidades.md`](docs/plan-ventas-y-comunidades.md)  
+**Latest session logs:** [`docs/bitacora/2026-11-18-0145-juan-roadmap-todos-y-estrategia-mercado.md`](docs/bitacora/2026-11-18-0145-juan-roadmap-todos-y-estrategia-mercado.md) · [`docs/bitacora/2026-11-18-0430-pastor-assembler-comercial-fase1.md`](docs/bitacora/2026-11-18-0430-pastor-assembler-comercial-fase1.md)  
 **Quality playbook:** [`docs/audit-playbook.md`](docs/audit-playbook.md) | **Skill:** `.claude/skills/tridi-quality/SKILL.md`
 
 ---
 
-## 1. Current State Summary (`juan/zaka-industrial-plan`)
+## 1. Current State Summary (`origin/main` + `juan/roadmap-y-mercado`)
 
-1. **Industrial P&ID & CAD Assembler (`physics/src/assembler/` + `#/assembler`):**
-   - **Channel 1 — Plant & Process Automation (`.dxf` P&ID → ISA-5.1 Docs + 3D Twin + PLC Code):**
-     - `physics/src/assembler/pid-parser.js` parses `.dxf` (`INSERT`/`ATTDEF`/`TEXT`/`LINE`/`LWPOLYLINE`) and builds an ISA-5.1 process DAG + I/O schedule (`DI`, `DO`, `AI 4-20 mA`) with 3 bundled industrial plants (`01_batch_mixer.dxf`, `02_sorting_cell.dxf`, `03_pump_interlock.dxf`).
-     - `physics/src/assembler/isa-docs-generator.js` generates Cause & Effect Matrix (`CE-01..`), Control Narrative (`STEP 00..30`), and Alarm & Interlock Philosophy.
-     - `physics/src/assembler/plc-generator.js` compiles deterministic IEC 61131-3 **Siemens TIA Portal Structured Text (`.scl`)** and **Rockwell Studio 5000 (`.L5K`)** flat files.
-   - **Channel 2 — Custom Robots & Mechatronics (`.stl` + `.ino` → Hardware Audit + MuJoCo Twin + 50 Hz C99 Firmware):**
-     - `physics/src/assembler/pinout.js` audits ATmega328P / ESP32 pinouts & hardware timers (`Timer1` `<Servo.h>` conflict on `D9/D10` vs `Timer0` PWM on `D5/D6`, blocking `pulseIn()`/`delay()` detection) and outputs calibrated 50 Hz C99 `.ino` firmware (`PWM_MIN_MOVE = 115`, `ISR(INT1_vect)`).
-   - **Simulated Industrial Cell (`physics/models/factory_cell/scene.xml`):**
-     - Closed-loop 3D sorting cell (`CV-101` conveyor, `PE-101` optical sensor, `LC-101` load cell `250 g / 500 g / 1 kg`, `PZ-101` reject pusher, `PZ-102` accept diverter) inside a 3-wall enclosed industrial bay (`dressIndustrialPlant` in `web/src/looks/index.js`).
+1. **Industrial P&ID & CAD Assembler (`physics/src/pid_assembler.js` + `#/assembler` — Updated by Pastor on 2026-11-18):**
+   - **Commercial 2-Step Progressive Disclosure Flow (`web/src/screens/assembler.js`):**
+     - **Step 1 (Clean Upload):** Single centered dropzone for AutoCAD `.dxf` or vectorial `.pdf` blueprints + 1-click presets (`01_batch_mixer.dxf` .. `06_pilot_plant_hydromet.dxf` in strict AutoCAD R12 `AC1009` 2D geometry).
+     - **Step 2 (Executive ISA-5.1 Engineering Sheet First):** Protagonist view displays the Functional Design Specification (`FDS`: Equipment Schedule, `ISA-88` Control Narrative, Cause & Effect Safety Matrix) with direct buttons to **Save/Print PDF**, **Download I/O Schedule in Excel (`.csv`)**, and **Open 3D Plant Simulation**.
+     - **Collapsible Advanced Technical Accordion (`<details>`):** Houses the generated Siemens `TIA Portal (.scl)` and Rockwell `Studio 5000 (.L5K)` PLC blocks, raw PLC memory addresses (`%I0.0`, `%Q0.0`, `%IW64`), interactive 2D fault-injection schematic, and MuJoCo `.xml`.
+   - **Flexible ISA-5.1 Catalog & Alias Normalizer (`physics/components/isa_standard.json`, `physics/src/pid_assembler.js`):**
+     - Expanded to 16 industrial equipment classes (`FV`, `WT`, `LT`, `LSH`, `LSL`, `PT`, `TT`, `FT`, `AT`, `M`, `P`, `TK`, `SL`, `SC`, `CV`, `PK`) + real-world non-strict alias recognition (`TANK`, `BV`, `PP`, `AOD`, `FILTER PRESS`, `SIR`, `MT`/`MTO`/`M`, pH/level footnotes) so blueprints that do not follow 100% strict ISO/ISA naming still resolve cleanly.
+   - **Next Technical Goal (from Pastor's 2026-11-18 voice memos):**
+     - Extend P&ID recognition to **raster images (`.png` / `.jpg` / scanned blueprints)** and design a **cost-bounded hybrid AI pipeline (local deterministic parser + vision/LLM via OpenRouter/API)** where call count and token cost per blueprint are strictly measured to protect unit economics before generating the dynamic PDF documentation, 3D model, and Rockwell/Siemens PLC code.
 
 2. **Global UI/UX Standardization, 3D Worlds & Polish (`web/` + `physics/`):**
    - **Unified Global Header & Centered Navbar (`web/src/header.js`, `web/src/landing/landing.css`, `web/src/style.css`):** Both `.topbar` and `.app-topbar` use a 3-column grid (`grid-template-columns: 1fr auto 1fr`) with `.wordmark` on the left, navigation centered in the middle (`Capture`, `Gym`, `Policy` | `Studio ▾`, `Avances` / `Milestones` on the landing; `Simulaciones`, `Cámara en vivo`, `Subir video`, `Entregas`, `Assembler` | `Avances` on inner screens), and `.topbar-right` on the right (`#/docs` and `#/team` screens removed).
