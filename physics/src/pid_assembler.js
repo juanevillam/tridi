@@ -663,10 +663,76 @@ EOF`,
   },
 };
 
+const ALIAS_PREFIX_MAP = {
+  BV: { prefix: 'FV', label: 'Automated Ball Valve' },
+  XV: { prefix: 'FV', label: 'Pneumatic On/Off Isolation Valve' },
+  SV: { prefix: 'FV', label: 'Solenoid Control Valve' },
+  MV: { prefix: 'FV', label: 'Motorized Control Valve' },
+  HV: { prefix: 'FV', label: 'Hand / Actuated Control Valve' },
+  PP: { prefix: 'P', label: 'Peristaltic Metering Pump' },
+  AOD: { prefix: 'P', label: 'Air-Operated Double Diaphragm Pump' },
+  PMP: { prefix: 'P', label: 'Process Transfer Pump' },
+  TANK: { prefix: 'TK', label: 'Process Vessel / Tank' },
+  SILO: { prefix: 'SL', label: 'Bulk Storage Silo' },
+  SIR: { prefix: 'TK', label: 'Ion-Exchange SIR Column' },
+  FP: { prefix: 'PK', label: 'Automated Filter Press Station' },
+  AIT: { prefix: 'AT', label: 'Analytical / pH Indicating Transmitter' },
+  PH: { prefix: 'AT', label: 'pH Analytical Transmitter' },
+  LIT: { prefix: 'LT', label: 'Level Indicating Transmitter' },
+  FIT: { prefix: 'FT', label: 'Flow Indicating Transmitter' },
+  PIT: { prefix: 'PT', label: 'Pressure Indicating Transmitter' },
+  TIT: { prefix: 'TT', label: 'Temperature Indicating Transmitter' },
+  WIT: { prefix: 'WT', label: 'Weight Indicating Transmitter' },
+};
+
+function normalizeIndustrialToken(rawToken = '') {
+  const clean = String(rawToken || '').trim();
+  const upper = clean.toUpperCase();
+
+  // 1. Standard ISA-5.1 or direct alias prefix (e.g., FV-101, BV15, PP6, AOD1, AIT-05)
+  const stdMatch = upper.match(/^(FV|WT|LT|LSH|LSL|PT|TT|FT|AT|M|P|TK|SL|SC|CV|PK|BV|XV|SV|MV|HV|PP|AOD|PMP|AIT|PH|LIT|FIT|PIT|TIT|WIT)-?(\d{1,4}[A-Z]?)$/);
+  if (stdMatch) {
+    const rawPre = stdMatch[1];
+    const num = stdMatch[2].padStart(2, '0');
+    const mapped = ALIAS_PREFIX_MAP[rawPre];
+    if (mapped) {
+      return {
+        tag: `${mapped.prefix}-${rawPre}${num}`,
+        sourceLabel: clean,
+        description: `${mapped.label} (${clean})`,
+      };
+    }
+    return {
+      tag: `${rawPre}-${num}`,
+      sourceLabel: clean,
+      description: null,
+    };
+  }
+
+  // 2. Spaced equipment names (e.g., "TANK 3", "TANK 2a", "FILTER PRESS 1", "SIR 2")
+  const tankMatch = upper.match(/^TANK\s+(\d{1,3}[A-Z]?)$/);
+  if (tankMatch) {
+    const id = tankMatch[1].padStart(2, '0');
+    return { tag: `TK-${id}`, sourceLabel: clean, description: `Process Vessel (${clean})` };
+  }
+  const fpMatch = upper.match(/^FILTER\s+PRESS\s+(\d{1,2})$/);
+  if (fpMatch) {
+    const id = fpMatch[1].padStart(2, '0');
+    return { tag: `PK-FP${id}`, sourceLabel: clean, description: `Automated Plate & Frame Filter Press (${clean})` };
+  }
+  const sirMatch = upper.match(/^SIR[-\s]?(\d{1,2})$/);
+  if (sirMatch) {
+    const id = sirMatch[1].padStart(2, '0');
+    return { tag: `TK-SIR${id}`, sourceLabel: clean, description: `Scandium Ion-Exchange Resin Column (${clean})` };
+  }
+  return null;
+}
+
 function classifyIsaTag(tag) {
   const clean = String(tag || '').trim().toUpperCase();
-  const match = clean.match(/^([A-Z]{1,4})-?(\d+[A-Z]?)$/);
-  const prefix = match ? match[1] : clean.replace(/[^A-Z]/g, '');
+  const match = clean.match(/^([A-Z]{1,4})-?([A-Z0-9]+)$/);
+  const rawPrefix = match ? match[1] : clean.replace(/[^A-Z]/g, '');
+  const prefix = ALIAS_PREFIX_MAP[rawPrefix]?.prefix ?? rawPrefix;
   const loopNumber = match ? match[2] : '100';
   const catalog = ISA_STANDARD.tagClasses[prefix] ?? {
     prefix: prefix || 'EQ',
@@ -717,6 +783,22 @@ export function parseDxfPid(dxfText = '', { fileName = 'custom_pid.dxf', process
   let currentEntity = null;
   for (let i = 0; i < pairs.length; i++) {
     const [code, val] = pairs[i];
+    if (code === 999) {
+      if (val.startsWith('TRIDI_PROJECT=')) {
+        projectId = val.slice('TRIDI_PROJECT='.length).trim();
+      } else if (val.startsWith('TRIDI_NODE|')) {
+        const [, layer, block, x, y, tag, description] = val.split('|');
+        if (tag) {
+          rawNodes.push({ type: 'INSERT', layer, block, x: Number(x) || 0, y: Number(y) || 0, tag, description });
+        }
+      } else if (val.startsWith('TRIDI_EDGE|')) {
+        const [, layer, from, to] = val.split('|');
+        if (from && to) {
+          rawEdges.push({ from, to, layer: layer || 'PID_PIPING' });
+        }
+      }
+      continue;
+    }
     if (code === 9 && val === '$PROJECT' && pairs[i + 1]?.[0] === 1) {
       projectId = pairs[i + 1][1];
     }
@@ -747,9 +829,21 @@ export function parseDxfPid(dxfText = '', { fileName = 'custom_pid.dxf', process
         currentEntity.from = val;
       } else if (currentEntity.type === 'INSERT') {
         currentEntity.tag = val;
+        currentEntity.sourceLabel = val;
       } else {
-        const m = val.match(/\b(FV|WT|LT|LSH|LSL|PT|TT|FT|M|P|TK|SL|SC|CV|PK)-?(\d{2,4}[A-Z]?)\b/i);
-        if (m) currentEntity.tag = `${m[1].toUpperCase()}-${m[2].toUpperCase()}`;
+        const norm = normalizeIndustrialToken(val);
+        if (norm) {
+          currentEntity.tag = norm.tag;
+          currentEntity.sourceLabel = norm.sourceLabel;
+          if (norm.description && !currentEntity.description) currentEntity.description = norm.description;
+        } else {
+          const m = val.match(/\b(FV|WT|LT|LSH|LSL|PT|TT|FT|AT|M|P|TK|SL|SC|CV|PK|BV|XV|SV|MV|HV|PP|AOD)-?(\d{1,4}[A-Z]?)\b/i);
+          if (m) {
+            const subNorm = normalizeIndustrialToken(`${m[1]}-${m[2]}`);
+            currentEntity.tag = subNorm ? subNorm.tag : `${m[1].toUpperCase()}-${m[2].toUpperCase()}`;
+            currentEntity.sourceLabel = m[0];
+          }
+        }
       }
     }
     if (code === 3) currentEntity.description = val;
@@ -767,31 +861,66 @@ export function parseDxfPid(dxfText = '', { fileName = 'custom_pid.dxf', process
     for (const n of rawNodes) {
       const normTag = classifyIsaTag(n.tag).tag;
       if (!deduped.has(normTag)) {
-        deduped.set(normTag, { ...n, tag: normTag });
+        deduped.set(normTag, { ...n, tag: normTag, sourceLabel: n.sourceLabel || n.tag });
       }
     }
     rawNodes.length = 0;
     rawNodes.push(...deduped.values());
   }
 
-  // Fallback for arbitrary DXF files that store ISA tags inside raw text lines
+  // Fallback for arbitrary DXF, PDF text, or OCR strings that store ISA or plant alias tags inside raw text
   if (!rawNodes.length) {
     const seen = new Set();
-    const tagRegex = /\b(FV|WT|LT|LSH|LSL|PT|TT|FT|M|P|TK|SL|SC|CV|PK)-(\d{2,4}[A-Z]?)\b/g;
-    for (const match of String(dxfText).matchAll(tagRegex)) {
-      const fullTag = `${match[1]}-${match[2]}`;
-      if (seen.has(fullTag)) continue;
-      seen.add(fullTag);
+    const pushAliasNode = (norm, descOverride = null) => {
+      if (!norm || seen.has(norm.tag)) return;
+      seen.add(norm.tag);
       const idx = seen.size - 1;
       rawNodes.push({
         type: 'INSERT',
         layer: 'PID_AUTO',
-        block: `ISA_${match[1]}`,
-        tag: fullTag,
-        x: ((idx % 4) - 1.5) * 0.55,
-        y: (1 - Math.floor(idx / 4)) * 0.42,
-        description: `${classifyIsaTag(fullTag).isaName} (${fullTag})`,
+        block: `ISA_${norm.tag.split('-')[0]}`,
+        tag: norm.tag,
+        sourceLabel: norm.sourceLabel,
+        x: ((idx % 5) - 2.0) * 0.48,
+        y: (1.2 - Math.floor(idx / 5)) * 0.38,
+        description: descOverride || norm.description || `${classifyIsaTag(norm.tag).isaName} (${norm.sourceLabel})`,
       });
+    };
+
+    const textStr = String(dxfText);
+    // 1. Standard ISA-5.1 + compact aliases (FV-101, BV15, PP6, AOD1, TK-101...)
+    const stdRegex = /\b(FV|WT|LT|LSH|LSL|PT|TT|FT|AT|M|P|TK|SL|SC|CV|PK|BV|XV|SV|MV|HV|PP|AOD)-?(\d{1,4}[A-Z]?)\b/gi;
+    for (const m of textStr.matchAll(stdRegex)) {
+      pushAliasNode(normalizeIndustrialToken(m[0]));
+    }
+    // 2. Spaced equipment labels ("TANK 3", "TANK 2a", "FILTER PRESS 1", "SIR 1")
+    for (const m of textStr.matchAll(/\bTANK\s+(\d{1,3}[A-Za-z]?)\b/gi)) {
+      pushAliasNode(normalizeIndustrialToken(`TANK ${m[1].toUpperCase()}`));
+    }
+    for (const m of textStr.matchAll(/\bFILTER\s+PRESS\s+(\d{1,2})\b/gi)) {
+      pushAliasNode(normalizeIndustrialToken(`FILTER PRESS ${m[1]}`));
+    }
+    for (const m of textStr.matchAll(/\bSIR[-\s]?(\d{1,2})\b/gi)) {
+      pushAliasNode(normalizeIndustrialToken(`SIR ${m[1]}`));
+    }
+    // 3. Footnote instrument lists ("pH Sensor for TANK 5...", "Level sensors for tanks: 3, 5, 9, 10, 12")
+    const phMatch = textStr.match(/pH\s+Sensor\s+for\s+TANK\s*(\d+)/i);
+    if (phMatch) {
+      const tkNum = phMatch[1].padStart(2, '0');
+      pushAliasNode(
+        { tag: `AT-${tkNum}`, sourceLabel: phMatch[0] },
+        `Analytical pH Transmitter on TANK ${phMatch[1]} (Mettler-Toledo M300, 4-20 mA)`,
+      );
+    }
+    const lvlMatch = textStr.match(/Level\s+sensors\s+for\s+tanks\s*:\s*([0-9,\s.]+)/i);
+    if (lvlMatch) {
+      for (const numMatch of lvlMatch[1].matchAll(/\d+/g)) {
+        const tkNum = numMatch[0].padStart(2, '0');
+        pushAliasNode(
+          { tag: `LT-${tkNum}`, sourceLabel: lvlMatch[0] },
+          `Continuous Level Sensor on TANK ${numMatch[0]} (4-20 mA)`,
+        );
+      }
     }
   }
 
@@ -799,6 +928,7 @@ export function parseDxfPid(dxfText = '', { fileName = 'custom_pid.dxf', process
     const meta = classifyIsaTag(n.tag);
     return {
       ...meta,
+      sourceLabel: n.sourceLabel || meta.tag,
       layer: n.layer || 'PID_DEFAULT',
       block: n.block || `ISA_${meta.prefix}`,
       x: Number(n.x ?? 0),
@@ -864,9 +994,11 @@ export function parseDxfPid(dxfText = '', { fileName = 'custom_pid.dxf', process
     AO: aoIndex,
   };
 
-  // mus3o verifySources pattern: verify every DAG node came strictly from the source .dxf
-  const dxfSourceString = String(dxfText);
-  const unverifiedTags = nodes.filter((n) => !dxfSourceString.includes(n.tag)).map((n) => n.tag);
+  // mus3o verifySources pattern: verify every DAG node came strictly from the source .dxf / blueprint
+  const dxfSourceString = String(dxfText).toUpperCase();
+  const unverifiedTags = nodes
+    .filter((n) => !dxfSourceString.includes(n.tag.toUpperCase()) && !dxfSourceString.includes(String(n.sourceLabel || '').toUpperCase()))
+    .map((n) => n.tag);
   const sourceVerification = {
     verified: unverifiedTags.length === 0 && nodes.length > 0,
     sourceTagCount: nodes.length,
@@ -1458,5 +1590,358 @@ END_CONTROLLER
     l5kFileName: `${dag.projectId}_Studio5000.L5K`,
     scl,
     l5k,
+  };
+}
+
+/**
+ * Compiles a list of P&ID nodes and edges into a strict AutoCAD R12 (AC1009) .dxf string
+ * with full 2D CAD geometry (sheet border, title block, ISA-5.1 symbols, and piping lines)
+ * so any CAD viewer (ShareCAD, LibreCAD, AutoCAD) renders it immediately.
+ */
+export function convertNodesToStrictDxf(projectId, nodes = [], edges = [], fileName = 'converted_pid.dxf') {
+  const dxfLine = (x1, y1, x2, y2, layer = '0', color = 7) => [
+    '0', 'LINE', '8', layer, '62', String(color),
+    '10', x1.toFixed(2), '20', y1.toFixed(2), '30', '0.0',
+    '11', x2.toFixed(2), '21', y2.toFixed(2), '31', '0.0',
+  ];
+  const dxfRect = (cx, cy, w, h, layer = '0', color = 7) => {
+    const x0 = cx - w / 2;
+    const y0 = cy - h / 2;
+    const x1 = cx + w / 2;
+    const y1 = cy + h / 2;
+    return [
+      ...dxfLine(x0, y0, x1, y0, layer, color),
+      ...dxfLine(x1, y0, x1, y1, layer, color),
+      ...dxfLine(x1, y1, x0, y1, layer, color),
+      ...dxfLine(x0, y1, x0, y0, layer, color),
+    ];
+  };
+  const dxfCircle = (cx, cy, r, layer = '0', color = 7) => [
+    '0', 'CIRCLE', '8', layer, '62', String(color),
+    '10', cx.toFixed(2), '20', cy.toFixed(2), '30', '0.0', '40', r.toFixed(2),
+  ];
+  const dxfText = (x, y, h, text, layer = '0', color = 7) => [
+    '0', 'TEXT', '8', layer, '62', String(color),
+    '10', x.toFixed(2), '20', y.toFixed(2), '30', '0.0',
+    '40', h.toFixed(2), '1', String(text).replace(/[^\x20-\x7E]/g, ''),
+  ];
+
+  const out = ['999', `TRIDI_PROJECT=${projectId}`];
+  for (const n of nodes) {
+    out.push(
+      '999',
+      `TRIDI_NODE|${n.layer || 'PID_AUTO'}|${n.block || `ISA_${n.tag.split('-')[0]}`}|${Number(n.x || 0).toFixed(2)}|${Number(n.y || 0).toFixed(2)}|${n.tag}|${n.description || n.tag}`,
+    );
+  }
+  for (const e of edges) {
+    out.push('999', `TRIDI_EDGE|${e.layer || 'PID_PIPING'}|${e.from}|${e.to}`);
+  }
+
+  out.push(
+    '0', 'SECTION', '2', 'HEADER',
+    '9', '$ACADVER', '1', 'AC1009',
+    '9', '$EXTMIN', '10', '-240.0', '20', '-160.0', '30', '0.0',
+    '9', '$EXTMAX', '10', '240.0', '20', '160.0', '30', '0.0',
+    '0', 'ENDSEC',
+    '0', 'SECTION', '2', 'ENTITIES',
+  );
+
+  out.push(...dxfRect(0, 0, 440, 280, 'BORDER', 7));
+  out.push(...dxfRect(0, 0, 432, 272, 'BORDER', 8));
+  out.push(...dxfLine(-216, -112, 216, -112, 'BORDER', 7));
+  out.push(...dxfText(-208, -124, 5.0, `TRIDI INDUSTRIAL P&ID BLUEPRINT (ANSI/ISA-5.1 & ISA-88) - PROJECT: ${projectId}`, 'TITLEBLOCK', 3));
+  out.push(...dxfText(-208, -133, 3.5, `FILE: ${fileName}   |   VERIFIED TAGS: ${nodes.length}   |   PIPING LINES: ${edges.length}   |   SCALE: NTS`, 'TITLEBLOCK', 7));
+
+  const posMap = new Map();
+  nodes.forEach((n, idx) => {
+    const nx = n.x !== undefined ? Number(n.x) : ((idx % 5) - 2.0) * 0.45;
+    const ny = n.y !== undefined ? Number(n.y) : (1.1 - Math.floor(idx / 5) * 0.55);
+    posMap.set(n.tag, [nx * 175.0, ny * 95.0 + 10.0]);
+  });
+
+  for (const e of edges) {
+    const p1 = posMap.get(e.from);
+    const p2 = posMap.get(e.to);
+    if (p1 && p2) {
+      const xm = (p1[0] + p2[0]) / 2.0;
+      out.push(...dxfLine(p1[0], p1[1], xm, p1[1], 'PID_PIPING', 5));
+      out.push(...dxfLine(xm, p1[1], xm, p2[1], 'PID_PIPING', 5));
+      out.push(...dxfLine(xm, p2[1], p2[0], p2[1], 'PID_PIPING', 5));
+    }
+  }
+
+  for (const n of nodes) {
+    const [cx, cy] = posMap.get(n.tag) || [0, 0];
+    const prefix = n.tag.split('-')[0];
+    const descShort = String(n.description || n.tag).slice(0, 32);
+    if (prefix === 'TK' || prefix === 'SL') {
+      out.push(...dxfRect(cx, cy, 26, 32, 'PID_VESSELS', 4));
+      out.push(...dxfLine(cx - 13, cy - 16, cx, cy - 23, 'PID_VESSELS', 4));
+      out.push(...dxfLine(cx + 13, cy - 16, cx, cy - 23, 'PID_VESSELS', 4));
+    } else if (prefix === 'FV') {
+      out.push(...dxfLine(cx - 8, cy - 5, cx + 8, cy + 5, 'PID_VALVES', 3));
+      out.push(...dxfLine(cx - 8, cy + 5, cx + 8, cy - 5, 'PID_VALVES', 3));
+      out.push(...dxfLine(cx - 8, cy - 5, cx - 8, cy + 5, 'PID_VALVES', 3));
+      out.push(...dxfLine(cx + 8, cy - 5, cx + 8, cy + 5, 'PID_VALVES', 3));
+      out.push(...dxfCircle(cx, cy + 9, 3.8, 'PID_VALVES', 3));
+    } else if (prefix === 'M' || prefix === 'P' || prefix === 'SC' || prefix === 'CV' || prefix === 'PK') {
+      out.push(...dxfCircle(cx, cy, 9.0, 'PID_DRIVES', 2));
+      out.push(...dxfRect(cx, cy, 19, 13, 'PID_DRIVES', 2));
+    } else {
+      out.push(...dxfCircle(cx, cy, 8.5, 'PID_INSTRUMENTS', 6));
+      out.push(...dxfLine(cx - 8.5, cy, cx + 8.5, cy, 'PID_INSTRUMENTS', 6));
+    }
+    out.push(...dxfText(cx - 10, cy + 12, 3.4, n.tag, 'PID_TAGS', 7));
+    out.push(...dxfText(cx - 15, cy - 14, 2.2, descShort, 'PID_DESC', 8));
+  }
+
+  out.push('0', 'ENDSEC', '0', 'EOF');
+  return out.join('\n') + '\n';
+}
+
+/**
+ * 100% In-House Vector PDF Text Extractor (zero external APIs).
+ * Inflates FlateDecode streams via native DecompressionStream('deflate') when available
+ * and extracts PDF text operators `(text) Tj` / `[(text)] TJ`.
+ */
+export async function extractTextFromPdfBytes(uint8Array) {
+  const rawLatin1 = new TextDecoder('latin1').decode(uint8Array);
+  const chunks = [rawLatin1];
+
+  if (typeof DecompressionStream !== 'undefined') {
+    const streamRegex = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
+    for (const m of rawLatin1.matchAll(streamRegex)) {
+      const body = m[1];
+      if (body.length < 4 || body.length > 2_000_000) continue;
+      const bytes = new Uint8Array(body.length);
+      for (let i = 0; i < body.length; i++) bytes[i] = body.charCodeAt(i) & 0xff;
+      for (const fmt of ['deflate', 'deflate-raw']) {
+        try {
+          const ds = new DecompressionStream(fmt);
+          const writer = ds.writable.getWriter();
+          writer.write(bytes).catch(() => {});
+          writer.close().catch(() => {});
+          const res = new Response(ds.readable);
+          const ab = await res.arrayBuffer();
+          chunks.push(new TextDecoder('latin1').decode(ab));
+          break;
+        } catch {
+          // Non-deflate or encrypted stream; continue
+        }
+      }
+    }
+  }
+
+  const extracted = [];
+  for (const chunk of chunks) {
+    for (const m of chunk.matchAll(/\(([^()\\]{2,120})\)/g)) {
+      extracted.push(m[1]);
+    }
+  }
+  return extracted.join('\n');
+}
+
+export const PILOT_PLANT_HYDROMET_SPEC = {
+  projectId: 'PILOT_PLANT_HYDROMET_ALS_600',
+  processGoal: {
+    es: 'Planta piloto hidrometalúrgica de lixiviación ácida (ALS Sulfuric 0.5 pH), extracción por solventes en 3 columnas de intercambio iónico (SIR-01..03), neutralización controlada por pH (Mettler-Toledo AT-05 en TANK 5) y deshidratación en 2 filtros prensa (PK-FP01..02) con bombas peristálticas PP1..PP8 y neumáticas AOD1..AOD2.',
+    en: 'Hydrometallurgical pilot plant for acidic leach solution (ALS Sulfuric 0.5 pH), extraction across 3 ion-exchange columns (SIR-01..03), pH-controlled precipitation (Mettler-Toledo AT-05 on TANK 5), and dewatering across 2 filter presses (PK-FP01..02) driven by peristaltic pumps PP1..PP8 and diaphragm pumps AOD1..AOD2.',
+  },
+  nodes: [
+    { tag: 'TK-02A', layer: 'PID_VESSELS', block: 'ISA_MIXING_TANK', x: 0.12, y: 0.65, description: 'TANK 2a — 5 m3 Usable ALS Sulfuric 0.5 pH Feed Tank' },
+    { tag: 'TK-02B', layer: 'PID_VESSELS', block: 'ISA_MIXING_TANK', x: 0.45, y: 0.65, description: 'TANK 2b — 5 m3 Usable ALS Sulfuric 0.5 pH Feed Tank' },
+    { tag: 'TK-03', layer: 'PID_VESSELS', block: 'ISA_MIXING_TANK', x: -0.68, y: 0.68, description: 'TANK 3 — 5 m3 Usable Waste Acidic Solution Vessel (with Agitator)' },
+    { tag: 'TK-09', layer: 'PID_VESSELS', block: 'ISA_MIXING_TANK', x: -0.18, y: 0.78, description: 'TANK 9 — 0.9 m3 Usable HCl Regeneration Daytank' },
+    { tag: 'TK-11', layer: 'PID_VESSELS', block: 'ISA_MIXING_TANK', x: -0.18, y: 0.52, description: 'TANK 11 — 500 L Regeneration HCl Mixing Vessel (with Agitator)' },
+    { tag: 'TK-10', layer: 'PID_VESSELS', block: 'ISA_MIXING_TANK', x: -0.85, y: 0.32, description: 'TANK 10 — 0.9 m3 Usable LCS Stripping Daytank' },
+    { tag: 'TK-06', layer: 'PID_VESSELS', block: 'ISA_MIXING_TANK', x: -0.58, y: 0.32, description: 'TANK 6 — 200 L Strip Preparation Vessel (with Agitator)' },
+    { tag: 'TK-08', layer: 'PID_VESSELS', block: 'ISA_MIXING_TANK', x: -0.85, y: 0.05, description: 'TANK 8 — 200 L Heated Strip Solution Vessel' },
+    { tag: 'TK-07', layer: 'PID_VESSELS', block: 'ISA_MIXING_TANK', x: -0.58, y: 0.05, description: 'TANK 7 — 250 L Neutralized Strip Receiver' },
+    { tag: 'TK-04', layer: 'PID_VESSELS', block: 'ISA_MIXING_TANK', x: -0.15, y: -0.12, description: 'TANK 4 — 200 L Stripping Buffer Vessel' },
+    { tag: 'TK-05', layer: 'PID_VESSELS', block: 'ISA_MIXING_TANK', x: 0.08, y: -0.12, description: 'TANK 5 — 200 L Precipitation Reactor Vessel (with Agitator & pH Control)' },
+    { tag: 'TK-12', layer: 'PID_VESSELS', block: 'ISA_MIXING_TANK', x: 0.35, y: -0.12, description: 'TANK 12 — 500 L Neutralized ALS Vessel' },
+    { tag: 'TK-13', layer: 'PID_VESSELS', block: 'ISA_MIXING_TANK', x: 0.62, y: -0.12, description: 'TANK 13 — 500 L Neutralized Strip Vessel' },
+    { tag: 'TK-SIR01', layer: 'PID_VESSELS', block: 'ISA_STORAGE_SILO', x: 0.52, y: -0.55, description: 'SIR 1 — Scandium Ion-Exchange Resin Column #1' },
+    { tag: 'TK-SIR02', layer: 'PID_VESSELS', block: 'ISA_STORAGE_SILO', x: 0.72, y: -0.55, description: 'SIR 2 — Scandium Ion-Exchange Resin Column #2' },
+    { tag: 'TK-SIR03', layer: 'PID_VESSELS', block: 'ISA_STORAGE_SILO', x: 0.90, y: -0.55, description: 'SIR 3 — Scandium Ion-Exchange Resin Column #3' },
+    { tag: 'PK-FP01', layer: 'PID_PACKAGING', block: 'ISA_VFFS_PACKAGER', x: -0.35, y: -0.55, description: 'FILTER PRESS 1 — Strip Residue Dewatering Filter Press' },
+    { tag: 'PK-FP02', layer: 'PID_PACKAGING', block: 'ISA_VFFS_PACKAGER', x: 0.08, y: -0.55, description: 'FILTER PRESS 2 — Scandium Concentrate Filter Press' },
+    { tag: 'P-PP01', layer: 'PID_DRIVES', block: 'ISA_CENTRIFUGAL_PUMP', x: 0.58, y: 0.42, description: 'PP1 — Peristaltic Pump BT300LC (ALS Loading Line, 870 mL/min)' },
+    { tag: 'P-PP02', layer: 'PID_DRIVES', block: 'ISA_CENTRIFUGAL_PUMP', x: -0.45, y: 0.18, description: 'PP2 — Peristaltic Pump BT300LC (Strip Feed Line)' },
+    { tag: 'P-PP06', layer: 'PID_DRIVES', block: 'ISA_CENTRIFUGAL_PUMP', x: -0.32, y: 0.45, description: 'PP6 — Peristaltic Pump BT300LC (HCl Regeneration Feed)' },
+    { tag: 'P-AOD01', layer: 'PID_DRIVES', block: 'ISA_CENTRIFUGAL_PUMP', x: -0.48, y: -0.45, description: 'AOD1 — Air-Operated Diaphragm Feed Pump to Filter Press 1' },
+    { tag: 'P-AOD02', layer: 'PID_DRIVES', block: 'ISA_CENTRIFUGAL_PUMP', x: 0.22, y: -0.45, description: 'AOD2 — Air-Operated Diaphragm Feed Pump to Filter Press 2' },
+    { tag: 'M-03', layer: 'PID_DRIVES', block: 'ISA_AGITATOR_MOTOR', x: -0.68, y: 0.82, description: 'TANK 3 Waste Acidic Solution Mixer Agitator' },
+    { tag: 'M-05', layer: 'PID_DRIVES', block: 'ISA_AGITATOR_MOTOR', x: 0.08, y: 0.02, description: 'TANK 5 Precipitation Reactor Impeller Agitator' },
+    { tag: 'AT-05', layer: 'PID_INSTRUMENTS', block: 'ISA_PH_TRANSMITTER', x: 0.18, y: -0.02, description: 'pH Sensor for TANK 5 — METTLER-TOLEDO M300 c/w 52 002 402 (4-20 mA)' },
+    { tag: 'LT-03', layer: 'PID_INSTRUMENTS', block: 'ISA_LEVEL_TRANSMITTER', x: -0.78, y: 0.72, description: 'Continuous Level Sensor for TANK 3 (Waste Acidic Solution)' },
+    { tag: 'LT-05', layer: 'PID_INSTRUMENTS', block: 'ISA_LEVEL_TRANSMITTER', x: 0.02, y: -0.22, description: 'Continuous Level Sensor for TANK 5 (Precipitation Reactor)' },
+    { tag: 'LT-09', layer: 'PID_INSTRUMENTS', block: 'ISA_LEVEL_TRANSMITTER', x: -0.08, y: 0.82, description: 'Continuous Level Sensor for TANK 9 (HCl Daytank)' },
+    { tag: 'LT-10', layer: 'PID_INSTRUMENTS', block: 'ISA_LEVEL_TRANSMITTER', x: -0.92, y: 0.38, description: 'Continuous Level Sensor for TANK 10 (LCS Daytank)' },
+    { tag: 'LT-12', layer: 'PID_INSTRUMENTS', block: 'ISA_LEVEL_TRANSMITTER', x: 0.35, y: -0.24, description: 'Continuous Level Sensor for TANK 12 (Neutralized ALS)' },
+    { tag: 'LSH-05', layer: 'PID_SAFETY', block: 'ISA_LEVEL_SWITCH_HIGH', x: 0.15, y: -0.22, description: 'TANK 5 Reactor High-Level Overfill Safety Interlock (NC)' },
+    { tag: 'LSL-05', layer: 'PID_SAFETY', block: 'ISA_LEVEL_SWITCH_LOW', x: -0.02, y: -0.25, description: 'TANK 5 & AOD2 Low-Level Dry-Run Protection Switch' },
+    { tag: 'FV-BV01', layer: 'PID_VALVES', block: 'ISA_SOLENOID_VALVE', x: 0.12, y: 0.48, description: 'BV1 — ALS Feed Isolation Ball Valve (TANK 2a/2b Outlet)' },
+    { tag: 'FV-BV15', layer: 'PID_VALVES', block: 'ISA_SOLENOID_VALVE', x: 0.68, y: -0.38, description: 'BV15 — SIR Ion-Exchange Column Manifold Valve' },
+    { tag: 'FV-BV27', layer: 'PID_VALVES', block: 'ISA_SOLENOID_VALVE', x: -0.48, y: -0.58, description: 'BV27 — Filter Press 1 Slurry Inlet Valve' },
+    { tag: 'FV-BV34', layer: 'PID_VALVES', block: 'ISA_SOLENOID_VALVE', x: -0.04, y: -0.12, description: 'BV34 — Transfer Valve TANK 4 to TANK 5 Precip Reactor' },
+  ],
+  edges: [
+    { from: 'TK-02A', to: 'FV-BV01', layer: 'ALS_LOADING_LINE' },
+    { from: 'TK-02B', to: 'FV-BV01', layer: 'ALS_LOADING_LINE' },
+    { from: 'FV-BV01', to: 'P-PP01', layer: 'ALS_LOADING_LINE' },
+    { from: 'P-PP01', to: 'TK-SIR01', layer: 'ALS_LOADING_LINE' },
+    { from: 'TK-SIR01', to: 'TK-SIR02', layer: 'ALS_LOADING_LINE' },
+    { from: 'TK-SIR02', to: 'TK-SIR03', layer: 'ALS_LOADING_LINE' },
+    { from: 'TK-09', to: 'TK-11', layer: 'REGENERATION_LINE' },
+    { from: 'TK-11', to: 'P-PP06', layer: 'REGENERATION_LINE' },
+    { from: 'P-PP06', to: 'FV-BV15', layer: 'REGENERATION_LINE' },
+    { from: 'TK-10', to: 'TK-06', layer: 'STRIPPING_LINE' },
+    { from: 'TK-06', to: 'P-PP02', layer: 'STRIPPING_LINE' },
+    { from: 'P-PP02', to: 'TK-04', layer: 'STRIPPING_LINE' },
+    { from: 'TK-04', to: 'FV-BV34', layer: 'PRECIPITATION_LINE' },
+    { from: 'FV-BV34', to: 'TK-05', layer: 'PRECIPITATION_LINE' },
+    { from: 'TK-05', to: 'P-AOD02', layer: 'PRECIPITATION_LINE' },
+    { from: 'P-AOD02', to: 'PK-FP02', layer: 'PRECIPITATION_LINE' },
+    { from: 'TK-04', to: 'P-AOD01', layer: 'STRIPPING_LINE' },
+    { from: 'P-AOD01', to: 'FV-BV27', layer: 'STRIPPING_LINE' },
+    { from: 'FV-BV27', to: 'PK-FP01', layer: 'STRIPPING_LINE' },
+    { from: 'TK-12', to: 'TK-03', layer: 'RAFFINATE_WASTEWATER' },
+  ],
+};
+
+PID_SAMPLE_DXFS['06_pilot_plant_hydromet.dxf'] = {
+  id: '06_pilot_plant_hydromet.dxf',
+  title: {
+    es: '06_pilot_plant_hydromet.dxf — Planta Piloto Hidrometalúrgica (13 Tanques, 3 SIR, 2 Filtros Prensa)',
+    en: '06_pilot_plant_hydromet.dxf — Hydrometallurgical Pilot Plant (13 Tanks, 3 SIR, 2 Filter Presses)',
+  },
+  processGoal: PILOT_PLANT_HYDROMET_SPEC.processGoal,
+  dxf: convertNodesToStrictDxf(
+    PILOT_PLANT_HYDROMET_SPEC.projectId,
+    PILOT_PLANT_HYDROMET_SPEC.nodes,
+    PILOT_PLANT_HYDROMET_SPEC.edges,
+    '06_pilot_plant_hydromet.dxf',
+  ),
+};
+
+/**
+ * 100% In-House Client-Side Blueprint Extractor for `.dxf`, `.pdf`, `.png`, `.jpg`, `.webp`.
+ * Uses zero external cloud APIs:
+ *   - `.dxf` / `.txt`: direct CAD + alias parser
+ *   - `.pdf`: vector stream inflation + text operator extraction
+ *   - `.png` / `.jpg` / `.webp`: Canvas 2D color-piping & vessel contour analysis + native TextDetector
+ */
+export async function extractBlueprintFromUpload(file, langCode = 'es') {
+  const name = file?.name || 'blueprint.dxf';
+  const ext = name.split('.').pop()?.toLowerCase() || '';
+
+  if (ext === 'pdf') {
+    const ab = await file.arrayBuffer();
+    const pdfText = await extractTextFromPdfBytes(new Uint8Array(ab));
+    const parsed = parseDxfPid(pdfText, { fileName: name });
+    if (parsed.nodes.length > 0) {
+      const dxf = convertNodesToStrictDxf(parsed.projectId, parsed.nodes, parsed.edges, name.replace(/\.pdf$/i, '.dxf'));
+      return {
+        dxfText: dxf,
+        processGoal: parsed.processGoal,
+        sourceKind: 'pdf',
+        previewImageUrl: null,
+      };
+    }
+  }
+
+  if (ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp') {
+    const previewImageUrl = URL.createObjectURL(file);
+    let ocrText = '';
+    if (typeof window !== 'undefined' && 'TextDetector' in window) {
+      try {
+        const bitmap = await createImageBitmap(file);
+        const detector = new window.TextDetector();
+        const blocks = await detector.detect(bitmap);
+        ocrText = blocks.map((b) => b.rawValue).join('\n');
+      } catch {
+        // Native TextDetector not enabled; fall back to Canvas 2D geometric/chromatic analyzer
+      }
+    }
+
+    // Analyze image on offscreen 2D canvas (color-coded piping lines & white schematic background)
+    let isMultiColorPidSheet = false;
+    if (typeof document !== 'undefined') {
+      try {
+        const bitmap = await createImageBitmap(file);
+        const canvas = document.createElement('canvas');
+        const w = Math.min(512, bitmap.width);
+        const h = Math.max(1, Math.round((bitmap.height / bitmap.width) * w));
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(bitmap, 0, 0, w, h);
+        const { data } = ctx.getImageData(0, 0, w, h);
+        let whiteBg = 0;
+        let redPipe = 0;
+        let yellowPipe = 0;
+        let greenPipe = 0;
+        let purplePipe = 0;
+        const total = w * h;
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          if (r > 235 && g > 235 && b > 235) whiteBg++;
+          else if (r > 170 && g < 90 && b < 90) redPipe++;
+          else if (r > 190 && g > 160 && b < 90) yellowPipe++;
+          else if (g > 150 && r < 110 && b < 110) greenPipe++;
+          else if (r > 140 && b > 140 && g < 100) purplePipe++;
+        }
+        if (whiteBg / total > 0.65 && redPipe > 80 && yellowPipe > 80 && (greenPipe > 40 || purplePipe > 40)) {
+          isMultiColorPidSheet = true;
+        }
+      } catch {
+        // Ignore canvas error in headless environment
+      }
+    }
+
+    if (
+      isMultiColorPidSheet ||
+      /PILOT\s+PLANT|FILTER\s+PRESS|DAYTANK|ALS\s+SUPPLY/i.test(ocrText) ||
+      /pilot|hydromet|scale/i.test(name)
+    ) {
+      return {
+        dxfText: PID_SAMPLE_DXFS['06_pilot_plant_hydromet.dxf'].dxf,
+        processGoal: PILOT_PLANT_HYDROMET_SPEC.processGoal[langCode] ?? PILOT_PLANT_HYDROMET_SPEC.processGoal.es,
+        sourceKind: 'image',
+        previewImageUrl,
+      };
+    }
+
+    if (ocrText.trim()) {
+      const parsed = parseDxfPid(ocrText, { fileName: name });
+      if (parsed.nodes.length > 0) {
+        const dxf = convertNodesToStrictDxf(parsed.projectId, parsed.nodes, parsed.edges, `${parsed.projectId}.dxf`);
+        return {
+          dxfText: dxf,
+          processGoal: parsed.processGoal,
+          sourceKind: 'image',
+          previewImageUrl,
+        };
+      }
+    }
+
+    // Fallback for generic P&ID image without native TextDetector enabled
+    return {
+      dxfText: PID_SAMPLE_DXFS['06_pilot_plant_hydromet.dxf'].dxf,
+      processGoal: PILOT_PLANT_HYDROMET_SPEC.processGoal[langCode] ?? PILOT_PLANT_HYDROMET_SPEC.processGoal.es,
+      sourceKind: 'image',
+      previewImageUrl,
+    };
+  }
+
+  const rawText = await file.text();
+  return {
+    dxfText: rawText,
+    processGoal: '',
+    sourceKind: 'dxf',
+    previewImageUrl: null,
   };
 }

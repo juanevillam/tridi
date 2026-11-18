@@ -136,7 +136,7 @@ assert(feedPos > 0.25 && pusherPos > 0.08 && sealerPos > 0.06, `factory_cell act
 console.log(`P-4 factory_cell: conveyor=${feedPos.toFixed(2)} m, pusher=${pusherPos.toFixed(2)} m, sealer=${sealerPos.toFixed(2)} m`);
 
 // 5. J-6: Verify P&ID (.dxf) Parser, ISA-5.1 Docs Generator, 3D Plant MuJoCo XML & PLC Flat-File Exporter
-for (const sampleId of ['01_batch_mixer.dxf', '02_silo_packaging.dxf']) {
+for (const sampleId of ['01_batch_mixer.dxf', '02_silo_packaging.dxf', '06_pilot_plant_hydromet.dxf']) {
   const sample = PID_SAMPLE_DXFS[sampleId];
   const dag = parseDxfPid(sample.dxf, { fileName: sampleId });
   assert(dag.nodes.length >= 12, `${sampleId}: expected >= 12 ISA-5.1 tags, got ${dag.nodes.length}`);
@@ -157,7 +157,26 @@ for (const sampleId of ['01_batch_mixer.dxf', '02_silo_packaging.dxf']) {
   sim.load(xmlPath, 'home');
   assert(sim.model.nq === 10 && sim.model.nu === 3, `${sampleId}: compiled 3D P&ID XML expected nq=10 nu=3, got nq=${sim.model.nq} nu=${sim.model.nu}`);
 }
-console.log('J-6 pid_assembler: parsed 01_batch_mixer.dxf & 02_silo_packaging.dxf, verified 100% ISA-5.1 tags, generated FDS + SCL/L5K + valid MuJoCo 3D XML');
+
+// Verify flexible plant alias parser (TANK 5, BV15, PP6, AOD1, FILTER PRESS 1, pH Sensor & Level sensor footnotes)
+const rawAliasText = `
+  PILOT PLANT ON SCALE P&ID
+  TANK 3 5cuM WASTE ACIDIC SOLUTION
+  TANK 5 200L PRECIP
+  BV15 BV27 PP6 AOD1 FILTER PRESS 1 SIR 1
+  pH Sensor for TANK 5: METTLER-TOLEDO M300
+  Level sensors for tanks: 3, 5, 9, 10, 12
+`;
+const aliasDag = parseDxfPid(rawAliasText, { fileName: 'pilot_plant_ocr.txt' });
+assert(aliasDag.nodes.some((n) => n.tag === 'TK-05'), 'expected TANK 5 -> TK-05');
+assert(aliasDag.nodes.some((n) => n.tag === 'FV-BV15'), 'expected BV15 -> FV-BV15');
+assert(aliasDag.nodes.some((n) => n.tag === 'P-PP06'), 'expected PP6 -> P-PP06');
+assert(aliasDag.nodes.some((n) => n.tag === 'P-AOD01'), 'expected AOD1 -> P-AOD01');
+assert(aliasDag.nodes.some((n) => n.tag === 'PK-FP01'), 'expected FILTER PRESS 1 -> PK-FP01');
+assert(aliasDag.nodes.some((n) => n.tag === 'AT-05'), 'expected pH Sensor for TANK 5 -> AT-05');
+assert(aliasDag.nodes.some((n) => n.tag === 'LT-12'), 'expected Level sensors footnote -> LT-12');
+assert(aliasDag.sourceVerification.verified, `aliasDag verifyPidSources failed: ${JSON.stringify(aliasDag.sourceVerification)}`);
+console.log('J-6 pid_assembler: parsed 01_batch_mixer.dxf, 02_silo_packaging.dxf & 06_pilot_plant_hydromet.dxf + flexible plant aliases, verified 100% ISA-5.1 tags');
 
 sim.delete();
 if (failures.length) {

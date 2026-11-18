@@ -27,6 +27,9 @@ export {
 } from '../components/index.js';
 export { classifyStlMeshes, generateMujocoXml, parseArduinoSketch } from './assembler.js';
 export {
+  convertNodesToStrictDxf,
+  extractBlueprintFromUpload,
+  extractTextFromPdfBytes,
   generateIsaEngineeringDocs,
   generatePidMujocoXml,
   generatePlcFlatFile,
@@ -34,6 +37,7 @@ export {
   ISA_STANDARD,
   parseDxfPid,
   PID_SAMPLE_DXFS,
+  PILOT_PLANT_HYDROMET_SPEC,
 } from './pid_assembler.js';
 
 export const ROBOTS = [
