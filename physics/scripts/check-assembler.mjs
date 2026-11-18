@@ -143,8 +143,14 @@ for (const sampleId of ['01_batch_mixer.dxf', '02_silo_packaging.dxf']) {
   assert(dag.sourceVerification.verified, `${sampleId}: verifyPidSources failed (${JSON.stringify(dag.sourceVerification)})`);
   const docs = generateIsaEngineeringDocs(dag, { lang: 'en' });
   assert(docs.markdown.includes('FUNCTIONAL DESIGN SPECIFICATION') && docs.causeEffectMatrix.length === 4, `${sampleId}: ISA FDS docs incomplete`);
+  assert(docs.ioCsv.includes('PLC_Symbolic_Tag,ISA_5_1_Tag') && docs.ioCsvFileName.endsWith('.csv'), `${sampleId}: PLC I/O CSV export missing`);
   const plc = generatePlcFlatFile(dag);
-  assert(plc.scl.includes('FB_Motor_Standard') && plc.l5k.includes('ADD_ON_INSTRUCTION_DEFINITION'), `${sampleId}: PLC flat-file export incomplete`);
+  assert(
+    plc.scl.includes('FB_Motor_Standard') &&
+      plc.scl.includes('DATA_BLOCK "BatchDB"') &&
+      plc.l5k.includes('ADD_ON_INSTRUCTION_DEFINITION FB_Valve_Standard'),
+    `${sampleId}: PLC flat-file export incomplete`,
+  );
   const pid3d = generatePidMujocoXml(dag);
   const xmlPath = `factory_cell/${pid3d.modelName}.xml`;
   sim.files[xmlPath] = new TextEncoder().encode(pid3d.sceneXml);

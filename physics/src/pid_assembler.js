@@ -722,13 +722,16 @@ export function parseDxfPid(dxfText = '', { fileName = 'custom_pid.dxf', process
     }
     if (code === 0) {
       if (currentEntity) {
-        if (currentEntity.type === 'INSERT' && currentEntity.tag) {
+        if ((currentEntity.type === 'INSERT' || currentEntity.type === 'TEXT' || currentEntity.type === 'MTEXT' || currentEntity.type === 'ATTRIB') && currentEntity.tag) {
           rawNodes.push(currentEntity);
         } else if ((currentEntity.type === 'LINE' || currentEntity.type === 'LWPOLYLINE') && currentEntity.from && currentEntity.to) {
           rawEdges.push({ from: currentEntity.from, to: currentEntity.to, layer: currentEntity.layer || 'PID_PIPING' });
         }
       }
-      currentEntity = val === 'INSERT' || val === 'LINE' || val === 'LWPOLYLINE' || val === 'TEXT' || val === 'MTEXT' ? { type: val, x: 0, y: 0 } : null;
+      currentEntity =
+        val === 'INSERT' || val === 'LINE' || val === 'LWPOLYLINE' || val === 'TEXT' || val === 'MTEXT' || val === 'ATTRIB'
+          ? { type: val, x: 0, y: 0 }
+          : null;
       continue;
     }
     if (!currentEntity) continue;
@@ -740,17 +743,38 @@ export function parseDxfPid(dxfText = '', { fileName = 'custom_pid.dxf', process
     if (code === 10) currentEntity.x = Number(val) || 0;
     if (code === 20) currentEntity.y = Number(val) || 0;
     if (code === 1) {
-      if (currentEntity.type === 'LINE' || currentEntity.type === 'LWPOLYLINE') currentEntity.from = val;
-      else currentEntity.tag = val;
+      if (currentEntity.type === 'LINE' || currentEntity.type === 'LWPOLYLINE') {
+        currentEntity.from = val;
+      } else if (currentEntity.type === 'INSERT') {
+        currentEntity.tag = val;
+      } else {
+        const m = val.match(/\b(FV|WT|LT|LSH|LSL|PT|TT|FT|M|P|TK|SL|SC|CV|PK)-?(\d{2,4}[A-Z]?)\b/i);
+        if (m) currentEntity.tag = `${m[1].toUpperCase()}-${m[2].toUpperCase()}`;
+      }
     }
     if (code === 3) currentEntity.description = val;
   }
-  if (currentEntity?.type === 'INSERT' && currentEntity.tag) rawNodes.push(currentEntity);
+  if ((currentEntity?.type === 'INSERT' || currentEntity?.type === 'TEXT' || currentEntity?.type === 'MTEXT' || currentEntity?.type === 'ATTRIB') && currentEntity.tag) {
+    rawNodes.push(currentEntity);
+  }
   if ((currentEntity?.type === 'LINE' || currentEntity?.type === 'LWPOLYLINE') && currentEntity.from && currentEntity.to) {
     rawEdges.push({ from: currentEntity.from, to: currentEntity.to, layer: currentEntity.layer || 'PID_PIPING' });
   }
 
-  // Fallback for arbitrary DXF files that store ISA tags inside TEXT/MTEXT or raw text lines
+  // Deduplicate nodes by normalized ISA tag while preserving first-seen coordinates and descriptions
+  if (rawNodes.length > 0) {
+    const deduped = new Map();
+    for (const n of rawNodes) {
+      const normTag = classifyIsaTag(n.tag).tag;
+      if (!deduped.has(normTag)) {
+        deduped.set(normTag, { ...n, tag: normTag });
+      }
+    }
+    rawNodes.length = 0;
+    rawNodes.push(...deduped.values());
+  }
+
+  // Fallback for arbitrary DXF files that store ISA tags inside raw text lines
   if (!rawNodes.length) {
     const seen = new Set();
     const tagRegex = /\b(FV|WT|LT|LSH|LSL|PT|TT|FT|M|P|TK|SL|SC|CV|PK)-(\d{2,4}[A-Z]?)\b/g;
@@ -785,6 +809,14 @@ export function parseDxfPid(dxfText = '', { fileName = 'custom_pid.dxf', process
 
   const nodeTagSet = new Set(nodes.map((n) => n.tag));
   const edges = rawEdges.filter((e) => nodeTagSet.has(e.from) && nodeTagSet.has(e.to));
+
+  // If an arbitrary AutoCAD .dxf had geometric lines without explicit tag attributes, link process equipment sequentially
+  if (!edges.length && nodes.length > 1) {
+    const equipOrder = [...nodes].sort((a, b) => a.x - b.x || b.y - a.y);
+    for (let i = 0; i + 1 < equipOrder.length; i++) {
+      edges.push({ from: equipOrder[i].tag, to: equipOrder[i + 1].tag, layer: 'PID_INFERRED_TOPO' });
+    }
+  }
 
   // Build deterministic PLC I/O schedule from all parsed nodes
   const ioSchedule = [];
@@ -858,6 +890,21 @@ export function parseDxfPid(dxfText = '', { fileName = 'custom_pid.dxf', process
 }
 
 /**
+ * Generates an Excel / TIA Portal / Studio 5000 compatible CSV of the PLC I/O Schedule.
+ */
+export function generatePlcIoCsv(dag) {
+  const escCsv = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+  const header = ['PLC_Symbolic_Tag', 'ISA_5_1_Tag', 'IO_Type', 'PLC_Address', 'Electrical_Signal', 'Standard_Function_Block', 'Fail_Safe_State', 'Description'];
+  const rows = dag.ioSchedule.map((io) =>
+    [io.plcTag, io.isaTag, io.ioType, io.address, io.signal, io.plcBlock, io.failSafe, io.description].map(escCsv).join(','),
+  );
+  return {
+    fileName: `IO_SCHEDULE_${dag.projectId}.csv`,
+    csv: [header.join(','), ...rows].join('\n') + '\n',
+  };
+}
+
+/**
  * Priority 1 (Ing. José González / ZAKA):
  * Generates the complete 4-part ISA-5.1 / ISA-88 Functional Design Specification (FDS):
  *   1. Process Overview & Equipment Schedule
@@ -870,10 +917,13 @@ export function generateIsaEngineeringDocs(dag, { lang = 'es' } = {}) {
   const valves = dag.nodes.filter((n) => n.prefix === 'FV');
   const motors = dag.nodes.filter((n) => n.prefix === 'M' || n.prefix === 'P' || n.prefix === 'SC' || n.prefix === 'CV');
   const vessels = dag.nodes.filter((n) => n.prefix === 'TK' || n.prefix === 'SL');
-  const scales = dag.nodes.filter((n) => n.prefix === 'WT');
+  const silos = dag.nodes.filter((n) => n.prefix === 'SL');
+  const screws = dag.nodes.filter((n) => n.prefix === 'SC');
+  const scales = dag.nodes.filter((n) => n.prefix === 'WT' || n.prefix === 'LT');
   const highSwitches = dag.nodes.filter((n) => n.prefix === 'LSH');
   const lowSwitches = dag.nodes.filter((n) => n.prefix === 'LSL');
   const packagers = dag.nodes.filter((n) => n.prefix === 'PK');
+  const isSiloLine = silos.length > 0 && (screws.length > 0 || packagers.length > 0);
 
   const mainVessel = vessels.find((v) => v.prefix === 'TK')?.tag ?? vessels[0]?.tag ?? 'TK-101';
   const mainScale = scales[0]?.tag ?? 'WT-101';
@@ -887,15 +937,25 @@ export function generateIsaEngineeringDocs(dag, { lang = 'es' } = {}) {
       step: 'STEP 00 · IDLE & PERMISSIVE CHECK',
       title: isEs ? 'Verificación de permisivos e interlocks de seguridad' : 'Safety Interlocks & Initial Permissive Check',
       logic: isEs
-        ? `Verificar que el interruptor de sobrellenado ${mainHigh} esté sano (contacto NC = 1), que ningún motor (${motors.map((m) => m.tag).join(', ') || 'M-101'}) presente falla térmica (OL = 1) y que todas las válvulas (${valves.map((v) => v.tag).join(', ')}) estén en posición cerrada confirmada.`
-        : `Verify high-level switch ${mainHigh} is healthy (NC contact = 1), all motors (${motors.map((m) => m.tag).join(', ') || 'M-101'}) report thermal overload OK (OL = 1), and all valves (${valves.map((v) => v.tag).join(', ')}) confirm closed feedback.`,
+        ? `Verificar que el interruptor de sobrellenado ${mainHigh} esté sano (contacto NC = 1), que ningún motor (${motors.map((m) => m.tag).join(', ') || 'M-101'}) presente falla térmica (OL = 1) y que todas las válvulas (${valves.map((v) => v.tag).join(', ') || 'FV-101'}) estén en posición cerrada confirmada.`
+        : `Verify high-level switch ${mainHigh} is healthy (NC contact = 1), all motors (${motors.map((m) => m.tag).join(', ') || 'M-101'}) report thermal overload OK (OL = 1), and all valves (${valves.map((v) => v.tag).join(', ') || 'FV-101'}) confirm closed feedback.`,
     },
     {
-      step: 'STEP 10 · TARE & GRAVIMETRIC DOSING',
-      title: isEs ? 'Tara de báscula y dosificación gravimétrica secuencial' : 'Scale Auto-Tare & Sequential Gravimetric Dosing',
-      logic: isEs
-        ? `Registrar peso de tara en el transmisor ${mainScale} (4-20 mA) sobre ${mainVessel}. Abrir secuencialmente ${feedValves.join(' → ')} hasta alcanzar el setpoint de receta de cada ingrediente con corte anticipado (in-flight compensation).`
-        : `Capture tare weight on load-cell transmitter ${mainScale} (4-20 mA) under ${mainVessel}. Sequentially open ${feedValves.join(' → ')} until each recipe target weight is reached with in-flight dribble compensation.`,
+      step: isSiloLine ? 'STEP 10 · SILO SELECTION & EXTRACTION' : 'STEP 10 · TARE & GRAVIMETRIC DOSING',
+      title: isSiloLine
+        ? isEs
+          ? 'Selección de silos activos y habilitación de válvulas de descarga'
+          : 'Active Silo Routing & Discharge Valve Enable'
+        : isEs
+          ? 'Tara de báscula y dosificación gravimétrica secuencial'
+          : 'Scale Auto-Tare & Sequential Gravimetric Dosing',
+      logic: isSiloLine
+        ? isEs
+          ? `Monitorear nivel continuo en ${scales.map((s) => s.tag).join(', ') || mainScale} sobre ${silos.map((s) => s.tag).join(', ')}. Abrir válvulas rotativas/cuchilla (${feedValves.join(' → ')}) hacia el colector principal.`
+          : `Monitor continuous level transmitters ${scales.map((s) => s.tag).join(', ') || mainScale} on ${silos.map((s) => s.tag).join(', ')}. Open discharge valves (${feedValves.join(' → ')}) into the main header.`
+        : isEs
+          ? `Registrar peso de tara en el transmisor ${mainScale} (4-20 mA) sobre ${mainVessel}. Abrir secuencialmente ${feedValves.join(' → ')} hasta alcanzar el setpoint de receta de cada ingrediente con corte anticipado (in-flight compensation).`
+          : `Capture tare weight on load-cell transmitter ${mainScale} (4-20 mA) under ${mainVessel}. Sequentially open ${feedValves.join(' → ')} until each recipe target weight is reached with in-flight dribble compensation.`,
     },
     {
       step: 'STEP 20 · PROCESS CONDITIONING / MIXING',
@@ -996,9 +1056,13 @@ export function generateIsaEngineeringDocs(dag, { lang = 'es' } = {}) {
     ``,
   ];
 
+  const ioCsvObj = generatePlcIoCsv(dag);
+
   return {
     projectId: dag.projectId,
     fileName: `FDS_ISA51_${dag.projectId}.md`,
+    ioCsvFileName: ioCsvObj.fileName,
+    ioCsv: ioCsvObj.csv,
     controlNarrative,
     causeEffectMatrix,
     markdown: mdLines.join('\n'),
@@ -1227,6 +1291,31 @@ BEGIN
    END_IF;
 END_FUNCTION_BLOCK
 
+TYPE "UDT_FormatRecipe"
+VERSION : 0.1
+   STRUCT
+      RecipeTarget_kg : Real := 300.0;
+      MixDuration_s : Real := 120.0;
+      VFD_Freq_Hz : Real := 50.0;
+      VFD_Ramp_s : Real := 0.35;
+   END_STRUCT;
+END_TYPE
+
+DATA_BLOCK "BatchDB"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+NON_RETAIN
+   VAR
+      StartBatchCmd : Bool := FALSE;
+      OperatorReset : Bool := FALSE;
+      StepIndex : Int := 0;
+      TareWeight_kg : Real := 0.0;
+      RecipeTarget_kg : Real := 300.0;
+      MixTimer_s : Real := 0.0;
+   END_VAR
+BEGIN
+END_DATA_BLOCK
+
 ORGANIZATION_BLOCK "OB1_ISA88_Batch_Sequencer"
 { S7_Optimized_Access := 'TRUE' }
 VERSION : 0.1
@@ -1327,6 +1416,20 @@ CONTROLLER ${dag.projectId.replace(/[^A-Z0-9_]/gi, '_')} (ProcessorType := "1756
       N: IF NOT ThermalOverloadOk THEN FaultActive := 1; END_IF;
       N: ContactorOut := StartCmd AND (NOT StopCmd) AND (NOT FaultActive) AND InterlockHealthy;
       N: IF RunStatus THEN RunHours := RunHours + (0.02 / 3600.0); END_IF;
+    END_ROUTINE
+  END_ADD_ON_INSTRUCTION_DEFINITION
+
+  ADD_ON_INSTRUCTION_DEFINITION FB_Valve_Standard (Revision := "1.0")
+    PARAMETERS
+      OpenCmd : BOOL (Usage := Input);
+      ZsOpen : BOOL (Usage := Input);
+      InterlockHealthy : BOOL (Usage := Input);
+      SolenoidOut : BOOL (Usage := Output);
+      ValveFault : BOOL (Usage := Output);
+    END_PARAMETERS
+    ROUTINE Logic (Type := ST)
+      RC: "ISA-5.1 Standard Fail-Closed Valve Block";
+      N: SolenoidOut := OpenCmd AND InterlockHealthy AND (NOT ValveFault);
     END_ROUTINE
   END_ADD_ON_INSTRUCTION_DEFINITION
 
