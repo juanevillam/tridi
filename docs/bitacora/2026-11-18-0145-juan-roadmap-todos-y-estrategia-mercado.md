@@ -25,3 +25,4 @@ rama: juan/roadmap-y-mercado
 ## Qué sigue
 
 - Iterar con Juan los cambios y acciones concretas sobre [`docs/plan-ventas-y-comunidades.md`](../plan-ventas-y-comunidades.md) (comunidades en Venezuela, LinkedIn de Tridi, foros de automatistas y correos a labs de robótica).
+- **Actualización (01:55):** Reescrito y ampliado [`docs/plan-ventas-y-comunidades.md`](../plan-ventas-y-comunidades.md) como plan completo B2B sobre las 3 verticales en producción (1. Matriz de comercialización por vertical, 2. Entrada "Show & Ask" en comunidades de Venezuela y foros online `r/PLC`, `PLCTalk`, `LeRobot`, `Unitree`, 3. Estrategia operativa de LinkedIn para Tridi y los 4 co-founders con 4 pilares de video y rutina diaria de conexiones, 4. Guiones exactos de Cold Email para labs con G1/rovers, startups de datos de YC e integradores industriales, 5. Fuentes abiertas de contactos en GitHub/ArXiv/CSIA/Rockwell, y 6. Plan de ejecución de 7 días).
