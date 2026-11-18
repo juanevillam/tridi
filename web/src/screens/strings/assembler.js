@@ -44,7 +44,68 @@ export const { T, t, A } = dict({
   step3Cad: { es: 'Gemelo 3D + Firmware C99', en: '3D Twin + C99 Firmware' },
   step3CadSub: { es: 'Exporta MuJoCo .xml y lazo a 50 Hz (.ino)', en: 'Exports MuJoCo .xml & 50 Hz loop (.ino)' },
 
-  // Mode 1: P&ID (.dxf)
+  // Mode 1: P&ID (.dxf) — Commercial 2-step flow (Option A: Simple Upload -> FDS Doc + Optional Technical Drawer)
+  dropKicker: {
+    es: 'INGENIERÍA AUTOMÁTICA DESDE AUTOCAD · ISA-5.1 / ISA-88',
+    en: 'AUTOMATED ENGINEERING FROM AUTOCAD · ISA-5.1 / ISA-88',
+  },
+  dropTitle: {
+    es: 'Sube tu plano P&ID (.dxf) y genera la documentación de ingeniería',
+    en: 'Upload your P&ID blueprint (.dxf) to generate engineering documentation',
+  },
+  dropLead: {
+    es: 'Extrae automáticamente equipos, válvulas e instrumentación ISA-5.1 sin alucinar componentes y entrega la memoria descriptiva (FDS), filosofía de operación y matriz Causa-Efecto.',
+    en: 'Automatically extracts equipment, valves, and ISA-5.1 instrumentation with zero hallucinated components and delivers the Functional Design Specification (FDS), control narrative, and Cause & Effect matrix.',
+  },
+  dropBoxTitle: {
+    es: 'Seleccionar archivo P&ID (.dxf)',
+    en: 'Choose P&ID file (.dxf)',
+  },
+  dropBoxSub: {
+    es: 'o arrastra y suelta tu plano exportado de AutoCAD aquí',
+    en: 'or drag and drop your AutoCAD blueprint here',
+  },
+  dropGoalPlaceholder: {
+    es: 'Ej. Dosificar 3 ingredientes por peso en TK-101, agitar 120 s y descargar a cinta...',
+    en: 'E.g. Dose 3 ingredients by weight into TK-101, agitate 120 s and discharge to conveyor...',
+  },
+  dropSamplesLabel: {
+    es: '¿No tienes un plano a mano? Prueba con un caso real en 1 clic:',
+    en: 'No blueprint on hand? Try a real industrial case in 1 click:',
+  },
+  changeFileBtn: {
+    es: '← Subir otro plano .dxf',
+    en: '← Upload another .dxf',
+  },
+  docReadyBar: {
+    es: 'DOCUMENTACIÓN EJECUTIVA DE INGENIERÍA · ANSI/ISA-5.1 & ISA-88',
+    en: 'EXECUTIVE ENGINEERING DOCUMENTATION · ANSI/ISA-5.1 & ISA-88',
+  },
+  secOverview: {
+    es: 'Objetivo Operativo del Proceso',
+    en: 'Operational Process Objective',
+  },
+  dlCsvBtn: {
+    es: 'Descargar Tabla I/O (.csv) ↓',
+    en: 'Download I/O Table (.csv) ↓',
+  },
+  printPdfBtn: {
+    es: 'Imprimir / Guardar PDF',
+    en: 'Print / Save PDF',
+  },
+  techDrawerTitle: {
+    es: 'Ver información técnica avanzada (Tabla de direcciones PLC I/O, Código Siemens .scl / Rockwell .L5K, Esquema 2D y XML 3D)',
+    en: 'View advanced technical details (PLC I/O Address Table, Siemens .scl / Rockwell .L5K Code, 2D Schematic & 3D XML)',
+  },
+  tabDiagram: {
+    es: '3 · Esquema 2D y Fallas',
+    en: '3 · 2D Schematic & Faults',
+  },
+  colDesc: {
+    es: 'Descripción en Plano',
+    en: 'Blueprint Description',
+  },
+
   pidSourceBar: { es: '01 · plano p&id (.dxf) y gemelo interactivo del proceso', en: '01 · p&id blueprint (.dxf) & interactive process twin' },
   pidPickSample: { es: 'Plano P&ID (.dxf)', en: 'P&ID Blueprint (.dxf)' },
   pidUploadBtn: { es: '+ Subir .dxf', en: '+ Upload .dxf' },
