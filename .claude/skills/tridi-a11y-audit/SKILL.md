@@ -32,10 +32,12 @@ Three non-negotiable contracts (ported from `~/Code/portfolio`):
 Walk every route (`#/`, `#/simulations`, `#/live`, `#/upload`, `#/delivery`, `#/assembler`, `#/milestones`, `#/docs`, `#/team`) using `Tab`, `Shift+Tab`, `Enter`, `Space`, `Escape`, and arrow keys:
 - **Visible focus ring (`:focus-visible`):** Every interactive button, link, `<select>`, `<input type="range">`, tab, and card has a high-contrast `:focus-visible` indicator (`>= 3:1` against background, WCAG 2.4.11 / 1.4.11).
 - **Landing navbar dropdown (`Studio ▾` in `web/src/screens/home.js`):** Reachable via `Tab`, opens/closes via keyboard, `Escape` closes it, and links inside are reachable only when open.
-- **Fullscreen Photo Lightbox (`dialog.photo-viewer` in `#/milestones`):**
-  - Opening a photo moves focus inside the `<dialog>`, traps `Tab` inside the modal, navigates photos with `ArrowLeft` / `ArrowRight`, closes on `Escape`, and restores focus to the thumbnail button that opened it.
-- **Tabs & Segmented Controls (`.milestone-tabs`, `.asm-tabs`, `.asm-mode-toggle`, `#show`):**
+- **Fullscreen Photo Lightbox (`dialog.photo-viewer` in `#/milestones`) & Overlays:**
+  - Opening a photo moves focus inside the `<dialog>`, traps `Tab` inside the modal (apply `inert` and `aria-hidden="true"` to background shells/covered layers when custom overlays are open), navigates photos with `ArrowLeft` / `ArrowRight`, closes on `Escape` in strict topmost-layer order, and restores focus to the thumbnail button that opened it.
+- **Tabs, Accordions & Segmented Controls (`.milestone-tabs`, `.asm-tabs`, `<details>` technical accordion, `#show`):**
   - Proper `role="tablist"` / `role="tab"` / `aria-selected` or `aria-pressed` states.
+- **Async & Dynamic Announcements:**
+  - Long operations (P&ID `.dxf`/`.pdf` parsing, video upload, ONNX/WASM loading) expose `aria-busy="true"` and status updates via `role="status"` / `aria-live="polite"`.
 
 ### 2. Screen Reader & Bilingual Names (`ES` + `EN`)
 
