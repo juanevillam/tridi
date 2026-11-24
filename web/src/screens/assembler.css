@@ -1,12 +1,24 @@
-/* #/assembler — Tridi Assembler Studio (P&ID .dxf + CAD .stl/.ino -> ISA-5.1 Docs, 3D Twin & PLC/C99 Code) */
+/* #/assembler — Tridi Assembler Studio (P&ID .dxf/.pdf + CAD .stl/.ino -> ISA-5.1 Docs, 3D Twin & PLC/C99 Code) */
 
 .asm-page {
   width: min(1720px, 100%);
   margin: 0 auto;
   min-height: 100svh;
   padding: 14px 20px 28px;
-  background: #08090b;
-  color: var(--fg, #f5f5f5);
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.asm-sr-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .asm-shell {
@@ -18,6 +30,7 @@
 }
 
 .asm-pill {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -26,19 +39,30 @@
   border: 1px solid rgb(241 243 238 / 0.16);
   border-radius: 999px;
   background: rgb(18 20 23 / 0.78);
-  color: var(--fg-2, #a3a3a3);
+  color: var(--ink-soft);
   font: 500 12px/1 var(--mono);
   white-space: nowrap;
   text-decoration: none;
   cursor: pointer;
-  transition: border-color 0.2s, color 0.2s, background-color 0.2s, transform 0.15s;
+  transition:
+    border-color var(--hover),
+    color var(--hover),
+    background-color var(--hover),
+    transform var(--dur-micro) var(--ease);
 }
 
 .asm-pill:hover,
-.asm-pill:focus-visible {
-  border-color: var(--fg);
-  color: var(--fg);
+.asm-pill:focus-visible,
+.asm-pill:focus-within {
+  border-color: var(--ink);
+  color: var(--ink);
   background: rgb(241 243 238 / 0.08);
+}
+
+.asm-pill:focus-visible,
+.asm-pill:focus-within {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
 }
 
 .asm-pill:active {
@@ -47,9 +71,9 @@
 
 .asm-pill.signal,
 .asm-pill.signal span {
-  border-color: #f1f3ee;
-  background: #f1f3ee;
-  color: #08090b;
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--bg);
   font-weight: 600;
 }
 
@@ -59,7 +83,7 @@
 .asm-pill.signal:focus-visible span {
   background: #ffffff;
   border-color: #ffffff;
-  color: #08090b;
+  color: var(--bg);
 }
 
 /* Mode selector (compact pill toggle in header) */
@@ -79,15 +103,18 @@
   border: 1px solid transparent;
   border-radius: 999px;
   background: transparent;
-  color: var(--fg-2, #a3a3a3);
+  color: var(--ink-soft);
   font: 600 11.5px/1 var(--display);
   white-space: nowrap;
   cursor: pointer;
-  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+  transition:
+    background-color var(--hover),
+    color var(--hover),
+    border-color var(--hover);
 }
 
 .asm-mode-btn:not([aria-selected='true']):hover:not(:disabled) {
-  color: var(--fg, #f5f5f5);
+  color: var(--ink);
   background: rgb(241 243 238 / 0.06);
   border-color: transparent;
 }
@@ -96,7 +123,7 @@
 .asm-mode-btn[aria-selected='true']:hover:not(:disabled) {
   border-color: rgb(241 243 238 / 0.35);
   background: rgb(241 243 238 / 0.14);
-  color: var(--fg, #f5f5f5);
+  color: var(--ink);
   cursor: default;
 }
 
@@ -123,7 +150,7 @@
 .asm-win {
   display: grid;
   align-content: start;
-  border: 1px solid rgb(241 243 238 / 0.12);
+  border: 1px solid var(--line);
   border-radius: 12px;
   background: #121417;
   box-shadow: inset 0 0.75px 0 rgb(255 255 255 / 0.08);
@@ -142,11 +169,11 @@
   font: 600 10.5px/1.2 var(--mono);
   letter-spacing: 0.07em;
   text-transform: uppercase;
-  color: var(--dim, #7a7a7a);
+  color: var(--muted);
 }
 
 .asm-bar b {
-  color: var(--fg-2, #a3a3a3);
+  color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
 }
 
@@ -166,7 +193,7 @@
   font: 600 11px/1.2 var(--mono);
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--fg-2, #a3a3a3);
+  color: var(--ink-soft);
 }
 
 .asm-row {
@@ -183,8 +210,8 @@
   padding: 9px 12px;
   border: 1px solid rgb(241 243 238 / 0.16);
   border-radius: 8px;
-  background: #08090b;
-  color: var(--fg);
+  background: var(--bg);
+  color: var(--ink);
   font: 500 13px/1.4 var(--display);
 }
 
@@ -211,13 +238,13 @@
   font: 600 10.5px/1 var(--mono);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  color: var(--fg-2);
+  color: var(--ink-soft);
 }
 
 .asm-badge.ok {
   border-color: rgb(241 243 238 / 0.24);
   background: rgb(241 243 238 / 0.07);
-  color: var(--fg, #f5f5f5);
+  color: var(--ink);
 }
 
 .asm-badge.err {
@@ -233,7 +260,7 @@
   padding: 12px;
   border: 1px solid rgb(241 243 238 / 0.1);
   border-radius: 10px;
-  background: #08090b;
+  background: var(--bg);
 }
 
 .asm-pid-hud {
@@ -255,22 +282,22 @@
   font: 500 10px/1.2 var(--mono);
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--dim);
+  color: var(--muted);
 }
 
 .asm-hud-card b {
   font: 600 13px/1.2 var(--mono);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  color: var(--fg);
+  color: var(--ink);
 }
 
 .asm-hud-card b.trip {
-  color: #ff6b6b;
+  color: var(--error);
 }
 
 .asm-hud-card b.ok {
-  color: var(--fg, #f5f5f5);
+  color: var(--ink);
 }
 
 .asm-pid-svg {
@@ -299,15 +326,18 @@
   border: 1px solid rgb(241 243 238 / 0.14);
   border-radius: 999px;
   background: transparent;
-  color: var(--fg-2);
+  color: var(--ink-soft);
   font: 600 11.5px/1 var(--display);
   white-space: nowrap;
   cursor: pointer;
-  transition: background-color 0.18s, color 0.18s, border-color 0.18s;
+  transition:
+    background-color var(--hover),
+    color var(--hover),
+    border-color var(--hover);
 }
 
 .asm-tab:not([aria-selected='true']):hover:not(:disabled) {
-  color: var(--fg, #f5f5f5);
+  color: var(--ink);
   background: rgb(241 243 238 / 0.06);
   border-color: rgb(241 243 238 / 0.24);
 }
@@ -316,7 +346,7 @@
 .asm-tab[aria-selected='true']:hover:not(:disabled) {
   border-color: rgb(200 255 46 / 0.35);
   background: rgb(200 255 46 / 0.14);
-  color: var(--signal, #c8ff2e);
+  color: var(--signal);
   cursor: default;
 }
 
@@ -325,7 +355,7 @@
   font: 600 12px/1.25 var(--mono);
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--fg-2, #a3a3a3);
+  color: var(--ink-soft);
 }
 
 .asm-table-wrap {
@@ -354,12 +384,12 @@
   font: 600 10px/1.2 var(--mono);
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--dim);
+  color: var(--muted);
 }
 
 .asm-table code {
   font: 600 11px/1.2 var(--mono);
-  color: var(--fg);
+  color: var(--ink);
 }
 
 .asm-narrative-list {
@@ -381,13 +411,13 @@
 
 .asm-narrative-list b {
   font: 600 11.5px/1.2 var(--mono);
-  color: var(--fg, #f5f5f5);
+  color: var(--ink);
 }
 
 .asm-narrative-list p {
   margin: 0;
   font: 400 12.5px/1.5 var(--display);
-  color: #bdbdbd;
+  color: var(--ink-body);
 }
 
 .asm-code {
@@ -395,9 +425,9 @@
   padding: 14px;
   max-height: 480px;
   overflow: auto;
-  border: 1px solid rgb(241 243 238 / 0.12);
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #08090b;
+  background: var(--bg);
   font: 500 11.5px/1.5 var(--mono);
   color: #e4e8ee;
   white-space: pre;
@@ -414,6 +444,10 @@
   .asm-comp-grid {
     grid-template-columns: 1fr;
   }
+
+  .asm-drop-card {
+    padding: 20px 16px;
+  }
 }
 
 .asm-comp-card {
@@ -422,17 +456,17 @@
   padding: 9px 11px;
   border: 1px solid rgb(241 243 238 / 0.1);
   border-radius: 8px;
-  background: #08090b;
+  background: var(--bg);
 }
 
 .asm-comp-card b {
   font: 600 12px/1.25 var(--display);
-  color: var(--fg);
+  color: var(--ink);
 }
 
 .asm-comp-card span {
   font: 500 10.5px/1.3 var(--mono);
-  color: var(--dim);
+  color: var(--muted);
 }
 
 /* Commercial 2-Step P&ID Flow (Option A: Clean Dropzone -> Executive FDS + Collapsible Tech Drawer) */
@@ -470,23 +504,24 @@
   font: 600 11px/1.2 var(--mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--fg-2, #a3a3a3);
+  color: var(--ink-soft);
 }
 
 .asm-drop-card h2 {
   margin: 0;
   font: 600 clamp(22px, 3vw, 29px)/1.18 var(--display);
-  color: var(--fg, #f5f5f5);
+  color: var(--ink);
 }
 
 .asm-drop-lead {
   margin: 0 auto;
   max-width: 60ch;
   font: 400 14px/1.55 var(--display);
-  color: var(--fg-2, #a3a3a3);
+  color: var(--ink-body);
 }
 
 .asm-dropzone {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -500,18 +535,32 @@
   background: rgb(8 9 11 / 0.65);
   text-align: center;
   cursor: pointer;
-  transition: border-color 0.2s, background-color 0.2s, transform 0.15s;
+  transition:
+    border-color var(--hover),
+    background-color var(--hover),
+    transform var(--dur-micro) var(--ease);
 }
 
 .asm-dropzone:hover,
-.asm-dropzone.dragging {
+.asm-dropzone.dragging,
+.asm-dropzone:focus-within {
   border-color: rgb(241 243 238 / 0.55);
   background: rgb(241 243 238 / 0.05);
 }
 
+.asm-dropzone:focus-within {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+
+.asm-dropzone[aria-busy='true'] {
+  opacity: 0.72;
+  cursor: progress;
+}
+
 .asm-dropzone strong,
 .asm-dropzone strong span {
-  color: #08090b;
+  color: var(--bg);
   font: 600 13.5px/1.2 var(--display);
 }
 
@@ -522,12 +571,14 @@
   gap: 8px;
   margin: 0 auto;
   padding: 12px 24px;
-  border: 1px solid #f1f3ee;
+  border: 1px solid var(--ink);
   border-radius: 999px;
-  background: #f1f3ee;
+  background: var(--ink);
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.35);
   text-align: center;
-  transition: background-color 0.18s, transform 0.15s;
+  transition:
+    background-color var(--hover),
+    transform var(--dur-micro) var(--ease);
 }
 
 .asm-dropzone:hover strong {
@@ -539,7 +590,7 @@
   display: block;
   margin: 0 auto;
   font: 400 12.5px/1.4 var(--display);
-  color: var(--fg-2, #a3a3a3);
+  color: var(--ink-soft);
   text-align: center;
 }
 
@@ -553,7 +604,7 @@
 .asm-samples-box p {
   margin: 0;
   font: 500 12px/1.3 var(--mono);
-  color: var(--dim, #7a7a7a);
+  color: var(--muted);
 }
 
 .asm-samples-row {
@@ -579,7 +630,7 @@
   justify-content: space-between;
   gap: 10px;
   padding: 12px 16px;
-  border: 1px solid rgb(241 243 238 / 0.12);
+  border: 1px solid var(--line);
   border-radius: 12px;
   background: #121417;
 }
@@ -587,11 +638,11 @@
 .asm-doc-objective {
   margin: 0;
   padding: 12px 14px;
-  border-left: 3px solid var(--signal, #c8ff2e);
+  border-left: 3px solid var(--signal);
   border-radius: 6px;
   background: rgb(8 9 11 / 0.55);
   font: 400 13.5px/1.55 var(--display);
-  color: #dcdcdc;
+  color: var(--ink-body);
 }
 
 .asm-upload-error {
@@ -621,10 +672,12 @@
   padding: 14px 18px;
   background: rgb(8 9 11 / 0.55);
   font: 600 12px/1.3 var(--mono);
-  color: var(--fg, #f5f5f5);
+  color: var(--ink);
   cursor: pointer;
   user-select: none;
-  transition: background-color 0.18s, color 0.18s;
+  transition:
+    background-color var(--hover),
+    color var(--hover);
 }
 
 .asm-tech-drawer > summary::-webkit-details-marker {
@@ -633,11 +686,36 @@
 
 .asm-tech-drawer > summary:hover {
   background: rgb(241 243 238 / 0.06);
-  color: var(--signal, #c8ff2e);
+  color: var(--signal);
 }
 
 .asm-tech-drawer[open] > summary {
   border-bottom: 1px solid rgb(241 243 238 / 0.1);
+}
+
+.asm-chevron {
+  display: inline-block;
+  transition: transform var(--dur-quick) var(--ease);
+}
+
+.asm-tech-drawer[open] .asm-chevron {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .asm-pill,
+  .asm-mode-btn,
+  .asm-tab,
+  .asm-dropzone,
+  .asm-dropzone strong,
+  .asm-tech-drawer > summary,
+  .asm-chevron {
+    transition: none;
+  }
+
+  .asm-pill:active {
+    transform: none;
+  }
 }
 
 @media print {
