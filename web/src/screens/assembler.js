@@ -160,6 +160,9 @@ export function mount(root) {
   let inoText = LAB4_DEFAULT_INO;
   let stlNames = ['1_chasis_robot.stl', '5_rin_x2.stl', '6_llanta_x2_TPU.stl', '7_cabeza_sensor_servo.stl'];
   let pinOverride = null;
+  let currentDag = null;
+  let copyTimer = null;
+  const reducedMotionQuery = typeof window !== 'undefined' ? window.matchMedia?.('(prefers-reduced-motion: reduce)') : null;
 
   // Interactive P&ID process simulation state (for live visualization & fault stress-test)
   const simState = {
@@ -218,7 +221,7 @@ export function mount(root) {
     const isConflict = !pinAudit.valid;
     const pwmColor = isConflict ? '#ff6b6b' : '#d4d8df';
     return `
-      <svg class="asm-pid-svg" viewBox="0 0 620 220" role="img" aria-label="Hardware & Pinout Schematic">
+      <svg class="asm-pid-svg" viewBox="0 0 620 220" role="img" ${A({ 'aria-label': 'svgCadAria' })}>
         <!-- Wires from MCU to peripherals -->
         <path d="M210 64 H135" stroke="${pwmColor}" stroke-width="2" fill="none" stroke-dasharray="${isConflict ? '4 3' : 'none'}"/>
         <path d="M210 106 H135" stroke="#8e96a4" stroke-width="1.8" fill="none"/>
@@ -284,7 +287,7 @@ export function mount(root) {
     const cv = tags.find((x) => x.startsWith('CV-') || x.startsWith('PK-')) ?? 'CV-101';
 
     return `
-      <svg class="asm-pid-svg" viewBox="0 0 620 220" role="img" aria-label="P&ID ISA-5.1 Live Schematic">
+      <svg class="asm-pid-svg" viewBox="0 0 620 220" role="img" ${A({ 'aria-label': 'svgPidAria' })}>
         <!-- Piping lines -->
         <path d="M95 44 H250 V74 M95 88 H230 V74 M95 132 H270 V74" stroke="${valveColor}" stroke-width="2" fill="none" stroke-dasharray="${!isFault && simState.stepIdx === 1 ? '5 3' : 'none'}"/>
         <path d="M300 154 V188 H495" stroke="${outColor}" stroke-width="2.2" fill="none"/>
@@ -330,7 +333,7 @@ export function mount(root) {
             <p class="asm-drop-lead">${T('dropLead')}</p>
 
             <label class="asm-dropzone" id="asm-dropzone">
-              <input type="file" id="asm-dxf-file" accept=".dxf,.pdf" hidden />
+              <input type="file" id="asm-dxf-file" class="asm-sr-input" accept=".dxf,.pdf" />
               <strong>${T('dropBoxTitle')}</strong>
               <span>${T('dropBoxSub')}</span>
             </label>
@@ -370,20 +373,29 @@ export function mount(root) {
         const loadFile = async (file) => {
           if (!file) return;
           uploadErrorKey = null;
-          const extracted = await extractBlueprintFromUpload(file);
-          if (!extracted.ok) {
-            uploadErrorKey = extracted.errorCode === 'empty_pdf' ? 'dropErrEmptyPdf' : 'dropErrEmptyDxf';
+          const dz = contentEl.querySelector('#asm-dropzone');
+          dz?.setAttribute('aria-busy', 'true');
+          try {
+            const extracted = await extractBlueprintFromUpload(file);
+            if (!extracted.ok) {
+              uploadErrorKey = extracted.errorCode === 'empty_pdf' ? 'dropErrEmptyPdf' : 'dropErrEmptyDxf';
+              render();
+              return;
+            }
+            sampleId = file.name;
+            dxfText = extracted.dxfText;
+            if (!processGoal.trim()) {
+              processGoal =
+                extracted.processGoal || `Automated ISA-5.1 / ISA-88 engineering specification for ${file.name}`;
+            }
+            pidStep = 'result';
             render();
-            return;
+          } catch {
+            uploadErrorKey = 'dropErrEmptyDxf';
+            render();
+          } finally {
+            dz?.removeAttribute('aria-busy');
           }
-          sampleId = file.name;
-          dxfText = extracted.dxfText;
-          if (!processGoal.trim()) {
-            processGoal =
-              extracted.processGoal || `Automated ISA-5.1 / ISA-88 engineering specification for ${file.name}`;
-          }
-          pidStep = 'result';
-          render();
         };
 
         const fileIn = contentEl.querySelector('#asm-dxf-file');
@@ -420,6 +432,7 @@ export function mount(root) {
 
       // Step 2: Executive Engineering Document + Collapsible Technical Details
       const dag = parseDxfPid(dxfText, { fileName: sampleId, processGoal });
+      currentDag = dag;
       const docs = generateIsaEngineeringDocs(dag, { lang: lang() });
       const pid3d = generatePidMujocoXml(dag);
       const plc = generatePlcFlatFile(dag);
@@ -503,13 +516,13 @@ export function mount(root) {
         <details class="asm-tech-drawer" id="asm-tech-details" ${techOpen ? 'open' : ''}>
           <summary>
             <span>${T('techDrawerTitle')}</span>
-            <span>▾</span>
+            <span class="asm-chevron" aria-hidden="true">▾</span>
           </summary>
-          <div class="asm-tabs" role="tablist">
-            <button type="button" class="asm-tab" data-ptab="p1io" aria-selected="${pidTab === 'p1io'}">${T('tabP1Io')} (${dag.ioSummary.totalIoPoints})</button>
-            <button type="button" class="asm-tab" data-ptab="p3" aria-selected="${pidTab === 'p3'}">${T('tabP3')}</button>
-            <button type="button" class="asm-tab" data-ptab="diagram" aria-selected="${pidTab === 'diagram'}">${T('tabDiagram')}</button>
-            <button type="button" class="asm-tab" data-ptab="p2" aria-selected="${pidTab === 'p2'}">${T('tabP2')}</button>
+          <div class="asm-tabs" role="tablist" ${A({ 'aria-label': 'techTabsAria' })}>
+            <button type="button" class="asm-tab" role="tab" data-ptab="p1io" aria-selected="${pidTab === 'p1io'}">${T('tabP1Io')} (${dag.ioSummary.totalIoPoints})</button>
+            <button type="button" class="asm-tab" role="tab" data-ptab="p3" aria-selected="${pidTab === 'p3'}">${T('tabP3')}</button>
+            <button type="button" class="asm-tab" role="tab" data-ptab="diagram" aria-selected="${pidTab === 'diagram'}">${T('tabDiagram')}</button>
+            <button type="button" class="asm-tab" role="tab" data-ptab="p2" aria-selected="${pidTab === 'p2'}">${T('tabP2')}</button>
           </div>
           <div class="asm-body">
             ${
@@ -535,9 +548,9 @@ export function mount(root) {
                 : pidTab === 'p3'
                   ? `
               <div class="asm-row" style="justify-content:space-between">
-                <div class="asm-row">
-                  <button type="button" class="asm-tab" data-dialect="scl" aria-selected="${plcDialect === 'scl'}">${T('plcSclTab')}</button>
-                  <button type="button" class="asm-tab" data-dialect="l5k" aria-selected="${plcDialect === 'l5k'}">${T('plcL5kTab')}</button>
+                <div class="asm-row" role="tablist" ${A({ 'aria-label': 'plcDialectAria' })}>
+                  <button type="button" class="asm-tab" role="tab" data-dialect="scl" aria-selected="${plcDialect === 'scl'}">${T('plcSclTab')}</button>
+                  <button type="button" class="asm-tab" role="tab" data-dialect="l5k" aria-selected="${plcDialect === 'l5k'}">${T('plcL5kTab')}</button>
                 </div>
                 <div class="asm-row">
                   <button type="button" class="asm-pill signal" id="asm-dl-scl">${T('dlSclBtn')}</button>
@@ -623,7 +636,11 @@ export function mount(root) {
       if (copyFds) {
         copyFds.onclick = () => {
           navigator.clipboard?.writeText(docs.markdown);
-          copyFds.textContent = t('copiedBtn');
+          copyFds.innerHTML = T('copiedBtn');
+          clearTimeout(copyTimer);
+          copyTimer = setTimeout(() => {
+            if (copyFds.isConnected) copyFds.innerHTML = T('copyBtn');
+          }, 1800);
         };
       }
       const dlXml = contentEl.querySelector('#asm-dl-pid-xml');
@@ -673,17 +690,17 @@ export function mount(root) {
           <div class="asm-bar"><span>${T('cadSourceBar')}</span><b>${meshRoles.length} STL · ${pinAudit.valid ? 'PINOUT OK' : 'CONFLICT'}</b></div>
           <div class="asm-body">
             <div class="asm-row">
-              <select id="asm-cad-preset" class="asm-select" style="flex:1">
-                <option value="luigi_lab4" ${cadPreset === 'luigi_lab4' ? 'selected' : ''}>Luigi Lab IV — Rover Autónomo (Arduino UNO + SG90 + HC-SR04)</option>
-                <option value="luigi_lab3" ${cadPreset === 'luigi_lab3' ? 'selected' : ''}>Luigi Lab III — Rover Explorador (Arduino UNO + HC-SR04 + APDS-9960)</option>
+              <select id="asm-cad-preset" class="asm-select" style="flex:1" ${A({ 'aria-label': 'cadPresetAria' })}>
+                <option value="luigi_lab4" ${cadPreset === 'luigi_lab4' ? 'selected' : ''}>${esc(t('cadPresetLab4'))}</option>
+                <option value="luigi_lab3" ${cadPreset === 'luigi_lab3' ? 'selected' : ''}>${esc(t('cadPresetLab3'))}</option>
               </select>
               <label class="asm-pill" style="cursor:pointer">
                 <span>${T('cadUploadStl')}</span>
-                <input type="file" id="asm-stl-files" accept=".stl" multiple hidden />
+                <input type="file" id="asm-stl-files" class="asm-sr-input" accept=".stl" multiple />
               </label>
               <label class="asm-pill" style="cursor:pointer">
                 <span>${T('cadUploadIno')}</span>
-                <input type="file" id="asm-ino-file" accept=".ino,.c,.cpp,.txt" hidden />
+                <input type="file" id="asm-ino-file" class="asm-sr-input" accept=".ino,.c,.cpp,.txt" />
               </label>
               <a class="asm-pill signal" href="#/simulations/luigi_lab4">${T('cadOpenRoverSim')}</a>
             </div>
@@ -691,7 +708,7 @@ export function mount(root) {
             <div class="asm-pid-stage">
               <div class="asm-badges">
                 <span class="asm-badge ${pinAudit.valid ? 'ok' : 'err'}">${
-                  pinAudit.valid ? `✓ Pinout Valid (${pinAudit.interruptMode})` : `✗ ${pinAudit.errors.join(' | ')}`
+                  pinAudit.valid ? `${T('cadPinoutValid')} (${esc(pinAudit.interruptMode)})` : `✗ ${esc(pinAudit.errors.join(' | '))}`
                 }</span>
                 ${parsedIno.bottlenecks.map((b) => `<span class="asm-badge err">⚠ ${esc(b.type)}: ${esc(b.fix)}</span>`).join('')}
               </div>
@@ -712,10 +729,10 @@ export function mount(root) {
       <div class="asm-col">
         <section class="asm-win">
           <div class="asm-bar"><span>${T('cadOutBar')}</span><b>${esc(cadPreset.toUpperCase())}</b></div>
-          <div class="asm-tabs" role="tablist">
-            <button type="button" class="asm-tab" data-ctab="audit" aria-selected="${cadTab === 'audit'}">${T('cadTabAudit')}</button>
-            <button type="button" class="asm-tab" data-ctab="ino" aria-selected="${cadTab === 'ino'}">${T('cadTabIno')}</button>
-            <button type="button" class="asm-tab" data-ctab="xml" aria-selected="${cadTab === 'xml'}">${T('cadTabXml')}</button>
+          <div class="asm-tabs" role="tablist" ${A({ 'aria-label': 'cadTabsAria' })}>
+            <button type="button" class="asm-tab" role="tab" data-ctab="audit" aria-selected="${cadTab === 'audit'}">${T('cadTabAudit')}</button>
+            <button type="button" class="asm-tab" role="tab" data-ctab="ino" aria-selected="${cadTab === 'ino'}">${T('cadTabIno')}</button>
+            <button type="button" class="asm-tab" role="tab" data-ctab="xml" aria-selected="${cadTab === 'xml'}">${T('cadTabXml')}</button>
           </div>
           <div class="asm-body">
             ${
@@ -724,7 +741,7 @@ export function mount(root) {
               <h3 class="asm-sec-title">${T('cadAuditBar')}</h3>
               <div class="asm-table-wrap">
                 <table class="asm-table">
-                  <thead><tr><th>Signal</th><th>MCU Pin</th><th>Hardware Bus / Timer</th></tr></thead>
+                  <thead><tr><th>${T('colCadSignal')}</th><th>${T('colCadPin')}</th><th>${T('colCadBus')}</th></tr></thead>
                   <tbody>
                     ${Object.entries(activePinout)
                       .map(
@@ -828,7 +845,19 @@ export function mount(root) {
 
   // Live P&ID process ticker (updates weight, step & SVG smoothly every 900 ms when the 2D schematic tab is open)
   const ticker = setInterval(() => {
-    if (mode !== 'pid' || pidStep !== 'result' || !techOpen || pidTab !== 'diagram' || simState.faultLsh || simState.faultMotor) return;
+    if (
+      document.hidden ||
+      reducedMotionQuery?.matches ||
+      mode !== 'pid' ||
+      pidStep !== 'result' ||
+      !techOpen ||
+      pidTab !== 'diagram' ||
+      simState.faultLsh ||
+      simState.faultMotor ||
+      !currentDag
+    ) {
+      return;
+    }
     if (simState.stepIdx === 1) {
       simState.weightKg += 18.5;
       if (simState.weightKg >= 300) {
@@ -856,8 +885,7 @@ export function mount(root) {
       sEl.textContent = stateNames[simState.stepIdx];
     }
     if (svgHolder) {
-      const dag = parseDxfPid(dxfText, { fileName: sampleId, processGoal });
-      svgHolder.innerHTML = renderPidFlowSvg(dag);
+      svgHolder.innerHTML = renderPidFlowSvg(currentDag);
     }
   }, 900);
 
@@ -870,6 +898,7 @@ export function mount(root) {
 
   return () => {
     clearInterval(ticker);
+    clearTimeout(copyTimer);
     stopLang();
     cleanups.forEach((fn) => fn());
   };
