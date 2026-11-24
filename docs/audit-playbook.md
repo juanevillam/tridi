@@ -6,7 +6,7 @@ Every audit lives in `.agents/skills/<name>/SKILL.md`, `.claude/skills/<name>/SK
 
 ---
 
-## 1. The 8 Commands & When Each Runs
+## 1. The 9 Commands & When Each Runs
 
 | Command / Skill | Portfolio Equivalent | The Moment | Scope |
 | --- | --- | --- | --- |
@@ -14,10 +14,11 @@ Every audit lives in `.agents/skills/<name>/SKILL.md`, `.claude/skills/<name>/SK
 | **`/tridi-data-audit`** | `/portfolio-data-audit` + `/web-perf-audit` (weight) | UI works; what does it cost the network & CDN while it works? | 3-bucket payload budget (`first paint` vs `on scroll` vs `on demand`), lazy non-G1 robot STLs, `.mp4` re-encodes, `.stl` dedupe, `data/server.py` |
 | **`/tridi-cache-audit`** | `/portfolio-cache-audit` | UI done & data pruned; what does it relearn, refetch, or recompile that it already knew? | Cloudflare `_headers` (`/assets/*`, `/models/*`, `/media/*`), STL URL cache, ONNX bytes/meta/motion `Map` cache, `smoothForDisplay` cache, GLB + `CanvasTexture` cache, bounded LRU `replay.json` cache |
 | **`/tridi-perf-audit`** | `/web-perf-audit` (runtime) | Rework landed, new 3D props/worlds added, or simulation `realtime` drops / GPU heats up | Protecting 500 Hz MuJoCo WASM & 50 Hz ONNX budget: Three.js draw calls, duplicate shadow maps, WebGL geometry/material/texture disposal on `rebuild()` & `unmount()`, zero rAF layout reads, off-screen media pause |
-| **`/tridi-parity-audit`** (`/tridi-ux-audit`) | `/web-parity-audit` | A section/screen changed on one viewport, language, or robot vertical | Measured across 5 viewports (`1440×900`, `1280×800`, `390×844`, `390×664`, `375×667`) + zoom (`100%..50%`) × 2 languages (`ES`/`EN`) × 5 robots (`G1`, `H1`, `Luigi v1/v2`, `Factory Cell`) |
-| **`/tridi-a11y-audit`** | `/web-a11y-audit` | Layouts have settled, before a release | WCAG 2.2 AA keyboard nav, `:focus-visible`, modal focus traps, bilingual `aria-label`s, `prefers-reduced-motion`, contrast, touch targets |
+| **`/tridi-motion-audit`** | `/portfolio-motion-audit` | Transitions, accordions, drawers, modals, or scroll feel sticky ("pegado") | 60fps/120fps UI compositing: zero Frame-0 stalls, pausing covered `backdrop-filter`/2D `rAF` layers, eliminating non-composited `filter: brightness()` / `clip-path`, `prefers-reduced-motion` |
+| **`/tridi-parity-audit`** (`/tridi-ux-audit`) | `/portfolio-parity-audit` + `/web-parity-audit` | A section/screen changed on one viewport, language, or robot vertical | Measured across 5 viewports (`1440×900`, `1280×800`, `390×844`, `390×664`, `375×667`) + zoom (`100%..50%`) × 2 languages (`ES`/`EN`) × 5 robots (`G1`, `H1`, `Luigi v1/v2`, `Factory Cell`) |
+| **`/tridi-a11y-audit`** | `/portfolio-a11y-audit` + `/web-a11y-audit` | Layouts have settled, before a release | WCAG 2.2 AA keyboard nav, `:focus-visible`, `inert` modal/overlay traps, `aria-busy`, bilingual `aria-label`s, `prefers-reduced-motion`, contrast, touch targets |
 | **`/tridi-share-audit`** | `/web-share-audit` | Before sharing `trytridi.com` with YC, customers, LinkedIn, WhatsApp, or X | Built `dist/index.html` OG/Twitter tags, `og.png` (`1200×630`, `< 300 KB` for WhatsApp), canonical URL, JSON-LD, `robots.txt` |
-| **`/tridi-release-audit`** | `/portfolio-quality-audit` + `/web-release-audit` | Before **every** `scripts/ship.sh` or deploy to `trytridi.com`, **last** | 11-point `GO / NO-GO` gate: `physics check`, `web check`, clean `web build`, Cloudflare Pages limits (`< 25 MiB`), `_headers`, security, `yc/` boundary, 2-layer docs sync |
+| **`/tridi-release-audit`** | `/portfolio-quality-audit` + `/portfolio-release-audit` + `/web-release-audit` | Before **every** `scripts/ship.sh` or deploy to `trytridi.com`, **last** | 11-point `GO / NO-GO` gate: `physics check`, `web check`, clean `web build`, Cloudflare Pages limits (`< 25 MiB`), `_headers` + favicons, security, `yc/` boundary, 2-layer docs sync |
 
 ---
 
@@ -30,11 +31,29 @@ When running a full engineering sweep (or closing a major milestone), run the au
 /tridi-data-audit       # 2. Prune & defer what asks the network (3 budgets + media/STL weight)
 /tridi-cache-audit      # 3. Bank what remains — never cache a fetch you should have deferred
 /tridi-perf-audit       # 4. Free GPU/RAM/CPU for 500 Hz MuJoCo (shadow maps, WebGL leaks, rAF)
-/tridi-parity-audit     # 5. Measure 5 viewports × 2 languages × 5 robots on settled code
-/tridi-a11y-audit       # 6. Keyboard, screen reader, reduced motion & contrast on settled layout
-/tridi-share-audit      # 7. Social preview cards (< 300 KB og.png) & crawler metadata
-/tridi-release-audit    # 8. Final GO / NO-GO gate on built web/dist before scripts/ship.sh
+/tridi-motion-audit     # 5. 60fps/120fps UI compositing (Frame-0 stalls, blur layers, accordions)
+/tridi-parity-audit     # 6. Measure 5 viewports × 2 languages × 5 robots on settled code
+/tridi-a11y-audit       # 7. Keyboard, inert traps, screen reader, reduced motion & contrast
+/tridi-share-audit      # 8. Social preview cards (< 300 KB og.png) & crawler metadata
+/tridi-release-audit    # 9. Final GO / NO-GO gate on built web/dist before scripts/ship.sh
 ```
+
+---
+
+## 2.5 Pre-Commit Incremental Audit Loop (Post-Change Delta Gate)
+
+To keep every commit up to date with the latest full audit baseline (zero silent drift between milestones), **whenever changes in `web/` or `physics/` are implemented and approved by Juan, before running `git commit`**, run a fast targeted delta check using the matching skill(s) for the files touched:
+
+| Files / Area Changed | Required Pre-Commit Delta Audit(s) |
+| --- | --- |
+| CSS, layout, buttons, cards, typography, navbar/footer (`web/src/**/*.css`, `web/src/screens/*.js`) | `/tridi-craft-audit` + `/tridi-parity-audit` (changed screen only) |
+| Modals, accordions, drawers, animations, `rAF`, `backdrop-filter`, scroll handlers | `/tridi-motion-audit` |
+| Interactive controls, tabs, dialogs, keyboard handlers, `web/src/screens/strings/*.js` | `/tridi-a11y-audit` (changed controls) + `npm --prefix web run check` |
+| 3D scenes, MuJoCo models, STLs, ONNX, Three.js props/lights (`physics/`, `web/src/props.js`, `web/src/looks/`) | `/tridi-data-audit` + `/tridi-cache-audit` + `/tridi-perf-audit` |
+| `web/index.html`, `og.png`, favicons, `_headers`, `robots.txt` | `/tridi-share-audit` |
+| Any merge to `main` (`scripts/ship.sh`) | `/tridi-release-audit` (always last) |
+
+> **Scope of a Pre-Commit Delta Run:** Inspect only the files in `git diff --name-only` (not the whole repo). Fix any regression before committing; if a finding requires a visual/behavior decision, report it to Juan first.
 
 - **Why Craft leads:** Componentization moves files and classes around, which would invalidate `file:line` findings in the subsequent audits.
 - **Why Data comes before Cache:** `/tridi-data-audit` removes eager startup fetches that don't belong on first paint (such as `unitree_h1`, `luigi_lab3`, `luigi_lab4`, and `factory_cell` STLs inside `loadG1()`) and re-encodes oversized `.mp4` videos; `/tridi-cache-audit` then caches the on-demand fetches and computations that remain.

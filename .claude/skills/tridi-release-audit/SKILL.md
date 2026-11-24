@@ -19,11 +19,12 @@ The moment this command exists for: **a merge to `main` (`scripts/ship.sh`) or d
    git status -sb
    git log --oneline origin/main..HEAD
    ```
-2. **Check which other `/tridi-*` audits the changes called for** (per [`docs/audit-playbook.md`](../../../docs/audit-playbook.md)):
-   - UI / layout / CSS rework → `/tridi-craft-audit`, `/tridi-parity-audit`
-   - New robot / 3D props / media / replay → `/tridi-data-audit`, `/tridi-cache-audit`, `/tridi-perf-audit`
-   - Interactive controls / modals → `/tridi-a11y-audit`
-   - `<head>` / OG card / landing copy → `/tridi-share-audit`
+2. **Check which other `/tridi-*` audits the changes called for** (per [`docs/audit-playbook.md`](../../../docs/audit-playbook.md) Pre-Commit Delta Gate):
+   - UI / layout / CSS rework → `/tridi-craft-audit`, `/tridi-motion-audit`, `/tridi-parity-audit`
+   - New robot / 3D props / media / replay / P&ID asset → `/tridi-data-audit`, `/tridi-cache-audit`, `/tridi-perf-audit`
+   - Interactive controls / modals / accordions / i18n strings → `/tridi-a11y-audit`
+   - `<head>` / OG card / favicon / landing copy → `/tridi-share-audit`
+   - Verify every affected audit's delta pass was run on the branch's changed files before committing.
 
 ---
 
@@ -60,13 +61,14 @@ Run all 12 checks and record `PASS`, `WARN`, or `FAIL` with exact counts/paths:
    - Zero files over `25 MiB` (Cloudflare Pages hard reject limit).
    - Total file count `< 20,000`.
    - Quote `du -sh web/dist` and flag any unexpected weight jump.
-6. **Edge Security & Cache Headers (`web/dist/_headers`):**
+6. **Edge Security, Cache Headers & Favicons (`web/dist/_headers`, `security.txt`, Search Console icons):**
    - Confirm `web/dist/_headers` exists and contains:
      - `Strict-Transport-Security: max-age=31536000; includeSubDomains; preload`
      - `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy`, `Permissions-Policy`
      - `/assets/*` → `Cache-Control: public, max-age=31536000, immutable`
      - `/models/*` → `Cache-Control: public, max-age=31536000, immutable`
      - `/media/*` → `Cache-Control: public, max-age=604800, stale-while-revalidate=86400`
+   - Confirm `web/dist/index.html` links valid favicon (`favicon.svg` / `favicon.ico`) and `apple-touch-icon` for Google Search Console & iOS bookmarks, and check `web/dist/.well-known/security.txt` if present.
 7. **Every Internal Reference & Route Resolves:**
    - Verify all `src`, `href`, `poster`, and `og:image` paths in `web/dist/index.html` and `web/src/` point to existing files in `web/dist/`.
    - Verify all registered routes in `web/src/router.js` (`#/`, `#/simulations`, `#/live`, `#/upload`, `#/delivery`, `#/assembler`, `#/milestones`, `#/docs`, `#/team`) mount cleanly.
