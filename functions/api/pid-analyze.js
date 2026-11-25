@@ -167,6 +167,25 @@ export function onRequestOptions() {
   return new Response(null, { status: 204, headers: CORS_HEADERS });
 }
 
+export function onRequestGet(context) {
+  const configured = Boolean(String(context.env?.OPENROUTER_API_KEY || '').trim());
+  return new Response(
+    JSON.stringify({
+      ok: false,
+      errorCode: 'method_not_allowed',
+      message: 'Use POST /api/pid-analyze with a JSON blueprint payload.',
+      configured,
+    }),
+    {
+      status: 405,
+      headers: {
+        ...CORS_HEADERS,
+        Allow: 'POST, OPTIONS',
+      },
+    },
+  );
+}
+
 export async function onRequestPost(context) {
   const { request, env } = context;
   const contentLength = Number(request.headers.get('content-length') || 0);
