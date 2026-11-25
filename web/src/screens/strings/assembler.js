@@ -19,34 +19,62 @@ export const { T, t, A } = dict({
     en: '02 · Robot CAD (.stl + .ino)',
   },
 
-  // Mode 1: P&ID (.dxf / .pdf) — Commercial 2-step flow
+  // Mode 1: P&ID (.dxf / .pdf / image) — Commercial 2-step hybrid flow
   dropKicker: {
-    es: 'INGENIERÍA AUTOMÁTICA DESDE AUTOCAD · ISA-5.1 / ISA-88',
-    en: 'AUTOMATED ENGINEERING FROM AUTOCAD · ISA-5.1 / ISA-88',
+    es: 'INGENIERÍA HÍBRIDA ISA-5.1 / ISA-88 · LA IA RAZONA Y EL CÓDIGO ENSAMBLA',
+    en: 'HYBRID ISA-5.1 / ISA-88 ENGINEERING · AI REASONS, CODE ASSEMBLES',
   },
   dropTitle: {
-    es: 'Sube tu plano P&ID (.dxf o .pdf) y genera la documentación de ingeniería',
-    en: 'Upload your P&ID blueprint (.dxf or .pdf) to generate engineering documentation',
+    es: 'Sube tu plano P&ID (.dxf, .pdf o imagen) y genera la documentación de ingeniería',
+    en: 'Upload your P&ID blueprint (.dxf, .pdf, or image) to generate engineering documentation',
   },
   dropLead: {
-    es: 'Procesamiento 100 % local en tu navegador: lee entidades CAD (.dxf) y textos vectoriales (.pdf), reconoce etiquetas ISA-5.1 y alias industriales (TANK, BV, PP, AOD, FILTER PRESS) sin inventar componentes, y entrega la memoria descriptiva (FDS), tabla I/O y código PLC.',
-    en: '100% local in-browser processing: reads CAD entities (.dxf) and vector text (.pdf), recognizes ISA-5.1 tags and plant aliases (TANK, BV, PP, AOD, FILTER PRESS) with zero hallucinated components, and delivers the Functional Design Specification (FDS), I/O table, and PLC code.',
+    es: 'Motor híbrido de 1 sola llamada: extrae equipos ISA-5.1 y alias reales (TANK, BV, PP, AOD, FILTER PRESS) desde AutoCAD, PDF o imagen, y ensambla la memoria descriptiva (FDS), tabla I/O (.csv) y código PLC (.scl / .L5K).',
+    en: 'Single-shot hybrid engine: extracts ISA-5.1 equipment and plant aliases (TANK, BV, PP, AOD, FILTER PRESS) from AutoCAD, PDF, or image, and assembles the Functional Design Specification (FDS), I/O table (.csv), and PLC code (.scl / .L5K).',
   },
   dropBoxTitle: {
-    es: 'Seleccionar plano P&ID (.dxf · .pdf)',
-    en: 'Choose P&ID blueprint (.dxf · .pdf)',
+    es: 'Seleccionar plano P&ID (.dxf · .pdf · .png · .jpg)',
+    en: 'Choose P&ID blueprint (.dxf · .pdf · .png · .jpg)',
   },
   dropBoxSub: {
-    es: 'o arrastra y suelta aquí tu archivo .dxf de AutoCAD o PDF vectorial con texto seleccionable',
-    en: 'or drag and drop your AutoCAD .dxf or vector PDF with selectable text here',
+    es: 'o arrastra y suelta aquí tu plano AutoCAD .dxf, PDF vectorial o imagen P&ID',
+    en: 'or drag and drop your AutoCAD .dxf, vector PDF, or P&ID diagram image here',
+  },
+  stagePreparing: {
+    es: '1/3 · Preparando y optimizando plano localmente...',
+    en: '1/3 · Preparing and optimizing blueprint locally...',
+  },
+  stageVision: {
+    es: '2/3 · Analizando imagen P&ID con visión IA (1 llamada acotada)...',
+    en: '2/3 · Analyzing P&ID image with Vision AI (1 bounded call)...',
+  },
+  stageEnrich: {
+    es: '2/3 · Redactando filosofía ISA-88, Causa-Efecto y secuencia PLC para esta planta...',
+    en: '2/3 · Drafting process-specific ISA-88 narrative, Cause & Effect, and PLC sequence...',
   },
   dropErrEmptyPdf: {
-    es: 'Este PDF no contiene etiquetas de texto CAD seleccionables (está escaneado como imagen o sus fuentes fueron vectorizadas a curvas). Por favor exporta el plano desde AutoCAD en formato .dxf.',
-    en: 'This PDF contains no selectable CAD text tags (it is a scanned image or its fonts were outlined to curves). Please export the blueprint from AutoCAD in .dxf format.',
+    es: 'Este PDF no contiene etiquetas de texto CAD seleccionables (está escaneado como imagen). Súbelo como imagen (.png / .jpg) o expórtalo desde AutoCAD en formato .dxf.',
+    en: 'This PDF contains no selectable CAD text tags (it is a scanned image). Upload it as an image (.png / .jpg) or export it from AutoCAD in .dxf format.',
   },
   dropErrEmptyDxf: {
     es: 'No se detectaron etiquetas de equipos ni instrumentación ISA-5.1 en este archivo. Verifica que sea un archivo .dxf ASCII válido.',
     en: 'No ISA-5.1 equipment or instrumentation tags were detected in this file. Please verify it is a valid ASCII .dxf blueprint.',
+  },
+  dropErrApiNotConfigured: {
+    es: 'El análisis de imágenes con visión IA requiere configurar OPENROUTER_API_KEY en el servidor (Cloudflare Pages / .env local). Puedes subir archivos .dxf de AutoCAD en modo 100 % local.',
+    en: 'Vision AI image analysis requires OPENROUTER_API_KEY configured on the server (Cloudflare Pages / local .env). You can still upload AutoCAD .dxf files 100% locally.',
+  },
+  dropErrVisionFailed: {
+    es: 'No se pudieron reconocer equipos P&ID en esta imagen o el servicio de análisis respondió con error. Intenta con una imagen más nítida o sube el archivo .dxf.',
+    en: 'Could not recognize P&ID equipment in this image or the analysis service returned an error. Try a sharper image or upload the .dxf file.',
+  },
+  secSourcePreview: {
+    es: 'Plano Original Analizado (Visión IA + Validación Determinista)',
+    en: 'Analyzed Source Blueprint (Vision AI + Deterministic Validation)',
+  },
+  aiTelemetryBadge: {
+    es: 'Motor Híbrido IA',
+    en: 'Hybrid AI Engine',
   },
   dropGoalPlaceholder: {
     es: 'Ej. Dosificar 3 ingredientes por peso en TK-101, agitar 120 s y descargar a cinta...',
