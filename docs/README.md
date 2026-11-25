@@ -20,6 +20,7 @@
 | **[`contrato.md`](contrato.md)** | **Ingeniería (`data/`, `physics/`, `training/`, `web/`)** | **Manual Técnico Capa 2 — Contratos JSON:** Esquemas compartidos entre módulos (`PoseClip` v2, `RobotMotion`, `DeliveryManifest`, `HardwareCatalog` y grafo `ISA-5.1`). |
 | **[`audit-playbook.md`](audit-playbook.md)** | **Ingeniería y Agentes IA** | **Playbook de Calidad:** Los 4 checks automáticos de terminal y los invariantes de UI/UX y física que deben pasar con `0` errores antes de cada `scripts/ship.sh`. |
 | **[`marca.md`](marca.md)** | **Diseño, Web y Pitch (Todo el equipo)** | Guía rápida de identidad visual en código (paleta `--bg #08090B`, `--signal #C8FF2E`, tipografías `Inter Tight` + `Geist Mono`, reglas del símbolo y wordmark), resumida del manual original de **José Alejandro**. |
+| **[`radar-herramientas.md`](radar-herramientas.md)** | **Ingeniería y Estrategia (Todo el equipo)** | **Radar Técnico de Herramientas Externas:** Registro evaluado de repositorios open-source complementarios (ej. `orbefab/orbe` para simulación eléctrica y emulación AVR/ESP32), licencias, brechas y posibles puntos de integración con Tridi. |
 
 ---
 
