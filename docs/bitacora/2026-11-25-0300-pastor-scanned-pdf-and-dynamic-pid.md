@@ -29,6 +29,8 @@
 - `npm --prefix web run check` (`717` claves bilingües ES/EN, `481` lookups resueltos) y `npm --prefix web run build` (`vite build` en verde con chunks lazy de `pdfjs-dist`).
 - `wrangler@3.90.0 pages functions build functions` en verde.
 
+- **Ajuste UX tras revisión visual:** Se promovió el **Esquema P&ID 2D Interactivo + HUD + Tag Inspector + botones de falla** al primer bloque visible de Step 2 (justo debajo de la barra superior y por encima de la documentación ejecutiva FDS), eliminando duplicación en el cajón técnico (que queda con 3 pestañas limpias: I/O, Código PLC y XML 3D). Se corrigió el espaciado vertical en `pid_diagram.js` (`minGapY: 74`) para evitar roce entre sensores superiores (`LT`/`LSH`) y silos (`SL`), y se fijó `min-height: 28px` en `.asm-tag-btn` para que no herede el `52px` global de `button` en `style.css`.
+
 ## Próximos pasos
 
 - Configurar `OPENROUTER_API_KEY` en Cloudflare Pages (`tridi`) con Juan + *Retry deployment* para activar `Vision` (fotos + PDFs escaneados) en `https://trytridi.com/#/assembler`.
