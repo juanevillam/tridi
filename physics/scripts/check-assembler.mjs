@@ -11,12 +11,15 @@ import {
 } from '../components/index.js';
 import { classifyStlMeshes, generateMujocoXml, parseArduinoSketch } from '../src/assembler.js';
 import {
+  extractBlueprintFromUpload,
+  extractEmbeddedJpegFromPdfBytes,
   generateIsaEngineeringDocs,
   generatePidMujocoXml,
   generatePlcFlatFile,
   parseDxfPid,
   PID_SAMPLE_DXFS,
 } from '../src/pid_assembler.js';
+import { buildPidDiagramLayout, renderPidSchematicSvg } from '../src/pid_diagram.js';
 import { estimateOpenRouterCostUsd, ISA_TAG_CATALOG, sanitizeAiPidSpec } from '../src/pid_schema.js';
 import * as ort from '../src/onnx-lite.js';
 import { createPolicy } from '../src/policy.js';
@@ -227,7 +230,62 @@ assert(
   Object.keys(ISA_TAG_CATALOG).sort().join(',') === Object.keys(isaJson.tagClasses).sort().join(','),
   'ISA_TAG_CATALOG in pid_schema.js must stay in sync with isa_standard.json',
 );
-console.log('J-6 pid_assembler: parsed 01_batch_mixer.dxf, 02_silo_packaging.dxf & 06_pilot_plant_hydromet.dxf + flexible plant aliases + hybrid OpenRouter schema verified');
+
+// Verify Scanned PDF embedded-JPEG fallback + rasterizer hook (Punto 2 / P-1)
+const fakeJpeg = new Uint8Array(320);
+fakeJpeg[0] = 0xff;
+fakeJpeg[1] = 0xd8;
+fakeJpeg[2] = 0xff;
+fakeJpeg[3] = 0xe0;
+fakeJpeg[fakeJpeg.length - 2] = 0xff;
+fakeJpeg[fakeJpeg.length - 1] = 0xd9;
+const pdfPrefix = new TextEncoder().encode('%PDF-1.4\n1 0 obj << /Filter /DCTDecode >> stream\n');
+const pdfSuffix = new TextEncoder().encode('\nendstream\nendobj\n%%EOF\n');
+const syntheticScannedPdf = new Uint8Array(pdfPrefix.length + fakeJpeg.length + pdfSuffix.length);
+syntheticScannedPdf.set(pdfPrefix, 0);
+syntheticScannedPdf.set(fakeJpeg, pdfPrefix.length);
+syntheticScannedPdf.set(pdfSuffix, pdfPrefix.length + fakeJpeg.length);
+const embeddedJpeg = extractEmbeddedJpegFromPdfBytes(syntheticScannedPdf);
+assert(
+  Boolean(embeddedJpeg?.imageDataUrl?.startsWith('data:image/jpeg;base64,')),
+  'extractEmbeddedJpegFromPdfBytes should detect embedded JPEG stream in scanned PDF',
+);
+const scannedOffline = await extractBlueprintFromUpload(
+  { name: 'scanned_plant.pdf', arrayBuffer: async () => syntheticScannedPdf.buffer },
+  { useAi: false },
+);
+assert(
+  !scannedOffline.ok && scannedOffline.errorCode === 'empty_pdf' && scannedOffline.sourceKind === 'pdf_scanned',
+  `scanned PDF offline check failed: ${JSON.stringify(scannedOffline)}`,
+);
+
+// Verify Dynamic 2D P&ID Layout & Interactive Schematic SVG across small & 37-node plants (Punto 3 / C-1)
+for (const sampleId of ['01_batch_mixer.dxf', '02_silo_packaging.dxf', '06_pilot_plant_hydromet.dxf']) {
+  const dag = parseDxfPid(PID_SAMPLE_DXFS[sampleId].dxf, { fileName: sampleId });
+  const layout = buildPidDiagramLayout(dag);
+  assert(
+    layout.nodes.length === dag.nodes.length && layout.edges.length === dag.edges.length,
+    `${sampleId}: diagram layout node/edge mismatch (${layout.nodes.length}/${dag.nodes.length})`,
+  );
+  for (const n of layout.nodes) {
+    assert(
+      Number.isFinite(n.cx) && Number.isFinite(n.cy) && n.cx >= 0 && n.cx <= layout.width && n.cy >= 0 && n.cy <= layout.height,
+      `${sampleId}: node ${n.tag} out of SVG bounds (${n.cx}, ${n.cy})`,
+    );
+  }
+  const pickTag = dag.nodes[0].tag;
+  const svg = renderPidSchematicSvg(dag, { selectedTag: pickTag, faultTags: [dag.nodes.at(-1).tag] });
+  assert(
+    svg.includes(`data-tag="${pickTag}"`) && svg.includes('aria-pressed="true"') && svg.includes('is-selected') && svg.includes('is-fault'),
+    `${sampleId}: rendered interactive SVG missing selection/fault markup`,
+  );
+}
+const swimlaneLayout = buildPidDiagramLayout(aliasDag);
+assert(
+  swimlaneLayout.layoutMode === 'swimlanes' && swimlaneLayout.nodes.length === aliasDag.nodes.length,
+  `expected swimlanes layout for coordinate-less blueprint, got ${swimlaneLayout.layoutMode}`,
+);
+console.log('J-6 pid_assembler: parsed 01_batch_mixer.dxf, 02_silo_packaging.dxf & 06_pilot_plant_hydromet.dxf + flexible plant aliases + hybrid OpenRouter schema + scanned PDF + dynamic 2D P&ID SVG verified');
 
 sim.delete();
 if (failures.length) {

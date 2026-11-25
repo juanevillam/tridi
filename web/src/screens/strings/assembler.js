@@ -37,12 +37,16 @@ export const { T, t, A } = dict({
     en: 'Choose P&ID blueprint (.dxf · .pdf · .png · .jpg)',
   },
   dropBoxSub: {
-    es: 'o arrastra y suelta aquí tu plano AutoCAD .dxf, PDF vectorial o imagen P&ID',
-    en: 'or drag and drop your AutoCAD .dxf, vector PDF, or P&ID diagram image here',
+    es: 'o arrastra y suelta aquí tu plano AutoCAD .dxf, PDF (vectorial o escaneado) o imagen P&ID',
+    en: 'or drag and drop your AutoCAD .dxf, PDF (vector or scanned), or P&ID diagram image here',
   },
   stagePreparing: {
     es: '1/3 · Preparando y optimizando plano localmente...',
     en: '1/3 · Preparing and optimizing blueprint locally...',
+  },
+  stagePdfRasterize: {
+    es: '1/3 · PDF escaneado detectado — renderizando página en alta resolución...',
+    en: '1/3 · Scanned PDF detected — rendering high-resolution page...',
   },
   stageVision: {
     es: '2/3 · Analizando imagen P&ID con visión IA (1 llamada acotada)...',
@@ -53,20 +57,68 @@ export const { T, t, A } = dict({
     en: '2/3 · Drafting process-specific ISA-88 narrative, Cause & Effect, and PLC sequence...',
   },
   dropErrEmptyPdf: {
-    es: 'Este PDF no contiene etiquetas de texto CAD seleccionables (está escaneado como imagen). Súbelo como imagen (.png / .jpg) o expórtalo desde AutoCAD en formato .dxf.',
-    en: 'This PDF contains no selectable CAD text tags (it is a scanned image). Upload it as an image (.png / .jpg) or export it from AutoCAD in .dxf format.',
+    es: 'No se detectaron etiquetas de texto CAD ni equipos P&ID en esta página del PDF. Si es un PDF multipágina o escaneado, prueba otra página o verifica que OPENROUTER_API_KEY esté activa en el servidor.',
+    en: 'No CAD text tags or P&ID equipment were detected on this PDF page. If this is a multi-page or scanned PDF, try another page or verify OPENROUTER_API_KEY is active on the server.',
   },
   dropErrEmptyDxf: {
     es: 'No se detectaron etiquetas de equipos ni instrumentación ISA-5.1 en este archivo. Verifica que sea un archivo .dxf ASCII válido.',
     en: 'No ISA-5.1 equipment or instrumentation tags were detected in this file. Please verify it is a valid ASCII .dxf blueprint.',
   },
   dropErrApiNotConfigured: {
-    es: 'El análisis de imágenes con visión IA requiere configurar OPENROUTER_API_KEY en el servidor (Cloudflare Pages / .env local). Puedes subir archivos .dxf de AutoCAD en modo 100 % local.',
-    en: 'Vision AI image analysis requires OPENROUTER_API_KEY configured on the server (Cloudflare Pages / local .env). You can still upload AutoCAD .dxf files 100% locally.',
+    es: 'El análisis de imágenes y PDFs escaneados con visión IA requiere configurar OPENROUTER_API_KEY en el servidor (Cloudflare Pages / .env local). Puedes subir archivos .dxf o PDFs vectoriales en modo 100 % local.',
+    en: 'Vision AI analysis for images and scanned PDFs requires OPENROUTER_API_KEY configured on the server (Cloudflare Pages / local .env). You can still upload AutoCAD .dxf or vector PDFs 100% locally.',
   },
   dropErrVisionFailed: {
     es: 'No se pudieron reconocer equipos P&ID en esta imagen o el servicio de análisis respondió con error. Intenta con una imagen más nítida o sube el archivo .dxf.',
     en: 'Could not recognize P&ID equipment in this image or the analysis service returned an error. Try a sharper image or upload the .dxf file.',
+  },
+  pdfPageLabel: {
+    es: 'Página PDF',
+    en: 'PDF Page',
+  },
+  pdfTryAnotherPage: {
+    es: 'Este PDF tiene varias páginas. Prueba analizar otra página:',
+    en: 'This PDF has multiple pages. Try analyzing another page:',
+  },
+  diagramHint: {
+    es: 'Haz clic en cualquier tag ISA en la tabla I/O o en el esquema 2D para resaltar el equipo, sus tuberías conectadas y sus direcciones PLC.',
+    en: 'Click any ISA tag in the I/O table or 2D schematic to highlight the equipment, connected piping, and PLC addresses.',
+  },
+  inspectorClear: {
+    es: 'Limpiar selección',
+    en: 'Clear selection',
+  },
+  inspectorUpstream: {
+    es: 'Entrada',
+    en: 'Upstream',
+  },
+  inspectorDownstream: {
+    es: 'Salida',
+    en: 'Downstream',
+  },
+  inspectorNone: {
+    es: 'Sin conexión directa',
+    en: 'No direct pipe',
+  },
+  inspectorIoLabel: {
+    es: 'Direcciones PLC',
+    en: 'PLC Addresses',
+  },
+  hudActiveLabel: {
+    es: 'Equipos activos',
+    en: 'Active equipment',
+  },
+  hudTopologyLabel: {
+    es: 'Topología real',
+    en: 'Live topology',
+  },
+  pidFaultSensorBtn: {
+    es: '⚡ Falla: Alarma / Sensor',
+    en: '⚡ Fault: Sensor / Interlock',
+  },
+  pidFaultDriveBtn: {
+    es: '⚡ Falla: Motor / Bomba',
+    en: '⚡ Fault: Motor / Pump',
   },
   secSourcePreview: {
     es: 'Plano Original Analizado (Visión IA + Validación Determinista)',

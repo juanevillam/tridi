@@ -1922,23 +1922,72 @@ async function callHybridPidApi(endpoint, payload) {
 }
 
 /**
- * Hybrid Blueprint Extractor for `.dxf`, `.pdf`, and P&ID images (`.png`, `.jpg`, `.jpeg`, `.webp`):
+ * Zero-dependency fallback extractor for scanned PDFs that embed raw JPEG (/DCTDecode) images.
+ * Finds the largest valid JPEG stream (SOI 0xFF 0xD8 0xFF ... EOI 0xFF 0xD9) inside a PDF buffer.
+ */
+export function extractEmbeddedJpegFromPdfBytes(uint8Array) {
+  const bytes = uint8Array instanceof Uint8Array ? uint8Array : new Uint8Array(uint8Array);
+  let best = null;
+  let i = 0;
+  while (i + 3 < bytes.length) {
+    if (bytes[i] === 0xff && bytes[i + 1] === 0xd8 && bytes[i + 2] === 0xff) {
+      let j = i + 3;
+      while (j + 1 < bytes.length) {
+        if (bytes[j] === 0xff && bytes[j + 1] === 0xd9) {
+          const slice = bytes.subarray(i, j + 2);
+          // Skip tiny JPEG thumbnails (< 256 B) when a larger full-page scan exists.
+          if (slice.length >= 256 && (!best || slice.length > best.length)) {
+            best = slice;
+          }
+          i = j + 2;
+          break;
+        }
+        j++;
+      }
+      if (j + 1 >= bytes.length) break;
+    } else {
+      i++;
+    }
+  }
+  if (!best) return null;
+  let bin = '';
+  for (let k = 0; k < best.length; k++) bin += String.fromCharCode(best[k]);
+  const b64 = typeof Buffer !== 'undefined' ? Buffer.from(best).toString('base64') : btoa(bin);
+  return {
+    bytes: best,
+    imageDataUrl: `data:image/jpeg;base64,${b64}`,
+    previewImageUrl: null,
+    pageNumber: 1,
+    pageCount: 1,
+  };
+}
+
+/**
+ * Hybrid Blueprint Extractor for `.dxf`, `.pdf` (vector AND scanned), and P&ID images (`.png`, `.jpg`, `.jpeg`, `.webp`):
  *   - Images: resizes locally on <canvas> (<=1600px) and makes 1 OpenRouter Vision call via `/api/pid-analyze`
  *     to extract equipment, piping edges, ISA-88 narrative, Cause & Effect, and PLC sequence (zero fake presets).
  *   - `.dxf` / vector `.pdf`: parses tags deterministically in-browser (0 ms, $0), then optionally enriches
- *     with 1 cheap text LLM call (<$0.002) for process-specific FDS & PLC steps (falling back gracefully offline).
+ *     with 1 cheap text LLM call (<$0.003) for process-specific FDS & PLC steps (falling back gracefully offline).
+ *   - Scanned / outlined-font `.pdf`: when local PDF text extraction finds 0 ISA-5.1 tags, rasterizes the PDF page
+ *     to JPEG via `renderPdfToImage` (lazy PDF.js in browser) or embedded JPEG extraction, then routes to 1 Vision call.
  */
 export async function extractBlueprintFromUpload(
   file,
-  { lang = 'es', processGoal = '', apiEndpoint = '/api/pid-analyze', useAi = true, onStage = null } = {},
+  {
+    lang = 'es',
+    processGoal = '',
+    apiEndpoint = '/api/pid-analyze',
+    useAi = true,
+    onStage = null,
+    renderPdfToImage = null,
+    pdfPage = 1,
+    forceVision = false,
+  } = {},
 ) {
   const name = file?.name || 'blueprint.dxf';
   const ext = name.split('.').pop()?.toLowerCase() || '';
 
-  if (ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp') {
-    onStage?.('vision_prepare');
-    const previewImageUrl = typeof URL !== 'undefined' ? URL.createObjectURL(file) : null;
-    const imageDataUrl = await resizeImageToJpegDataUrl(file);
+  const runVisionRequest = async ({ imageDataUrl, previewImageUrl, sourceKind, pageCount = 1, pageNumber = 1 }) => {
     onStage?.('vision_analyze');
     try {
       const apiRes = await callHybridPidApi(apiEndpoint, {
@@ -1949,7 +1998,7 @@ export async function extractBlueprintFromUpload(
         imageDataUrl,
       });
       if (!apiRes.ok) {
-        if (previewImageUrl) URL.revokeObjectURL(previewImageUrl);
+        if (previewImageUrl?.startsWith?.('blob:') && typeof URL !== 'undefined') URL.revokeObjectURL(previewImageUrl);
         return {
           ok: false,
           errorCode: apiRes.errorCode || 'vision_failed',
@@ -1958,8 +2007,10 @@ export async function extractBlueprintFromUpload(
           processGoal: '',
           aiSpec: null,
           usage: null,
-          sourceKind: 'image',
+          sourceKind,
           previewImageUrl: null,
+          pageCount,
+          pageNumber,
         };
       }
       const spec = apiRes.spec;
@@ -1971,11 +2022,13 @@ export async function extractBlueprintFromUpload(
         processGoal: spec.processGoal || processGoal,
         aiSpec: spec,
         usage: apiRes.usage || null,
-        sourceKind: 'image',
+        sourceKind,
         previewImageUrl,
+        pageCount,
+        pageNumber,
       };
     } catch (err) {
-      if (previewImageUrl) URL.revokeObjectURL(previewImageUrl);
+      if (previewImageUrl?.startsWith?.('blob:') && typeof URL !== 'undefined') URL.revokeObjectURL(previewImageUrl);
       return {
         ok: false,
         errorCode: 'api_unreachable',
@@ -1984,35 +2037,102 @@ export async function extractBlueprintFromUpload(
         processGoal: '',
         aiSpec: null,
         usage: null,
-        sourceKind: 'image',
+        sourceKind,
         previewImageUrl: null,
+        pageCount,
+        pageNumber,
       };
     }
+  };
+
+  if (ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp') {
+    onStage?.('vision_prepare');
+    const previewImageUrl = typeof URL !== 'undefined' ? URL.createObjectURL(file) : null;
+    const imageDataUrl = await resizeImageToJpegDataUrl(file);
+    return runVisionRequest({ imageDataUrl, previewImageUrl, sourceKind: 'image' });
   }
 
   let rawText = '';
+  let pdfBytes = null;
   let sourceKind = 'dxf';
   if (ext === 'pdf') {
     onStage?.('parse_local');
     sourceKind = 'pdf';
     const ab = await file.arrayBuffer();
-    rawText = await extractTextFromPdfBytes(new Uint8Array(ab));
+    pdfBytes = new Uint8Array(ab);
+    if (!forceVision) {
+      rawText = await extractTextFromPdfBytes(pdfBytes);
+    }
   } else {
     onStage?.('parse_local');
     rawText = await file.text();
   }
 
-  const parsed = parseDxfPid(rawText, { fileName: name, processGoal });
+  const parsed = !forceVision ? parseDxfPid(rawText, { fileName: name, processGoal }) : { nodes: [], edges: [] };
+
+  // Scanned PDF / outlined AutoCAD font fallback -> rasterize page to JPEG and run Vision AI (1 bounded call)
+  if (sourceKind === 'pdf' && (forceVision || parsed.nodes.length === 0)) {
+    if (!useAi || !apiEndpoint) {
+      return {
+        ok: false,
+        errorCode: 'empty_pdf',
+        dxfText: '',
+        processGoal: '',
+        aiSpec: null,
+        usage: null,
+        sourceKind: 'pdf_scanned',
+        previewImageUrl: null,
+        pageCount: 1,
+        pageNumber: pdfPage,
+      };
+    }
+    onStage?.('pdf_rasterize');
+    let raster = null;
+    if (typeof renderPdfToImage === 'function') {
+      try {
+        raster = await renderPdfToImage(pdfBytes, { pageNumber: pdfPage, maxDim: 1600, quality: 0.86 });
+      } catch {
+        raster = null;
+      }
+    }
+    if (!raster?.imageDataUrl) {
+      raster = extractEmbeddedJpegFromPdfBytes(pdfBytes);
+    }
+    if (!raster?.imageDataUrl) {
+      return {
+        ok: false,
+        errorCode: 'empty_pdf',
+        dxfText: '',
+        processGoal: '',
+        aiSpec: null,
+        usage: null,
+        sourceKind: 'pdf_scanned',
+        previewImageUrl: null,
+        pageCount: 1,
+        pageNumber: pdfPage,
+      };
+    }
+    return runVisionRequest({
+      imageDataUrl: raster.imageDataUrl,
+      previewImageUrl: raster.previewImageUrl || raster.imageDataUrl,
+      sourceKind: 'pdf_scanned',
+      pageCount: raster.pageCount || 1,
+      pageNumber: raster.pageNumber || pdfPage,
+    });
+  }
+
   if (parsed.nodes.length === 0) {
     return {
       ok: false,
-      errorCode: sourceKind === 'pdf' ? 'empty_pdf' : 'empty_dxf',
+      errorCode: 'empty_dxf',
       dxfText: '',
       processGoal: '',
       aiSpec: null,
       usage: null,
       sourceKind,
       previewImageUrl: null,
+      pageCount: 1,
+      pageNumber: 1,
     };
   }
 
@@ -2058,5 +2178,7 @@ export async function extractBlueprintFromUpload(
     usage,
     sourceKind,
     previewImageUrl: null,
+    pageCount: 1,
+    pageNumber: 1,
   };
 }

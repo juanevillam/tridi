@@ -36,6 +36,7 @@ export {
 export {
   convertNodesToStrictDxf,
   extractBlueprintFromUpload,
+  extractEmbeddedJpegFromPdfBytes,
   extractTextFromPdfBytes,
   generateIsaEngineeringDocs,
   generatePidMujocoXml,
@@ -46,6 +47,7 @@ export {
   PID_SAMPLE_DXFS,
   PILOT_PLANT_HYDROMET_SPEC,
 } from './pid_assembler.js';
+export { buildPidDiagramLayout, renderPidSchematicSvg } from './pid_diagram.js';
 
 export const ROBOTS = [
   { id: 'g1', robot: 'unitree_g1', vertical: 'humanoids', name: 'Unitree G1 (29 DOF + Inspire 5 dedos)' },
