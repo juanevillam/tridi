@@ -3,6 +3,7 @@
 // Channel 2: Custom Robots & Mechatronics (.stl + .ino -> Pinout/Timer Audit + MuJoCo Twin + 50 Hz C99 Firmware)
 import './assembler.css';
 import {
+  buildPidDiagramLayout,
   classifyStlMeshes,
   extractBlueprintFromUpload,
   generateIsaEngineeringDocs,
@@ -14,6 +15,7 @@ import {
   parseArduinoSketch,
   parseDxfPid,
   PID_SAMPLE_DXFS,
+  renderPidSchematicSvg,
   validateHardwarePinout,
 } from 'tridi-physics';
 import { appHeaderHTML, mountAppHeader } from '../header.js';
@@ -157,6 +159,10 @@ export function mount(root) {
   let activeAiSpec = null;
   let activeAiUsage = null;
   let previewImageUrl = null;
+  let lastPdfFile = null;
+  let pdfPageCount = 1;
+  let pdfPageNumber = 1;
+  let selectedTag = null;
   let pidTab = 'p1io'; // 'p1io' | 'p3' | 'diagram' | 'p2'
   let plcDialect = 'scl'; // 'scl' | 'l5k'
   let cadPreset = 'luigi_lab4';
@@ -165,22 +171,25 @@ export function mount(root) {
   let stlNames = ['1_chasis_robot.stl', '5_rin_x2.stl', '6_llanta_x2_TPU.stl', '7_cabeza_sensor_servo.stl'];
   let pinOverride = null;
   let currentDag = null;
+  let currentSteps = [];
   let copyTimer = null;
   const reducedMotionQuery = typeof window !== 'undefined' ? window.matchMedia?.('(prefers-reduced-motion: reduce)') : null;
   const clearPreviewUrl = () => {
-    if (previewImageUrl) {
+    if (previewImageUrl?.startsWith?.('blob:')) {
       URL.revokeObjectURL(previewImageUrl);
-      previewImageUrl = null;
     }
+    previewImageUrl = null;
+  };
+  const lazyRenderPdfToImage = async (bytes, opts) => {
+    const { renderPdfPageToImage } = await import('../pdf-render.js');
+    return renderPdfPageToImage(bytes, opts);
   };
 
-  // Interactive P&ID process simulation state (for live visualization & fault stress-test)
+  // Interactive P&ID process simulation state (derived dynamically from the uploaded plant's sequence)
   const simState = {
-    weightKg: 142.5,
-    batches: 3,
-    stepIdx: 1, // 0=IDLE, 1=DOSING, 2=MIXING, 3=DISCHARGE
-    faultLsh: false,
-    faultMotor: false,
+    stepIdx: 0,
+    faultSensor: false,
+    faultDrive: false,
   };
 
   const modeToggleHTML = `
@@ -276,61 +285,235 @@ export function mount(root) {
       </svg>`;
   }
 
-  function renderPidFlowSvg(dag) {
-    const isFault = simState.faultLsh || simState.faultMotor;
-    const fillPct = simState.faultLsh ? 96 : Math.min(90, Math.max(12, (simState.weightKg / 300) * 85));
-    const fillY = 152 - (fillPct / 100) * 76;
-    const fillH = (fillPct / 100) * 76;
-    const valveColor = !isFault && simState.stepIdx === 1 ? '#f5f5f5' : isFault ? '#ff6b6b' : '#4a515d';
-    const motorColor = !isFault && simState.stepIdx === 2 ? '#f5f5f5' : simState.faultMotor ? '#ff6b6b' : '#8e96a4';
-    const outColor = !isFault && simState.stepIdx === 3 ? '#f5f5f5' : '#4a515d';
-    const tags = dag.nodes.map((n) => n.tag);
-    const v1 = tags.find((x) => x.startsWith('FV-')) ?? 'FV-101';
-    const v2 = tags.filter((x) => x.startsWith('FV-'))[1] ?? 'FV-102';
-    const v3 = tags.filter((x) => x.startsWith('FV-'))[2] ?? 'FV-103';
-    const vOut = tags.filter((x) => x.startsWith('FV-')).at(-1) ?? 'FV-104';
-    const tk = tags.find((x) => x.startsWith('TK-')) ?? 'TK-101';
-    const wt = tags.find((x) => x.startsWith('WT-')) ?? 'WT-101';
-    const lsh = tags.find((x) => x.startsWith('LSH-')) ?? 'LSH-101';
-    const lsl = tags.find((x) => x.startsWith('LSL-')) ?? 'LSL-101';
-    const mot = tags.find((x) => x.startsWith('M-') || x.startsWith('SC-')) ?? 'M-101';
-    const cv = tags.find((x) => x.startsWith('CV-') || x.startsWith('PK-')) ?? 'CV-101';
-
-    return `
-      <svg class="asm-pid-svg" viewBox="0 0 620 220" role="img" ${A({ 'aria-label': 'svgPidAria' })}>
-        <!-- Piping lines -->
-        <path d="M95 44 H250 V74 M95 88 H230 V74 M95 132 H270 V74" stroke="${valveColor}" stroke-width="2" fill="none" stroke-dasharray="${!isFault && simState.stepIdx === 1 ? '5 3' : 'none'}"/>
-        <path d="M300 154 V188 H495" stroke="${outColor}" stroke-width="2.2" fill="none"/>
-        <!-- Feed Valves -->
-        <g font-family="Geist Mono, monospace" font-size="10" fill="#f5f5f5">
-          <rect x="32" y="30" width="62" height="26" rx="5" fill="#121417" stroke="${valveColor}" stroke-width="1.5"/>
-          <text x="63" y="47" text-anchor="middle">${esc(v1)}</text>
-          <rect x="32" y="74" width="62" height="26" rx="5" fill="#121417" stroke="${valveColor}" stroke-width="1.5"/>
-          <text x="63" y="91" text-anchor="middle">${esc(v2)}</text>
-          <rect x="32" y="118" width="62" height="26" rx="5" fill="#121417" stroke="${valveColor}" stroke-width="1.5"/>
-          <text x="63" y="135" text-anchor="middle">${esc(v3)}</text>
-        </g>
-        <!-- Main Mixing Vessel / Hopper -->
-        <rect x="218" y="72" width="164" height="82" rx="10" fill="#14181f" stroke="#636b78" stroke-width="1.8"/>
-        <rect x="222" y="${fillY.toFixed(1)}" width="156" height="${fillH.toFixed(1)}" rx="6" fill="${simState.faultLsh ? 'rgb(255 107 107 / 0.35)' : 'rgb(241 243 238 / 0.14)'}"/>
-        <text x="300" y="112" text-anchor="middle" font-family="Geist Mono, monospace" font-size="13" font-weight="700" fill="#f5f5f5">${esc(tk)}</text>
-        <text x="300" y="128" text-anchor="middle" font-family="Geist Mono, monospace" font-size="10" fill="#d4d8df">${esc(wt)}: ${simState.weightKg.toFixed(1)} kg</text>
-        <!-- Top Agitator / Conveying Motor -->
-        <circle cx="300" cy="36" r="18" fill="#121417" stroke="${motorColor}" stroke-width="1.8"/>
-        <line x1="300" y1="54" x2="300" y2="138" stroke="${motorColor}" stroke-width="1.8"/>
-        <text x="300" y="40" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" font-weight="700" fill="${motorColor}">${esc(mot)}</text>
-        <!-- Level Switches LSH & LSL -->
-        <rect x="404" y="74" width="76" height="24" rx="12" fill="#121417" stroke="${simState.faultLsh ? '#ff6b6b' : '#4a515d'}" stroke-width="1.5"/>
-        <text x="442" y="90" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="${simState.faultLsh ? '#ff6b6b' : '#f5f5f5'}">${esc(lsh)} ${simState.faultLsh ? 'TRIP' : 'OK'}</text>
-        <rect x="404" y="128" width="76" height="24" rx="12" fill="#121417" stroke="#4a515d" stroke-width="1.4"/>
-        <text x="442" y="144" text-anchor="middle" font-family="Geist Mono, monospace" font-size="9.5" fill="#bdbdbd">${esc(lsl)}</text>
-        <!-- Bottom Discharge Valve & Takeaway Conveyor -->
-        <rect x="334" y="174" width="66" height="26" rx="5" fill="#121417" stroke="${outColor}" stroke-width="1.5"/>
-        <text x="367" y="191" text-anchor="middle" font-family="Geist Mono, monospace" font-size="10" fill="#f5f5f5">${esc(vOut)}</text>
-        <rect x="495" y="172" width="96" height="30" rx="6" fill="#121417" stroke="#4a515d" stroke-width="1.5"/>
-        <text x="543" y="191" text-anchor="middle" font-family="Geist Mono, monospace" font-size="10" fill="#d4d8df">${esc(cv)}</text>
-      </svg>`;
+  function getPlantSequenceSteps(dag, docs, aiSpec) {
+    if (Array.isArray(aiSpec?.plcSequenceSteps) && aiSpec.plcSequenceSteps.length > 0) {
+      return aiSpec.plcSequenceSteps.map((st) => ({
+        code: `${String(st.stepNumber).padStart(2, '0')} · ${st.label}`,
+        activeTags: [...(st.openValves || []), ...(st.startMotors || [])],
+      }));
+    }
+    const valves = dag.nodes.filter((n) => n.prefix === 'FV').map((n) => n.tag);
+    const drives = dag.nodes.filter((n) => n.prefix === 'M' || n.prefix === 'P' || n.prefix === 'SC').map((n) => n.tag);
+    const downstream = dag.nodes.filter((n) => n.prefix === 'CV' || n.prefix === 'PK').map((n) => n.tag);
+    const vessels = dag.nodes.filter((n) => n.prefix === 'TK' || n.prefix === 'SL').map((n) => n.tag);
+    const narrative = docs?.controlNarrative || [];
+    const fallbackTags = [
+      [],
+      [...valves.slice(0, Math.max(1, valves.length - 1)), ...vessels.slice(0, 2)],
+      [...drives, ...vessels.slice(0, 1)],
+      [...(valves.length > 1 ? [valves.at(-1)] : []), ...downstream],
+    ];
+    if (narrative.length) {
+      return narrative.map((s, idx) => ({
+        code: s.step,
+        activeTags: fallbackTags[idx % fallbackTags.length] || [],
+      }));
+    }
+    return [
+      { code: '00 · IDLE', activeTags: [] },
+      { code: '10 · FEED', activeTags: fallbackTags[1] },
+      { code: '20 · PROCESS', activeTags: fallbackTags[2] },
+      { code: '30 · DISCHARGE', activeTags: fallbackTags[3] },
+    ];
   }
+
+  function getPlantFaultTargets(dag) {
+    const sensorNode =
+      dag.nodes.find((n) => n.prefix === 'LSH') ??
+      dag.nodes.find((n) => n.category === 'safety_switch') ??
+      dag.nodes.find((n) => n.category === 'sensor') ??
+      null;
+    const driveNode =
+      dag.nodes.find((n) => n.prefix === 'M' || n.prefix === 'P' || n.prefix === 'SC' || n.prefix === 'CV') ??
+      dag.nodes.find((n) => n.category === 'actuator') ??
+      null;
+    return { sensorNode, driveNode };
+  }
+
+  function getLiveDiagramSignals(dag, steps) {
+    const { sensorNode, driveNode } = getPlantFaultTargets(dag);
+    const faultTags = [];
+    if (simState.faultSensor && sensorNode) faultTags.push(sensorNode.tag);
+    if (simState.faultDrive && driveNode) faultTags.push(driveNode.tag);
+    const isFault = faultTags.length > 0;
+    const safeIdx = steps.length ? simState.stepIdx % steps.length : 0;
+    const step = steps[safeIdx] ?? { code: '00 · IDLE', activeTags: [] };
+    const stateText = simState.faultSensor
+      ? `HOLD · TRIP (${sensorNode?.tag ?? 'LSH'})`
+      : simState.faultDrive
+        ? `HOLD · FAULT (${driveNode?.tag ?? 'DRIVE'})`
+        : step.code;
+    return {
+      isFault,
+      faultTags,
+      activeTags: isFault ? [] : step.activeTags,
+      stateText,
+      sensorNode,
+      driveNode,
+    };
+  }
+
+  function renderTagInspector(dag, layout, tag) {
+    if (!tag) {
+      return `
+        <div class="asm-inspector" id="asm-tag-inspector">
+          <p class="asm-inspector-hint">${T('diagramHint')}</p>
+        </div>`;
+    }
+    const node = layout.nodes.find((n) => n.tag === tag);
+    if (!node) return '';
+    const ios = dag.ioSchedule.filter((io) => io.isaTag === tag);
+    const chipList = (tags) =>
+      tags.length
+        ? tags.map((tg) => `<button type="button" class="asm-tag-btn" data-select-tag="${esc(tg)}" aria-pressed="false">${esc(tg)}</button>`).join('')
+        : `<span>${T('inspectorNone')}</span>`;
+    return `
+      <div class="asm-inspector is-active" id="asm-tag-inspector">
+        <div class="asm-inspector-head">
+          <div class="asm-inspector-title">
+            <span class="asm-badge ok">${esc(node.tag)}</span>
+            <b>${esc(node.isaName)}</b>
+            <span class="asm-badge">${esc(node.plcBlock)}</span>
+          </div>
+          <button type="button" class="asm-pill" id="asm-clear-tag">${T('inspectorClear')}</button>
+        </div>
+        <div class="asm-inspector-meta">
+          <span>${esc(node.description)}</span>
+          <span><b>Fail-Safe:</b> ${esc(node.failSafe)}</span>
+        </div>
+        <div class="asm-inspector-links">
+          <span>${T('inspectorUpstream')}:</span> ${chipList(node.upstream)}
+          <span>· ${T('inspectorDownstream')}:</span> ${chipList(node.downstream)}
+        </div>
+        ${
+          ios.length
+            ? `<div class="asm-inspector-links">
+                <span>${T('inspectorIoLabel')}:</span>
+                ${ios.map((io) => `<span class="asm-badge">${esc(io.ioType)} ${esc(io.address)} · ${esc(io.plcTag)}</span>`).join('')}
+              </div>`
+            : ''
+        }
+      </div>`;
+  }
+
+  function applySvgLiveState(svgEl, { activeTags = [], faultTags = [] } = {}) {
+    if (!svgEl) return;
+    const activeSet = new Set(activeTags);
+    const faultSet = new Set(faultTags);
+    const uid = svgEl.classList.contains('asm-pid-svg--compact') ? 'c' : 'f';
+    for (const nodeEl of svgEl.querySelectorAll('.asm-svg-node')) {
+      const tg = nodeEl.dataset.tag;
+      nodeEl.classList.toggle('is-active', activeSet.has(tg));
+      nodeEl.classList.toggle('is-fault', faultSet.has(tg));
+    }
+    for (const edgeEl of svgEl.querySelectorAll('.asm-svg-edge')) {
+      const from = edgeEl.dataset.from;
+      const to = edgeEl.dataset.to;
+      const isSelected = edgeEl.classList.contains('is-selected');
+      const isFault = faultSet.has(from) || faultSet.has(to);
+      const isActive = activeSet.has(from) || activeSet.has(to);
+      edgeEl.classList.toggle('is-fault', isFault);
+      edgeEl.classList.toggle('is-active', !isFault && isActive);
+      const marker = isFault
+        ? `url(#pid-arrow-fault-${uid})`
+        : isSelected || isActive
+          ? `url(#pid-arrow-signal-${uid})`
+          : `url(#pid-arrow-${uid})`;
+      edgeEl.setAttribute('marker-end', marker);
+    }
+  }
+
+  function renderPdfPageButtons(pageCount, activePage, disabled = false) {
+    if (pageCount <= 1) return '';
+    const maxShown = Math.min(pageCount, 8);
+    const btns = [];
+    for (let p = 1; p <= maxShown; p++) {
+      btns.push(
+        `<button type="button" class="asm-page-btn" data-pdf-page="${p}" ${p === activePage ? 'aria-current="page"' : ''} ${disabled ? 'disabled' : ''}>${p}</button>`,
+      );
+    }
+    return `
+      <div class="asm-pdf-pages">
+        <span class="asm-pdf-pages-label">${T('pdfPageLabel')} (${activePage}/${pageCount})</span>
+        ${btns.join('')}
+      </div>`;
+  }
+
+  const analyzeUploadedFile = async (file, { pdfPage = 1, forceVision = false } = {}) => {
+    if (!file || uploadStageKey) return;
+    uploadErrorKey = null;
+    const isPdf = /\.pdf$/i.test(file.name);
+    const isImage = /\.(png|jpe?g|webp)$/i.test(file.name);
+    if (isPdf) lastPdfFile = file;
+    else {
+      lastPdfFile = null;
+      pdfPageCount = 1;
+      pdfPageNumber = 1;
+    }
+    const stageMap = {
+      vision_prepare: 'stagePreparing',
+      parse_local: 'stagePreparing',
+      pdf_rasterize: 'stagePdfRasterize',
+      vision_analyze: 'stageVision',
+      text_enrich: 'stageEnrich',
+    };
+    uploadStageKey = forceVision ? 'stagePdfRasterize' : 'stagePreparing';
+    render();
+    try {
+      const extracted = await extractBlueprintFromUpload(file, {
+        lang: lang(),
+        processGoal,
+        pdfPage,
+        forceVision,
+        renderPdfToImage: lazyRenderPdfToImage,
+        onStage: (stage) => {
+          const nextKey = stageMap[stage] ?? 'stagePreparing';
+          if (uploadStageKey !== nextKey) {
+            uploadStageKey = nextKey;
+            render();
+          }
+        },
+      });
+      uploadStageKey = null;
+      if (isPdf && extracted.pageCount) {
+        pdfPageCount = extracted.pageCount;
+        pdfPageNumber = extracted.pageNumber || pdfPage;
+      }
+      if (!extracted.ok) {
+        if (extracted.errorCode === 'api_not_configured') {
+          uploadErrorKey = 'dropErrApiNotConfigured';
+        } else if (extracted.errorCode === 'empty_pdf') {
+          uploadErrorKey = 'dropErrEmptyPdf';
+        } else if (extracted.errorCode === 'empty_dxf') {
+          uploadErrorKey = 'dropErrEmptyDxf';
+        } else {
+          uploadErrorKey = isImage || isPdf ? 'dropErrVisionFailed' : 'dropErrEmptyDxf';
+        }
+        render();
+        return;
+      }
+      clearPreviewUrl();
+      sampleId = file.name;
+      dxfText = extracted.dxfText;
+      activeAiSpec = extracted.aiSpec || null;
+      activeAiUsage = extracted.usage || null;
+      previewImageUrl = extracted.previewImageUrl || null;
+      selectedTag = null;
+      simState.stepIdx = 0;
+      simState.faultSensor = false;
+      simState.faultDrive = false;
+      if (!processGoal.trim()) {
+        processGoal =
+          extracted.processGoal || `Automated ISA-5.1 / ISA-88 engineering specification for ${file.name}`;
+      }
+      pidStep = 'result';
+      render();
+    } catch {
+      uploadStageKey = null;
+      uploadErrorKey = isImage || isPdf ? 'dropErrVisionFailed' : 'dropErrEmptyDxf';
+      render();
+    }
+  };
 
   function render() {
     contentEl.className = mode === 'pid' ? 'asm-simple-wrap' : 'asm-grid';
@@ -349,6 +532,14 @@ export function mount(root) {
             </label>
             ${uploadStageKey ? `<p class="asm-upload-status" role="status" aria-live="polite">${T(uploadStageKey)}</p>` : ''}
             ${uploadErrorKey ? `<p class="asm-upload-error" role="alert">${T(uploadErrorKey)}</p>` : ''}
+            ${
+              uploadErrorKey && lastPdfFile && pdfPageCount > 1
+                ? `<div class="asm-row" style="justify-content:center">
+                    <span class="asm-inspector-hint">${T('pdfTryAnotherPage')}</span>
+                    ${renderPdfPageButtons(pdfPageCount, pdfPageNumber, Boolean(uploadStageKey))}
+                  </div>`
+                : ''
+            }
 
             <div class="asm-field" style="text-align:left">
               <label class="asm-label" for="asm-goal-input">${T('pidGoalLabel')}</label>
@@ -381,66 +572,9 @@ export function mount(root) {
           };
         }
 
-        const loadFile = async (file) => {
-          if (!file || uploadStageKey) return;
-          uploadErrorKey = null;
-          const isImage = /\.(png|jpe?g|webp)$/i.test(file.name);
-          const stageMap = {
-            vision_prepare: 'stagePreparing',
-            parse_local: 'stagePreparing',
-            vision_analyze: 'stageVision',
-            text_enrich: 'stageEnrich',
-          };
-          uploadStageKey = 'stagePreparing';
-          render();
-          try {
-            const extracted = await extractBlueprintFromUpload(file, {
-              lang: lang(),
-              processGoal,
-              onStage: (stage) => {
-                const nextKey = stageMap[stage] ?? 'stagePreparing';
-                if (uploadStageKey !== nextKey) {
-                  uploadStageKey = nextKey;
-                  render();
-                }
-              },
-            });
-            uploadStageKey = null;
-            if (!extracted.ok) {
-              if (extracted.errorCode === 'api_not_configured') {
-                uploadErrorKey = 'dropErrApiNotConfigured';
-              } else if (extracted.errorCode === 'empty_pdf') {
-                uploadErrorKey = 'dropErrEmptyPdf';
-              } else if (extracted.errorCode === 'empty_dxf') {
-                uploadErrorKey = 'dropErrEmptyDxf';
-              } else {
-                uploadErrorKey = isImage ? 'dropErrVisionFailed' : 'dropErrEmptyDxf';
-              }
-              render();
-              return;
-            }
-            clearPreviewUrl();
-            sampleId = file.name;
-            dxfText = extracted.dxfText;
-            activeAiSpec = extracted.aiSpec || null;
-            activeAiUsage = extracted.usage || null;
-            previewImageUrl = extracted.previewImageUrl || null;
-            if (!processGoal.trim()) {
-              processGoal =
-                extracted.processGoal || `Automated ISA-5.1 / ISA-88 engineering specification for ${file.name}`;
-            }
-            pidStep = 'result';
-            render();
-          } catch {
-            uploadStageKey = null;
-            uploadErrorKey = isImage ? 'dropErrVisionFailed' : 'dropErrEmptyDxf';
-            render();
-          }
-        };
-
         const fileIn = contentEl.querySelector('#asm-dxf-file');
         if (fileIn) {
-          fileIn.onchange = () => loadFile(fileIn.files?.[0]);
+          fileIn.onchange = () => analyzeUploadedFile(fileIn.files?.[0]);
         }
 
         const dropzone = contentEl.querySelector('#asm-dropzone');
@@ -453,13 +587,29 @@ export function mount(root) {
           dropzone.ondrop = (e) => {
             e.preventDefault();
             dropzone.classList.remove('dragging');
-            loadFile(e.dataTransfer?.files?.[0]);
+            analyzeUploadedFile(e.dataTransfer?.files?.[0]);
+          };
+        }
+
+        for (const pBtn of contentEl.querySelectorAll('[data-pdf-page]')) {
+          pBtn.onclick = () => {
+            const targetPage = Number(pBtn.dataset.pdfPage) || 1;
+            if (lastPdfFile && targetPage !== pdfPageNumber) {
+              analyzeUploadedFile(lastPdfFile, { pdfPage: targetPage, forceVision: true });
+            }
           };
         }
 
         for (const sBtn of contentEl.querySelectorAll('[data-sample-pick]')) {
           sBtn.onclick = () => {
             clearPreviewUrl();
+            lastPdfFile = null;
+            pdfPageCount = 1;
+            pdfPageNumber = 1;
+            selectedTag = null;
+            simState.stepIdx = 0;
+            simState.faultSensor = false;
+            simState.faultDrive = false;
             uploadErrorKey = null;
             uploadStageKey = null;
             activeAiSpec = null;
@@ -480,15 +630,15 @@ export function mount(root) {
       const docs = generateIsaEngineeringDocs(dag, { lang: lang(), aiSpec: activeAiSpec });
       const pid3d = generatePidMujocoXml(dag);
       const plc = generatePlcFlatFile(dag, { aiSpec: activeAiSpec });
+      const diagramLayout = buildPidDiagramLayout(dag);
+      if (selectedTag && !dag.nodes.some((n) => n.tag === selectedTag)) {
+        selectedTag = null;
+      }
+      currentSteps = getPlantSequenceSteps(dag, docs, activeAiSpec);
+      const liveSig = getLiveDiagramSignals(dag, currentSteps);
       const usageSummary = activeAiUsage
         ? `${activeAiUsage.model} · 1 call · ${activeAiUsage.totalTokens.toLocaleString('en-US')} tok · $${Number(activeAiUsage.costUsd || 0).toFixed(4)} · ${(Number(activeAiUsage.latencyMs || 0) / 1000).toFixed(1)}s`
         : '';
-      const stateNames = ['00 · IDLE', '10 · DOSING', '20 · MIXING', '30 · DISCHARGE'];
-      const stateText = simState.faultLsh
-        ? 'HOLD · ALM_OVERFILL (CE-01)'
-        : simState.faultMotor
-          ? 'HOLD · MOTOR_OL_FAULT (CE-02)'
-          : stateNames[simState.stepIdx];
 
       contentEl.innerHTML = `
         <div class="asm-doc-header">
@@ -497,6 +647,7 @@ export function mount(root) {
             <span class="asm-badge ok">${esc(dag.fileName)}</span>
             <span class="asm-badge ok">${T('pidVerifiedBadge')} (${dag.nodes.length})</span>
             <span class="asm-badge">PLC I/O: ${dag.ioSummary.totalIoPoints} (DI:${dag.ioSummary.DI} · DO:${dag.ioSummary.DO} · AI:${dag.ioSummary.AI})</span>
+            ${lastPdfFile && pdfPageCount > 1 ? renderPdfPageButtons(pdfPageCount, pdfPageNumber, Boolean(uploadStageKey)) : ''}
           </div>
           <div class="asm-row">
             <button type="button" class="asm-pill signal" id="asm-dl-fds">${T('dlFdsBtn')}</button>
@@ -507,6 +658,8 @@ export function mount(root) {
             <a class="asm-pill signal" href="#/simulations/factory_cell">${T('pidOpen3dSim')}</a>
           </div>
         </div>
+        ${uploadStageKey ? `<p class="asm-upload-status" role="status" aria-live="polite">${T(uploadStageKey)}</p>` : ''}
+        ${uploadErrorKey ? `<p class="asm-upload-error" role="alert">${T(uploadErrorKey)}</p>` : ''}
 
         <section class="asm-win">
           <div class="asm-bar"><span>${T('docReadyBar')}</span><b>${esc(dag.projectId)}</b></div>
@@ -537,7 +690,7 @@ export function mount(root) {
                   ${dag.nodes
                     .map(
                       (n) =>
-                        `<tr><td><code>${esc(n.tag)}</code></td><td>${esc(n.category)}</td><td>${esc(n.isaName)}</td><td><code>${esc(n.plcBlock)}</code></td><td>${esc(n.failSafe)}</td><td>${esc(n.description)}</td></tr>`,
+                        `<tr class="${selectedTag === n.tag ? 'is-selected' : ''}"><td><button type="button" class="asm-tag-btn" data-jump-tag="${esc(n.tag)}" aria-pressed="${selectedTag === n.tag}">${esc(n.tag)}</button></td><td>${esc(n.category)}</td><td>${esc(n.isaName)}</td><td><code>${esc(n.plcBlock)}</code></td><td>${esc(n.failSafe)}</td><td>${esc(n.description)}</td></tr>`,
                     )
                     .join('')}
                 </tbody>
@@ -586,6 +739,10 @@ export function mount(root) {
             ${
               pidTab === 'p1io'
                 ? `
+              <div class="asm-pid-stage" id="asm-io-stage">
+                <div id="asm-svg-holder">${renderPidSchematicSvg(dag, { selectedTag, ariaLabel: t('svgPidAria'), compact: true })}</div>
+                ${renderTagInspector(dag, diagramLayout, selectedTag)}
+              </div>
               <div class="asm-row" style="justify-content:space-between">
                 <h3 class="asm-sec-title">${T('secIo')}</h3>
                 <button type="button" class="asm-pill signal" id="asm-dl-csv-inner">${T('dlCsvBtn')}</button>
@@ -597,7 +754,7 @@ export function mount(root) {
                     ${dag.ioSchedule
                       .map(
                         (io) =>
-                          `<tr><td><code>${esc(io.plcTag)}</code></td><td><code>${esc(io.isaTag)}</code></td><td><b>${esc(io.ioType)}</b></td><td><code>${esc(io.address)}</code></td><td>${esc(io.signal)}</td><td><code>${esc(io.plcBlock)}</code></td></tr>`,
+                          `<tr class="${selectedTag === io.isaTag ? 'is-selected' : ''}" data-io-tag="${esc(io.isaTag)}"><td><code>${esc(io.plcTag)}</code></td><td><button type="button" class="asm-tag-btn" data-select-tag="${esc(io.isaTag)}" aria-pressed="${selectedTag === io.isaTag}">${esc(io.isaTag)}</button></td><td><b>${esc(io.ioType)}</b></td><td><code>${esc(io.address)}</code></td><td>${esc(io.signal)}</td><td><code>${esc(io.plcBlock)}</code></td></tr>`,
                       )
                       .join('')}
                   </tbody>
@@ -622,21 +779,28 @@ export function mount(root) {
                 <div class="asm-pid-hud">
                   <div class="asm-hud-card">
                     <span>${T('pidStepLabel')}</span>
-                    <b id="asm-hud-state" class="${simState.faultLsh || simState.faultMotor ? 'trip' : 'ok'}">${esc(stateText)}</b>
+                    <b id="asm-hud-state" class="${liveSig.isFault ? 'trip' : 'ok'}">${esc(liveSig.stateText)}</b>
                   </div>
                   <div class="asm-hud-card">
-                    <span>${T('pidScaleLabel')}</span>
-                    <b id="asm-hud-weight">${simState.weightKg.toFixed(1)} kg</b>
+                    <span>${T('hudActiveLabel')}</span>
+                    <b id="asm-hud-active">${liveSig.activeTags.length} / ${dag.nodes.length}</b>
                   </div>
                   <div class="asm-hud-card">
-                    <span>${T('pidBatchCount')}</span>
-                    <b id="asm-hud-batches">${simState.batches}</b>
+                    <span>${T('hudTopologyLabel')}</span>
+                    <b id="asm-hud-topo">${dag.nodes.length} tags · ${dag.edges.length} lines</b>
                   </div>
                 </div>
-                <div id="asm-svg-holder">${renderPidFlowSvg(dag)}</div>
+                <div id="asm-svg-holder">${renderPidSchematicSvg(dag, {
+                  selectedTag,
+                  activeTags: liveSig.activeTags,
+                  faultTags: liveSig.faultTags,
+                  ariaLabel: t('svgPidAria'),
+                  compact: false,
+                })}</div>
+                ${renderTagInspector(dag, diagramLayout, selectedTag)}
                 <div class="asm-row">
-                  <button type="button" class="asm-pill" id="asm-fault-lsh">${T('pidFaultLsh')}</button>
-                  <button type="button" class="asm-pill" id="asm-fault-motor">${T('pidFaultMotor')}</button>
+                  <button type="button" class="asm-pill" id="asm-fault-lsh">${T('pidFaultSensorBtn')}${liveSig.sensorNode ? ` (${esc(liveSig.sensorNode.tag)})` : ''}</button>
+                  <button type="button" class="asm-pill" id="asm-fault-motor">${T('pidFaultDriveBtn')}${liveSig.driveNode ? ` (${esc(liveSig.driveNode.tag)})` : ''}</button>
                   <button type="button" class="asm-pill" id="asm-fault-reset">${T('pidFaultReset')}</button>
                 </div>
               </div>`
@@ -650,14 +814,40 @@ export function mount(root) {
           </div>
         </details>`;
 
+      const selectTag = (nextTag, { scrollToTable = false, scrollToSvg = false } = {}) => {
+        selectedTag = selectedTag === nextTag ? null : nextTag;
+        render();
+        const scrollBehavior = reducedMotionQuery?.matches ? 'auto' : 'smooth';
+        if (selectedTag && scrollToTable) {
+          const matchingRow = contentEl.querySelector(`tr[data-io-tag="${CSS.escape(selectedTag)}"]`);
+          matchingRow?.scrollIntoView({ block: 'nearest', behavior: scrollBehavior });
+        } else if (selectedTag && scrollToSvg) {
+          const holder = contentEl.querySelector('#asm-svg-holder');
+          holder?.scrollIntoView({ block: 'nearest', behavior: scrollBehavior });
+        }
+      };
+
       const backBtn = contentEl.querySelector('#asm-back-pick');
       if (backBtn) {
         backBtn.onclick = () => {
           clearPreviewUrl();
+          lastPdfFile = null;
+          pdfPageCount = 1;
+          pdfPageNumber = 1;
+          selectedTag = null;
+          uploadErrorKey = null;
           activeAiSpec = null;
           activeAiUsage = null;
           pidStep = 'pick';
           render();
+        };
+      }
+      for (const pBtn of contentEl.querySelectorAll('[data-pdf-page]')) {
+        pBtn.onclick = () => {
+          const targetPage = Number(pBtn.dataset.pdfPage) || 1;
+          if (lastPdfFile && targetPage !== pdfPageNumber && !uploadStageKey) {
+            analyzeUploadedFile(lastPdfFile, { pdfPage: targetPage, forceVision: true });
+          }
         };
       }
       const detailsEl = contentEl.querySelector('#asm-tech-details');
@@ -677,6 +867,42 @@ export function mount(root) {
         dBtn.onclick = () => {
           plcDialect = dBtn.dataset.dialect;
           techOpen = true;
+          render();
+        };
+      }
+      for (const jBtn of contentEl.querySelectorAll('[data-jump-tag]')) {
+        jBtn.onclick = () => {
+          const tg = jBtn.dataset.jumpTag;
+          selectedTag = tg;
+          techOpen = true;
+          if (pidTab !== 'p1io' && pidTab !== 'diagram') pidTab = 'p1io';
+          render();
+          const holder = contentEl.querySelector('#asm-svg-holder');
+          holder?.scrollIntoView({
+            block: 'center',
+            behavior: reducedMotionQuery?.matches ? 'auto' : 'smooth',
+          });
+        };
+      }
+      for (const tBtn of contentEl.querySelectorAll('[data-select-tag]')) {
+        tBtn.onclick = () => {
+          const tg = tBtn.dataset.selectTag;
+          selectTag(tg, { scrollToSvg: pidTab === 'p1io' });
+        };
+      }
+      for (const svgNode of contentEl.querySelectorAll('.asm-svg-node[data-tag]')) {
+        svgNode.onclick = () => selectTag(svgNode.dataset.tag, { scrollToTable: pidTab === 'p1io' });
+        svgNode.onkeydown = (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            selectTag(svgNode.dataset.tag, { scrollToTable: pidTab === 'p1io' });
+          }
+        };
+      }
+      const clearTagBtn = contentEl.querySelector('#asm-clear-tag');
+      if (clearTagBtn) {
+        clearTagBtn.onclick = () => {
+          selectedTag = null;
           render();
         };
       }
@@ -714,22 +940,22 @@ export function mount(root) {
       const faultLshBtn = contentEl.querySelector('#asm-fault-lsh');
       if (faultLshBtn) {
         faultLshBtn.onclick = () => {
-          simState.faultLsh = true;
+          simState.faultSensor = true;
           render();
         };
       }
       const faultMotBtn = contentEl.querySelector('#asm-fault-motor');
       if (faultMotBtn) {
         faultMotBtn.onclick = () => {
-          simState.faultMotor = true;
+          simState.faultDrive = true;
           render();
         };
       }
       const faultResetBtn = contentEl.querySelector('#asm-fault-reset');
       if (faultResetBtn) {
         faultResetBtn.onclick = () => {
-          simState.faultLsh = false;
-          simState.faultMotor = false;
+          simState.faultSensor = false;
+          simState.faultDrive = false;
           render();
         };
       }
@@ -904,7 +1130,7 @@ export function mount(root) {
 
   render();
 
-  // Live P&ID process ticker (updates weight, step & SVG smoothly every 900 ms when the 2D schematic tab is open)
+  // Live P&ID sequence ticker (updates HUD + SVG classes in-place every 1800 ms without wiping keyboard focus)
   const ticker = setInterval(() => {
     if (
       document.hidden ||
@@ -913,42 +1139,24 @@ export function mount(root) {
       pidStep !== 'result' ||
       !techOpen ||
       pidTab !== 'diagram' ||
-      simState.faultLsh ||
-      simState.faultMotor ||
-      !currentDag
+      simState.faultSensor ||
+      simState.faultDrive ||
+      !currentDag ||
+      !currentSteps.length
     ) {
       return;
     }
-    if (simState.stepIdx === 1) {
-      simState.weightKg += 18.5;
-      if (simState.weightKg >= 300) {
-        simState.weightKg = 300;
-        simState.stepIdx = 2;
-      }
-    } else if (simState.stepIdx === 2) {
-      simState.stepIdx = 3;
-    } else if (simState.stepIdx === 3) {
-      simState.weightKg = Math.max(8, simState.weightKg - 95);
-      if (simState.weightKg <= 10) {
-        simState.weightKg = 12;
-        simState.batches += 1;
-        simState.stepIdx = 1;
-      }
-    }
-    const wEl = contentEl.querySelector('#asm-hud-weight');
-    const bEl = contentEl.querySelector('#asm-hud-batches');
+    simState.stepIdx = (simState.stepIdx + 1) % currentSteps.length;
+    const liveSig = getLiveDiagramSignals(currentDag, currentSteps);
     const sEl = contentEl.querySelector('#asm-hud-state');
-    const svgHolder = contentEl.querySelector('#asm-svg-holder');
-    if (wEl) wEl.textContent = `${simState.weightKg.toFixed(1)} kg`;
-    if (bEl) bEl.textContent = String(simState.batches);
-    if (sEl) {
-      const stateNames = ['00 · IDLE', '10 · DOSING', '20 · MIXING', '30 · DISCHARGE'];
-      sEl.textContent = stateNames[simState.stepIdx];
+    const aEl = contentEl.querySelector('#asm-hud-active');
+    const svgEl = contentEl.querySelector('#asm-svg-holder svg');
+    if (sEl) sEl.textContent = liveSig.stateText;
+    if (aEl) aEl.textContent = `${liveSig.activeTags.length} / ${currentDag.nodes.length}`;
+    if (svgEl) {
+      applySvgLiveState(svgEl, { activeTags: liveSig.activeTags, faultTags: liveSig.faultTags });
     }
-    if (svgHolder) {
-      svgHolder.innerHTML = renderPidFlowSvg(currentDag);
-    }
-  }, 900);
+  }, 1800);
 
   const stopLang = onLang(() => {
     if (PID_SAMPLE_DXFS[sampleId]) {
@@ -961,6 +1169,7 @@ export function mount(root) {
     clearInterval(ticker);
     clearTimeout(copyTimer);
     clearPreviewUrl();
+    lastPdfFile = null;
     stopLang();
     cleanups.forEach((fn) => fn());
   };
