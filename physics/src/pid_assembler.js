@@ -1044,7 +1044,7 @@ export function generatePlcIoCsv(dag) {
  *   3. Step-by-Step Control Narrative (ISA-88 State Machine)
  *   4. Cause & Effect Safety Interlock Matrix
  */
-export function generateIsaEngineeringDocs(dag, { lang = 'es' } = {}) {
+export function generateIsaEngineeringDocs(dag, { lang = 'es', aiSpec = null } = {}) {
   const isEs = lang === 'es';
   const valves = dag.nodes.filter((n) => n.prefix === 'FV');
   const motors = dag.nodes.filter((n) => n.prefix === 'M' || n.prefix === 'P' || n.prefix === 'SC' || n.prefix === 'CV');
@@ -1064,7 +1064,7 @@ export function generateIsaEngineeringDocs(dag, { lang = 'es' } = {}) {
   const feedValves = valves.slice(0, Math.max(1, valves.length > 1 ? valves.length - 1 : 1)).map((v) => v.tag);
   const dischargeValve = valves.length > 1 ? valves.at(-1).tag : (valves[0]?.tag ?? 'FV-104');
 
-  const controlNarrative = [
+  const deterministicNarrative = [
     {
       step: 'STEP 00 · IDLE & PERMISSIVE CHECK',
       title: isEs ? 'Verificación de permisivos e interlocks de seguridad' : 'Safety Interlocks & Initial Permissive Check',
@@ -1105,7 +1105,7 @@ export function generateIsaEngineeringDocs(dag, { lang = 'es' } = {}) {
     },
   ];
 
-  const causeEffectMatrix = [
+  const deterministicCauseEffect = [
     {
       id: 'CE-01',
       causeTag: mainHigh,
@@ -1151,6 +1151,15 @@ export function generateIsaEngineeringDocs(dag, { lang = 'es' } = {}) {
       severity: 'MEDIUM / INTERLOCK',
     },
   ];
+
+  const controlNarrative =
+    Array.isArray(aiSpec?.controlNarrative) && aiSpec.controlNarrative.length > 0
+      ? aiSpec.controlNarrative
+      : deterministicNarrative;
+  const causeEffectMatrix =
+    Array.isArray(aiSpec?.causeEffectMatrix) && aiSpec.causeEffectMatrix.length > 0
+      ? aiSpec.causeEffectMatrix
+      : deterministicCauseEffect;
 
   const mdLines = [
     `# FUNCTIONAL DESIGN SPECIFICATION (FDS) — ${dag.projectId}`,
@@ -1314,7 +1323,7 @@ ${customGeoms}
  *   1. Siemens TIA Portal Structured Control Language (.scl — IEC 61131-3)
  *   2. Rockwell Studio 5000 Logix Designer ASCII Import (.L5K)
  */
-export function generatePlcFlatFile(dag) {
+export function generatePlcFlatFile(dag, { aiSpec = null } = {}) {
   const valves = dag.nodes.filter((n) => n.prefix === 'FV' || n.prefix === 'PK');
   const motors = dag.nodes.filter((n) => n.prefix === 'M' || n.prefix === 'P' || n.prefix === 'SC' || n.prefix === 'CV');
   const scales = dag.nodes.filter((n) => n.prefix === 'WT' || n.prefix === 'LT');
@@ -1324,6 +1333,76 @@ export function generatePlcFlatFile(dag) {
   const mainHighTag = highSwitches[0] ? `${highSwitches[0].tag.replace('-', '_')}_ALM` : 'LSH_101_ALM';
   const mainLowTag = lowSwitches[0] ? `${lowSwitches[0].tag.replace('-', '_')}_STS` : 'LSL_101_STS';
   const mainScaleTag = scales[0] ? `${scales[0].tag.replace('-', '_')}_PV` : 'WT_101_PV';
+  const aiSteps = Array.isArray(aiSpec?.plcSequenceSteps) && aiSpec.plcSequenceSteps.length > 0 ? aiSpec.plcSequenceSteps : null;
+
+  const sclCaseBody = aiSteps
+    ? [
+        `      0: // IDLE & PERMISSIVE CHECK`,
+        `         IF #OverfillHealthy AND "BatchDB".StartBatchCmd THEN`,
+        `            "BatchDB".MixTimer_s := 0.0;`,
+        `            "BatchDB".StepIndex := ${aiSteps[0].stepNumber};`,
+        `         END_IF;`,
+        ...aiSteps.map((st, idx) => {
+          const nextStep = aiSteps[idx + 1]?.stepNumber ?? 0;
+          const cmdLines = [
+            ...st.openValves.map((v) => `         "BatchDB".StepCmd_${v.replace('-', '_')} := TRUE;`),
+            ...st.startMotors.map((m) => `         "BatchDB".StepCmd_${m.replace('-', '_')} := TRUE;`),
+          ];
+          const timerLine =
+            st.durationSec > 0
+              ? `         "BatchDB".MixTimer_s := "BatchDB".MixTimer_s + 0.02;\n         IF "BatchDB".MixTimer_s >= ${st.durationSec.toFixed(1)} THEN`
+              : `         // Transition: ${st.transitionCondition}\n         IF #OverfillHealthy THEN`;
+          return [
+            `      ${st.stepNumber}: // ${st.label}`,
+            ...cmdLines,
+            `         IF NOT #OverfillHealthy THEN`,
+            `            "BatchDB".StepIndex := 900; // SAFETY HOLD`,
+            `         ELSE`,
+            `   ${timerLine}`,
+            `               "BatchDB".MixTimer_s := 0.0;`,
+            `               "BatchDB".StepIndex := ${nextStep};`,
+            `            END_IF;`,
+            `         END_IF;`,
+          ].join('\n');
+        }),
+      ].join('\n')
+    : `      0: // IDLE & PERMISSIVE CHECK
+         IF #OverfillHealthy AND "BatchDB".StartBatchCmd THEN
+            "BatchDB".TareWeight_kg := "${mainScaleTag}";
+            "BatchDB".StepIndex := 10;
+         END_IF;
+      10: // GRAVIMETRIC DOSING
+         IF NOT #OverfillHealthy THEN
+            "BatchDB".StepIndex := 900; // HOLD ON SAFETY INTERLOCK
+         ELSIF ("${mainScaleTag}" - "BatchDB".TareWeight_kg) >= "BatchDB".RecipeTarget_kg THEN
+            "BatchDB".StepIndex := 20;
+         END_IF;
+      20: // PROCESS MIXING / TRANSFER
+         "BatchDB".MixTimer_s := "BatchDB".MixTimer_s + 0.02;
+         IF "BatchDB".MixTimer_s >= 120.0 THEN
+            "BatchDB".StepIndex := 30;
+         END_IF;
+      30: // DISCHARGE UNTIL EMPTY
+         IF "${mainLowTag}" THEN
+            "BatchDB".MixTimer_s := 0.0;
+            "BatchDB".StepIndex := 0;
+         END_IF;`;
+
+  const l5kSequenceLines = aiSteps
+    ? [
+        `      CASE Batch_StepIndex OF`,
+        `        0: IF ${mainHighTag} THEN Batch_StepIndex := ${aiSteps[0].stepNumber}; END_IF;`,
+        ...aiSteps.map((st, idx) => {
+          const nextStep = aiSteps[idx + 1]?.stepNumber ?? 0;
+          const cmds = [
+            ...st.openValves.map((v) => `${v.replace('-', '_')}_CMD := 1;`),
+            ...st.startMotors.map((m) => `${m.replace('-', '_')}_START := 1;`),
+          ].join(' ');
+          return `        ${st.stepNumber}: (* ${st.label} *) ${cmds || '// Hold state'} IF ${mainHighTag} THEN Batch_StepIndex := ${nextStep}; END_IF;`;
+        }),
+        `      END_CASE;`,
+      ].join('\n')
+    : '';
 
   const scl = `// ============================================================================
 // TRIDI INDUSTRIAL — SIEMENS TIA PORTAL STRUCTURED CONTROL LANGUAGE (.SCL)
@@ -1498,27 +1577,7 @@ ${motors
 
    // ---- ISA-88 Step Sequencer (Gravimetric Scale ${mainScaleTag} & Low Level ${mainLowTag}) ----
    CASE "BatchDB".StepIndex OF
-      0: // IDLE & PERMISSIVE CHECK
-         IF #OverfillHealthy AND "BatchDB".StartBatchCmd THEN
-            "BatchDB".TareWeight_kg := "${mainScaleTag}";
-            "BatchDB".StepIndex := 10;
-         END_IF;
-      10: // GRAVIMETRIC DOSING
-         IF NOT #OverfillHealthy THEN
-            "BatchDB".StepIndex := 900; // HOLD ON SAFETY INTERLOCK
-         ELSIF ("${mainScaleTag}" - "BatchDB".TareWeight_kg) >= "BatchDB".RecipeTarget_kg THEN
-            "BatchDB".StepIndex := 20;
-         END_IF;
-      20: // PROCESS MIXING / TRANSFER
-         "BatchDB".MixTimer_s := "BatchDB".MixTimer_s + 0.02;
-         IF "BatchDB".MixTimer_s >= 120.0 THEN
-            "BatchDB".StepIndex := 30;
-         END_IF;
-      30: // DISCHARGE UNTIL EMPTY
-         IF "${mainLowTag}" THEN
-            "BatchDB".MixTimer_s := 0.0;
-            "BatchDB".StepIndex := 0;
-         END_IF;
+${sclCaseBody}
    END_CASE;
 END_ORGANIZATION_BLOCK
 `;
@@ -1580,6 +1639,7 @@ ${dag.ioSchedule
 ${valves.map((v) => `        ${v.tag.replace('-', '_')}_${v.prefix === 'PK' ? 'CYCLE' : 'CMD'} := 0;`).join('\n')}
         Batch_StepIndex := 900; // ISA-88 SAFETY HOLD
       END_IF;
+${l5kSequenceLines}
     END_ROUTINE
   END_PROGRAM
 END_CONTROLLER
@@ -1825,55 +1885,178 @@ PID_SAMPLE_DXFS['06_pilot_plant_hydromet.dxf'] = {
   ),
 };
 
+async function resizeImageToJpegDataUrl(file, maxDim = 1600, quality = 0.86) {
+  if (typeof createImageBitmap !== 'undefined' && typeof document !== 'undefined') {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+    const w = Math.max(1, Math.round(bitmap.width * scale));
+    const h = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close?.();
+    return canvas.toDataURL('image/jpeg', quality);
+  }
+  const ab = await file.arrayBuffer();
+  const bytes = new Uint8Array(ab);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return `data:${file.type || 'image/jpeg'};base64,${btoa(bin)}`;
+}
+
+async function callHybridPidApi(endpoint, payload) {
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({ ok: false, errorCode: 'invalid_response' }));
+  if (!res.ok || !data.ok) {
+    return { ok: false, errorCode: data.errorCode || 'upstream_error', message: data.message || `HTTP ${res.status}` };
+  }
+  return data;
+}
+
 /**
- * 100% In-House Client-Side Blueprint Extractor for `.dxf` and `.pdf` (zero fake fallbacks).
- *   - `.dxf`: direct AutoCAD entity + alias parser
- *   - `.pdf`: vector stream inflation + text operator extraction
- * Returns `{ ok: false, errorCode }` if the uploaded file contains zero recognizable P&ID tags.
+ * Hybrid Blueprint Extractor for `.dxf`, `.pdf`, and P&ID images (`.png`, `.jpg`, `.jpeg`, `.webp`):
+ *   - Images: resizes locally on <canvas> (<=1600px) and makes 1 OpenRouter Vision call via `/api/pid-analyze`
+ *     to extract equipment, piping edges, ISA-88 narrative, Cause & Effect, and PLC sequence (zero fake presets).
+ *   - `.dxf` / vector `.pdf`: parses tags deterministically in-browser (0 ms, $0), then optionally enriches
+ *     with 1 cheap text LLM call (<$0.002) for process-specific FDS & PLC steps (falling back gracefully offline).
  */
-export async function extractBlueprintFromUpload(file) {
+export async function extractBlueprintFromUpload(
+  file,
+  { lang = 'es', processGoal = '', apiEndpoint = '/api/pid-analyze', useAi = true, onStage = null } = {},
+) {
   const name = file?.name || 'blueprint.dxf';
   const ext = name.split('.').pop()?.toLowerCase() || '';
 
-  if (ext === 'pdf') {
-    const ab = await file.arrayBuffer();
-    const pdfText = await extractTextFromPdfBytes(new Uint8Array(ab));
-    const parsed = parseDxfPid(pdfText, { fileName: name });
-    if (parsed.nodes.length === 0) {
+  if (ext === 'png' || ext === 'jpg' || ext === 'jpeg' || ext === 'webp') {
+    onStage?.('vision_prepare');
+    const previewImageUrl = typeof URL !== 'undefined' ? URL.createObjectURL(file) : null;
+    const imageDataUrl = await resizeImageToJpegDataUrl(file);
+    onStage?.('vision_analyze');
+    try {
+      const apiRes = await callHybridPidApi(apiEndpoint, {
+        mode: 'vision',
+        fileName: name,
+        lang,
+        processGoal,
+        imageDataUrl,
+      });
+      if (!apiRes.ok) {
+        if (previewImageUrl) URL.revokeObjectURL(previewImageUrl);
+        return {
+          ok: false,
+          errorCode: apiRes.errorCode || 'vision_failed',
+          message: apiRes.message || '',
+          dxfText: '',
+          processGoal: '',
+          aiSpec: null,
+          usage: null,
+          sourceKind: 'image',
+          previewImageUrl: null,
+        };
+      }
+      const spec = apiRes.spec;
+      const dxf = convertNodesToStrictDxf(spec.projectId, spec.nodes, spec.edges, `${spec.projectId.toLowerCase()}.dxf`);
+      return {
+        ok: true,
+        errorCode: null,
+        dxfText: dxf,
+        processGoal: spec.processGoal || processGoal,
+        aiSpec: spec,
+        usage: apiRes.usage || null,
+        sourceKind: 'image',
+        previewImageUrl,
+      };
+    } catch (err) {
+      if (previewImageUrl) URL.revokeObjectURL(previewImageUrl);
       return {
         ok: false,
-        errorCode: 'empty_pdf',
+        errorCode: 'api_unreachable',
+        message: String(err?.message || err),
         dxfText: '',
         processGoal: '',
-        sourceKind: 'pdf',
+        aiSpec: null,
+        usage: null,
+        sourceKind: 'image',
+        previewImageUrl: null,
       };
     }
-    const dxf = convertNodesToStrictDxf(parsed.projectId, parsed.nodes, parsed.edges, name.replace(/\.pdf$/i, '.dxf'));
-    return {
-      ok: true,
-      errorCode: null,
-      dxfText: dxf,
-      processGoal: parsed.processGoal,
-      sourceKind: 'pdf',
-    };
   }
 
-  const rawText = await file.text();
-  const parsed = parseDxfPid(rawText, { fileName: name });
+  let rawText = '';
+  let sourceKind = 'dxf';
+  if (ext === 'pdf') {
+    onStage?.('parse_local');
+    sourceKind = 'pdf';
+    const ab = await file.arrayBuffer();
+    rawText = await extractTextFromPdfBytes(new Uint8Array(ab));
+  } else {
+    onStage?.('parse_local');
+    rawText = await file.text();
+  }
+
+  const parsed = parseDxfPid(rawText, { fileName: name, processGoal });
   if (parsed.nodes.length === 0) {
     return {
       ok: false,
-      errorCode: 'empty_dxf',
+      errorCode: sourceKind === 'pdf' ? 'empty_pdf' : 'empty_dxf',
       dxfText: '',
       processGoal: '',
-      sourceKind: 'dxf',
+      aiSpec: null,
+      usage: null,
+      sourceKind,
+      previewImageUrl: null,
     };
   }
+
+  let dxfOut =
+    sourceKind === 'pdf'
+      ? convertNodesToStrictDxf(parsed.projectId, parsed.nodes, parsed.edges, name.replace(/\.pdf$/i, '.dxf'))
+      : rawText;
+  let aiSpec = null;
+  let usage = null;
+  let resolvedGoal = processGoal || parsed.processGoal;
+
+  if (useAi && apiEndpoint) {
+    onStage?.('text_enrich');
+    try {
+      const apiRes = await callHybridPidApi(apiEndpoint, {
+        mode: 'text',
+        fileName: name,
+        lang,
+        processGoal,
+        extractedNodes: parsed.nodes,
+        extractedEdges: parsed.edges,
+        rawSnippet: sourceKind === 'pdf' ? rawText.slice(0, 1500) : '',
+      });
+      if (apiRes.ok && apiRes.spec) {
+        aiSpec = apiRes.spec;
+        usage = apiRes.usage || null;
+        if (!processGoal.trim() && aiSpec.processGoal) resolvedGoal = aiSpec.processGoal;
+        if (sourceKind === 'pdf' && aiSpec.nodes?.length) {
+          dxfOut = convertNodesToStrictDxf(aiSpec.projectId, aiSpec.nodes, aiSpec.edges, name.replace(/\.pdf$/i, '.dxf'));
+        }
+      }
+    } catch {
+      // Graceful offline fallback: deterministic DXF/PDF output still works at $0
+    }
+  }
+
   return {
     ok: true,
     errorCode: null,
-    dxfText: rawText,
-    processGoal: '',
-    sourceKind: 'dxf',
+    dxfText: dxfOut,
+    processGoal: resolvedGoal,
+    aiSpec,
+    usage,
+    sourceKind,
+    previewImageUrl: null,
   };
 }

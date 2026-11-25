@@ -27,6 +27,13 @@ export {
 } from '../components/index.js';
 export { classifyStlMeshes, generateMujocoXml, parseArduinoSketch } from './assembler.js';
 export {
+  buildOpenRouterPayload,
+  DEFAULT_OPENROUTER_MODEL,
+  estimateOpenRouterCostUsd,
+  parseJsonLoose,
+  sanitizeAiPidSpec,
+} from './pid_schema.js';
+export {
   convertNodesToStrictDxf,
   extractBlueprintFromUpload,
   extractTextFromPdfBytes,

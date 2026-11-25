@@ -153,6 +153,10 @@ export function mount(root) {
   let dxfText = PID_SAMPLE_DXFS[sampleId].dxf;
   let processGoal = '';
   let uploadErrorKey = null;
+  let uploadStageKey = null;
+  let activeAiSpec = null;
+  let activeAiUsage = null;
+  let previewImageUrl = null;
   let pidTab = 'p1io'; // 'p1io' | 'p3' | 'diagram' | 'p2'
   let plcDialect = 'scl'; // 'scl' | 'l5k'
   let cadPreset = 'luigi_lab4';
@@ -163,6 +167,12 @@ export function mount(root) {
   let currentDag = null;
   let copyTimer = null;
   const reducedMotionQuery = typeof window !== 'undefined' ? window.matchMedia?.('(prefers-reduced-motion: reduce)') : null;
+  const clearPreviewUrl = () => {
+    if (previewImageUrl) {
+      URL.revokeObjectURL(previewImageUrl);
+      previewImageUrl = null;
+    }
+  };
 
   // Interactive P&ID process simulation state (for live visualization & fault stress-test)
   const simState = {
@@ -332,11 +342,12 @@ export function mount(root) {
             <h2>${T('dropTitle')}</h2>
             <p class="asm-drop-lead">${T('dropLead')}</p>
 
-            <label class="asm-dropzone" id="asm-dropzone">
-              <input type="file" id="asm-dxf-file" class="asm-sr-input" accept=".dxf,.pdf" />
+            <label class="asm-dropzone" id="asm-dropzone" ${uploadStageKey ? 'aria-busy="true"' : ''}>
+              <input type="file" id="asm-dxf-file" class="asm-sr-input" accept=".dxf,.pdf,.png,.jpg,.jpeg,.webp" ${uploadStageKey ? 'disabled' : ''} />
               <strong>${T('dropBoxTitle')}</strong>
               <span>${T('dropBoxSub')}</span>
             </label>
+            ${uploadStageKey ? `<p class="asm-upload-status" role="status" aria-live="polite">${T(uploadStageKey)}</p>` : ''}
             ${uploadErrorKey ? `<p class="asm-upload-error" role="alert">${T(uploadErrorKey)}</p>` : ''}
 
             <div class="asm-field" style="text-align:left">
@@ -371,19 +382,49 @@ export function mount(root) {
         }
 
         const loadFile = async (file) => {
-          if (!file) return;
+          if (!file || uploadStageKey) return;
           uploadErrorKey = null;
-          const dz = contentEl.querySelector('#asm-dropzone');
-          dz?.setAttribute('aria-busy', 'true');
+          const isImage = /\.(png|jpe?g|webp)$/i.test(file.name);
+          const stageMap = {
+            vision_prepare: 'stagePreparing',
+            parse_local: 'stagePreparing',
+            vision_analyze: 'stageVision',
+            text_enrich: 'stageEnrich',
+          };
+          uploadStageKey = 'stagePreparing';
+          render();
           try {
-            const extracted = await extractBlueprintFromUpload(file);
+            const extracted = await extractBlueprintFromUpload(file, {
+              lang: lang(),
+              processGoal,
+              onStage: (stage) => {
+                const nextKey = stageMap[stage] ?? 'stagePreparing';
+                if (uploadStageKey !== nextKey) {
+                  uploadStageKey = nextKey;
+                  render();
+                }
+              },
+            });
+            uploadStageKey = null;
             if (!extracted.ok) {
-              uploadErrorKey = extracted.errorCode === 'empty_pdf' ? 'dropErrEmptyPdf' : 'dropErrEmptyDxf';
+              if (extracted.errorCode === 'api_not_configured') {
+                uploadErrorKey = 'dropErrApiNotConfigured';
+              } else if (extracted.errorCode === 'empty_pdf') {
+                uploadErrorKey = 'dropErrEmptyPdf';
+              } else if (extracted.errorCode === 'empty_dxf') {
+                uploadErrorKey = 'dropErrEmptyDxf';
+              } else {
+                uploadErrorKey = isImage ? 'dropErrVisionFailed' : 'dropErrEmptyDxf';
+              }
               render();
               return;
             }
+            clearPreviewUrl();
             sampleId = file.name;
             dxfText = extracted.dxfText;
+            activeAiSpec = extracted.aiSpec || null;
+            activeAiUsage = extracted.usage || null;
+            previewImageUrl = extracted.previewImageUrl || null;
             if (!processGoal.trim()) {
               processGoal =
                 extracted.processGoal || `Automated ISA-5.1 / ISA-88 engineering specification for ${file.name}`;
@@ -391,10 +432,9 @@ export function mount(root) {
             pidStep = 'result';
             render();
           } catch {
-            uploadErrorKey = 'dropErrEmptyDxf';
+            uploadStageKey = null;
+            uploadErrorKey = isImage ? 'dropErrVisionFailed' : 'dropErrEmptyDxf';
             render();
-          } finally {
-            dz?.removeAttribute('aria-busy');
           }
         };
 
@@ -419,7 +459,11 @@ export function mount(root) {
 
         for (const sBtn of contentEl.querySelectorAll('[data-sample-pick]')) {
           sBtn.onclick = () => {
+            clearPreviewUrl();
             uploadErrorKey = null;
+            uploadStageKey = null;
+            activeAiSpec = null;
+            activeAiUsage = null;
             sampleId = sBtn.dataset.samplePick;
             dxfText = PID_SAMPLE_DXFS[sampleId].dxf;
             processGoal = PID_SAMPLE_DXFS[sampleId].processGoal[lang()] ?? PID_SAMPLE_DXFS[sampleId].processGoal.es;
@@ -433,9 +477,12 @@ export function mount(root) {
       // Step 2: Executive Engineering Document + Collapsible Technical Details
       const dag = parseDxfPid(dxfText, { fileName: sampleId, processGoal });
       currentDag = dag;
-      const docs = generateIsaEngineeringDocs(dag, { lang: lang() });
+      const docs = generateIsaEngineeringDocs(dag, { lang: lang(), aiSpec: activeAiSpec });
       const pid3d = generatePidMujocoXml(dag);
-      const plc = generatePlcFlatFile(dag);
+      const plc = generatePlcFlatFile(dag, { aiSpec: activeAiSpec });
+      const usageSummary = activeAiUsage
+        ? `${activeAiUsage.model} · 1 call · ${activeAiUsage.totalTokens.toLocaleString('en-US')} tok · $${Number(activeAiUsage.costUsd || 0).toFixed(4)} · ${(Number(activeAiUsage.latencyMs || 0) / 1000).toFixed(1)}s`
+        : '';
       const stateNames = ['00 · IDLE', '10 · DOSING', '20 · MIXING', '30 · DISCHARGE'];
       const stateText = simState.faultLsh
         ? 'HOLD · ALM_OVERFILL (CE-01)'
@@ -464,6 +511,12 @@ export function mount(root) {
         <section class="asm-win">
           <div class="asm-bar"><span>${T('docReadyBar')}</span><b>${esc(dag.projectId)}</b></div>
           <div class="asm-body">
+            ${
+              previewImageUrl
+                ? `<h3 class="asm-sec-title">${T('secSourcePreview')}</h3>
+                   <img class="asm-preview-img" src="${esc(previewImageUrl)}" alt="${esc(t('secSourcePreview'))}: ${esc(dag.fileName)}" />`
+                : ''
+            }
             <h3 class="asm-sec-title">${T('secOverview')}</h3>
             <p class="asm-doc-objective">${esc(dag.processGoal)}</p>
 
@@ -518,6 +571,11 @@ export function mount(root) {
             <span>${T('techDrawerTitle')}</span>
             <span class="asm-chevron" aria-hidden="true">▾</span>
           </summary>
+          ${
+            activeAiUsage
+              ? `<div class="asm-usage-bar"><span>${T('aiTelemetryBadge')}</span><b>${esc(usageSummary)}</b></div>`
+              : ''
+          }
           <div class="asm-tabs" role="tablist" ${A({ 'aria-label': 'techTabsAria' })}>
             <button type="button" class="asm-tab" role="tab" data-ptab="p1io" aria-selected="${pidTab === 'p1io'}">${T('tabP1Io')} (${dag.ioSummary.totalIoPoints})</button>
             <button type="button" class="asm-tab" role="tab" data-ptab="p3" aria-selected="${pidTab === 'p3'}">${T('tabP3')}</button>
@@ -595,6 +653,9 @@ export function mount(root) {
       const backBtn = contentEl.querySelector('#asm-back-pick');
       if (backBtn) {
         backBtn.onclick = () => {
+          clearPreviewUrl();
+          activeAiSpec = null;
+          activeAiUsage = null;
           pidStep = 'pick';
           render();
         };
@@ -899,6 +960,7 @@ export function mount(root) {
   return () => {
     clearInterval(ticker);
     clearTimeout(copyTimer);
+    clearPreviewUrl();
     stopLang();
     cleanups.forEach((fn) => fn());
   };
