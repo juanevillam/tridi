@@ -37,6 +37,7 @@
 
 - En la primera prueba en vivo de `Vision` con `response_format: json_object`, `gemini-2.5-flash` entró en un bucle secuencial (`BV1..BV126`) agotando `max_tokens` y truncando el JSON. Se corrigió cambiando a `response_format: json_schema` (`strict: true`), `reasoning: { effort: 'none' }` y regla explícita anti-extrapolación (`<= 38` nodos principales), reduciendo latencia de `30 s` → `3.5 s` y costo de `\$0.021` → `\$0.0085`.
 - En la primera salida en vivo, los `stepNumber` `1..4` se acotaban todos a `10` y los acentos en español se eliminaban (`FILTRACIN`). Se corrigió multiplicando `1..9` por `10`, imponiendo orden ascendente único y aplicando `.normalize('NFD')` antes de limpiar identificadores IEC 61131-3.
+- Al desplegar en GitHub Actions, `cloudflare/wrangler-action@v3` instaló `wrangler@3.90.0`, cuyo esbuild rechazó `import ... with { type: 'json' }` en `physics/src/pid_schema.js`. Se reemplazó por `ISA_TAG_CATALOG` (JS puro verificado en sincronía con `isa_standard.json` en `check-assembler.mjs`) y se validó localmente con `npx wrangler@3.90.0 pages functions build functions`.
 
 ## Próximos pasos
 

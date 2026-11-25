@@ -1,8 +1,29 @@
 // Strict Industrial IR schema, prompt builder, deterministic sanitizer, and cost estimator
 // for Tridi's Hybrid P&ID Pipeline ("AI reasons, deterministic code assembles" — mus3o pattern).
-import isaStandardJson from '../components/isa_standard.json' with { type: 'json' };
+// Note: Avoid `import ... with { type: 'json' }` here because Cloudflare Pages wrangler@3.90
+// bundles `functions/` with an older esbuild that rejects import attributes.
 
 export const DEFAULT_OPENROUTER_MODEL = 'google/gemini-2.5-flash';
+
+// Closed 16-class ISA-5.1 prefix catalog (verified in sync with physics/components/isa_standard.json by check-assembler.mjs).
+export const ISA_TAG_CATALOG = {
+  FV: { category: 'actuator', isaName: 'Flow Control / Solenoid Valve' },
+  WT: { category: 'sensor', isaName: 'Weight / Load-Cell Transmitter (Rice Lake / Hardy)' },
+  LT: { category: 'sensor', isaName: 'Continuous Level Transmitter' },
+  LSH: { category: 'safety_switch', isaName: 'Level Switch High (Overfill Interlock)' },
+  LSL: { category: 'safety_switch', isaName: 'Level Switch Low (Dry-Run Protection)' },
+  PT: { category: 'sensor', isaName: 'Pressure Transmitter' },
+  TT: { category: 'sensor', isaName: 'Temperature Transmitter (PT100 RTD)' },
+  M: { category: 'actuator', isaName: 'Three-Phase Induction Motor / Agitator' },
+  P: { category: 'actuator', isaName: 'Centrifugal / Positive Displacement Transfer Pump' },
+  TK: { category: 'equipment', isaName: 'Process Mixing Vessel / Hopper Tank' },
+  SL: { category: 'equipment', isaName: 'Vertical Bulk Storage Silo' },
+  SC: { category: 'actuator', isaName: 'Enclosed Screw Conveyor (Auger)' },
+  CV: { category: 'actuator', isaName: 'Belt / Roller Transfer Conveyor' },
+  PK: { category: 'equipment', isaName: 'Automated Bagging & Sealing Station' },
+  AT: { category: 'sensor', isaName: 'Analytical / pH / Conductivity Transmitter (Mettler-Toledo / Endress+Hauser)' },
+  FT: { category: 'sensor', isaName: 'Electromagnetic / Coriolis Flow Transmitter' },
+};
 
 // Approximate USD per 1M tokens for fallback cost estimation when OpenRouter omits `usage.cost`.
 const MODEL_PRICING_PER_M = {
@@ -13,7 +34,7 @@ const MODEL_PRICING_PER_M = {
   'qwen/qwen2.5-vl-72b-instruct': { input: 0.4, output: 0.4 },
 };
 
-const VALID_PREFIXES = new Set(Object.keys(isaStandardJson.tagClasses));
+const VALID_PREFIXES = new Set(Object.keys(ISA_TAG_CATALOG));
 
 const PREFIX_ALIAS_MAP = {
   BV: 'FV',
@@ -184,14 +205,14 @@ function normalizeAiNode(rawNode, idx) {
   const x = Number.isFinite(Number(rawNode.x)) ? Math.max(-1, Math.min(1, Number(rawNode.x))) : ((idx % 5) - 2) * 0.45;
   const y = Number.isFinite(Number(rawNode.y)) ? Math.max(-1, Math.min(1, Number(rawNode.y))) : (1 - Math.floor(idx / 5)) * 0.4;
   const sourceLabel = String(rawNode.sourceLabel || rawNode.tag || tag).trim().slice(0, 48);
-  const catalogDesc = isaStandardJson.tagClasses[prefix]?.isaName || `ISA-5.1 Element (${prefix})`;
+  const catalogDesc = ISA_TAG_CATALOG[prefix]?.isaName || `ISA-5.1 Element (${prefix})`;
   const description = String(rawNode.description || `${catalogDesc} (${sourceLabel})`).trim().slice(0, 140);
 
   return {
     tag,
     sourceLabel,
     prefix,
-    layer: `PID_${(isaStandardJson.tagClasses[prefix]?.category || 'AUTO').toUpperCase()}`,
+    layer: `PID_${(ISA_TAG_CATALOG[prefix]?.category || 'AUTO').toUpperCase()}`,
     block: `ISA_${prefix}`,
     x: Number(x.toFixed(2)),
     y: Number(y.toFixed(2)),
