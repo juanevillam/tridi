@@ -17,7 +17,7 @@ import {
   parseDxfPid,
   PID_SAMPLE_DXFS,
 } from '../src/pid_assembler.js';
-import { estimateOpenRouterCostUsd, sanitizeAiPidSpec } from '../src/pid_schema.js';
+import { estimateOpenRouterCostUsd, ISA_TAG_CATALOG, sanitizeAiPidSpec } from '../src/pid_schema.js';
 import * as ort from '../src/onnx-lite.js';
 import { createPolicy } from '../src/policy.js';
 import { loadG1Node } from './node-model.mjs';
@@ -222,6 +222,11 @@ assert(aiDocs.causeEffectMatrix[0]?.causeTag === 'TT-101', 'generateIsaEngineeri
 const aiPlc = generatePlcFlatFile(aliasDag, { aiSpec: sanitizedSpec });
 assert(aiPlc.scl.includes('PASTEURIZACION_HOLD') && aiPlc.l5k.includes('PASTEURIZACION_HOLD'), 'generatePlcFlatFile should emit AI plcSequenceSteps into .scl and .L5K');
 assert(estimateOpenRouterCostUsd('google/gemini-2.5-flash', { prompt_tokens: 2000, completion_tokens: 1000 }).costUsd > 0, 'estimateOpenRouterCostUsd should return positive USD');
+const isaJson = JSON.parse(readFileSync(new URL('../components/isa_standard.json', import.meta.url), 'utf8'));
+assert(
+  Object.keys(ISA_TAG_CATALOG).sort().join(',') === Object.keys(isaJson.tagClasses).sort().join(','),
+  'ISA_TAG_CATALOG in pid_schema.js must stay in sync with isa_standard.json',
+);
 console.log('J-6 pid_assembler: parsed 01_batch_mixer.dxf, 02_silo_packaging.dxf & 06_pilot_plant_hydromet.dxf + flexible plant aliases + hybrid OpenRouter schema verified');
 
 sim.delete();
