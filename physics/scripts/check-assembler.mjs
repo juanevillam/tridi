@@ -17,6 +17,7 @@ import {
   parseDxfPid,
   PID_SAMPLE_DXFS,
 } from '../src/pid_assembler.js';
+import { estimateOpenRouterCostUsd, sanitizeAiPidSpec } from '../src/pid_schema.js';
 import * as ort from '../src/onnx-lite.js';
 import { createPolicy } from '../src/policy.js';
 import { loadG1Node } from './node-model.mjs';
@@ -176,7 +177,52 @@ assert(aliasDag.nodes.some((n) => n.tag === 'PK-FP01'), 'expected FILTER PRESS 1
 assert(aliasDag.nodes.some((n) => n.tag === 'AT-05'), 'expected pH Sensor for TANK 5 -> AT-05');
 assert(aliasDag.nodes.some((n) => n.tag === 'LT-12'), 'expected Level sensors footnote -> LT-12');
 assert(aliasDag.sourceVerification.verified, `aliasDag verifyPidSources failed: ${JSON.stringify(aliasDag.sourceVerification)}`);
-console.log('J-6 pid_assembler: parsed 01_batch_mixer.dxf, 02_silo_packaging.dxf & 06_pilot_plant_hydromet.dxf + flexible plant aliases, verified 100% ISA-5.1 tags');
+
+// Verify Hybrid OpenRouter sanitizer + AI-driven narrative/PLC injection (mus3o pattern)
+const rawAiOutput = {
+  projectId: 'CIP_PASTEURIZER_TEST',
+  processGoal: 'Pasteurize raw milk at 72°C for 15 s and run caustic CIP rinse cycle.',
+  nodes: [
+    { tag: 'TANK 1', description: 'Raw Milk Balance Tank', x: -1, y: 0.5 },
+    { tag: 'PP-01', description: 'Sanitary Feed Pump', x: 0, y: 0.5 },
+    { tag: 'TT-101', description: 'Holding Tube Outlet Temp', x: 1, y: 0.5 },
+    { tag: 'BV-02', description: 'Flow Diversion Valve', x: 1.8, y: 0.5 },
+  ],
+  edges: [
+    { from: 'TK-01', to: 'P-PP01', layer: 'PRODUCT' },
+    { from: 'P-PP01', to: 'TT-101', layer: 'PRODUCT' },
+    { from: 'TT-101', to: 'FV-BV02', layer: 'PRODUCT' },
+    { from: 'TK-01', to: 'GHOST-999', layer: 'HALLUCINATED' },
+  ],
+  controlNarrative: [
+    { step: '00 — STANDBY', title: 'Sanitary Readiness', logic: 'Verify TK-01 level and FV-BV02 in divert position.' },
+    { step: '10 — PASTEURIZE', title: 'Thermal Hold 72°C', logic: 'Start P-PP01 and hold TT-101 >= 72°C for 15 s before opening forward path.' },
+  ],
+  causeEffectMatrix: [
+    { id: 'CE-01', causeTag: 'TT-101', causeCondition: 'Temperature < 71.5°C', effects: 'Trip FV-BV02 to divert to TK-01', severity: 'CRITICAL' },
+  ],
+  plcSequenceSteps: [
+    { stepNumber: 1, label: 'Pasteurización Hold', openValves: ['FV-BV02'], startMotors: ['P-PP01'], transitionCondition: 'TT_101_PV >= 72.0', durationSec: 15 },
+    { stepNumber: 2, label: 'Limpieza CIP', openValves: ['FV-BV02'], startMotors: ['P-PP01'], transitionCondition: 'TRUE', durationSec: 30 },
+  ],
+};
+const sanitizedSpec = sanitizeAiPidSpec(rawAiOutput, { fileName: 'cip_pasteurizer.png' });
+assert(sanitizedSpec.nodes.length === 4, `sanitizeAiPidSpec expected 4 nodes, got ${sanitizedSpec.nodes.length}`);
+assert(sanitizedSpec.nodes.some((n) => n.tag === 'TK-01') && sanitizedSpec.nodes.some((n) => n.tag === 'FV-BV02'), 'sanitizeAiPidSpec should normalize TANK 1 & BV-02 aliases');
+assert(sanitizedSpec.edges.length === 3, `sanitizeAiPidSpec should drop hallucinated GHOST-999 edge (got ${sanitizedSpec.edges.length})`);
+assert(
+  sanitizedSpec.plcSequenceSteps[0]?.stepNumber === 10 &&
+    sanitizedSpec.plcSequenceSteps[1]?.stepNumber === 20 &&
+    sanitizedSpec.plcSequenceSteps[0]?.label === 'PASTEURIZACION_HOLD',
+  `sanitizeAiPidSpec should normalize stepNumbers & Spanish accents: ${JSON.stringify(sanitizedSpec.plcSequenceSteps)}`,
+);
+const aiDocs = generateIsaEngineeringDocs(aliasDag, { lang: 'en', aiSpec: sanitizedSpec });
+assert(aiDocs.controlNarrative[1]?.title === 'Thermal Hold 72°C', 'generateIsaEngineeringDocs should render aiSpec.controlNarrative');
+assert(aiDocs.causeEffectMatrix[0]?.causeTag === 'TT-101', 'generateIsaEngineeringDocs should render aiSpec.causeEffectMatrix');
+const aiPlc = generatePlcFlatFile(aliasDag, { aiSpec: sanitizedSpec });
+assert(aiPlc.scl.includes('PASTEURIZACION_HOLD') && aiPlc.l5k.includes('PASTEURIZACION_HOLD'), 'generatePlcFlatFile should emit AI plcSequenceSteps into .scl and .L5K');
+assert(estimateOpenRouterCostUsd('google/gemini-2.5-flash', { prompt_tokens: 2000, completion_tokens: 1000 }).costUsd > 0, 'estimateOpenRouterCostUsd should return positive USD');
+console.log('J-6 pid_assembler: parsed 01_batch_mixer.dxf, 02_silo_packaging.dxf & 06_pilot_plant_hydromet.dxf + flexible plant aliases + hybrid OpenRouter schema verified');
 
 sim.delete();
 if (failures.length) {
