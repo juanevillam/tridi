@@ -263,6 +263,12 @@
   background: var(--bg);
 }
 
+.asm-pid-stage--hero {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
 .asm-pid-hud {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -440,7 +446,8 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 8px;
+  min-height: 28px;
+  padding: 3px 9px;
   border: 1px solid rgb(241 243 238 / 0.16);
   border-radius: 6px;
   background: rgb(8 9 11 / 0.65);

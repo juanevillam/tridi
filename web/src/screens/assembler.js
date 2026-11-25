@@ -163,7 +163,7 @@ export function mount(root) {
   let pdfPageCount = 1;
   let pdfPageNumber = 1;
   let selectedTag = null;
-  let pidTab = 'p1io'; // 'p1io' | 'p3' | 'diagram' | 'p2'
+  let pidTab = 'p1io'; // 'p1io' | 'p3' | 'p2'
   let plcDialect = 'scl'; // 'scl' | 'l5k'
   let cadPreset = 'luigi_lab4';
   let cadTab = 'audit'; // 'audit' | 'ino' | 'xml'
@@ -661,6 +661,41 @@ export function mount(root) {
         ${uploadStageKey ? `<p class="asm-upload-status" role="status" aria-live="polite">${T(uploadStageKey)}</p>` : ''}
         ${uploadErrorKey ? `<p class="asm-upload-error" role="alert">${T(uploadErrorKey)}</p>` : ''}
 
+        <section class="asm-win" id="asm-hero-schematic">
+          <div class="asm-bar"><span>${T('heroDiagramBar')}</span><b>${esc(dag.projectId)}</b></div>
+          <div class="asm-body">
+            <div class="asm-pid-stage asm-pid-stage--hero">
+              <div class="asm-pid-hud">
+                <div class="asm-hud-card">
+                  <span>${T('pidStepLabel')}</span>
+                  <b id="asm-hud-state" class="${liveSig.isFault ? 'trip' : 'ok'}">${esc(liveSig.stateText)}</b>
+                </div>
+                <div class="asm-hud-card">
+                  <span>${T('hudActiveLabel')}</span>
+                  <b id="asm-hud-active">${liveSig.activeTags.length} / ${dag.nodes.length}</b>
+                </div>
+                <div class="asm-hud-card">
+                  <span>${T('hudTopologyLabel')}</span>
+                  <b id="asm-hud-topo">${dag.nodes.length} tags · ${dag.edges.length} lines</b>
+                </div>
+              </div>
+              <div id="asm-svg-holder">${renderPidSchematicSvg(dag, {
+                selectedTag,
+                activeTags: liveSig.activeTags,
+                faultTags: liveSig.faultTags,
+                ariaLabel: t('svgPidAria'),
+                compact: false,
+              })}</div>
+              ${renderTagInspector(dag, diagramLayout, selectedTag)}
+              <div class="asm-row asm-no-print">
+                <button type="button" class="asm-pill" id="asm-fault-lsh">${T('pidFaultSensorBtn')}${liveSig.sensorNode ? ` (${esc(liveSig.sensorNode.tag)})` : ''}</button>
+                <button type="button" class="asm-pill" id="asm-fault-motor">${T('pidFaultDriveBtn')}${liveSig.driveNode ? ` (${esc(liveSig.driveNode.tag)})` : ''}</button>
+                <button type="button" class="asm-pill" id="asm-fault-reset">${T('pidFaultReset')}</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section class="asm-win">
           <div class="asm-bar"><span>${T('docReadyBar')}</span><b>${esc(dag.projectId)}</b></div>
           <div class="asm-body">
@@ -690,7 +725,7 @@ export function mount(root) {
                   ${dag.nodes
                     .map(
                       (n) =>
-                        `<tr class="${selectedTag === n.tag ? 'is-selected' : ''}"><td><button type="button" class="asm-tag-btn" data-jump-tag="${esc(n.tag)}" aria-pressed="${selectedTag === n.tag}">${esc(n.tag)}</button></td><td>${esc(n.category)}</td><td>${esc(n.isaName)}</td><td><code>${esc(n.plcBlock)}</code></td><td>${esc(n.failSafe)}</td><td>${esc(n.description)}</td></tr>`,
+                        `<tr class="${selectedTag === n.tag ? 'is-selected' : ''}" data-equip-tag="${esc(n.tag)}"><td><button type="button" class="asm-tag-btn" data-jump-tag="${esc(n.tag)}" aria-pressed="${selectedTag === n.tag}">${esc(n.tag)}</button></td><td>${esc(n.category)}</td><td>${esc(n.isaName)}</td><td><code>${esc(n.plcBlock)}</code></td><td>${esc(n.failSafe)}</td><td>${esc(n.description)}</td></tr>`,
                     )
                     .join('')}
                 </tbody>
@@ -732,17 +767,12 @@ export function mount(root) {
           <div class="asm-tabs" role="tablist" ${A({ 'aria-label': 'techTabsAria' })}>
             <button type="button" class="asm-tab" role="tab" data-ptab="p1io" aria-selected="${pidTab === 'p1io'}">${T('tabP1Io')} (${dag.ioSummary.totalIoPoints})</button>
             <button type="button" class="asm-tab" role="tab" data-ptab="p3" aria-selected="${pidTab === 'p3'}">${T('tabP3')}</button>
-            <button type="button" class="asm-tab" role="tab" data-ptab="diagram" aria-selected="${pidTab === 'diagram'}">${T('tabDiagram')}</button>
             <button type="button" class="asm-tab" role="tab" data-ptab="p2" aria-selected="${pidTab === 'p2'}">${T('tabP2')}</button>
           </div>
           <div class="asm-body">
             ${
               pidTab === 'p1io'
                 ? `
-              <div class="asm-pid-stage" id="asm-io-stage">
-                <div id="asm-svg-holder">${renderPidSchematicSvg(dag, { selectedTag, ariaLabel: t('svgPidAria'), compact: true })}</div>
-                ${renderTagInspector(dag, diagramLayout, selectedTag)}
-              </div>
               <div class="asm-row" style="justify-content:space-between">
                 <h3 class="asm-sec-title">${T('secIo')}</h3>
                 <button type="button" class="asm-pill signal" id="asm-dl-csv-inner">${T('dlCsvBtn')}</button>
@@ -773,38 +803,7 @@ export function mount(root) {
                 </div>
               </div>
               <pre class="asm-code"><code>${esc(plcDialect === 'scl' ? plc.scl : plc.l5k)}</code></pre>`
-                  : pidTab === 'diagram'
-                    ? `
-              <div class="asm-pid-stage">
-                <div class="asm-pid-hud">
-                  <div class="asm-hud-card">
-                    <span>${T('pidStepLabel')}</span>
-                    <b id="asm-hud-state" class="${liveSig.isFault ? 'trip' : 'ok'}">${esc(liveSig.stateText)}</b>
-                  </div>
-                  <div class="asm-hud-card">
-                    <span>${T('hudActiveLabel')}</span>
-                    <b id="asm-hud-active">${liveSig.activeTags.length} / ${dag.nodes.length}</b>
-                  </div>
-                  <div class="asm-hud-card">
-                    <span>${T('hudTopologyLabel')}</span>
-                    <b id="asm-hud-topo">${dag.nodes.length} tags · ${dag.edges.length} lines</b>
-                  </div>
-                </div>
-                <div id="asm-svg-holder">${renderPidSchematicSvg(dag, {
-                  selectedTag,
-                  activeTags: liveSig.activeTags,
-                  faultTags: liveSig.faultTags,
-                  ariaLabel: t('svgPidAria'),
-                  compact: false,
-                })}</div>
-                ${renderTagInspector(dag, diagramLayout, selectedTag)}
-                <div class="asm-row">
-                  <button type="button" class="asm-pill" id="asm-fault-lsh">${T('pidFaultSensorBtn')}${liveSig.sensorNode ? ` (${esc(liveSig.sensorNode.tag)})` : ''}</button>
-                  <button type="button" class="asm-pill" id="asm-fault-motor">${T('pidFaultDriveBtn')}${liveSig.driveNode ? ` (${esc(liveSig.driveNode.tag)})` : ''}</button>
-                  <button type="button" class="asm-pill" id="asm-fault-reset">${T('pidFaultReset')}</button>
-                </div>
-              </div>`
-                    : `
+                  : `
               <div class="asm-row" style="justify-content:space-between">
                 <button type="button" class="asm-pill signal" id="asm-dl-pid-xml">${T('dlXmlBtn')}</button>
                 <a class="asm-pill signal" href="#/simulations/factory_cell">${T('pidOpen3dSim')}</a>
@@ -814,16 +813,15 @@ export function mount(root) {
           </div>
         </details>`;
 
-      const selectTag = (nextTag, { scrollToTable = false, scrollToSvg = false } = {}) => {
+      const selectTag = (nextTag, { scrollToHero = false } = {}) => {
         selectedTag = selectedTag === nextTag ? null : nextTag;
         render();
-        const scrollBehavior = reducedMotionQuery?.matches ? 'auto' : 'smooth';
-        if (selectedTag && scrollToTable) {
-          const matchingRow = contentEl.querySelector(`tr[data-io-tag="${CSS.escape(selectedTag)}"]`);
-          matchingRow?.scrollIntoView({ block: 'nearest', behavior: scrollBehavior });
-        } else if (selectedTag && scrollToSvg) {
-          const holder = contentEl.querySelector('#asm-svg-holder');
-          holder?.scrollIntoView({ block: 'nearest', behavior: scrollBehavior });
+        if (selectedTag && scrollToHero) {
+          const hero = contentEl.querySelector('#asm-hero-schematic');
+          hero?.scrollIntoView({
+            block: 'start',
+            behavior: reducedMotionQuery?.matches ? 'auto' : 'smooth',
+          });
         }
       };
 
@@ -872,30 +870,21 @@ export function mount(root) {
       }
       for (const jBtn of contentEl.querySelectorAll('[data-jump-tag]')) {
         jBtn.onclick = () => {
-          const tg = jBtn.dataset.jumpTag;
-          selectedTag = tg;
-          techOpen = true;
-          if (pidTab !== 'p1io' && pidTab !== 'diagram') pidTab = 'p1io';
-          render();
-          const holder = contentEl.querySelector('#asm-svg-holder');
-          holder?.scrollIntoView({
-            block: 'center',
-            behavior: reducedMotionQuery?.matches ? 'auto' : 'smooth',
-          });
+          selectTag(jBtn.dataset.jumpTag, { scrollToHero: true });
         };
       }
       for (const tBtn of contentEl.querySelectorAll('[data-select-tag]')) {
         tBtn.onclick = () => {
-          const tg = tBtn.dataset.selectTag;
-          selectTag(tg, { scrollToSvg: pidTab === 'p1io' });
+          const fromTable = Boolean(tBtn.closest('table'));
+          selectTag(tBtn.dataset.selectTag, { scrollToHero: fromTable });
         };
       }
       for (const svgNode of contentEl.querySelectorAll('.asm-svg-node[data-tag]')) {
-        svgNode.onclick = () => selectTag(svgNode.dataset.tag, { scrollToTable: pidTab === 'p1io' });
+        svgNode.onclick = () => selectTag(svgNode.dataset.tag);
         svgNode.onkeydown = (e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            selectTag(svgNode.dataset.tag, { scrollToTable: pidTab === 'p1io' });
+            selectTag(svgNode.dataset.tag);
           }
         };
       }
@@ -1130,15 +1119,13 @@ export function mount(root) {
 
   render();
 
-  // Live P&ID sequence ticker (updates HUD + SVG classes in-place every 1800 ms without wiping keyboard focus)
+  // Live P&ID sequence ticker (updates hero HUD + SVG classes in-place every 1800 ms without wiping keyboard focus)
   const ticker = setInterval(() => {
     if (
       document.hidden ||
       reducedMotionQuery?.matches ||
       mode !== 'pid' ||
       pidStep !== 'result' ||
-      !techOpen ||
-      pidTab !== 'diagram' ||
       simState.faultSensor ||
       simState.faultDrive ||
       !currentDag ||

@@ -160,9 +160,13 @@ export const { T, t, A } = dict({
     es: 'Imprimir / Guardar PDF',
     en: 'Print / Save PDF',
   },
+  heroDiagramBar: {
+    es: 'ESQUEMA P&ID 2D INTERACTIVO Y ENCLAVAMIENTOS EN VIVO · ANSI/ISA-5.1',
+    en: 'LIVE INTERACTIVE 2D P&ID SCHEMATIC & INTERLOCKS · ANSI/ISA-5.1',
+  },
   techDrawerTitle: {
-    es: 'Ver información técnica avanzada (Tabla de direcciones PLC I/O, Código Siemens .scl / Rockwell .L5K, Esquema 2D y XML 3D)',
-    en: 'View advanced technical details (PLC I/O Address Table, Siemens .scl / Rockwell .L5K Code, 2D Schematic & 3D XML)',
+    es: 'Ver información técnica avanzada (Tabla de direcciones PLC I/O, Código Siemens .scl / Rockwell .L5K y XML 3D)',
+    en: 'View advanced technical details (PLC I/O Address Table, Siemens .scl / Rockwell .L5K Code & 3D XML)',
   },
   techTabsAria: {
     es: 'Pestañas técnicas de P&ID',
@@ -200,9 +204,9 @@ export const { T, t, A } = dict({
   pidFaultReset: { es: '↺ Rearmar planta', en: '↺ Reset plant' },
   pidOpen3dSim: { es: 'Ver Celda en 3D →', en: 'Open 3D Cell →' },
 
-  tabP1Io: { es: '2 · Tabla Equipos e I/O', en: '2 · Equipment & I/O Table' },
-  tabP3: { es: '3 · Código PLC (.scl / .L5K)', en: '3 · PLC Code (.scl / .L5K)' },
-  tabP2: { es: '4 · Escena 3D (.xml)', en: '4 · 3D Scene (.xml)' },
+  tabP1Io: { es: '1 · Tabla Equipos e I/O', en: '1 · Equipment & I/O Table' },
+  tabP3: { es: '2 · Código PLC (.scl / .L5K)', en: '2 · PLC Code (.scl / .L5K)' },
+  tabP2: { es: '3 · Escena 3D (.xml)', en: '3 · 3D Scene (.xml)' },
 
   dlFdsBtn: { es: 'Descargar FDS ISA-5.1 (.md) ↓', en: 'Download ISA-5.1 FDS (.md) ↓' },
   dlXmlBtn: { es: 'Descargar MuJoCo MJCF (.xml) ↓', en: 'Download MuJoCo MJCF (.xml) ↓' },

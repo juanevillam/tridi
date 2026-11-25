@@ -67,10 +67,10 @@ export function buildPidDiagramLayout(dag, { width = 940 } = {}) {
   const count = rawNodes.length;
 
   // Adaptive canvas height so 8-node mixers stay compact and 48-node pilot plants stay legible.
-  const height = count <= 12 ? 380 : count <= 24 ? 480 : count <= 36 ? 560 : 640;
+  const height = count <= 12 ? 410 : count <= 24 ? 510 : count <= 36 ? 590 : 660;
   const padX = 64;
-  const padTop = 58;
-  const padBottom = 46;
+  const padTop = 62;
+  const padBottom = 48;
   const usableW = Math.max(240, width - padX * 2);
   const usableH = Math.max(180, height - padTop - padBottom);
 
@@ -114,8 +114,8 @@ export function buildPidDiagramLayout(dag, { width = 940 } = {}) {
     });
 
     // Deterministic overlap relaxation: guarantees readable spacing without scrambling topology.
-    const minGapX = count > 30 ? 78 : 92;
-    const minGapY = count > 30 ? 52 : 62;
+    const minGapX = count > 30 ? 80 : 94;
+    const minGapY = count > 30 ? 58 : 74;
     const iterations = 48;
     for (let iter = 0; iter < iterations; iter++) {
       for (let i = 0; i < positioned.length; i++) {
