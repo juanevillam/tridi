@@ -90,7 +90,8 @@ console.log('1. v1 backwards-compatibility (no smplx fields)');
   const saved = JSON.parse(readFileSync(new URL('../motions/clip_2026-10-23_caminar-perfil_01.json', import.meta.url)));
   const { motion } = retargetClip(mujoco, sim.model, v1Clip);
   const worst = Math.max(...saved.qpos.flatMap((row, i) => row.map((v, k) => Math.abs(v - motion.qpos[i][k]))));
-  expect(worst === 0, `v1 clip matches saved RobotMotion bit-for-bit (max diff=${worst.toExponential(1)})`);
+  // 1e-4 allows ARM64 vs x86_64 libm ULP rounding across saved 5-decimal RobotMotion JSON (matches check-retarget.mjs).
+  expect(worst <= 1e-4, `v1 clip matches saved RobotMotion within 1e-4 (max diff=${worst.toExponential(1)})`);
 }
 
 console.log('2. synthetic SMPL-X axial twists & mirror symmetry');
