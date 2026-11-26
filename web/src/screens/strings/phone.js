@@ -9,6 +9,7 @@ export const { T, L } = dict({
   tap: { es: 'Toca el botón y acepta usar la cámara.', en: 'Tap the button and allow the camera.' },
   use: { es: 'Usar la cámara', en: 'Use the camera' },
   end: { es: 'Terminar', en: 'Finish' },
+  hands: { es: 'Manos (+42 pts)', en: 'Hands (+42 pts)' },
   step1: { es: 'Apunta a la persona con el cuerpo entero en cuadro; de perfil si va a caminar.', en: 'Aim at the person with the whole body in frame; from the side if they will walk.' },
   step2: { es: 'Mantén la pantalla encendida y el teléfono quieto.', en: 'Keep the screen on and the phone still.' },
   step3: { es: 'En la pantalla grande, Grabar guarda el movimiento como siempre.', en: 'On the big screen, recording saves the motion as usual.' },

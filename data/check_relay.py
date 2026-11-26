@@ -15,6 +15,7 @@ import time
 
 import httpx
 from fastapi import FastAPI
+from starlette.testclient import TestClient
 
 from . import relay
 
@@ -57,6 +58,9 @@ async def main() -> None:
             ({"width": 1, "height": 1, "frames": [{"t": 0, "world": [[0, 0, 0]] * 32, "image": [[0, 0, 0]] * 33}]}, "32 points"),
             ({"width": 1, "height": 1, "frames": [{"t": 0, "world": [[0, 0]] * 33, "image": [[0, 0, 0]] * 33}]}, "a 2-number point"),
             ({"width": 1, "height": 1, "frames": [{"t": 0, "world": [[0, 0, 0]] * 33}]}, "world without image"),
+            ({"width": 1, "height": 1, "frames": [{**frame(0), "hand_image": "bad"}]}, "hand_image not an object"),
+            ({"width": 1, "height": 1, "frames": [{**frame(0), "hand_image": {"left": [[0.1, 0.2]] * 20, "right": None}}]}, "hand_image with 20 points"),
+            ({"width": 1, "height": 1, "frames": [{**frame(0), "hand_image": {"left": [[0.1, 0.2, 0.3]] * 21, "right": None}}]}, "hand_image with 3-number point"),
         ]:
             r = await c.post(live, json=bad)
             expect(r.status_code == 400, f"{why} -> 400: {r.json()['detail']}")
@@ -88,10 +92,10 @@ async def main() -> None:
         r = await c.get(live, params={"since": 3})
         expect(r.json()["next"] == 5 and r.json()["frames"][0] == {"t": 10.1}, "a frame without body stays a bare t")
         # The camera image rides in its frame, with or without a body; the next test starts at 7.
-        with_image = [{**frame(10.16), "jpeg": "/9j/4AAQ", "hands": {"left": [[0.01 * i, 0.0, 0.0] for i in range(21)], "right": None}}, {"t": 10.2, "jpeg": "/9j/4AAR"}]
+        with_image = [{**frame(10.16), "jpeg": "/9j/4AAQ", "hands": {"left": [[0.01 * i, 0.0, 0.0] for i in range(21)], "right": None}, "hand_image": {"left": [[round(0.4 + 0.005 * i, 4), 0.5] for i in range(21)], "right": None}}, {"t": 10.2, "jpeg": "/9j/4AAR"}]
         await c.post(live, json={"width": 1280, "height": 720, "frames": with_image})
         r = await c.get(live, params={"since": 5})
-        expect(r.json()["frames"] == with_image, "frames keep their jpeg and 21-point hands, with or without a body")
+        expect(r.json()["frames"] == with_image, "frames keep their jpeg, 21-point 3D hands, and 2D hand_image, with or without a body")
 
         # Long poll: the GET waits and answers as soon as the phone posts.
         async def post_later():
@@ -151,8 +155,92 @@ async def main() -> None:
             await c.delete(f"/live/{sid}")
         expect(not relay.sessions, "all closed")
 
-    print("relay check passed", file=sys.stderr)
+    print("relay HTTP check passed", file=sys.stderr)
+
+
+async def _check_ws_concurrent_append() -> None:
+    """Regression test (GAP-6): appending a frame + s.changed.set() while send_json() is paused."""
+    sid = "gap6test"
+    s = relay.Session(sid, time.time())
+    s.frames.append({"t": 1.0})
+    relay.sessions[sid] = s
+
+    sent_batches: list[dict] = []
+    first_send_entered = asyncio.Event()
+    allow_first_send = asyncio.Event()
+    closed_code: list[int] = []
+
+    class FakeWS:
+        async def accept(self) -> None:
+            return None
+
+        async def send_json(self, data: dict) -> None:
+            sent_batches.append(data)
+            if len(sent_batches) == 1:
+                first_send_entered.set()
+                await allow_first_send.wait()
+
+        async def close(self, code: int = 1000) -> None:
+            closed_code.append(code)
+
+    task = asyncio.create_task(relay.live_ws(FakeWS(), sid, role="mac", since=0))
+    try:
+        await asyncio.wait_for(first_send_entered.wait(), timeout=1.0)
+        # Concurrent phone append + wakeup while the Mac send_json(t=1.0) is suspended.
+        s.frames.append({"t": 2.0})
+        s.changed.set()
+        allow_first_send.set()
+
+        t0 = time.perf_counter()
+        while len(sent_batches) < 2 and time.perf_counter() - t0 < 0.5:
+            await asyncio.sleep(0.005)
+        elapsed = time.perf_counter() - t0
+    finally:
+        relay.sessions.pop(sid, None)
+        s.changed.set()
+        await asyncio.wait_for(task, timeout=1.0)
+
+    all_t = [f["t"] for batch in sent_batches for f in batch.get("frames", [])]
+    expect(
+        all_t == [1.0, 2.0] and elapsed < 0.5,
+        f"WS live_ws emits concurrent append during send_json without sleeping (ts={all_t}, elapsed={elapsed:.3f}s)",
+    )
+    expect(closed_code == [4404], f"WS live_ws closes with 4404 when session removed (got {closed_code})")
+
+
+def check_ws() -> None:
+    """WebSocket /live/{sid}/ws round-trip for 2D hand_image + 3D hands."""
+    with TestClient(app) as client:
+        r = client.post("/live")
+        expect(r.status_code == 201, "WS test POST /live -> 201")
+        sid = r.json()["session_id"]
+
+        ws_frame = {
+            **frame(12.5),
+            "hands": {"left": [[0.01 * i, 0.0, 0.0] for i in range(21)], "right": None},
+            "hand_image": {"left": [[round(0.3 + 0.005 * i, 4), 0.45] for i in range(21)], "right": None},
+        }
+        payload = {"width": 1280, "height": 720, "frames": [ws_frame]}
+
+        with client.websocket_connect(f"/live/{sid}/ws?role=phone") as phone_ws:
+            phone_ws.send_json(payload)
+            ack = phone_ws.receive_json()
+            expect(ack.get("received") == 1 and ack.get("next") == 1, f"WS phone ack: {ack}")
+
+            with client.websocket_connect(f"/live/{sid}/ws?role=mac&since=0") as mac_ws:
+                msg = mac_ws.receive_json()
+                expect(
+                    msg.get("next") == 1
+                    and len(msg.get("frames", [])) == 1
+                    and msg["frames"][0] == ws_frame,
+                    "WS /live/{sid}/ws preserves 2D hand_image + 3D hands round-trip",
+                )
+
+        expect(client.delete(f"/live/{sid}").status_code == 204, "WS session cleaned up")
+    asyncio.run(_check_ws_concurrent_append())
+    print("relay WS check passed", file=sys.stderr)
 
 
 if __name__ == "__main__":
     asyncio.run(main())
+    check_ws()

@@ -15,8 +15,9 @@ import { loader } from '../loader.js';
 import { attachRobot, onRobotProgress, robotView } from '../robot-host.js';
 import { LANGS, escapeHtml, lang, onLang } from '../i18n.js';
 import { appHeaderHTML, mountAppHeader } from '../header.js';
+import { navigate } from '../router.js';
 import { clipName, spans as langSpans, worldName } from '../strings-names.js';
-import { VIDEOS } from '../video-overlay.js';
+import { resolveAsset, VIDEOS } from '../video-overlay.js';
 import { A, FILE_WHAT_EN, L, T, t as tl } from './strings/delivery.js';
 import './delivery.css';
 
@@ -102,7 +103,7 @@ const HOLD_END_S = 0.8;
 // A stalled frame (a hidden tab, a model being rebuilt) moves the clock this much at most instead of
 // jumping, as in stage.js.
 const MAX_FRAME_S = 1 / 30;
-const SPEEDS = [0.25, 0.5, 1];
+const SPEEDS = [0.25, 0.5, 1, 2];
 // Where the camera sits from the pelvis (three.js axes: x is MuJoCo's x, z is MuJoCo's -y). The
 // clips start heading +y, so this is the walker's right side, a little ahead: the legs read in
 // profile. About 2.6 m away, the camera's 40° view spans the robot's 1.3 m with the floor around it.
@@ -225,12 +226,18 @@ export function mount(root, { api }, [param] = []) {
     .catch((error) => {
       if (gone) return;
       if (!(error instanceof DeliveryError)) console.error(error);
-      root.querySelector('.dl-message').innerHTML = error instanceof DeliveryError ? T(error.key, error.vars) : T('openFailed');
-      root.querySelector('.dl-message').classList.add('dl-error');
-      // The deliveries that come with the page always open: offer them instead of a dead end.
-      const bundled = Object.values(MANIFESTS).filter((manifest) => manifest.clip_id !== clipId);
-      root.querySelector('.dl').insertAdjacentHTML('beforeend', bundled.map((manifest) => `
-        <a class="dl-get dl-other" href="#/delivery/${encodeURIComponent(manifest.clip_id)}">${T('seeOther', { title: (l) => clipName({ clip: manifest.clip_id, title: manifest.title || manifest.clip_id }).title[l] })}</a>`).join(''));
+      const msgEl = root.querySelector('.dl-message');
+      if (msgEl) {
+        msgEl.innerHTML = error instanceof DeliveryError ? T(error.key, error.vars) : T('openFailed');
+        msgEl.classList.add('dl-error');
+        // The deliveries that come with the page always open: offer them instead of a dead end.
+        const bundled = Object.values(MANIFESTS).filter((manifest) => manifest.clip_id !== clipId);
+        const dlEl = root.querySelector('.dl');
+        if (dlEl) {
+          dlEl.insertAdjacentHTML('beforeend', bundled.map((manifest) => `
+        <a class="dl-get dl-other" href="/delivery/${encodeURIComponent(manifest.clip_id)}">${T('seeOther', { title: (l) => clipName({ clip: manifest.clip_id, title: manifest.title || manifest.clip_id }).title[l] })}</a>`).join(''));
+        }
+      }
     });
   return () => {
     gone = true;
@@ -268,11 +275,10 @@ function showDelivery(root, { manifest: m, url }, signal) {
   });
   const switcherOptions = bundledManifests.some((b) => b.clip_id === m.clip_id) ? bundledManifests : [m, ...bundledManifests];
   const sourceVideo = VIDEOS[m.clip_id] ?? null;
-  const sourceVideoUrl = sourceVideo?.video ? `${import.meta.env.BASE_URL}${sourceVideo.video}` : null;
+  const sourceVideoUrl = sourceVideo?.video ? resolveAsset(sourceVideo.video) : null;
 
   root.innerHTML = `
     <section class="dl">
-      <div class="dl-screen">
       ${appHeaderHTML({ current: 'delivery' })}
       <div class="dl-toolbar">
         <label class="dl-switcher-wrap">
@@ -292,7 +298,7 @@ function showDelivery(root, { manifest: m, url }, signal) {
           <span>${T('downloadsBtn')}</span>
         </button>
       </div>
-
+      <div class="dl-screen">
       <div class="dl-main">
         <section class="dl-win dl-sim" ${A({ 'aria-label': 'simAria' })}>
           <div class="dl-bar"><span>${T('simBar')}</span><span class="dl-sim-info">${T('simInfo', { a: DATASET_HZ, b: 25 })}</span></div>
@@ -411,7 +417,7 @@ function showDelivery(root, { manifest: m, url }, signal) {
   const switcher = $('.dl-switcher');
   if (switcher) {
     listen(switcher, 'change', (e) => {
-      location.hash = `#/delivery/${encodeURIComponent(e.target.value)}`;
+      navigate(`/delivery/${encodeURIComponent(e.target.value)}${location.search}`);
     });
   }
 
@@ -555,6 +561,16 @@ function showDelivery(root, { manifest: m, url }, signal) {
   }
   listen(epBody, 'scroll', fadeEpisode, { passive: true });
 
+  // Hoist telemetry & playback DOM lookups above replay initialization so cached replays never hit TDZ.
+  const svg = $('.dl-svg');
+  const plotBox = $('.dl-plot');
+  const scrub = $('.dl-scrub');
+  const timeOut = $('.dl-time');
+  const hudT = $('.dl-hud-t');
+  const feet = { left: $('[data-foot="left"]'), right: $('[data-foot="right"]') };
+  const pipBox = $('.dl-source-pip');
+  const pipVideo = $('.dl-source-video');
+
   // ---- Replay data ----
 
   const series = () => replay?.series[sel] ?? null;
@@ -606,22 +622,20 @@ function showDelivery(root, { manifest: m, url }, signal) {
     return pose;
   }
 
+  const applyReplay = (cached) => {
+    if (gone) return;
+    replay = cached.replay;
+    scales = cached.scales;
+    $('.dl-plot-msg').hidden = true;
+    $('.dl-tele-title').innerHTML = T('teleBar', { n: LANES.length, hz: replay.hz });
+    $('.dl-sim-info').innerHTML = T('simInfo', { a: DATASET_HZ, b: replay.hz });
+    renderEpisode(); // the shared force peak can now say when it happened
+    renderTelemetry();
+  };
   const replayUrl = url(m.replay);
+  const cachedReplay = replayUrl ? getCachedReplay(replayUrl) : null;
   if (replayUrl) {
-    const applyReplay = (cached) => {
-      if (gone) return;
-      replay = cached.replay;
-      scales = cached.scales;
-      $('.dl-plot-msg').hidden = true;
-      $('.dl-tele-title').innerHTML = T('teleBar', { n: LANES.length, hz: replay.hz });
-      $('.dl-sim-info').innerHTML = T('simInfo', { a: DATASET_HZ, b: replay.hz });
-      renderEpisode(); // the shared force peak can now say when it happened
-      renderTelemetry();
-    };
-    const cached = getCachedReplay(replayUrl);
-    if (cached) {
-      applyReplay(cached);
-    } else {
+    if (!cachedReplay) {
       fetch(replayUrl, { signal })
         .then((response) => {
           if (!response.ok) throw new Error(`replay.json: HTTP ${response.status}`);
@@ -669,7 +683,8 @@ function showDelivery(root, { manifest: m, url }, signal) {
         .catch((error) => {
           if (gone || signal.aborted) return;
           console.error(error);
-          $('.dl-plot-msg').innerHTML = T('replayFailed');
+          const plotMsg = $('.dl-plot-msg');
+          if (plotMsg) plotMsg.innerHTML = T('replayFailed');
         });
     }
   } else {
@@ -677,9 +692,6 @@ function showDelivery(root, { manifest: m, url }, signal) {
   }
 
   // ---- Telemetry ----
-
-  const svg = $('.dl-svg');
-  const plotBox = $('.dl-plot');
 
   function svgEl(name, attrs = {}, parent = null) {
     const el = document.createElementNS(SVG_NS, name);
@@ -829,12 +841,6 @@ function showDelivery(root, { manifest: m, url }, signal) {
 
   // ---- Playback: the clock, the playhead and the robot ----
 
-  const scrub = $('.dl-scrub');
-  const timeOut = $('.dl-time');
-  const hudT = $('.dl-hud-t');
-  const feet = { left: $('[data-foot="left"]'), right: $('[data-foot="right"]') };
-  const pipBox = $('.dl-source-pip');
-  const pipVideo = $('.dl-source-video');
   if (pipVideo) {
     pipVideo.play().catch(() => {});
   }
@@ -911,8 +917,22 @@ function showDelivery(root, { manifest: m, url }, signal) {
   listen(scrub, 'pointerup', () => (scrubbing = false));
   for (const button of $$('[data-speed]')) {
     button.onclick = () => {
-      speed = Number(button.dataset.speed);
+      const next = Number(button.dataset.speed);
+      if (!Number.isFinite(next) || next <= 0) return;
+      speed = next;
       for (const b of $$('[data-speed]')) b.setAttribute('aria-pressed', String(b === button));
+      if (pipVideo) {
+        try {
+          pipVideo.playbackRate = speed;
+        } catch {
+          // Ignore unsupported rate before video metadata loads
+        }
+      }
+      const s = series();
+      if (s) {
+        t = Math.min(Math.max(t, 0), s.end);
+        updatePlayhead();
+      }
     };
   }
   for (const button of $$('[data-axis]')) {
@@ -935,6 +955,7 @@ function showDelivery(root, { manifest: m, url }, signal) {
 
   let last = performance.now();
   let frameId = requestAnimationFrame(function frame(now) {
+    if (gone) return;
     const wall = Math.min(MAX_FRAME_S, Math.max(0, (now - last) / 1000));
     last = now;
     const s = series();
@@ -945,7 +966,13 @@ function showDelivery(root, { manifest: m, url }, signal) {
       }
       // The robot copies the row at t (mj_forward only, so a paused robot costs next to nothing),
       // also while the stones rebuild: the new model is in place before setWorld's first await.
-      if (view) view.sim.puppet(poseAt(s, Math.min(t, s.end)));
+      if (view?.sim?.data?.qpos) {
+        const poseRow = poseAt(s, Math.min(t, s.end));
+        const customScene = /^(unitree_h1|luigi_lab3|luigi_lab4|factory_cell)\//.test(view.sim.sceneFile ?? '');
+        if (!customScene && (!view.sim.policy?.robot || view.sim.policy.robot === 'unitree_g1') && poseRow.length <= view.sim.data.qpos.length) {
+          view.sim.puppet(poseRow);
+        }
+      }
       updatePlayhead();
     }
     look?.update(wall);
@@ -958,10 +985,15 @@ function showDelivery(root, { manifest: m, url }, signal) {
   const host = attachRobot(pane);
   if (robotView()) pane.classList.add('ready');
   const stopProgress = onRobotProgress(({ done, total, compiling, policy: loadingPolicy }) => {
-    $('.dl-boot-fill').style.width = `${(100 * done) / total}%`;
-    $('.dl-boot-text').innerHTML = loadingPolicy
-      ? T('finishing')
-      : compiling ? T('compiling') : T('downloadingMujoco', { p: Math.round((100 * done) / total) });
+    if (gone) return;
+    const bootFill = $('.dl-boot-fill');
+    const bootText = $('.dl-boot-text');
+    if (bootFill) bootFill.style.width = `${(100 * done) / total}%`;
+    if (bootText) {
+      bootText.innerHTML = loadingPolicy
+        ? T('finishing')
+        : compiling ? T('compiling') : T('downloadingMujoco', { p: Math.round((100 * done) / total) });
+    }
   });
   host.ready
     .then((loaded) => {
@@ -975,8 +1007,10 @@ function showDelivery(root, { manifest: m, url }, signal) {
       syncWorld();
     })
     .catch((error) => {
+      if (gone) return;
       console.error(error);
-      $('.dl-boot-text').innerHTML = T('robotFailed');
+      const bootText = $('.dl-boot-text');
+      if (bootText) bootText.innerHTML = T('robotFailed');
     });
 
   // Puts the robot in the selected episode's world. Only the stones change the floor (and rebuild
@@ -1062,6 +1096,7 @@ function showDelivery(root, { manifest: m, url }, signal) {
   const resize = new ResizeObserver(() => {
     cancelAnimationFrame(resizeFrame);
     resizeFrame = requestAnimationFrame(() => {
+      if (gone) return;
       renderTelemetry();
       fadeEpisode();
     });
@@ -1074,6 +1109,7 @@ function showDelivery(root, { manifest: m, url }, signal) {
 
   renderTraining(root.querySelector('.dl-train-body'), m, worlds, tipOn);
   select(sel);
+  if (cachedReplay) applyReplay(cachedReplay);
 
   // A language switch: the spans flip on their own (src/i18n.js); what was drawn in one language
   // (the episode card, the chart, the HUD, the ladder) is drawn again. The
@@ -1109,9 +1145,8 @@ function showDelivery(root, { manifest: m, url }, signal) {
       const { camera, controls } = view.viewer;
       if (saved) camera.position.set(controls.target.x + saved.x, controls.target.y + saved.y, controls.target.z + saved.z);
       const loaded = view;
-      const restore = () => (loaded.world() && loaded.world().id !== 'plano' ? loaded.setWorld(WORLDS.find((w) => w.id === 'plano')) : loaded.stop());
-      if (worldBusy) worldBusy.then(restore);
-      else restore();
+      if (loaded.world() && loaded.world().id !== 'plano') loaded.setWorld(WORLDS.find((w) => w.id === 'plano'));
+      else if (!worldBusy) loaded.stop();
     }
     host.detach();
   };

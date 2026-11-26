@@ -19,6 +19,7 @@ Private company repo of **Tridi** (`juanevillam/tridi`): Juan, Pastor, César an
 | What each area does and how to run it | `data/README.md`, `physics/README.md`, `training/README.md`, `web/` |
 | Where each part is now | [`docs/estado.md`](docs/estado.md), newest [`docs/bitacora/`](docs/bitacora) |
 | Brand manual (by José Alejandro) & official pitch deck | [`docs/marca.md`](docs/marca.md), [`docs/pitch/manual-de-marca-tridi.pdf`](docs/pitch/manual-de-marca-tridi.pdf), [`docs/pitch/tridi-pitch.pdf`](docs/pitch/tridi-pitch.pdf) |
+| **UI/UX Design System (Landing & Studio, Desktop & Mobile)** | [`docs/design-system.md`](docs/design-system.md) |
 | Shared JSON schemas between areas | [`docs/contrato.md`](docs/contrato.md) |
 | The YC application & industry voices | [`yc/README.md`](yc/README.md), [`yc/competidores.md`](yc/competidores.md), [`yc/investigacion/voces/`](yc/investigacion/voces/README.md) |
 | Web & Physics Quality Audit Playbook | [`docs/audit-playbook.md`](docs/audit-playbook.md), [`.claude/skills/tridi-quality/SKILL.md`](.claude/skills/tridi-quality/SKILL.md) |
@@ -74,5 +75,5 @@ Exact submitted YC W27 application and 25/25/25/25 equity split live in [`yc/yc-
 
 - Code, commits and PRs in English. Docs and texts for the team in Spanish.
 - Every long operation shows its progress; main buttons stay visible without scrolling.
-- Whenever touching `web/` or `physics/`, follow [`docs/audit-playbook.md`](docs/audit-playbook.md) (9-command audit system synced with `~/Code/portfolio`) and run `npm --prefix physics run check && npm --prefix web run check && npm --prefix web run build` before finishing.
+- Whenever touching `web/` or `physics/`, follow [`docs/design-system.md`](docs/design-system.md) and [`docs/audit-playbook.md`](docs/audit-playbook.md) (9-command audit system synced with `~/Code/portfolio`) and run `npm --prefix physics run check && npm --prefix web run check && npm --prefix web run build` before finishing.
 - **Pre-Commit Delta Audit Rule (mandatory):** After code changes in `web/` or `physics/` are implemented and approved, **before committing**, run a targeted delta pass of the affected `/tridi-*` audit skill(s) on the modified files (`git diff --name-only`) using the File → Skill matrix in [`docs/audit-playbook.md`](docs/audit-playbook.md) §2.5 (e.g. CSS/UI → `craft` + `parity`; transitions/accordions/modals → `motion` + `a11y`; 3D/models/assets → `data` + `cache` + `perf`) so every commit stays up to date with the latest audit baseline. Before `scripts/ship.sh`, run `/tridi-release-audit`.

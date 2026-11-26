@@ -51,16 +51,19 @@
     transform var(--dur-micro) var(--ease);
 }
 
-.asm-pill:hover,
+@media (hover: hover) and (pointer: fine) {
+  .asm-pill:hover {
+    border-color: var(--ink);
+    color: var(--ink);
+    background: rgb(241 243 238 / 0.08);
+  }
+}
+
 .asm-pill:focus-visible,
 .asm-pill:focus-within {
   border-color: var(--ink);
   color: var(--ink);
   background: rgb(241 243 238 / 0.08);
-}
-
-.asm-pill:focus-visible,
-.asm-pill:focus-within {
   outline: 2px solid var(--signal);
   outline-offset: 2px;
 }
@@ -71,19 +74,26 @@
 
 .asm-pill.signal,
 .asm-pill.signal span {
-  border-color: var(--ink);
-  background: var(--ink);
-  color: var(--bg);
+  border-color: transparent;
+  background: var(--signal);
+  color: var(--on-signal);
   font-weight: 600;
 }
 
-.asm-pill.signal:hover,
+@media (hover: hover) and (pointer: fine) {
+  .asm-pill.signal:hover,
+  .asm-pill.signal:hover span {
+    background: #d4ff4d;
+    border-color: transparent;
+    color: var(--on-signal);
+  }
+}
+
 .asm-pill.signal:focus-visible,
-.asm-pill.signal:hover span,
 .asm-pill.signal:focus-visible span {
-  background: #ffffff;
-  border-color: #ffffff;
-  color: var(--bg);
+  background: #d4ff4d;
+  border-color: transparent;
+  color: var(--on-signal);
 }
 
 /* Mode selector (compact pill toggle in header) */
@@ -113,10 +123,12 @@
     border-color var(--hover);
 }
 
-.asm-mode-btn:not([aria-selected='true']):hover:not(:disabled) {
-  color: var(--ink);
-  background: rgb(241 243 238 / 0.06);
-  border-color: transparent;
+@media (hover: hover) and (pointer: fine) {
+  .asm-mode-btn:not([aria-selected='true']):hover:not(:disabled) {
+    color: var(--ink);
+    background: rgb(241 243 238 / 0.06);
+    border-color: transparent;
+  }
 }
 
 .asm-mode-btn[aria-selected='true'],
@@ -151,8 +163,8 @@
   display: grid;
   align-content: start;
   border: 1px solid var(--line);
-  border-radius: 12px;
-  background: #121417;
+  border-radius: var(--r-card);
+  background: rgb(10 12 16 / 0.84);
   box-shadow: inset 0 0.75px 0 rgb(255 255 255 / 0.08);
   overflow: hidden;
 }
@@ -253,14 +265,14 @@
   color: #ff7a7a;
 }
 
-/* Live P&ID Schematic & Fault Stress-Test */
+/* Live P&ID Schematic & Fault Stress-Test (zero nested borders inside Level 2 cards) */
 .asm-pid-stage {
   display: grid;
   gap: 12px;
   padding: 12px;
-  border: 1px solid rgb(241 243 238 / 0.1);
-  border-radius: 10px;
-  background: var(--bg);
+  border: 0;
+  border-radius: var(--r-2);
+  background: rgb(8 9 11 / 0.55);
 }
 
 .asm-pid-stage--hero {
@@ -279,9 +291,9 @@
   display: grid;
   gap: 3px;
   padding: 8px 10px;
-  border: 1px solid rgb(241 243 238 / 0.1);
-  border-radius: 8px;
-  background: #121417;
+  border: 0;
+  border-radius: var(--r-2);
+  background: rgb(241 243 238 / 0.035);
 }
 
 .asm-hud-card span {
@@ -618,10 +630,12 @@
     border-color var(--hover);
 }
 
-.asm-tab:not([aria-selected='true']):hover:not(:disabled) {
-  color: var(--ink);
-  background: rgb(241 243 238 / 0.06);
-  border-color: rgb(241 243 238 / 0.24);
+@media (hover: hover) and (pointer: fine) {
+  .asm-tab:not([aria-selected='true']):hover:not(:disabled) {
+    color: var(--ink);
+    background: rgb(241 243 238 / 0.06);
+    border-color: rgb(241 243 238 / 0.24);
+  }
 }
 
 .asm-tab[aria-selected='true'],
@@ -686,9 +700,9 @@
   display: grid;
   gap: 4px;
   padding: 10px 12px;
-  border: 1px solid rgb(241 243 238 / 0.1);
-  border-radius: 8px;
-  background: rgb(8 9 11 / 0.55);
+  border: 0;
+  border-radius: var(--r-2);
+  background: rgb(241 243 238 / 0.035);
 }
 
 .asm-narrative-list b {
@@ -722,13 +736,9 @@
   gap: 8px;
 }
 
-@media (max-width: 600px) {
-  .asm-comp-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .asm-drop-card {
-    padding: 20px 16px;
+@media (max-width: 1000px) {
+  .asm-page {
+    padding: calc(var(--topbar-h) + 12px) 12px 28px;
   }
 }
 
@@ -736,9 +746,9 @@
   display: grid;
   gap: 4px;
   padding: 9px 11px;
-  border: 1px solid rgb(241 243 238 / 0.1);
-  border-radius: 8px;
-  background: var(--bg);
+  border: 0;
+  border-radius: var(--r-2);
+  background: rgb(241 243 238 / 0.035);
 }
 
 .asm-comp-card b {
@@ -754,22 +764,22 @@
 /* Commercial 2-Step P&ID Flow (Option A: Clean Dropzone -> Executive FDS + Collapsible Tech Drawer) */
 .asm-simple-wrap {
   width: min(1040px, 100%);
-  margin: 8px auto 0;
+  margin: 0 auto;
   display: grid;
-  gap: 18px;
+  gap: 14px;
 }
 
 .asm-drop-card {
   width: min(760px, 100%);
-  margin: 18px auto 0;
-  padding: 32px 28px;
-  border: 1px solid rgb(241 243 238 / 0.14);
-  border-radius: 16px;
-  background: #121417;
+  margin: 6px auto 0;
+  padding: 22px 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: rgb(10 12 16 / 0.84);
   box-shadow: inset 0 0.75px 0 rgb(255 255 255 / 0.08);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 18px;
+  gap: 14px;
   text-align: center;
   box-sizing: border-box;
   overflow: hidden;
@@ -808,10 +818,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
-  min-height: 168px;
-  padding: 28px 20px;
+  min-height: 136px;
+  padding: 20px 18px;
   border: 1.5px dashed rgb(241 243 238 / 0.24);
   border-radius: 12px;
   background: rgb(8 9 11 / 0.65);
@@ -823,11 +833,17 @@
     transform var(--dur-micro) var(--ease);
 }
 
-.asm-dropzone:hover,
+@media (hover: hover) and (pointer: fine) {
+  .asm-dropzone:hover {
+    border-color: var(--signal);
+    background: var(--signal-soft);
+  }
+}
+
 .asm-dropzone.dragging,
 .asm-dropzone:focus-within {
-  border-color: rgb(241 243 238 / 0.55);
-  background: rgb(241 243 238 / 0.05);
+  border-color: var(--signal);
+  background: var(--signal-soft);
 }
 
 .asm-dropzone:focus-within {
@@ -842,7 +858,7 @@
 
 .asm-dropzone strong,
 .asm-dropzone strong span {
-  color: var(--bg);
+  color: var(--on-signal);
   font: 600 13.5px/1.2 var(--display);
 }
 
@@ -853,19 +869,23 @@
   gap: 8px;
   margin: 0 auto;
   padding: 12px 24px;
-  border: 1px solid var(--ink);
+  border: 1px solid transparent;
   border-radius: 999px;
-  background: var(--ink);
+  background: var(--signal);
   box-shadow: 0 4px 16px rgb(0 0 0 / 0.35);
   text-align: center;
   transition:
     background-color var(--hover),
+    box-shadow var(--hover),
     transform var(--dur-micro) var(--ease);
 }
 
-.asm-dropzone:hover strong {
-  background: #ffffff;
-  border-color: #ffffff;
+@media (hover: hover) and (pointer: fine) {
+  .asm-dropzone:hover strong {
+    background: #d4ff4d;
+    border-color: transparent;
+    box-shadow: 0 8px 24px -6px var(--signal-glow);
+  }
 }
 
 .asm-dropzone[aria-busy='true'] {
@@ -918,8 +938,8 @@
   gap: 10px;
   padding: 12px 16px;
   border: 1px solid var(--line);
-  border-radius: 12px;
-  background: #121417;
+  border-radius: var(--r-card);
+  background: rgb(10 12 16 / 0.84);
 }
 
 .asm-doc-objective {
@@ -984,9 +1004,9 @@
 }
 
 .asm-tech-drawer {
-  border: 1px solid rgb(241 243 238 / 0.14);
-  border-radius: 12px;
-  background: #121417;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: rgb(10 12 16 / 0.84);
   overflow: hidden;
 }
 
@@ -1011,9 +1031,11 @@
   display: none;
 }
 
-.asm-tech-drawer > summary:hover {
-  background: rgb(241 243 238 / 0.06);
-  color: var(--signal);
+@media (hover: hover) and (pointer: fine) {
+  .asm-tech-drawer > summary:hover {
+    background: rgb(241 243 238 / 0.06);
+    color: var(--signal);
+  }
 }
 
 .asm-tech-drawer[open] > summary {
@@ -1027,6 +1049,38 @@
 
 .asm-tech-drawer[open] .asm-chevron {
   transform: rotate(180deg);
+}
+
+@media (max-width: 640px) {
+  .asm-modes {
+    flex-wrap: nowrap;
+  }
+
+  .asm-mode-btn {
+    padding: 0 11px;
+    font-size: 11px;
+  }
+
+  .asm-comp-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .asm-pid-hud {
+    grid-template-columns: 1fr;
+  }
+
+  .asm-drop-card {
+    padding: 18px 16px;
+    text-align: left;
+  }
+
+  .asm-drop-lead {
+    margin: 0;
+  }
+
+  .asm-samples-row {
+    justify-content: flex-start;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

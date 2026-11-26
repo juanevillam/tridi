@@ -126,10 +126,10 @@ export const trainBoxHTML = () => `
   <div data-train="preloaded" hidden>
     <p class="train-text">${T('preloadedText')}</p>
     <div class="train-actions-stack">
-      <a class="button primary train-example" href="#/delivery">${T('example')}</a>
+      <a class="button primary train-example" href="/delivery">${T('example')}</a>
       <div class="train-actions-subrow">
-        <a class="button" href="#/live">${T('recordNew')}</a>
-        <a class="button" href="#/upload">${T('uploadNew')}</a>
+        <a class="button" href="/live">${T('recordNew')}</a>
+        <a class="button" href="/upload">${T('uploadNew')}</a>
       </div>
     </div>
   </div>
@@ -157,20 +157,20 @@ export const trainBoxHTML = () => `
     </div>
     <button class="primary train-start" type="button">${T('start')}</button>
     <p class="train-why"></p>
-    <a class="button train-example" href="#/delivery">${T('example')}</a>
+    <a class="button train-example" href="/delivery">${T('example')}</a>
   </div>
   <div data-train="progress" hidden>
     <ol class="stages compact">${TRAIN_STEPS.map(([id, text]) => `<li data-step="${id}">${T(text)}</li>`).join('')}</ol>
     <div class="track"><div class="bar train-bar"></div></div>
     <p class="train-line"></p>
     <div class="train-net" hidden></div>
-    <a class="train-net-link" href="#/net" target="_blank" rel="noopener" hidden>${T('netLink')}</a>
+    <a class="train-net-link" href="/net" target="_blank" rel="noopener" hidden>${T('netLink')}</a>
     <p class="train-note">${T('note')}</p>
     <button class="train-cancel" type="button">${T('cancel')}</button>
   </div>
   <div data-train="done" hidden>
     <p class="train-text train-result"></p>
-    <a class="button primary train-delivery" href="#/delivery">${T('delivery')}</a>
+    <a class="button primary train-delivery" href="/delivery">${T('delivery')}</a>
   </div>
   <div data-train="failed" hidden>
     <p class="train-error error"></p>
@@ -246,7 +246,7 @@ export function mountTrainBox(box, api) {
         // Asked from retarget on: the first picture shows up as soon as practice starts. During
         // `data` the last picture stays, the network no longer changes.
         if (netView) netView.follow(api.url, t.train_id, t.stage !== 'data');
-        $('.train-net-link').href = `#/net/${encodeURIComponent(t.train_id)}`;
+        $('.train-net-link').href = `/net/${encodeURIComponent(t.train_id)}`;
         $('.train-net-link').hidden = false;
       } else if (netView) {
         netView.follow(api.url, null, false);
@@ -258,7 +258,7 @@ export function mountTrainBox(box, api) {
         ? T('doneError', { error: escapeHtml(t.error) })
         : T('done', { followed: num(t.followed_s ?? 0, 2), duration: num(t.duration_s, 2) });
       $('.train-delivery').hidden = Boolean(t.error);
-      $('.train-delivery').href = `#/delivery/${encodeURIComponent(run.clipId)}`;
+      $('.train-delivery').href = `/delivery/${encodeURIComponent(run.clipId)}`;
     } else {
       $('.train-error').innerHTML = run.error; // markup: T() or escaped server text
     }

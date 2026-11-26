@@ -31,7 +31,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from .env import EPISODE_STEPS, NU, OBS_DIM, PUSH_EVERY_S, PUSH_N, STANCE_V2, Stance, stand_obs_dim
+from .env import EPISODE_STEPS, NU, OBS_DIM, PUSH_EVERY_S, PUSH_N, STANCE_STRAIGHT, STANCE_V2, Stance, stand_obs_dim
 from .guard import Guard
 from .netlive import NetLive
 from .failmap import failure_map, worst
@@ -593,7 +593,7 @@ def main() -> None:
     p.add_argument("--push-max", type=float, default=PUSH_N[1], help="strongest random push, N")
     p.add_argument("--push-every", default=f"{PUSH_EVERY_S[0]},{PUSH_EVERY_S[1]}",
                    help="seconds between random pushes, min,max (default 2,4; a quiet stance needs 4,8 to settle between them)")
-    p.add_argument("--reward", default="", help="stance terms (env.py Stance), e.g. turn=0.3,feet=0.5,planted=0.1,rate=0.02,calm_s=1")
+    p.add_argument("--reward", default="", help="stance preset (v2, straight) or terms (env.py Stance), e.g. turn=0.3,feet=0.5,planted=0.1,rate=0.02,calm_s=1")
     p.add_argument("--worlds", default="",
                    help="train in these worlds of physics/worlds/, e.g. plano,piedras,resbaloso,viento (training/worlds.py); "
                         "empty: the flat floor, as before. Pushes then come from each world, capped by --push-max")
@@ -634,6 +634,8 @@ def main() -> None:
     export_dir = None if args.no_export else (args.export_dir or RUNS / args.run)
     if args.reward == "v2":
         stance = STANCE_V2
+    elif args.reward == "straight":
+        stance = STANCE_STRAIGHT
     elif args.reward:
         stance = Stance(**{k: float(v) for k, v in (kv.split("=") for kv in args.reward.split(",") if kv)})
     else:

@@ -61,7 +61,14 @@ El método es el de Sombra (`real-steel/src/robot.js` en `platanus-ideas`): ejes
 | Cintura (3 articulaciones) | Giro e inclinación del torso respecto de las caderas |
 | Brazos y piernas (4 articulaciones cada uno) | Dirección del segmento superior e inferior, medida en el sistema del torso (brazos) o de las caderas (piernas) |
 | Pies | Planos sobre el piso; la pelvis baja hasta que el punto más bajo de un pie lo toca |
-| **No** se copia | Cabeza (el G1 no tiene cuello), manos y dedos (los de MediaPipe son muy ruidosos) |
+| Dedos (opcional, cámara y clips) | `src/fingers.js` + `src/dex3.js`: manos Inspire de 5 dedos dibujadas sobre `nu=29`, o actuadores físicos vía `createHandActuatorHook` en modelos `Dex3`/`Inspire` |
+| **No** se copia | Cabeza (el G1 no tiene cuello; solo orienta la mirada de referencia) |
+
+### Actuadores físicos de dedos (`createHandActuatorHook`)
+
+`createHandActuatorHook(mujoco, model, handSpec)` (`src/fingers.js`, conectado en `src/index.js`) detecta por nombre de articulación (`actuator_trntype` / `actuator_trnid` + `jnt_qposadr`, sin asumir `7 + a` para tolerar órdenes distintos entre `<worldbody>` y `<actuator>`) si el MJCF cargado tiene actuadores físicos para `Dex3` (`14` DoF, `nu = 43` en `models/dex3/g1_with_hands.xml`) o `Inspire` (`22` DoF, `nu = 51`). En los modelos actuales de `29` DoF (`nu = 29`) devuelve un *no-op* seguro y conserva intacto el render cosmético de `src/dex3.js` y las políticas ONNX vigentes; además, `src/policy.js` habilita el amortiguamiento de cintura (`índice 12..14`) por `meta.robot === 'unitree_g1'` sin depender de `nu === 29`.
+
+Para habilitar agarre físico real en futuros MJCF (`43`/`51` DoF) se requieren: actuadores `<position>` con los nombres de articulación de `models/dex3/hands.json` o `models/inspire/hands.json`, geometrías de falanges nombradas `*_collision` y pares explícitos `<contact><pair condim="3" friction="0.8 0.005 0.0001"/>` (obligatorio porque `g1_mjx.xml` desactiva colisiones implícitas con `contype="0" conaffinity="0"`).
 
 Lo que la cámara no ve se queda en la pose de pie: una persona sentada frente a la laptop mueve cintura y brazos y el robot mantiene las piernas.
 
@@ -271,6 +278,8 @@ El formato es el de "Mundos" en [`../docs/contrato.md`](../docs/contrato.md) (`t
 | `src/pose.js` | Puntos de MediaPipe → puntos en los ejes del robot, filtrados (One Euro) y con histéresis de visibilidad. De Sombra |
 | `src/filters.js` | El filtro One Euro. De Sombra |
 | `src/retarget.js` | Pose → `qpos` del G1: la IK de Sombra sobre la cinemática de MuJoCo |
+| `src/fingers.js` | `createFingerSolver` (IK de dedos para `Dex3` / `Inspire`) y `createHandActuatorHook` (detección de actuadores físicos `nu=43`/`51`, *no-op* seguro en `nu=29`) |
+| `src/dex3.js` | Mallas cosméticas de manos `Dex3`/`Inspire` montadas en `wrist_yaw_link` cuando el modelo físico es de `29` DoF |
 | `src/motion.js` | Un `PoseClip` completo → `RobotMotion`, con el recorrido y el rumbo de la pelvis; también por tandas (`retargetClipAsync`) |
 | `scripts/retarget-clip.mjs` | `npm run retarget`: lo anterior sobre archivos |
 | `motions/` | Los `RobotMotion` de los clips de `data/clips/` |
@@ -278,7 +287,7 @@ El formato es el de "Mundos" en [`../docs/contrato.md`](../docs/contrato.md) (`t
 | `src/policy.js`, `src/ort.js` | La política entrenada (arriba) |
 | `src/index.js` | `createSimView`: carga, ciclo de física y dibujo, controles, `mimic`, `playClip` y `loadPolicy` |
 | `src/main.js`, `index.html` | La página de desarrollo, con el botón de la cámara (usa `data/live`) |
-| `scripts/check.mjs`, `check-retarget.mjs`, `check-policy.mjs` | Pruebas sin navegador con el mismo WASM: la física; el retargeting con poses sintéticas y el clip real de caminata; y la política entrenada |
+| `scripts/check.mjs`, `check-retarget.mjs`, `check-policy.mjs`, `check-hand-hook.mjs` | Pruebas sin navegador con el mismo WASM: la física; el retargeting con poses sintéticas y el clip real de caminata; la política entrenada; y el hook físico de dedos (`29`/`43`/`51` DoF + cintura G1) |
 | `models/unitree_g1/` | El G1 de MuJoCo Menagerie, sin cambios ([README](models/unitree_g1/README.md)) |
 
 - **De pie sin política:** los actuadores del G1 son de posición (`kp=500` en `g1.xml`): cada motor lleva su articulación al ángulo que dice `ctrl`. Poner `ctrl` igual a la pose `stand` hace que el robot la sostenga, como una estatua rígida. No se equilibra: con un empujón se cae.

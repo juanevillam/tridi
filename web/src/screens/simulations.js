@@ -19,9 +19,12 @@ export const title = { es: 'Simulaciones', en: 'Simulations' };
 const HIDDEN_CLIPS = [
   'clip_2026-10-23_caminar-perfil_01',
   'clip_2026-10-23_correr-perfil_01',
+  'clip_correr-perfil-gvhmr',
   'clip_frente-correr-01-gvhmr',
   'clip_synthetic_march_01',
   'clip_jacks-grupo-01-gvhmr',
+  'clip_bailar-grupo-02-gvhmr',
+  'clip_lavar-04-gvhmr',
   'clip_caminar-02-gvhmr',
 ];
 
@@ -65,6 +68,7 @@ export function mount(root, { api }, [clipId] = []) {
               <div class="player">
                 <button id="play" class="icon-btn primary" type="button" ${A({ 'aria-label': 'pause', title: 'pause' })}>${ICONS.pause}</button>
                 <button id="reset" class="icon-btn" type="button" ${A({ 'aria-label': 'restart', title: 'restart' })}>${ICONS.restart}</button>
+                <button id="reset-view" class="icon-btn" type="button" ${A({ 'aria-label': 'resetView', title: 'resetView' })}>${ICONS.camera}</button>
                 <button id="speed" class="icon-btn speed" type="button" ${A({ 'aria-label': 'speed', title: 'speedTitle' })}>1×</button>
               </div>
               <div class="mode" id="physics-mode-group" role="group" ${A({ 'aria-label': 'how' })}>
@@ -74,7 +78,10 @@ export function mount(root, { api }, [clipId] = []) {
               <p class="mode-note" id="physics-mode-note">${T('modeNote')}</p>
             </section>
             <section class="control-group" id="conditions-group" aria-labelledby="ctl-world">
-              <h3 id="ctl-world">${T('conditions')}</h3>
+              <h3 id="ctl-world" class="conditions-desktop-title">${T('conditions')}</h3>
+              <details class="conditions-disclosure" id="conditions-disclosure" open>
+                <summary class="conditions-summary">${T('conditions')}</summary>
+                <div class="conditions-body">
               <div class="fields">
                 <label class="field wide">${T('robotModel')}
                   <select id="robot-model">
@@ -126,6 +133,8 @@ export function mount(root, { api }, [clipId] = []) {
                 </label>`).join('')}
               </div>
               <p class="conditions-note">${T('conditionsNote')}</p>
+              </details>
+                </div>
               </details>
             </section>
           </div>
@@ -228,13 +237,26 @@ export function mount(root, { api }, [clipId] = []) {
       </div>
     </section>`;
   const unHeader = mountAppHeader(root);
-  // The physics sliders are open on wide screens; on phones they fold under "Ajustar la física"
-  // (style.css hides the toggle on wide screens), so the scene and the clips come first.
-  root.querySelector('.tune').open = !matchMedia('(max-width: 720px)').matches;
+  // Keep advanced physics sliders folded by default on all viewports so the 3D robot stays primary.
+  root.querySelector('.tune').open = false;
+  // Progressive disclosure on mobile: secondary conditions start collapsed below the compact primary bar.
+  const condDisclosure = root.querySelector('#conditions-disclosure');
+  if (condDisclosure) {
+    condDisclosure.open = window.innerWidth > 720;
+    const condSummary = condDisclosure.querySelector('.conditions-summary');
+    condDisclosure.addEventListener('toggle', () => {
+      if (!condDisclosure.open) condSummary?.blur();
+    });
+  }
+  const onResize = () => {
+    if (condDisclosure && window.innerWidth > 720 && !condDisclosure.open) condDisclosure.open = true;
+  };
+  window.addEventListener('resize', onResize, { passive: true });
   const stage = mountStage(root, { initialRobot: initRobot });
   const trainBox = mountTrainBox(root.querySelector('.train-box'), api);
   mountGallery(root, stage, isCustomRobotLink ? undefined : clipId, trainBox.show, { hide: HIDDEN_CLIPS });
   return () => {
+    window.removeEventListener('resize', onResize);
     unHeader();
     trainBox.dispose();
     stage.dispose();

@@ -27,7 +27,7 @@
 
 1. **Sin bloqueo por autor de commit en repositorios privados:** En el plan gratuito (Hobby) de Vercel, cuando un repositorio privado de GitHub tiene varios colaboradores (`Juan`, `Pastor`, `César`), Vercel **bloquea los despliegues** cuyos commits hayan sido hechos por cualquier miembro que no sea el dueño de la cuenta de Vercel (exigiendo pagar USD 20/mes por asiento en Vercel Pro).
 2. **Despliegue colaborativo gratuito:** Con **Cloudflare Pages** + [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml), cualquier push a `main` (o `juan/experimental`) de **Juan, Pastor o César** corre primero las suites de verificación (`npm --prefix physics run check && npm --prefix web run check && npm --prefix web run build`) y despliega `web/dist` a Cloudflare Pages sin restricciones de asiento.
-3. **Límites holgados de archivos:** Cloudflare Pages permite hasta **25 MiB por archivo** y **20.000 archivos** en el plan gratis. Tras la optimización de `/tridi-data-audit`, `web/dist` pesa **107 MB** en total (**270 archivos**), donde el archivo más pesado es `mujoco.wasm` (**10,75 MB**), seguido por los videos optimizados `media/luigi-sim2real.mp4` (**6,8 MB**), `media/platanus-pitch.mp4` (**5,9 MB**) y `media/luigi-hardware.mp4` (**4,8 MB**).
+3. **Límites holgados de archivos y fallback SPA nativo:** Cloudflare Pages permite hasta **25 MiB por archivo** y **20.000 archivos** en el plan gratis. En `juan/studio-overhaul`, `web/dist` pesa **186,17 MB** (`177,55 MiB`, **288 archivos** `< 20.000`), donde el archivo más pesado es `media/luigi-hardware.mp4` (**22,45 MiB** `< 25 MiB`), seguido por `media/luigi-sim2real.mp4` (**20,29 MiB**), `media/platanus-pitch.mp4` (**17,97 MiB**) y `assets/mujoco-*.wasm` (**10,25 MiB**). Con Vite (`base: '/'`, `appType: 'spa'`) y sin `404.html` ni `_redirects` (conservando `web/public/_headers`), Cloudflare Pages aplica su **fallback SPA nativo** sirviendo `index.html` con estado `200` en todas las rutas limpias (`/humanoids`, `/rovers`, `/industrial`, `/electronics`, `/simulations`, `/milestones`, etc.).
 4. **DDoS, WAF y Seguridad de Borde incluidos gratis:** Al estar el dominio en Cloudflare con nube naranja (`Proxied`), `trytridi.com` recibe mitigación DDoS L3/L4/L7 ilimitada, HSTS en el borde, AI Labyrinth, Turnstile y DNSSEC sin costo.
 
 ---
@@ -131,7 +131,7 @@ Ambos archivos están sincronizados para que cualquier despliegue sirva exactame
   *(Permite únicamente el acceso a la cámara web en el propio origen `trytridi.com` para la captura de pose en vivo, y bloquea en el navegador micrófono, geolocalización, pagos y WebUSB).*
 - `/assets/*`: `Cache-Control: public, max-age=31536000, immutable` (archivos con hash de Vite).
 - `/models/*`: `Cache-Control: public, max-age=31536000, immutable` (modelos 3D `.glb` de Kenney en `web/public/models/`).
-- `/media/*`: `Cache-Control: public, max-age=604800, stale-while-revalidate=86400` (videos `.mp4` e imágenes de `#/milestones`).
+- `/media/*`: `Cache-Control: public, max-age=604800, stale-while-revalidate=86400` (videos `.mp4` e imágenes de `/milestones` y las landings de verticales).
 - `/og.png`: imagen Open Graph (`1200 × 630`, **278 KB**, [`web/public/og.png`](../web/public/og.png)) con el hero real de la landing (optimizada `< 300 KB` para preview instantáneo en WhatsApp, LinkedIn y X), declarada en [`web/index.html`](../web/index.html) (`og:image`, `og:image:width`, `og:image:height`, `twitter:image`, `JSON-LD`) junto con [`web/public/robots.txt`](../web/public/robots.txt).
 
 ### 6.2 Cómo desplegar a `https://trytridi.com`
@@ -151,7 +151,7 @@ Ambos archivos están sincronizados para que cualquier despliegue sirva exactame
 
 ## 7. Seguridad y Operación del Servidor de Video en la Mac ([`data/serve.sh`](../data/serve.sh) + [`data/server.py`](../data/server.py))
 
-La física (MuJoCo WASM), las políticas ONNX preentrenadas, `#/milestones` y `#/simulations/luigi_lab3` corren **100% en el navegador del visitante** sin necesitar el servidor. El servidor de Python (`data/server.py`) solo interviene cuando alguien:
+La física (MuJoCo WASM), las políticas ONNX preentrenadas, `/milestones` y `/simulations/luigi_lab3` (con redirección automática desde URLs legadas `#/...`) corren **100% en el navegador del visitante** sin necesitar el servidor. El servidor de Python (`data/server.py`) solo interviene cuando alguien:
 1. Sube un video nuevo (`POST /uploads`),
 2. Lanza un entrenamiento PPO nuevo en cola (`POST /clips/{id}/train`), o
 3. Usa el teléfono como cámara por QR (`POST /live`, WebSocket `/live/{id}/ws`).

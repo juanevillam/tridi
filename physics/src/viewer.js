@@ -57,6 +57,7 @@ export class RobotView {
     this.world = new THREE.Group();
     this.world.rotation.x = -Math.PI / 2;
     scene.add(this.world);
+    this._robotEffect = { opacity: 1, emissive: 0, emissiveColor: 0xc8ff2e };
     this.geoms = this.buildGeoms();
     this.sensorGroup = this.buildSensorCone();
     this.world.add(this.sensorGroup);
@@ -74,12 +75,14 @@ export class RobotView {
 
     this.matrix = new THREE.Matrix4();
     this.followed = new THREE.Vector3();
+    this._followDelta = new THREE.Vector3();
     // Height the camera aims at; a page directing the camera (createSimView's `viewer`) can change it.
     this.targetHeight = TARGET_HEIGHT;
     // Seconds the camera takes to catch up with the robot sideways (it covers 63% of the way in that
     // time). 0 keeps it locked to the pelvis, which is what the app's screens use; a page filming a
     // walk can raise it so the sway of each step does not shake the picture.
     this.followTau = 0;
+    this.snapOnTeleport = true;
     this.lastPelvis = new THREE.Vector3(); // the pelvis at the previous follow(); only x and z are read
     this.lastFollowMs = null;
     this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -121,30 +124,89 @@ export class RobotView {
       if (!VISIBLE_GROUPS.has(model.geom_group[g])) continue;
       const geometry = this.geometryFor(mujoco, model, g, meshes);
       if (!geometry) continue;
+      const isRobot = model.geom_bodyid[g] !== 0;
       const rgba = this.rgbaOf(model, g);
-      const key = rgba.join(',');
+      const key = `${isRobot ? 'r' : 'w'}:${rgba.join(',')}`;
       if (!materials.has(key)) {
-        materials.set(
-          key,
-          new THREE.MeshStandardMaterial({
-            color: new THREE.Color().setRGB(rgba[0], rgba[1], rgba[2], THREE.SRGBColorSpace),
-            transparent: rgba[3] < 1,
-            opacity: rgba[3],
-            metalness: 0.35,
-            roughness: 0.45,
-            // MuJoCo merges repeated mesh vertices, so averaged normals would round off the
-            // robot's hard edges; flat shading keeps them crisp.
-            flatShading: true,
-          }),
-        );
+        const mat = new THREE.MeshStandardMaterial({
+          color: new THREE.Color().setRGB(rgba[0], rgba[1], rgba[2], THREE.SRGBColorSpace),
+          transparent: rgba[3] < 1,
+          opacity: rgba[3],
+          metalness: 0.35,
+          roughness: 0.45,
+          // MuJoCo merges repeated mesh vertices, so averaged normals would round off the
+          // robot's hard edges; flat shading keeps them crisp.
+          flatShading: true,
+        });
+        mat.userData._base = {
+          transparent: rgba[3] < 1,
+          opacity: rgba[3],
+          depthWrite: true,
+          emissiveHex: 0x000000,
+          emissiveIntensity: 1,
+        };
+        materials.set(key, mat);
       }
       const object = new THREE.Mesh(geometry, materials.get(key));
       object.castShadow = true;
       object.receiveShadow = true;
+      object.userData.isRobotGeom = isRobot;
+      object.userData.baseCastShadow = true;
       this.world.add(object);
       geoms.push({ id: g, object });
     }
+    if (this._robotEffect && (this._robotEffect.opacity < 0.999 || this._robotEffect.emissive > 0.001)) {
+      this._applyRobotEffect(geoms);
+    }
     return geoms;
+  }
+
+  setRobotOpacity(opacity) {
+    this.setRobotEffect({ opacity });
+  }
+
+  setRobotEffect({ opacity = 1, emissive = 0, emissiveColor = 0xc8ff2e } = {}) {
+    this._robotEffect = {
+      opacity: Math.max(0, Math.min(1, opacity)),
+      emissive: Math.max(0, Math.min(4, emissive)),
+      emissiveColor,
+    };
+    this._applyRobotEffect();
+  }
+
+  resetRobotEffect() {
+    this.setRobotEffect({ opacity: 1, emissive: 0 });
+  }
+
+  _applyRobotEffect(geoms = this.geoms) {
+    if (!geoms) return;
+    const { opacity, emissive, emissiveColor } = this._robotEffect;
+    const isDefault = opacity >= 0.999 && emissive <= 0.001;
+    const seen = new Set();
+    for (const { object } of geoms) {
+      if (!object.userData?.isRobotGeom) continue;
+      const mat = object.material;
+      if (!mat || mat.visible === false) continue;
+      object.visible = isDefault || opacity > 0.015;
+      object.castShadow = isDefault ? object.userData.baseCastShadow : opacity > 0.45;
+      if (seen.has(mat)) continue;
+      seen.add(mat);
+      const base = mat.userData?._base;
+      if (!base) continue;
+      if (isDefault) {
+        mat.transparent = base.transparent;
+        mat.opacity = base.opacity;
+        mat.depthWrite = base.depthWrite;
+        mat.emissive.setHex(base.emissiveHex);
+        mat.emissiveIntensity = base.emissiveIntensity;
+      } else {
+        mat.transparent = true;
+        mat.opacity = base.opacity * opacity;
+        mat.depthWrite = opacity > 0.85;
+        mat.emissive.setHex(emissiveColor);
+        mat.emissiveIntensity = emissive;
+      }
+    }
   }
 
   geometryFor(mujoco, model, g, meshes) {
@@ -294,6 +356,10 @@ export class RobotView {
     lineGeom.attributes.position.needsUpdate = true;
   }
 
+  snapFollow() {
+    this.lastFollowMs = null;
+  }
+
   follow() {
     const [x, y] = this.sim.bodyPosition('pelvis');
     this.followed.set(x, this.targetHeight, -y); // MuJoCo (x, y, z) is three.js (x, z, -y)
@@ -301,7 +367,9 @@ export class RobotView {
     // target: with followTau set the target lags behind a fast walk on purpose.
     const now = performance.now();
     const first = this.lastFollowMs === null;
-    const jumped = first || Math.hypot(this.followed.x - this.lastPelvis.x, this.followed.z - this.lastPelvis.z) > FOLLOW_SNAP;
+    const jumped =
+      first ||
+      (this.snapOnTeleport && Math.hypot(this.followed.x - this.lastPelvis.x, this.followed.z - this.lastPelvis.z) > FOLLOW_SNAP);
     const dt = first ? 0 : Math.min(Math.max(0, (now - this.lastFollowMs) / 1000), MAX_FOLLOW_DT);
     this.lastPelvis.copy(this.followed);
     this.lastFollowMs = now;
@@ -313,7 +381,7 @@ export class RobotView {
       this.followed.x = target.x + k * (this.followed.x - target.x);
       this.followed.z = target.z + k * (this.followed.z - target.z);
     }
-    const delta = this.followed.clone().sub(this.controls.target);
+    const delta = this._followDelta.copy(this.followed).sub(this.controls.target);
     this.controls.target.add(delta);
     this.camera.position.add(delta);
     this.sun.position.add(delta);

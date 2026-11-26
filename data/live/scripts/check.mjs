@@ -4,8 +4,11 @@
 // The clip must follow the contract and recover the speed. Then the smoothing: the Savitzky-Golay
 // port must keep a polynomial exactly (as data/smooth.py does), and the live One Euro filter must
 // remove most of the shake of a noisy walk without shortening the step. Run: npm run check
+import { drawSkeleton } from '../src/draw.js';
+import { matchHands } from '../src/index.js';
 import { PoseFilter } from '../src/oneeuro.js';
 import { buildPoseClip, savgol } from '../src/poseclip.js';
+import { toFrame, toPose } from '../src/relay.js';
 
 const SPEED = 1.2; // m/s, a normal walk
 const STEP_S = 0.5; // each foot is planted half a gait cycle
@@ -113,6 +116,113 @@ check(accSmooth < accRaw / 3, `One Euro: p95 leg acceleration ${accRaw.toFixed(0
 const stride = (xs) => Math.max(...xs.slice(10).map((f) => f[27][0])) - Math.min(...xs.slice(10).map((f) => f[27][0]));
 const strideRatio = stride(smoothed) / stride(truth);
 check(strideRatio > 0.85 && strideRatio < 1.05, `One Euro changes the stride to ${(100 * strideRatio).toFixed(0)}%`);
+
+// 2D overlay drawSkeleton: minimalist head (0, 7, 8) + optional 2x21 hands + coarse dot suppression.
+function mockCtx(width = 1280, height = 720) {
+  const lines = [];
+  const arcs = [];
+  let cur = null;
+  return {
+    canvas: { width, height },
+    lines,
+    arcs,
+    clearRect() {},
+    beginPath() { cur = null; },
+    moveTo(x, y) { cur = [x, y]; },
+    lineTo(x, y) { if (cur) cur = [...cur, x, y]; },
+    stroke() { if (cur?.length === 4) lines.push(cur); cur = null; },
+    arc(x, y, r) { arcs.push([x, y, r]); },
+    fill() {},
+  };
+}
+const mkLandmarks = (headVis = 0.9) =>
+  Array.from({ length: 33 }, (_, i) => ({
+    x: 0.3 + i * 0.01,
+    y: 0.2 + (i % 5) * 0.1,
+    visibility: i === 0 || i === 7 || i === 8 ? headVis : 0.9,
+  }));
+const mkHand21 = (ox = 0.2) => Array.from({ length: 21 }, (_, i) => ({ x: ox + i * 0.005, y: 0.5 + i * 0.004 }));
+
+{
+  const lm = mkLandmarks(0.9);
+  const c1 = mockCtx();
+  drawSkeleton(c1, lm, true);
+  check(c1.lines.length === 21 && c1.arcs.length === 25, `drawSkeleton 3-arg with head: ${c1.lines.length} lines, ${c1.arcs.length} arcs`);
+
+  const cLow = mockCtx();
+  drawSkeleton(cLow, mkLandmarks(0.2), true);
+  check(cLow.lines.length === 18 && cLow.arcs.length === 22, `drawSkeleton suppresses low-vis head: ${cLow.lines.length} lines, ${cLow.arcs.length} arcs`);
+
+  const lmNoNose = mkLandmarks(0.9);
+  lmNoNose[0].visibility = 0.1;
+  const cEar = mockCtx();
+  drawSkeleton(cEar, lmNoNose, true);
+  check(cEar.lines.length === 20 && cEar.arcs.length === 24, `drawSkeleton ears-only fallback: ${cEar.lines.length} lines, ${cEar.arcs.length} arcs`);
+
+  const cHand = mockCtx();
+  drawSkeleton(cHand, lm, true, { left: mkHand21(0.2), right: null });
+  check(cHand.lines.length === 44 && cHand.arcs.length === 43, `drawSkeleton 4-arg left hand: ${cHand.lines.length} lines, ${cHand.arcs.length} arcs`);
+  const leftCoarseXY = [17, 19, 21].map((i) => `${(lm[i].x * 1280).toFixed(1)},${(lm[i].y * 720).toFixed(1)}`);
+  const rightCoarseXY = [18, 20, 22].map((i) => `${(lm[i].x * 1280).toFixed(1)},${(lm[i].y * 720).toFixed(1)}`);
+  const arcKeys = new Set(cHand.arcs.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`));
+  check(leftCoarseXY.every((k) => !arcKeys.has(k)), 'drawSkeleton hides coarse left hand dots 17,19,21 when 21-pt left hand drawn');
+  check(rightCoarseXY.every((k) => arcKeys.has(k)), 'drawSkeleton keeps coarse right hand dots 18,20,22 when right hand absent');
+}
+
+// Relay serialization round-trip for optional 2D handLandmarks (hand_image) and omission when absent.
+{
+  const lm = mkLandmarks(0.9);
+  const world = Array.from({ length: 33 }, () => ({ x: 0.1, y: -0.2, z: 0.3 }));
+  const bareFrame = toFrame({ landmarks: lm, world, visible: true, t: 1.25, handLandmarks: null });
+  check(!('hand_image' in bareFrame) && Object.keys(bareFrame).join(',') === 't,world,image', 'toFrame omits hand_image when absent');
+  const handPose = { landmarks: lm, world, visible: true, t: 1.5, handLandmarks: { left: mkHand21(0.25), right: null } };
+  const wire = toFrame(handPose);
+  const back = toPose(wire);
+  check(
+    wire.hand_image?.left?.length === 21 &&
+      wire.hand_image.right === null &&
+      back.handLandmarks?.left?.length === 21 &&
+      back.handLandmarks.right === null &&
+      Math.abs(back.handLandmarks.left[8].x - handPose.handLandmarks.left[8].x) < 1e-4,
+    'toFrame/toPose round-trips 2D handLandmarks via hand_image at 1e-4 precision',
+  );
+}
+
+// matchHands regression: NaN left wrist [15] must not poison .sort() or drop a valid right wrist [16].
+{
+  const lm = mkLandmarks(0.9);
+  lm[15] = { x: NaN, y: NaN, z: 0, visibility: 1 };
+  lm[16] = { x: 0.42, y: 0.44, z: 0, visibility: 1 };
+  const handImg = mkHand21(0.42);
+  handImg[0] = { x: 0.42, y: 0.44, z: 0 };
+  const handWorld = Array.from({ length: 21 }, (_, i) => ({ x: i * 0.01, y: 0, z: 0 }));
+  const matched = matchHands(
+    { landmarks: [handImg], worldLandmarks: [handWorld] },
+    lm,
+    16 / 9,
+  );
+  check(
+    matched.image.left === null &&
+      matched.world.left === null &&
+      matched.image.right === handImg &&
+      matched.world.right === handWorld,
+    'matchHands matches valid right wrist when left wrist [15] is NaN',
+  );
+
+  const nanHand = mkHand21(0.42);
+  nanHand[0] = { x: NaN, y: 0.44, z: 0 };
+  const badHandRes = matchHands({ landmarks: [nanHand], worldLandmarks: [handWorld] }, lm, 16 / 9);
+  check(
+    badHandRes.image.left === null && badHandRes.image.right === null,
+    'matchHands skips hand with non-finite wrist coordinates',
+  );
+
+  const badAspect = matchHands({ landmarks: [handImg], worldLandmarks: [handWorld] }, lm, 0);
+  check(
+    badAspect.image.left === null && badAspect.image.right === null,
+    'matchHands returns empty hands on non-positive aspect',
+  );
+}
 
 if (fail.length) {
   console.error(`check failed:\n- ${fail.join('\n- ')}`);

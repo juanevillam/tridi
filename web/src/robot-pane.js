@@ -28,10 +28,9 @@ export function robotPaneHTML(label, { push = true } = {}) {
         push
           ? `<div class="push-group">
         <div class="push-force-pills" role="group" aria-label="Push force in Newtons">
-          <button type="button" class="push-force-pill" data-force="100">100 N</button>
-          <button type="button" class="push-force-pill active" data-force="150" aria-pressed="true">150 N</button>
-          <button type="button" class="push-force-pill" data-force="300">300 N</button>
-          <button type="button" class="push-force-pill" data-force="500">500 N</button>
+          <button type="button" class="push-force-pill" data-force="100" aria-pressed="false">100 N</button>
+          <button type="button" class="push-force-pill active" data-force="300" aria-pressed="true">300 N</button>
+          <button type="button" class="push-force-pill" data-force="500" aria-pressed="false">500 N</button>
         </div>
         <button class="push" type="button" disabled>${T('push')}</button>
       </div>`
@@ -55,6 +54,7 @@ export function mountRobotPane(pane, { beforePush } = {}) {
   const handle = { view: null, ready: robot.ready, dispose };
 
   const stopProgress = onRobotProgress(({ done, total, compiling, policy }) => {
+    if (disposed) return;
     $('.robot-progress').style.width = `${(100 * done) / total}%`;
     if (policy) $('.robot-status').innerHTML = T('teaching');
     else if (compiling) $('.robot-status').innerHTML = T('building');
@@ -64,7 +64,7 @@ export function mountRobotPane(pane, { beforePush } = {}) {
 
   robot.ready
     .then((view) => {
-      if (!view) return;
+      if (disposed || !view) return;
       handle.view = view;
       pane.classList.add('ready');
       arrow = createPushArrow(view.viewer.scene);
@@ -73,11 +73,11 @@ export function mountRobotPane(pane, { beforePush } = {}) {
         frameId = requestAnimationFrame(frame);
       });
       const push = $('.push');
-      let forceN = 150;
+      let forceN = 300;
       const forcePills = [...pane.querySelectorAll('.push-force-pill')];
       forcePills.forEach((pill) => {
         pill.onclick = () => {
-          forceN = Number(pill.dataset.force) || 150;
+          forceN = Number(pill.dataset.force) || 300;
           forcePills.forEach((p) => {
             const active = p === pill;
             p.classList.toggle('active', active);
@@ -98,6 +98,7 @@ export function mountRobotPane(pane, { beforePush } = {}) {
       }
     })
     .catch((error) => {
+      if (disposed) return;
       $('.robot-status').innerHTML = T('loadFailed');
       console.error(error);
     });

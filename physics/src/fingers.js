@@ -200,3 +200,128 @@ export function createFingerSolver(hands) {
     joints: (side) => sides[side].bodies,
   };
 }
+
+const HAND_JOINT_NAME_RE = /^(left|right)_hand_.+_joint$/;
+const noopHandActuatorHook = () => ({
+  active: false,
+  count: 0,
+  jointMap: new Map(),
+  applyCtrl: () => 0,
+  applyQpos: () => 0,
+});
+
+/**
+ * Capability-detects physical finger actuators in a MuJoCo model against `handSpec`
+ * (`models/dex3/hands.json` or `models/inspire/hands.json`). Returns safe no-ops on 29-DoF models.
+ *
+ * @param {object} mujoco  loaded @mujoco/mujoco module
+ * @param {object} model   MjModel instance
+ * @param {object|null} [handSpec]  { left?: { bodies }, right?: { bodies } }; if omitted/null,
+ *   matches `/^(left|right)_hand_.+_joint$/`
+ */
+export function createHandActuatorHook(mujoco, model, handSpec) {
+  if (
+    typeof mujoco?.mj_id2name !== 'function' ||
+    mujoco?.mjtObj?.mjOBJ_JOINT?.value == null ||
+    !model?.nu ||
+    !model.actuator_trntype ||
+    !model.actuator_trnid ||
+    !model.jnt_qposadr
+  ) {
+    return noopHandActuatorHook();
+  }
+
+  let wanted = null;
+  if (handSpec != null) {
+    wanted = new Map();
+    for (const side of ['left', 'right']) {
+      for (const b of handSpec[side]?.bodies ?? []) {
+        if (!b?.joint) continue;
+        wanted.set(b.joint, {
+          side,
+          range: Array.isArray(b.range) && b.range.length >= 2 ? [b.range[0], b.range[1]] : null,
+        });
+      }
+    }
+    if (wanted.size === 0) return noopHandActuatorHook();
+  }
+
+  const TRN_JOINT = mujoco.mjtTrn?.mjTRN_JOINT?.value ?? 0;
+  const TRN_JOINTINPARENT = mujoco.mjtTrn?.mjTRN_JOINTINPARENT?.value ?? 1;
+  const OBJ_JOINT = mujoco.mjtObj.mjOBJ_JOINT.value;
+  const jointMap = new Map();
+
+  for (let a = 0; a < model.nu; a++) {
+    const trntype = model.actuator_trntype[a];
+    if (trntype !== TRN_JOINT && trntype !== TRN_JOINTINPARENT) continue;
+
+    const jid = model.actuator_trnid[2 * a];
+    if (!(jid >= 0 && jid < model.njnt)) continue;
+
+    const name = mujoco.mj_id2name(model, OBJ_JOINT, jid) ?? '';
+    if (!name) continue;
+
+    let side;
+    let spec = null;
+    if (wanted) {
+      spec = wanted.get(name);
+      if (!spec) continue;
+      side = spec.side;
+    } else {
+      const m = HAND_JOINT_NAME_RE.exec(name);
+      if (!m) continue;
+      side = m[1];
+    }
+
+    // Resolve qpos address from joint id (never assume 7 + a; dex3/g1_with_hands.xml swaps right index/middle order).
+    const qposAdr = model.jnt_qposadr[jid];
+    if (!(qposAdr >= 0 && qposAdr < model.nq)) continue;
+
+    const qposRange =
+      model.jnt_limited?.[jid] && model.jnt_range
+        ? [model.jnt_range[2 * jid], model.jnt_range[2 * jid + 1]]
+        : spec?.range ?? [-Infinity, Infinity];
+    const ctrlRange =
+      model.actuator_ctrllimited?.[a] && model.actuator_ctrlrange
+        ? [model.actuator_ctrlrange[2 * a], model.actuator_ctrlrange[2 * a + 1]]
+        : qposRange;
+
+    jointMap.set(name, { actuatorId: a, jointId: jid, qposAdr, side, ctrlRange, qposRange });
+  }
+
+  if (jointMap.size === 0) return noopHandActuatorHook();
+
+  const entriesOf = (angles) => (angles instanceof Map ? angles.entries() : Object.entries(angles));
+
+  return {
+    active: true,
+    count: jointMap.size,
+    jointMap,
+    applyCtrl(data, side, angles) {
+      if (!data?.ctrl || !angles) return 0;
+      let written = 0;
+      for (const [joint, raw] of entriesOf(angles)) {
+        if (!Number.isFinite(raw)) continue;
+        const info = jointMap.get(joint);
+        if (!info || (side && info.side !== side)) continue;
+        if (info.actuatorId < 0 || info.actuatorId >= data.ctrl.length) continue;
+        data.ctrl[info.actuatorId] = THREE.MathUtils.clamp(raw, info.ctrlRange[0], info.ctrlRange[1]);
+        written++;
+      }
+      return written;
+    },
+    applyQpos(qpos, side, angles) {
+      if (!qpos || !angles) return 0;
+      let written = 0;
+      for (const [joint, raw] of entriesOf(angles)) {
+        if (!Number.isFinite(raw)) continue;
+        const info = jointMap.get(joint);
+        if (!info || (side && info.side !== side)) continue;
+        if (info.qposAdr < 0 || info.qposAdr >= qpos.length) continue;
+        qpos[info.qposAdr] = THREE.MathUtils.clamp(raw, info.qposRange[0], info.qposRange[1]);
+        written++;
+      }
+      return written;
+    },
+  };
+}

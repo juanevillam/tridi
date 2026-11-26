@@ -3,7 +3,7 @@
 // on scrollable containers so CSS mask-image gradients fade clipped content cleanly.
 
 const SELECTOR =
-  '[data-scroll-fade], #gallery, .asm-code, .asm-table-wrap, .dl-table-wrap, .dl-episodes, .docs-nav-list';
+  '[data-scroll-fade], #gallery, .asm-code, .asm-table-wrap, .dl-table-wrap, .dl-episodes, .dl-code, .docs-nav-list';
 
 const BOUND = new WeakSet();
 

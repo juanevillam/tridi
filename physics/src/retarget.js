@@ -73,6 +73,59 @@ const MAX_LEG_INWARD = Math.sin((5 * Math.PI) / 180);
 const PROFILE_SIN2 = 0.5;
 // The solution from rest replaces the one from the previous frame only if it costs under 70% of it.
 const RESEED_MARGIN = 0.7;
+// When SMPL-X 3D rotations are given (PoseClip v2), IK keeps axial twists (shoulder_yaw, hip_yaw,
+// wrist_roll) anchored near the closed-form SMPL-X seed instead of pulling them to 0.
+const SMPLX_TWIST_PRIOR = 0.05;
+// Minimum |cos(middle Euler angle)| before 'YXZ'/'XYZ' outer axes become collinear (within ~12.7 deg
+// of +-90 deg gimbal lock): below this we attenuate the axial twist prior smoothly to 0 and gently
+// anchor shoulder_pitch toward its SMPL-X seed so tiny link offsets cannot swing pitch across +-cos.
+const GIMBAL_COS_THRESHOLD = 0.22;
+// Narrower ~6.9 deg cone (|cos(middle)| < 0.12) where outer Euler axes are nearly collinear and
+// cand[2]/cand[3] project onto prev0/prev2 without freezing too far from +-90 deg.
+const GIMBAL_LOCK_CONE_COS = 0.12;
+const SH_GIMBAL_PITCH_PRIOR = 0.005;
+// Weight (rad_joint / rad_ori) trading clamped 3D orientation error against joint-space step
+// distance when selecting an equivalent Euler branch: prevents sudden ~2*pi flips at a joint stop.
+const BRANCH_ORI_WEIGHT = 2.0;
+// Clamped orientation error (rad) above which an exact (0-error) Euler branch overrides joint
+// continuity so a limb does not stay pinned against a roll stop once the other branch is feasible.
+const BRANCH_MAX_CLAMP_ERR = 0.05;
+// Orientation error tolerance (rad) below which an Euler candidate counts as strictly in range.
+const BRANCH_IN_RANGE_EPS = 1e-4;
+const TWO_PI = 2 * Math.PI;
+// Zero-allocation element-wise finiteness guard for optional SMPL-X rotation arrays and 3D landmarks.
+const allFinite = (arr, n) => {
+  if (!(Array.isArray(arr) || ArrayBuffer.isView(arr)) || arr.length < n) return false;
+  for (let i = 0; i < n; i++) if (!Number.isFinite(arr[i])) return false;
+  return true;
+};
+const finitePt = (p) => Boolean(p && Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z));
+const wrapPi = (ang) => Math.atan2(Math.sin(ang), Math.cos(ang));
+// Fixed mount offsets in unitree_g1/g1_mjx.xml: shoulder_pitch_link tilts +-16 deg about X (lines
+// 259, 310) and hip_roll_link tilts -10 deg about Y (lines 149, 196); cancelled during decomposition.
+const SH_MOUNT = 2 * Math.atan2(0.139201, 0.990264);
+const HIP_MOUNT = 2 * Math.atan2(0.0873386, 0.996179);
+// Neutral SMPL-X (body_pose = 0) bone unit vectors in robot world axes (x = z_c, y = x_c, z = y_c),
+// measured from SMPLX_NEUTRAL so G1 aligns with SMPL-X's 18.2 deg left / 9.4 deg right shoulder droop.
+const SMPLX_REST = {
+  left: {
+    uDir: [-0.1587, 0.9498, -0.2697],
+    fDir: [-0.0098, 0.9957, 0.0918],
+    tDir: [-0.0245, 0.1429, -0.9894],
+    sDir: [-0.0784, -0.1069, -0.9912],
+    fng: [-0.0363, 0.9977, -0.0577],
+    plm: [0.1072, -0.0535, -0.9928],
+  },
+  right: {
+    uDir: [-0.0963, -0.9865, -0.1328],
+    fDir: [-0.0614, -0.9980, -0.0181],
+    tDir: [-0.0460, -0.1210, -0.9916],
+    sDir: [-0.0491, 0.0375, -0.9981],
+    fng: [-0.0346, -0.9956, -0.0874],
+    plm: [0.1152, 0.0829, -0.9899],
+  },
+};
+const X_AXIS = new THREE.Vector3(1, 0, 0);
 
 // MediaPipe indices of the human side that drives each robot side. Mirror mode swaps them (and
 // flips the pose), so the robot moves like your reflection: raise your right hand and the arm on
@@ -137,7 +190,13 @@ export function createRetargeter(mujoco, model, { mirror = true, live = false } 
       : name === 'waist_yaw_joint' ? WAIST_TWIST_PENALTY
       : name.endsWith('wrist_roll_joint') ? WRIST_ROLL_PENALTY : 0;
     return { name, adr: model.jnt_qposadr[id], limited: model.jnt_limited[id], lo: model.jnt_range[2 * id], hi: model.jnt_range[2 * id + 1],
-      twist, inward };
+      twist, inward,
+      sideIdx: name.startsWith('left') ? 0 : 1,
+      isShoulderPitch: name.endsWith('shoulder_pitch_joint'),
+      isShoulderYaw: name.endsWith('shoulder_yaw_joint'),
+      isHipPitch: name.endsWith('hip_pitch_joint'),
+      isHipYaw: name.endsWith('hip_yaw_joint'),
+      isWristRoll: name.endsWith('wrist_roll_joint') };
   };
 
   // Live views into the scratch MjData, refreshed at the start of every solve.
@@ -216,6 +275,7 @@ export function createRetargeter(mujoco, model, { mirror = true, live = false } 
 
   // Per-solve scratch.
   const S = Array.from({ length: 33 }, () => new THREE.Vector3()); // pose, flipped when mirroring
+  const vis = new Uint8Array(33); // visible and finite landmarks for the current solve
   const pelvisQ = new THREE.Quaternion();
   const hTorso = new THREE.Quaternion();
   const hHip = new THREE.Quaternion();
@@ -228,6 +288,198 @@ export function createRetargeter(mujoco, model, { mirror = true, live = false } 
   const basis = { fwd: new THREE.Vector3(), left: new THREE.Vector3(), up: new THREE.Vector3() };
   const mid = (i, j) => new THREE.Vector3().addVectors(S[i], S[j]).multiplyScalar(0.5);
 
+  // Preallocated SMPL-X rotational pre-solve scratch (zero per-frame allocations in hot loop).
+  const seedQ = new Float64Array(model.nq);
+  const warmBuf = new Float64Array(8);
+  let useSmplxPrior = false;
+  let smplxWarm = false;
+  const shTwistPrior = [SMPLX_TWIST_PRIOR, SMPLX_TWIST_PRIOR];
+  const shPitchPrior = [0, 0];
+  const hipTwistPrior = [SMPLX_TWIST_PRIOR, SMPLX_TWIST_PRIOR];
+  const hipPitchPrior = [0, 0];
+  const wrTwistPrior = [SMPLX_TWIST_PRIOR, SMPLX_TWIST_PRIOR];
+  const candA = new Float64Array(4);
+  const candB = new Float64Array(4);
+  const candC = new Float64Array(4);
+  const outEuler = new Float64Array(3);
+  const euler = new THREE.Euler(0, 0, 0, 'XYZ');
+  const eCand = new THREE.Euler(0, 0, 0, 'XYZ');
+  const qCand = new THREE.Quaternion();
+  const qPel = new THREE.Quaternion();
+  const qTor = new THREE.Quaternion();
+  const qYawFix = new THREE.Quaternion();
+  const qCol = new THREE.Quaternion();
+  const qSh = new THREE.Quaternion();
+  const qEl = new THREE.Quaternion();
+  const qWr = new THREE.Quaternion();
+  const qUp = new THREE.Quaternion();
+  const qFo = new THREE.Quaternion();
+  const qTmp = new THREE.Quaternion();
+  const vU = new THREE.Vector3();
+  const vF = new THREE.Vector3();
+  const bX = new THREE.Vector3();
+  const bY = new THREE.Vector3();
+  const bZ = new THREE.Vector3();
+  const mBasis = new THREE.Matrix4();
+  const qShMount = {
+    left: new THREE.Quaternion().setFromAxisAngle(X_AXIS, -SH_MOUNT),
+    right: new THREE.Quaternion().setFromAxisAngle(X_AXIS, SH_MOUNT),
+  };
+  const rotvec3ToQuat = (rx, ry, rz, out) => {
+    const ax = mirror ? -rz : rz;
+    const ay = rx;
+    const az = mirror ? -ry : ry;
+    const ang = Math.hypot(ax, ay, az);
+    if (!Number.isFinite(ang) || ang < 1e-8) return out.set(0, 0, 0, 1);
+    const s = Math.sin(0.5 * ang) / ang;
+    return out.set(ax * s, ay * s, az * s, Math.cos(0.5 * ang));
+  };
+  // Picks the physically continuous Euler seed among equivalent branches (primary, flipped middle
+  // +-pi branch, and optional gimbal-stabilized warm-twist projection) plus +-2*pi outer wraps,
+  // writing [joint0, joint1, joint2] into `outEuler` and returning |cos(middle angle)|.
+  const pickContinuousEuler = (qTarget, order, joints, off0, off1, off2, warm) => {
+    const j0 = joints[0];
+    const j1 = joints[1];
+    const j2 = joints[2];
+    const prev0 = getJoint(j0);
+    const prev1 = getJoint(j1);
+    const prev2 = getJoint(j2);
+    euler.setFromQuaternion(qTarget, order);
+    // All three chains (YXZ shoulder/hip, ZXY waist, XYZ wrist) map joints[0..2] to (outer1, middle, outer2).
+    const a0 = order === 'YXZ' ? euler.y : order === 'ZXY' ? euler.z : euler.x;
+    const b0 = order === 'XYZ' ? euler.y : euler.x;
+    const c0 = order === 'ZXY' ? euler.y : euler.z;
+    const midCos = Math.abs(Math.cos(b0));
+
+    candA[0] = a0;
+    candB[0] = b0;
+    candC[0] = c0;
+    const bFlip = (b0 >= 0 ? Math.PI : -Math.PI) - b0;
+    candA[1] = wrapPi(a0 + Math.PI);
+    candB[1] = bFlip;
+    candC[1] = wrapPi(c0 + Math.PI);
+    let nCand = 2;
+    const inGimbal = midCos < GIMBAL_LOCK_CONE_COS;
+    if (inGimbal && warm) {
+      // Near b = +-pi/2, outer axes depend only on a + sigma*c; keep either c or a continuous with prev.
+      const sigma = (order === 'YXZ' ? -1 : 1) * (b0 >= 0 ? 1 : -1);
+      const useFlip = Math.abs(bFlip + off1 - prev1) < Math.abs(b0 + off1 - prev1);
+      const aG = useFlip ? candA[1] : a0;
+      const bG = useFlip ? bFlip : b0;
+      const cG = useFlip ? candC[1] : c0;
+      const cKeep = prev2 - off2;
+      candA[nCand] = wrapPi(aG + sigma * (cG - cKeep));
+      candB[nCand] = bG;
+      candC[nCand] = cKeep;
+      nCand++;
+      const aKeep = prev0 - off0;
+      candA[nCand] = aKeep;
+      candB[nCand] = bG;
+      candC[nCand] = wrapPi(cG + sigma * (aG - aKeep));
+      nCand++;
+    }
+
+    let bestScore = Infinity;
+    let bestOriErr = Infinity;
+    let bestTwistOnly = false;
+    let best0 = 0;
+    let best1 = 0;
+    let best2 = 0;
+    let exactDist = Infinity;
+    let exact0 = 0;
+    let exact1 = 0;
+    let exact2 = 0;
+
+    for (let ci = 0; ci < nCand; ci++) {
+      const ba = candA[ci];
+      const bb = candB[ci];
+      const bc = candC[ci];
+      const v1 = bb + off1;
+      const c1 = j1.limited ? THREE.MathUtils.clamp(v1, j1.lo, j1.hi) : v1;
+      const eb = c1 - off1;
+      for (let ka = -1; ka <= 1; ka++) {
+        const v0 = ba + ka * TWO_PI + off0;
+        if (ka !== 0 && j0.limited && (v0 < j0.lo - Math.PI || v0 > j0.hi + Math.PI)) continue;
+        const c0 = j0.limited ? THREE.MathUtils.clamp(v0, j0.lo, j0.hi) : v0;
+        const ea = c0 - off0;
+        for (let kc = -1; kc <= 1; kc++) {
+          const v2 = bc + kc * TWO_PI + off2;
+          if (kc !== 0 && j2.limited && (v2 < j2.lo - Math.PI || v2 > j2.hi + Math.PI)) continue;
+          const c2 = j2.limited ? THREE.MathUtils.clamp(v2, j2.lo, j2.hi) : v2;
+          const ec = c2 - off2;
+          if (order === 'YXZ') eCand.set(eb, ea, ec, 'YXZ');
+          else if (order === 'ZXY') eCand.set(eb, ec, ea, 'ZXY');
+          else eCand.set(ea, eb, ec, 'XYZ');
+          qCand.setFromEuler(eCand);
+          const oriErr = 2 * Math.acos(Math.min(1, Math.abs(qCand.dot(qTarget))));
+          const dist = Math.hypot(c0 - prev0, c1 - prev1, c2 - prev2);
+          const score = BRANCH_ORI_WEIGHT * oriErr + dist;
+          if (score < bestScore) {
+            bestScore = score;
+            bestOriErr = oriErr;
+            bestTwistOnly = order === 'YXZ' && Math.abs(c0 - v0) < 1e-6 && Math.abs(c1 - v1) < 1e-6;
+            best0 = c0;
+            best1 = c1;
+            best2 = c2;
+          }
+          if (oriErr < BRANCH_IN_RANGE_EPS && dist < exactDist) {
+            exactDist = dist;
+            exact0 = c0;
+            exact1 = c1;
+            exact2 = c2;
+          }
+        }
+      }
+    }
+
+    if (!inGimbal && !bestTwistOnly && bestOriErr > BRANCH_MAX_CLAMP_ERR && exactDist < Infinity) {
+      outEuler[0] = exact0;
+      outEuler[1] = exact1;
+      outEuler[2] = exact2;
+    } else {
+      outEuler[0] = best0;
+      outEuler[1] = best1;
+      outEuler[2] = best2;
+    }
+    return midCos;
+  };
+  const bodyQuat = (bp, j, out) => {
+    const o = 3 * (j - 1);
+    return rotvec3ToQuat(bp[o], bp[o + 1], bp[o + 2], out);
+  };
+  const mirrorVec = (arr, out) => out.set(arr[0], mirror ? -arr[1] : arr[1], arr[2]);
+  const basisZ = (d) => {
+    bZ.copy(d).negate().normalize();
+    bX.copy(X_AXIS).addScaledVector(bZ, -X_AXIS.dot(bZ)).normalize();
+    bY.crossVectors(bZ, bX);
+    return new THREE.Quaternion().setFromRotationMatrix(mBasis.makeBasis(bX, bY, bZ));
+  };
+  const basisX = (xDir, yDir) => {
+    bX.copy(xDir).normalize();
+    bY.copy(yDir).addScaledVector(bX, -yDir.dot(bX)).normalize();
+    bZ.crossVectors(bX, bY);
+    return new THREE.Quaternion().setFromRotationMatrix(mBasis.makeBasis(bX, bY, bZ));
+  };
+  const ALIGN = { upper: {}, thigh: {}, hand: {} };
+  const REST_DIR = { upper: {}, fore: {}, thigh: {}, shin: {} };
+  for (const robotSide of ['left', 'right']) {
+    const spec = SMPLX_REST[mirror ? OTHER[robotSide] : robotSide];
+    const sSign = robotSide === 'left' ? 1 : -1;
+    const u = mirrorVec(spec.uDir, new THREE.Vector3()).normalize();
+    const f = mirrorVec(spec.fDir, new THREE.Vector3()).normalize();
+    const t = mirrorVec(spec.tDir, new THREE.Vector3()).normalize();
+    const sh = mirrorVec(spec.sDir, new THREE.Vector3()).normalize();
+    const fng = mirrorVec(spec.fng, new THREE.Vector3()).normalize();
+    const plm = mirrorVec(spec.plm, new THREE.Vector3()).normalize();
+    REST_DIR.upper[robotSide] = u;
+    REST_DIR.fore[robotSide] = f;
+    REST_DIR.thigh[robotSide] = t;
+    REST_DIR.shin[robotSide] = sh;
+    ALIGN.upper[robotSide] = basisZ(u);
+    ALIGN.thigh[robotSide] = basisZ(t);
+    ALIGN.hand[robotSide] = basisX(fng, vU.copy(plm).multiplyScalar(-sSign));
+  }
+
   // The shoulders' twist penalty for this solve (SHOULDER_TWIST_FACING when live and facing the
   // camera), and how much of the hands' bend is trusted (1 facing the camera, 0 in profile).
   let shoulderTwist = SHOULDER_TWIST_PENALTY;
@@ -235,7 +487,24 @@ export function createRetargeter(mujoco, model, { mirror = true, live = false } 
   const penalty = (joints) => joints.reduce((sum, j) => {
     const v = getJoint(j);
     let cost = JOINT_PENALTY * v * v;
-    if (j.twist) cost += (j.name.endsWith('shoulder_yaw_joint') ? shoulderTwist : j.twist) * v * v;
+    if (j.twist) {
+      if (useSmplxPrior) {
+        if (j.name !== 'waist_yaw_joint') {
+          const w = j.isShoulderYaw ? shTwistPrior[j.sideIdx]
+            : j.isHipYaw ? hipTwistPrior[j.sideIdx]
+            : j.isWristRoll ? wrTwistPrior[j.sideIdx]
+            : SMPLX_TWIST_PRIOR;
+          const d = v - seedQ[j.adr];
+          cost += w * d * d;
+        }
+      } else {
+        cost += (j.isShoulderYaw ? shoulderTwist : j.twist) * v * v;
+      }
+    } else if (useSmplxPrior && ((j.isShoulderPitch && shPitchPrior[j.sideIdx] > 0) || (j.isHipPitch && hipPitchPrior[j.sideIdx] > 0))) {
+      const w = j.isShoulderPitch ? shPitchPrior[j.sideIdx] : hipPitchPrior[j.sideIdx];
+      const d = v - seedQ[j.adr];
+      cost += w * d * d;
+    }
     if (j.inward) cost += HIP_INWARD_PENALTY * Math.max(0, j.inward * v) ** 2;
     return sum + cost;
   }, 0);
@@ -264,13 +533,14 @@ export function createRetargeter(mujoco, model, { mirror = true, live = false } 
 
   // Solved from the previous pose and from rest. Starting only from the previous one leaves joints
   // stuck in twisted configurations; the rest solution replaces it only when clearly better, so
-  // the result does not jump between the two.
-  function solveJoints(joints, cost) {
+  // the result does not jump between the two. Skipped when SMPL-X provides the closed-form seed.
+  function solveJoints(joints, cost, reseed = true) {
     const warmCost = descend(joints, cost);
-    const warm = joints.map(getJoint);
+    if (!reseed) return;
+    for (let i = 0; i < joints.length; i++) warmBuf[i] = getJoint(joints[i]);
     for (const j of joints) setJoint(j, 0);
     const restCost = descend(joints, cost);
-    if (restCost > warmCost * RESEED_MARGIN) joints.forEach((j, i) => setJoint(j, warm[i]));
+    if (restCost > warmCost * RESEED_MARGIN) joints.forEach((j, i) => setJoint(j, warmBuf[i]));
   }
 
   function descend(joints, cost) {
@@ -317,29 +587,50 @@ export function createRetargeter(mujoco, model, { mirror = true, live = false } 
    *   degrees): seen from the side, the hip line runs along the depth axis, which is MediaPipe's
    *   noisiest, while the direction of travel does not wobble. Walking backwards or sideways keeps
    *   the hips' heading.
+   * @param options.smplx  { globalOrient?, bodyPose }: optional SMPL-X 3D rotations from PoseClip v2
+   *   (contract axes: x right, y up, z toward camera; bodyPose is 63 floats for joints 1..21) used to
+   *   seed waist, shoulders, elbows, hips, knees, and wrists before IK refinement.
    * @returns qpos: Float64Array(nq), a copy; residual: the worst distance (m) between where a limb
    *   ended up and where the person put it (above ~0.08 the robot cannot do that move); tracked:
    *   false when the shoulders were not seen and the previous pose was kept; mirroredArm: true when
    *   one arm was not seen and copies the other's swing (in profile).
    */
-  function solve({ points, visible: V }, { travelYaw, hands } = {}) {
+  function solve({ points, visible: V }, { travelYaw, hands, smplx } = {}) {
     Q = data.qpos;
     XPOS = data.xpos;
     XQUAT = data.xquat;
+    const hasSmplx = allFinite(smplx?.bodyPose, 63);
+    useSmplxPrior = hasSmplx;
+    if (!hasSmplx) smplxWarm = false;
+    const bp = hasSmplx ? smplx.bodyPose : null;
     const L = mirror ? HUMAN.right : HUMAN.left; // the human landmarks that drive the robot's left
     const R = mirror ? HUMAN.left : HUMAN.right;
     const side = { left: L, right: R };
-    if (!V[L.shoulder] || !V[R.shoulder]) return { qpos: Q.slice(), residual: 0, tracked: false };
-    for (let i = 0; i < 33; i++) S[i].set(points[i].x, mirror ? -points[i].y : points[i].y, points[i].z);
-    const hipsSeen = V[L.hip] && V[R.hip];
+    for (let i = 0; i < 33; i++) {
+      const p = points?.[i];
+      const ok = Boolean(V?.[i] && finitePt(p));
+      vis[i] = ok ? 1 : 0;
+      if (ok) S[i].set(p.x, mirror ? -p.y : p.y, p.z);
+      else S[i].set(0, 0, 0);
+    }
+    if (!vis[L.shoulder] || !vis[R.shoulder]) return { qpos: Q.slice(), residual: 0, tracked: false };
+    const hipsSeen = Boolean(vis[L.hip] && vis[R.hip]);
     // The person's hands as the robot's sides see them (swapped and flipped when mirroring), in
     // robot axes as pose.js puts the pose's points: x = -z, y = x, z = -y.
     const handOf = {};
     for (const robotSide of ['left', 'right']) {
       const person = hands?.[mirror ? OTHER[robotSide] : robotSide];
-      if (!person) continue;
-      handOf[robotSide] = handPoints[robotSide];
-      person.forEach((p, i) => handPoints[robotSide][i].set(-p.z, mirror ? -p.x : p.x, -p.y));
+      if (!Array.isArray(person) || person.length < 21) continue;
+      let ok = true;
+      for (let i = 0; i < 21; i++) {
+        const p = person[i];
+        if (!finitePt(p)) {
+          ok = false;
+          break;
+        }
+        handPoints[robotSide][i].set(-p.z, mirror ? -p.x : p.x, -p.y);
+      }
+      if (ok) handOf[robotSide] = handPoints[robotSide];
     }
 
     // Pelvis: heading from the hips (or the shoulders when the hips are out of frame), upright.
@@ -350,7 +641,10 @@ export function createRetargeter(mujoco, model, { mirror = true, live = false } 
     const headingFrame = heading ?? hTorso;
     dir.set(1, 0, 0).applyQuaternion(headingFrame);
     const bodyYaw = Math.atan2(dir.y, dir.x);
-    const yaw = travelYaw !== undefined && Math.cos(travelYaw - bodyYaw) > 0 ? travelYaw : bodyYaw;
+    // SMPL-X / GVHMR 3D joints do not suffer from single-frame MediaPipe depth wobble on the hip
+    // line; overriding bodyYaw with travelYaw on spinning/lateral clips turns hHip/hTorso out from
+    // under world points S and snaps pelvisQ when travelYaw crosses threshold.
+    const yaw = !hasSmplx && Number.isFinite(travelYaw) && Math.cos(travelYaw - bodyYaw) > 0 ? travelYaw : bodyYaw;
     // Facing the camera is a heading of 0 (robot +x is toward it); profile is 90 degrees.
     shoulderTwist = live ? SHOULDER_TWIST_FACING + (SHOULDER_TWIST_PENALTY - SHOULDER_TWIST_FACING) * Math.sin(bodyYaw) ** 2 : SHOULDER_TWIST_PENALTY;
     handTrust = Math.cos(bodyYaw) ** 2;
@@ -369,12 +663,32 @@ export function createRetargeter(mujoco, model, { mirror = true, live = false } 
     Q[5] = pelvisQ.y;
     Q[6] = pelvisQ.z;
 
-    // Waist: the torso's turn and lean relative to the hips. Without hips there is no reference,
-    // so the torso goes back to rest.
-    if (hipsSeen) rel.copy(hHip).invert().multiply(hTorso);
-    else rel.identity();
-    target.copy(pelvisQ).multiply(rel).multiply(rest.torso);
-    solveJoints(waist.joints, () => orientationCost(waist, target));
+    // Waist: from SMPL-X spine chain when present, else the torso's turn and lean relative to hips.
+    if (hasSmplx) {
+      const go = smplx.globalOrient;
+      if (allFinite(go, 3)) rotvec3ToQuat(go[0], go[1], go[2], qPel);
+      else qPel.copy(pelvisQ);
+      qTor.copy(qPel)
+        .multiply(bodyQuat(bp, 3, qCol))
+        .multiply(bodyQuat(bp, 6, qSh))
+        .multiply(bodyQuat(bp, 9, qEl));
+      dir.set(1, 0, 0).applyQuaternion(qPel);
+      const smplxYaw = Math.hypot(dir.x, dir.y) > 1e-6 ? Math.atan2(dir.y, dir.x) : yaw;
+      qYawFix.setFromAxisAngle(UP, yaw - smplxYaw);
+      rel.copy(pelvisQ).invert().multiply(qYawFix).multiply(qTor);
+      target.copy(pelvisQ).multiply(rel).multiply(rest.torso);
+      pickContinuousEuler(rel, 'ZXY', waist.joints, 0, 0, 0, smplxWarm);
+      setJoint(waist.joints[0], outEuler[0]);
+      setJoint(waist.joints[1], outEuler[1]);
+      setJoint(waist.joints[2], outEuler[2]);
+      for (const j of waist.joints) seedQ[j.adr] = getJoint(j);
+      solveJoints(waist.joints, () => orientationCost(waist, target), false);
+    } else {
+      if (hipsSeen) rel.copy(hHip).invert().multiply(hTorso);
+      else rel.identity();
+      target.copy(pelvisQ).multiply(rel).multiply(rest.torso);
+      solveJoints(waist.joints, () => orientationCost(waist, target));
+    }
     fk();
     orientation(waist.body, q);
     // Robot torso axes (forward, left, up): the torso's current orientation without its rest offset.
@@ -387,8 +701,17 @@ export function createRetargeter(mujoco, model, { mirror = true, live = false } 
     for (const c of chains) {
       const h = side[c.side];
       const [i0, i1, i2] = c.human.map((k) => h[k]);
-      if (!V[i0] || !V[i1] || !V[i2]) continue;
-      if (c.frame === 'hip' && !hipsSeen) continue;
+      const unseen = !vis[i0] || !vis[i1] || !vis[i2] || (c.frame === 'hip' && !hipsSeen);
+      if (unseen) {
+        // Automatic Upper-Body Mode (laptop friendly): when legs/hips are out of frame during live
+        // capture, lock leg and foot joints cleanly back to the balanced stand pose instead of
+        // freezing them in an earlier stride.
+        if (live && c.foot) {
+          for (const j of c.joints) setJoint(j, standQ[j.adr]);
+          for (const j of c.foot.joints) setJoint(j, standQ[j.adr]);
+        }
+        continue;
+      }
       const toRobot = c.frame === 'torso' ? hTorsoInverse : hHipInverse;
       const robotFrame = c.frame === 'torso' ? torsoCanonical : pelvisQ;
       // Directions of the upper and lower segment in the human body frame, then in the robot's.
@@ -408,7 +731,49 @@ export function createRetargeter(mujoco, model, { mirror = true, live = false } 
       c.targetMid.copy(a).addScaledVector(dir, c.upperLength);
       limitInward(dir.subVectors(S[i2], S[i1]).normalize().applyQuaternion(toRobot)).applyQuaternion(robotFrame);
       c.targetTip.copy(c.targetMid).addScaledVector(dir, c.foreLength);
-      solveJoints(c.joints, () => limbCost(c));
+      if (hasSmplx) {
+        const hSide = mirror ? OTHER[c.side] : c.side;
+        const sideIdx = c.side === 'left' ? 0 : 1;
+        if (c.frame === 'torso') {
+          const [colIdx, shIdx, elIdx] = hSide === 'left' ? [13, 16, 18] : [14, 17, 19];
+          const sSign = c.side === 'left' ? 1 : -1;
+          qUp.copy(bodyQuat(bp, colIdx, qCol)).multiply(bodyQuat(bp, shIdx, qSh));
+          qFo.copy(qUp).multiply(bodyQuat(bp, elIdx, qEl));
+          qTmp.copy(qShMount[c.side]).multiply(qUp).multiply(ALIGN.upper[c.side]);
+          const shCos = pickContinuousEuler(qTmp, 'YXZ', c.joints, 0, sSign * SH_MOUNT, 0, smplxWarm);
+          const shScale = THREE.MathUtils.smoothstep(shCos, 0, GIMBAL_COS_THRESHOLD);
+          shTwistPrior[sideIdx] = SMPLX_TWIST_PRIOR * shScale;
+          shPitchPrior[sideIdx] = SH_GIMBAL_PITCH_PRIOR * (1 - shScale);
+          vU.copy(REST_DIR.upper[c.side]).applyQuaternion(qUp);
+          vF.copy(REST_DIR.fore[c.side]).applyQuaternion(qFo);
+          const elAng = Math.PI / 2 - Math.acos(THREE.MathUtils.clamp(vU.dot(vF), -1, 1));
+          setJoint(c.joints[0], outEuler[0]);
+          setJoint(c.joints[1], outEuler[1]);
+          setJoint(c.joints[2], outEuler[2]);
+          setJoint(c.joints[3], elAng);
+        } else {
+          const [hipIdx, knIdx] = hSide === 'left' ? [1, 4] : [2, 5];
+          qUp.copy(bodyQuat(bp, hipIdx, qCol));
+          qFo.copy(qUp).multiply(bodyQuat(bp, knIdx, qSh));
+          qTmp.copy(qUp).multiply(ALIGN.thigh[c.side]);
+          const hipCos = pickContinuousEuler(qTmp, 'YXZ', c.joints, HIP_MOUNT, 0, 0, smplxWarm);
+          const hipScale = THREE.MathUtils.smoothstep(hipCos, 0, GIMBAL_COS_THRESHOLD);
+          // 0.4 floor keeps hip_yaw anchored near hip_roll = +-pi/2 so straight-leg IK does not dump onto twist.
+          hipTwistPrior[sideIdx] = SMPLX_TWIST_PRIOR * (0.4 + 0.6 * hipScale);
+          hipPitchPrior[sideIdx] = SMPLX_TWIST_PRIOR * (1 - hipScale);
+          vU.copy(REST_DIR.thigh[c.side]).applyQuaternion(qUp);
+          vF.copy(REST_DIR.shin[c.side]).applyQuaternion(qFo);
+          const knAng = Math.acos(THREE.MathUtils.clamp(vU.dot(vF), -1, 1));
+          setJoint(c.joints[0], outEuler[0]);
+          setJoint(c.joints[1], outEuler[1]);
+          setJoint(c.joints[2], outEuler[2]);
+          setJoint(c.joints[3], knAng);
+        }
+        for (const j of c.joints) seedQ[j.adr] = getJoint(j);
+        solveJoints(c.joints, () => limbCost(c), false);
+      } else {
+        solveJoints(c.joints, () => limbCost(c));
+      }
       solved.add(c);
       fk();
       position(c.midId, a);
@@ -420,7 +785,27 @@ export function createRetargeter(mujoco, model, { mirror = true, live = false } 
         solveJoints(c.foot.joints, () => orientationCost(c.foot, target));
       }
       const H = handOf[c.side];
-      if (c.hand && live && (H || (V[h.index] && V[h.pinky]))) {
+      if (c.hand && hasSmplx) {
+        const hSide = mirror ? OTHER[c.side] : c.side;
+        const sideIdx = c.side === 'left' ? 0 : 1;
+        const [colIdx, shIdx, elIdx, wrIdx] = hSide === 'left' ? [13, 16, 18, 20] : [14, 17, 19, 21];
+        target.copy(torsoCanonical)
+          .multiply(bodyQuat(bp, colIdx, qCol))
+          .multiply(bodyQuat(bp, shIdx, qSh))
+          .multiply(bodyQuat(bp, elIdx, qEl))
+          .multiply(bodyQuat(bp, wrIdx, qWr))
+          .multiply(ALIGN.hand[c.side]);
+        fk();
+        orientation(c.midId, q);
+        rel.copy(q).invert().multiply(target);
+        const wrCos = pickContinuousEuler(rel, 'XYZ', c.hand.joints, 0, 0, 0, smplxWarm);
+        wrTwistPrior[sideIdx] = SMPLX_TWIST_PRIOR * THREE.MathUtils.smoothstep(wrCos, 0, GIMBAL_COS_THRESHOLD);
+        setJoint(c.hand.joints[0], outEuler[0]);
+        setJoint(c.hand.joints[1], outEuler[1]);
+        setJoint(c.hand.joints[2], outEuler[2]);
+        for (const j of c.hand.joints) seedQ[j.adr] = getJoint(j);
+        solveJoints(c.hand.joints, () => orientationCost(c.hand, target), false);
+      } else if (c.hand && live && (H || (vis[h.index] && vis[h.pinky]))) {
         // The hand's wrist, knuckles and the two sides of its width: from the hand model when
         // there is one (its 21 points are far steadier than the pose's 4), else from the pose.
         const handWrist = H ? H[HAND_WRIST] : S[h.wrist];
@@ -440,7 +825,7 @@ export function createRetargeter(mujoco, model, { mirror = true, live = false } 
         const sign = c.side === 'left' ? 1 : -1;
         const length = dir.subVectors(knuckles, handWrist);
         if (H) across.subVectors(H[HAND_INDEX], H[HAND_PINKY]);
-        else across.subVectors(V[h.thumb] ? mid(h.index, h.thumb) : S[h.index], S[h.pinky]);
+        else across.subVectors(vis[h.thumb] ? mid(h.index, h.thumb) : S[h.index], S[h.pinky]);
         palmTarget.crossVectors(length, across).multiplyScalar(sign);
         palmWeight = 0;
         if (palmTarget.length() > MIN_HAND_WIDTH * length.lengthSq()) {
@@ -475,12 +860,14 @@ export function createRetargeter(mujoco, model, { mirror = true, live = false } 
       setJoint(hElbow, getJoint(elbow));
     }
 
-    // Height: lower the pelvis until the lowest point of either foot touches the floor.
+    // Height: clamp the lowest sole strictly onto z = 0 so stance feet stay grounded on the floor.
     fk();
     let lowest = Infinity;
     for (const { id, radius } of soles) lowest = Math.min(lowest, data.geom_xpos[3 * id + 2] - radius);
-    Q[2] = -lowest;
-    return { qpos: Q.slice(), residual, tracked: true, mirroredArm };
+    if (Number.isFinite(lowest)) Q[2] = Math.max(0, -lowest);
+    const upperBodyOnly = !chains.some((c) => c.foot && solved.has(c));
+    smplxWarm = hasSmplx;
+    return { qpos: Q.slice(), residual, tracked: true, mirroredArm, upperBodyOnly };
   }
 
   // Hip to ankle along the leg (m): lets a recorded path be scaled to this robot's stride.

@@ -194,22 +194,13 @@ export function mount(root) {
 
   const modeToggleHTML = `
     <div class="asm-modes" role="tablist" ${A({ 'aria-label': 'modeAria' })}>
-      <button type="button" class="asm-mode-btn" data-mode="pid" role="tab" aria-selected="true">${T('modePid')}</button>
-      <button type="button" class="asm-mode-btn" data-mode="cad" role="tab" aria-selected="false">${T('modeCad')}</button>
+      <button type="button" class="asm-mode-btn" data-mode="pid" role="tab" aria-selected="true"><span class="only-wide">${T('modePid')}</span><span class="only-narrow">P&amp;ID</span></button>
+      <button type="button" class="asm-mode-btn" data-mode="cad" role="tab" aria-selected="false"><span class="only-wide">${T('modeCad')}</span><span class="only-narrow">CAD</span></button>
     </div>`;
 
   root.innerHTML = `
     <div class="asm-page">
-      ${appHeaderHTML({ current: 'assembler' })}
-      <div class="screen-toolbar">
-        <div class="screen-toolbar-copy">
-          <h1>Assembler</h1>
-          <p class="screen-toolbar-sub">${T('title')}</p>
-        </div>
-        <div class="screen-toolbar-actions">
-          ${modeToggleHTML}
-        </div>
-      </div>
+      ${appHeaderHTML({ current: 'assembler', rightSlot: modeToggleHTML })}
       <div class="asm-shell">
         <div class="asm-grid" id="asm-content"></div>
       </div>
@@ -655,7 +646,7 @@ export function mount(root) {
             <button type="button" class="asm-pill" id="asm-dl-dxf">${T('dlDxfBtn')}</button>
             <button type="button" class="asm-pill" id="asm-print-pdf">${T('printPdfBtn')}</button>
             <button type="button" class="asm-pill" id="asm-copy-fds">${T('copyBtn')}</button>
-            <a class="asm-pill signal" href="#/simulations/factory_cell">${T('pidOpen3dSim')}</a>
+            <a class="asm-pill signal" href="/simulations/factory_cell">${T('pidOpen3dSim')}</a>
           </div>
         </div>
         ${uploadStageKey ? `<p class="asm-upload-status" role="status" aria-live="polite">${T(uploadStageKey)}</p>` : ''}
@@ -806,7 +797,7 @@ export function mount(root) {
                   : `
               <div class="asm-row" style="justify-content:space-between">
                 <button type="button" class="asm-pill signal" id="asm-dl-pid-xml">${T('dlXmlBtn')}</button>
-                <a class="asm-pill signal" href="#/simulations/factory_cell">${T('pidOpen3dSim')}</a>
+                <a class="asm-pill signal" href="/simulations/factory_cell">${T('pidOpen3dSim')}</a>
               </div>
               <pre class="asm-code"><code>${esc(pid3d.sceneXml)}</code></pre>`
             }
@@ -978,7 +969,7 @@ export function mount(root) {
                 <span>${T('cadUploadIno')}</span>
                 <input type="file" id="asm-ino-file" class="asm-sr-input" accept=".ino,.c,.cpp,.txt" />
               </label>
-              <a class="asm-pill signal" href="#/simulations/luigi_lab4">${T('cadOpenRoverSim')}</a>
+              <a class="asm-pill signal" href="/simulations/luigi_lab4">${T('cadOpenRoverSim')}</a>
             </div>
 
             <div class="asm-pid-stage">
@@ -1056,7 +1047,7 @@ export function mount(root) {
                     ? `<button type="button" class="asm-pill signal" id="asm-dl-cad-xml">${T('dlXmlBtn')}</button>`
                     : `<button type="button" class="asm-pill signal" id="asm-dl-cad-ino">${T('cadDlInoBtn')}</button>`
                 }
-                <a class="asm-pill signal" href="#/simulations/luigi_lab4">${T('cadOpenRoverSim')}</a>
+                <a class="asm-pill signal" href="/simulations/luigi_lab4">${T('cadOpenRoverSim')}</a>
               </div>
               <pre class="asm-code"><code>${esc(cadTab === 'xml' ? compiledMjcf.robotXml : CALIBRATED_LAB4_C99)}</code></pre>`
             }

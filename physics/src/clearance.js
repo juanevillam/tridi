@@ -43,7 +43,7 @@ export const HANDS_APART_M = 0.145;
 // them. The G1 stands with 24 cm; a person walks with 5 to 15 cm between the feet' centers lines.
 export const FEET_APART_M = 0.12;
 // The hand is past the wrist: its center sits this share of the forearm's length beyond it.
-const HAND_PAST_WRIST = 0.72;
+export const HAND_PAST_WRIST = 0.72;
 // The most a joint opens (rad, 60 degrees for a shoulder, 10 for each hip), searched by 1 degree.
 // 30 degrees was enough for the thighs; a hand brought down onto the crown needs 55 (check-touch).
 const MAX_ARM = Math.PI / 3;

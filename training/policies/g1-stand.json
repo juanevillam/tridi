@@ -9,8 +9,11 @@
   "trained_on": [],
   "sense_velocity": true,
   "worlds": [
-    "plano"
+    "plano",
+    "piedras",
+    "resbaloso",
+    "viento"
   ],
-  "steps": 300000000,
-  "created_at": "2026-11-07T08:50:23+00:00"
+  "steps": 1000000,
+  "created_at": "2026-11-25T09:20:57+00:00"
 }

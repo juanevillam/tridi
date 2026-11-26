@@ -54,6 +54,21 @@ export const HELD_OBJECT_SCENE = {
   ],
 };
 
+/**
+ * Static MuJoCo collision geometry aligned to `furniture/chair.glb` for `clip_sentarse-02-gvhmr`
+ * ("Sitting down"): solid seat (z = 0..0.42 m) + backrest (z = 0..0.84 m at x = -0.46 m) with
+ * explicit robot contact pairs so the G1's pelvis/thighs physically rest on the chair instead of
+ * clipping through a visual-only mesh. Rendered transparent because `chair.glb` provides the mesh.
+ */
+export const SIT_CHAIR_SCENE = {
+  id: 'silla',
+  title: 'Silla',
+  objects: [
+    { label: 'silla_asiento', kind: 'box', size: [0.44, 0.46, 0.42], pos: [-0.26, -0.03], yaw: 0, movable: false, friction: 0.9, rgba: '0.50 0.36 0.25 0' },
+    { label: 'silla_respaldo', kind: 'box', size: [0.06, 0.46, 0.84], pos: [-0.46, -0.03], yaw: 0, movable: false, friction: 0.9, rgba: '0.50 0.36 0.25 0' },
+  ],
+};
+
 const f = (v) => +v.toFixed(4);
 
 /** The names of the robot's collision geoms, read from its MJCF (g1_mjx.xml names them *_collision). */
@@ -86,7 +101,7 @@ export function placeXml(baseXml, robotXml, place) {
     const yaw = o.yaw ?? 0;
     const mu = f(o.friction ?? FRICTION);
     const at = `pos="${f(o.pos[0])} ${f(o.pos[1])} ${f(sz / 2)}" quat="${f(Math.cos(yaw / 2))} 0 0 ${f(Math.sin(yaw / 2))}"`;
-    const geom = `<geom name="${name}" ${shape} rgba="${COLORS[o.label] ?? GRAY}" contype="1" conaffinity="1" condim="3" friction="${mu}"`;
+    const geom = `<geom name="${name}" ${shape} rgba="${o.rgba ?? COLORS[o.label] ?? GRAY}" contype="1" conaffinity="1" condim="3" friction="${mu}"`;
     bodies.push(o.movable
       ? `    <body name="${name}_body" ${at}><freejoint/>${geom} mass="${o.mass ?? DEFAULT_MASS_KG}"/></body>`
       : `    ${geom} ${at}/>`);

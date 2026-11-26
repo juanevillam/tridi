@@ -1,0 +1,687 @@
+/* Dedicated Vertical Landings (/humanoids, /rovers, /industrial, /electronics).
+   Follows docs/design-system.md: --bg #08090b, single --signal #c8ff2e primary CTA per hero/section,
+   4-tier ink (--fg, --ink-body, --fg-2, --dim), Level 2 opaque cards, align-items: start,
+   concentric radii (12px card / 8px inner / 4px chip), zero animated backdrop-filter. */
+
+.page.vertical-page {
+  padding-bottom: 36px;
+}
+
+.vt-main {
+  width: min(1240px, 100%);
+  margin: 22px auto 0;
+  display: grid;
+  gap: clamp(32px, 4.6vw, 52px);
+}
+
+.vt-main > .hero-platforms {
+  justify-self: start;
+  margin-bottom: 0;
+}
+
+/* ---- Hero ---- */
+
+.vt-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.06fr) minmax(0, 0.94fr);
+  align-items: start;
+  gap: clamp(20px, 3.2vw, 44px);
+}
+
+.vt-hero-copy {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  min-width: 0;
+  text-align: left;
+}
+
+.vt-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: start;
+  padding: 6px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgb(241 243 238 / 0.04);
+  font: 500 11px/1.1 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+
+.vt-kicker.is-soon {
+  border-color: rgb(200 255 46 / 0.28);
+  background: var(--signal-soft);
+  color: var(--signal);
+}
+
+.vt-kicker-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ok);
+  flex: none;
+}
+
+.vt-kicker.is-soon .vt-kicker-dot {
+  background: var(--signal);
+}
+
+.vertical-page .vt-hero-title {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: clamp(32px, 4.1vw, 56px);
+  line-height: 0.97;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  text-wrap: balance;
+  color: var(--fg);
+}
+
+.vertical-page .vt-hero-title em {
+  display: block;
+  font-style: normal;
+  color: var(--signal);
+}
+
+.vt-hero-lede {
+  margin: 0;
+  max-width: 56ch;
+  font: 400 clamp(15px, 1.2vw, 17.5px) / 1.5 var(--display);
+  color: var(--ink-body);
+}
+
+.vt-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vt-metrics li {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-1);
+  background: rgb(241 243 238 / 0.03);
+  font: 500 11px/1.2 var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--fg-2);
+}
+
+.vt-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+/* ---- Level 2 Stage & Showcase Cards ---- */
+
+.vt-stage-card,
+.vt-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: rgb(10 12 16 / 0.84);
+  box-shadow: var(--lg-rim);
+  text-align: left;
+}
+
+.vt-stage-card {
+  padding: 14px;
+}
+
+.vt-media-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--r-2);
+  background: var(--bg-deep);
+}
+
+.vt-media-frame--wide {
+  aspect-ratio: 16 / 9;
+}
+
+.vt-media-frame--portrait {
+  aspect-ratio: 3 / 4;
+  max-height: 430px;
+  width: 100%;
+}
+
+.vt-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.vt-media-frame--portrait .vt-video {
+  object-fit: contain;
+}
+
+.vt-stage-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.vt-stage-cap {
+  margin: 0;
+  font: 500 11px/1.4 var(--mono);
+  letter-spacing: 0.03em;
+  color: var(--fg-2);
+}
+
+.vt-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vt-tab,
+.vt-media-play {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgb(241 243 238 / 0.05);
+  color: var(--fg-2);
+  font: 500 11px/1 var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color var(--hover),
+    border-color var(--hover),
+    background-color var(--hover),
+    transform var(--dur-micro) var(--ease);
+}
+
+.vt-tab.active,
+.vt-tab[aria-selected='true'] {
+  border-color: rgb(200 255 46 / 0.42);
+  background: var(--signal-soft);
+  color: var(--signal);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .vt-tab:not(.active):hover,
+  .vt-media-play:hover {
+    border-color: var(--line-strong);
+    background: rgb(241 243 238 / 0.1);
+    color: var(--fg);
+  }
+
+  .vt-tab.active:hover,
+  .vt-tab[aria-selected='true']:hover {
+    border-color: rgb(200 255 46 / 0.55);
+    color: var(--signal);
+  }
+}
+
+.vt-tab:active,
+.vt-media-play:active {
+  transform: scale(0.97);
+}
+
+.vt-media-play svg {
+  width: 12px;
+  height: 12px;
+  flex: none;
+}
+
+/* ---- Industrial Pipeline Diagram (CSS + inline SVG, zero fake screenshots) ---- */
+
+.vt-pipe-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.vt-pipe-title {
+  margin: 0;
+  font: 600 12px/1.3 var(--mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--fg);
+}
+
+.vt-pipe-steps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 10px;
+}
+
+.vt-pipe-step {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: var(--r-2);
+  background: rgb(15 17 18 / 0.9);
+}
+
+.vt-pipe-step span {
+  font: 600 10px/1.2 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--signal);
+}
+
+.vt-pipe-step b {
+  font: 600 14px/1.25 var(--display);
+  color: var(--fg);
+}
+
+.vt-pipe-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.vt-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: var(--r-1);
+  background: rgb(241 243 238 / 0.06);
+  font: 500 10px/1.2 var(--mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+
+/* ---- Electronics Preview Matrix (Factual catalog.json) ---- */
+
+.vt-spec-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vt-spec-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-2);
+  background: rgb(15 17 18 / 0.88);
+}
+
+.vt-spec-row strong {
+  font: 600 13px/1.3 var(--display);
+  color: var(--fg);
+}
+
+.vt-spec-row span {
+  font: 500 11px/1.3 var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-2);
+}
+
+/* ---- Sections & Grids (align-items: start everywhere) ---- */
+
+.vt-section {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.vt-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 16px;
+}
+
+.vt-section-head h2 {
+  margin: 0;
+  font: 600 12px/1.2 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--signal);
+}
+
+.vt-section-head p {
+  margin: 0;
+  font: 400 14px/1.4 var(--display);
+  color: var(--fg-2);
+}
+
+.vt-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 14px;
+}
+
+.vt-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 14px;
+}
+
+.vt-grid-tools {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  align-items: start;
+  gap: 12px;
+}
+
+.vt-card-kicker {
+  margin: 0;
+  font: 500 10.5px/1.2 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.vt-card-title {
+  margin: 0;
+  font: 600 clamp(18px, 1.45vw, 22px) / 1.15 var(--display);
+  letter-spacing: -0.025em;
+  color: var(--fg);
+}
+
+.vt-card-body {
+  margin: 0;
+  font: 400 14px/1.5 var(--display);
+  color: var(--ink-body);
+}
+
+.vt-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.vt-card-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid rgb(241 243 238 / 0.22);
+  border-radius: 999px;
+  background: rgb(241 243 238 / 0.06);
+  font: 500 11px/1 var(--mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  color: var(--fg);
+  transition:
+    color var(--hover),
+    border-color var(--hover),
+    background-color var(--hover),
+    transform var(--dur-micro) var(--ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .vt-card-link:hover {
+    border-color: var(--fg);
+    background: rgb(241 243 238 / 0.12);
+    color: var(--fg);
+  }
+}
+
+.vt-card-link:active {
+  transform: scale(0.97);
+}
+
+/* ---- Rovers Gallery ---- */
+
+.vt-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px;
+}
+
+.vt-gal-item {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: rgb(10 12 16 / 0.84);
+}
+
+.vt-gal-frame {
+  overflow: hidden;
+  border-radius: var(--r-2);
+  background: var(--bg-deep);
+  aspect-ratio: 3 / 2;
+}
+
+.vt-gal-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.vt-gal-frame.is-cad img {
+  object-fit: contain;
+  padding: 8px;
+}
+
+.vt-gal-item figcaption {
+  font: 500 11px/1.35 var(--mono);
+  color: var(--fg-2);
+}
+
+/* ---- Tool Cards ---- */
+
+.vt-tool-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: rgb(10 12 16 / 0.84);
+  box-shadow: var(--lg-rim);
+  color: var(--fg);
+  text-decoration: none;
+  text-align: left;
+  transition:
+    border-color var(--hover),
+    background-color var(--hover),
+    transform var(--dur-micro) var(--ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .vt-tool-card:not(.vt-tool-card--multi):hover {
+    border-color: var(--line-strong);
+    background: rgb(16 20 28 / 0.92);
+  }
+
+  .vt-tool-card:not(.vt-tool-card--multi):hover .vt-tool-cta {
+    color: var(--fg);
+  }
+}
+
+.vt-tool-card:not(.vt-tool-card--multi):active {
+  transform: scale(0.98);
+}
+
+.vt-tool-card--multi .vt-card-actions {
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.vt-tool-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: rgb(200 255 46 / 0.08);
+  color: var(--signal);
+  flex: none;
+}
+
+.vt-tool-icon svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+}
+
+.vt-tool-card b {
+  font: 600 18px/1.2 var(--display);
+  letter-spacing: -0.02em;
+  color: var(--fg);
+}
+
+.vt-tool-sub {
+  font: 400 13.5px/1.45 var(--display);
+  color: var(--ink-body);
+}
+
+.vt-tool-cta {
+  margin-top: auto;
+  padding-top: 4px;
+  font: 500 11px/1 var(--mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+  transition: color var(--hover);
+}
+
+/* ---- Electronics Coming Soon Banner ---- */
+
+.vt-soon-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px;
+  border: 1px solid rgb(200 255 46 / 0.28);
+  border-radius: var(--r-card);
+  background: rgb(14 18 22 / 0.88);
+  box-shadow: var(--lg-rim);
+}
+
+.vt-soon-copy {
+  display: grid;
+  gap: 6px;
+  max-width: 64ch;
+  text-align: left;
+}
+
+.vt-soon-copy h3 {
+  margin: 0;
+  font: 600 18px/1.2 var(--display);
+  color: var(--fg);
+}
+
+.vt-soon-copy p {
+  margin: 0;
+  font: 400 14px/1.5 var(--display);
+  color: var(--ink-body);
+}
+
+/* ---- Shared Closing & Footer alignment inside .vertical-page ---- */
+
+.vertical-page .closing {
+  min-height: auto;
+  padding: clamp(40px, 6vw, 64px) 0 0;
+}
+
+.vertical-page .closing-sticky {
+  padding: 0;
+}
+
+.vertical-page .footer {
+  width: min(1240px, 100%);
+  margin: clamp(32px, 5vw, 56px) auto 0;
+}
+
+/* ---- Responsive Breakpoints ---- */
+
+@media (max-width: 960px) {
+  .vt-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .vt-grid-2,
+  .vt-grid-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .vt-gallery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .vertical-page .vt-hero-title {
+    font-size: clamp(28px, 7.6vw, 40px);
+    line-height: 1.02;
+  }
+
+  .vt-pipe-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .vt-gallery {
+    grid-template-columns: 1fr;
+  }
+
+  .vt-cta-row .btn,
+  .vt-card-link {
+    min-height: 42px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vt-tab,
+  .vt-media-play,
+  .vt-card-link,
+  .vt-tool-card,
+  .vt-tool-cta {
+    transition: none;
+  }
+}

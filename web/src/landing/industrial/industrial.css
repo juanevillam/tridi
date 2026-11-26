@@ -1,0 +1,369 @@
+/* Dedicated 3D scrollable landing styles for Tridi Industrial (/industrial).
+   Layered cleanly over landing.css (.landing) with .industrial-landing scoping so
+   Humanoids (/) and Studio screens are completely untouched. */
+
+.industrial-landing .hero-caption p.hero-lede {
+  max-width: 56ch;
+  text-wrap: pretty;
+}
+
+.industrial-landing .ind-chapter-stations,
+.industrial-landing .ind-chapter-val,
+.industrial-landing .ind-chapter-policy {
+  height: 195svh;
+}
+
+.industrial-landing .ind-panel {
+  left: var(--gutter);
+  top: var(--card-top);
+  width: var(--card-width);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 22px 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: rgb(10 12 16 / 0.84);
+  box-shadow: var(--lg-rim), 0 24px 56px -22px rgb(0 0 0 / 0.78);
+  box-sizing: border-box;
+}
+
+.industrial-landing .ind-panel h2 {
+  font-size: clamp(24px, 2.3vw, 34px);
+  line-height: 1.03;
+  max-width: 20ch;
+  text-wrap: balance;
+}
+
+.industrial-landing .ind-panel-lede {
+  font-size: 14px;
+  line-height: 1.46;
+  color: var(--ink-body);
+  max-width: 52ch;
+}
+
+.industrial-landing .ind-panel .specs {
+  margin-top: 4px !important;
+}
+
+/* ---- Station selector grid (Chapter 1 · Plant Stations) ---- */
+.ind-stations {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  margin-top: 2px;
+}
+
+.ind-station-btn {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: var(--r-2);
+  background: rgb(241 243 238 / 0.045);
+  color: var(--fg-2);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease, transform var(--dur-micro) var(--ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ind-station-btn:not([aria-pressed='true']):hover {
+    background: rgb(241 243 238 / 0.09);
+    color: var(--fg);
+  }
+}
+
+.ind-station-btn:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+
+.ind-station-btn:active {
+  transform: scale(0.98);
+}
+
+.industrial-landing button.ind-station-btn[aria-pressed='true'],
+.industrial-landing button.ind-station-btn[aria-pressed='true']:hover:not(:disabled) {
+  background: var(--signal);
+  border-color: transparent;
+  color: var(--on-signal);
+  box-shadow: none;
+  transform: none;
+  cursor: default;
+}
+
+.ind-station-tag {
+  font: 600 10px/1 var(--mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.82;
+}
+
+.ind-station-btn[aria-pressed='true'] .ind-station-tag {
+  opacity: 1;
+}
+
+.ind-station-name {
+  font: 600 14px/1.15 var(--display);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.ind-station-desc {
+  min-height: 2.8em;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink-body);
+}
+
+/* ---- Interactive Validation Controls (Chapter 2 · PLC Validation) ---- */
+.ind-control-group {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+}
+
+.ind-control-label {
+  font: 500 10.5px/1 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+}
+
+.ind-seg-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+}
+
+.ind-seg-btn {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgb(241 243 238 / 0.05);
+  color: var(--fg-2);
+  font: 500 11.5px/1 var(--mono);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease, transform var(--dur-micro) var(--ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ind-seg-btn:not([aria-pressed='true']):hover {
+    border-color: var(--line-strong);
+    background: rgb(241 243 238 / 0.11);
+    color: var(--fg);
+  }
+}
+
+.ind-seg-btn:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+}
+
+.ind-seg-btn:active {
+  transform: scale(0.98);
+}
+
+.industrial-landing button.ind-seg-btn[aria-pressed='true'],
+.industrial-landing button.ind-seg-btn[aria-pressed='true']:hover:not(:disabled) {
+  border-color: var(--signal);
+  background: rgb(200 255 46 / 0.16);
+  color: var(--signal);
+  box-shadow: none;
+  transform: none;
+  cursor: default;
+}
+
+.industrial-landing button.ind-seg-btn.is-fault[aria-pressed='true'],
+.industrial-landing button.ind-seg-btn.is-fault[aria-pressed='true']:hover:not(:disabled) {
+  border-color: #f59e0b;
+  background: rgb(245 158 11 / 0.18);
+  color: #fbbf24;
+  box-shadow: none;
+  transform: none;
+  cursor: default;
+}
+
+/* ---- Fault Injection Control ---- */
+.ind-fault-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.ind-fault-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: none;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid rgb(245 158 11 / 0.42);
+  border-radius: 999px;
+  background: rgb(245 158 11 / 0.12);
+  color: #fbbf24;
+  font: 600 11.5px/1 var(--mono);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, transform var(--dur-micro) var(--ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ind-fault-btn:hover {
+    border-color: #fbbf24;
+    background: rgb(245 158 11 / 0.22);
+  }
+}
+
+.ind-fault-btn:focus-visible {
+  outline: 2px solid #fbbf24;
+  outline-offset: 2px;
+}
+
+.ind-fault-btn:active {
+  transform: scale(0.96);
+}
+
+.ind-fault-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 8px rgb(245 158 11 / 0.7);
+}
+
+.ind-fault-status {
+  min-width: 0;
+  font: 500 10.5px/1.25 var(--mono);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--fg-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ind-fault-status[data-active='true'] {
+  color: #fbbf24;
+}
+
+/* ---- Readout sensor dots & fault/reject state ---- */
+.ind-sensor-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding-left: 10px;
+  border-left: 1px solid var(--line);
+}
+
+.ind-sensor-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgb(241 243 238 / 0.22);
+  transition: background-color 120ms ease;
+}
+
+.ind-sensor-dot.on {
+  background: var(--signal);
+  box-shadow: 0 0 8px var(--signal);
+}
+
+/* Keep the readout visible across all 3 industrial chapters, hide only on closing */
+.industrial-landing .film-hud:not(.is-closing) .sim-readout {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.industrial-landing .sim-readout[data-state='fault'],
+.industrial-landing .sim-readout[data-state='reject'] {
+  border-color: #f59e0b;
+}
+
+.industrial-landing .sim-readout[data-state='fault'] .sim-live-pill,
+.industrial-landing .sim-readout[data-state='reject'] .sim-live-pill {
+  color: #fbbf24;
+}
+
+.industrial-landing .sim-readout[data-state='fault'] .sim-state-dot,
+.industrial-landing .sim-readout[data-state='reject'] .sim-state-dot {
+  background: #f59e0b;
+  box-shadow: 0 0 10px #f59e0b;
+}
+
+/* ---- Mobile (<= 860px) ---- */
+@media (max-width: 860px) {
+  .industrial-landing .ind-chapter-stations,
+  .industrial-landing .ind-chapter-val,
+  .industrial-landing .ind-chapter-policy {
+    height: 100svh;
+    min-height: 620px;
+  }
+
+  .industrial-landing .ind-panel {
+    top: auto;
+    right: var(--gutter);
+    bottom: var(--s-5);
+    left: var(--gutter);
+    width: auto;
+    padding: 16px 16px 18px;
+    gap: 8px;
+  }
+
+  .industrial-landing .ind-panel h2 {
+    font-size: 22px;
+    line-height: 1.06;
+    max-width: none;
+  }
+
+  .industrial-landing .ind-panel-lede {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .ind-station-btn {
+    padding: 8px 10px;
+  }
+
+  .ind-station-name {
+    font-size: 13px;
+  }
+
+  .ind-station-desc {
+    display: none;
+  }
+
+  .ind-seg-btn,
+  .ind-fault-btn {
+    min-height: 34px;
+    font-size: 10.5px;
+    padding: 0 10px;
+  }
+
+  .ind-fault-status {
+    font-size: 10px;
+  }
+}

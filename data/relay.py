@@ -102,21 +102,21 @@ def _number(x) -> bool:
     return isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x)
 
 
-def _points(value, what: str, i: int, count: int = JOINTS) -> str | None:
+def _points(value, what: str, i: int, count: int = JOINTS, dims: int = 3) -> str | None:
     if not isinstance(value, list) or len(value) != count:
         return f"el cuadro {i} debe traer {count} puntos en {what}"
-    if not all(isinstance(p, list) and len(p) == 3 and all(_number(v) for v in p) for p in value):
-        return f"cada punto de {what} del cuadro {i} debe ser 3 números"
+    if not all(isinstance(p, list) and len(p) == dims and all(_number(v) for v in p) for p in value):
+        return f"cada punto de {what} del cuadro {i} debe ser {dims} números"
     return None
 
 
-def _hands(value, i: int) -> str | None:
+def _hands(value, i: int, what: str = "hands", dims: int = 3) -> str | None:
     if not isinstance(value, dict):
-        return f"hands del cuadro {i} debe ser un objeto {{left, right}}"
+        return f"{what} del cuadro {i} debe ser un objeto {{left, right}}"
     for side in ("left", "right"):
         h = value.get(side)
         if h is not None:
-            problem = _points(h, f"hands.{side}", i, HAND_JOINTS)
+            problem = _points(h, f"{what}.{side}", i, HAND_JOINTS, dims)
             if problem:
                 return problem
     return None
@@ -147,6 +147,11 @@ def _clean_batch(batch) -> tuple[dict | None, str | None]:
                 if problem:
                     return None, problem
                 frame["hands"] = {"left": f["hands"].get("left"), "right": f["hands"].get("right")}
+            if "hand_image" in f and f["hand_image"] is not None:
+                problem = _hands(f["hand_image"], i, what="hand_image", dims=2)
+                if problem:
+                    return None, problem
+                frame["hand_image"] = {"left": f["hand_image"].get("left"), "right": f["hand_image"].get("right")}
         if "jpeg" in f:
             jpeg = f["jpeg"]
             if not isinstance(jpeg, str) or len(jpeg) > MAX_JPEG_CHARS or not BASE64.match(jpeg):
@@ -277,17 +282,22 @@ async def live_ws(websocket: WebSocket, session_id: str, role: str = "mac", sinc
             cur = since
             while session_id in sessions:
                 s.touched = s.watched_at = time.time()
+                # Clear before checking s.next_seq so any concurrent append during send_json()
+                # is caught either by the immediate `continue` re-check or by a still-set event.
+                s.changed.clear()
                 if cur < s.next_seq:
                     start = max(cur - s.first_seq, 0)
-                    await websocket.send_json({
-                        "next": s.next_seq,
+                    next_seq = s.next_seq
+                    payload = {
+                        "next": next_seq,
                         "frames": s.frames[start:],
                         "width": s.width,
                         "height": s.height,
                         "sent_s": None if s.sent_at is None else round(time.time() - s.sent_at, 2),
-                    })
-                    cur = s.next_seq
-                s.changed.clear()
+                    }
+                    await websocket.send_json(payload)
+                    cur = next_seq
+                    continue
                 try:
                     await asyncio.wait_for(s.changed.wait(), 1.0)
                 except TimeoutError:
