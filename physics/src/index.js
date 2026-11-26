@@ -2,7 +2,7 @@
 // simulates in real time and draws every frame until dispose().
 import { Vector3 } from 'three';
 import { ensureModelFiles, loadG1 } from './load.js';
-import { LOOP_BLEND_S, motionDuration, retargetClipAsync, sampleLoopStart, sampleMotion, smoothForDisplay } from './motion.js';
+import { LOOP_BLEND_S, motionDuration, retargetClipAsync, sampleLoopStart, sampleMotion, smoothForDisplay, toHandPoints } from './motion.js';
 import { createPolicy } from './policy.js';
 import { createPoseTracker } from './pose.js';
 import { createRetargeter } from './retarget.js';
@@ -10,12 +10,13 @@ import { createRootTracker } from './root.js';
 import { createLeveler } from './level.js';
 import { createClearance } from './clearance.js';
 import { createRobotPoseFilter, OneEuroFilter } from './filters.js';
-import { createFingerSolver } from './fingers.js';
+import { createFingerSolver, createHandActuatorHook } from './fingers.js';
 import { RobotView } from './viewer.js';
 import { HELD_OBJECT_SCENE, placeXml, SCENE_ORDER } from './scenes.js';
 import { middleValues, sceneFile as worldScene, windForce, windSpeed, WORLD_ORDER } from './worlds.js';
 
-export { HELD_OBJECT_SCENE } from './scenes.js';
+export { HELD_OBJECT_SCENE, SIT_CHAIR_SCENE } from './scenes.js';
+export { sampleMotion } from './motion.js';
 export {
   getComponent,
   getPreset,
@@ -82,6 +83,7 @@ const STATS_WINDOW_S = 1;
 const onnxBytesCache = new Map();
 const jsonAssetCache = new Map();
 const smoothedMotionCache = new WeakMap();
+const smoothedMotionSet = new WeakSet();
 
 export function fetchCachedOnnxBytes(url) {
   if (!onnxBytesCache.has(url)) {
@@ -119,7 +121,40 @@ export function fetchCachedJson(url) {
   return jsonAssetCache.get(url);
 }
 
+function blendQpos(from, to, w, out, count = out.length) {
+  for (let j = 0; j < 3; j++) out[j] = from[j] + (to[j] - from[j]) * w;
+  // Shortest-path SLERP on pelvis quaternion (w, x, y, z) at indices 3..6
+  const fw = from[3], fx = from[4], fy = from[5], fz = from[6];
+  let tw = to[3], tx = to[4], ty = to[5], tz = to[6];
+  let dot = fw * tw + fx * tx + fy * ty + fz * tz;
+  if (dot < 0) {
+    tw = -tw; tx = -tx; ty = -ty; tz = -tz;
+    dot = -dot;
+  }
+  let s0, s1;
+  if (dot > 0.9995) {
+    s0 = 1 - w;
+    s1 = w;
+  } else {
+    const theta0 = Math.acos(Math.min(1, dot));
+    const sin0 = Math.sin(theta0);
+    const theta = theta0 * w;
+    const sinTheta = Math.sin(theta);
+    s0 = Math.cos(theta) - (dot * sinTheta) / sin0;
+    s1 = sinTheta / sin0;
+  }
+  out[3] = s0 * fw + s1 * tw;
+  out[4] = s0 * fx + s1 * tx;
+  out[5] = s0 * fy + s1 * ty;
+  out[6] = s0 * fz + s1 * tz;
+  const norm = Math.hypot(out[3], out[4], out[5], out[6]) || 1;
+  out[3] /= norm; out[4] /= norm; out[5] /= norm; out[6] /= norm;
+  for (let j = 7; j < count; j++) out[j] = from[j] + (to[j] - from[j]) * w;
+  return out;
+}
+
 function getSmoothedMotion(mujoco, model, motion, plantFeet) {
+  if (smoothedMotionSet.has(motion)) return motion;
   let byOption = smoothedMotionCache.get(motion);
   if (!byOption) {
     byOption = new Map();
@@ -127,7 +162,9 @@ function getSmoothedMotion(mujoco, model, motion, plantFeet) {
   }
   const key = String(plantFeet);
   if (!byOption.has(key)) {
-    byOption.set(key, smoothForDisplay(mujoco, model, motion, { plantFeet }));
+    const smoothed = smoothForDisplay(mujoco, model, motion, { plantFeet });
+    smoothedMotionSet.add(smoothed);
+    byOption.set(key, smoothed);
   }
   return byOption.get(key);
 }
@@ -151,16 +188,53 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
 
   let speed = 1;
   let playing = true;
-  // The RobotMotion being played, if any: { motion, duration, loop }, and where it is (s).
+  // The RobotMotion being played, if any: { motion, duration, loop, offset }, and where it is (s).
   let clip = null;
   let clipTime = 0;
+  let blend = null;
   const row = new Float64Array(sim.model.nq); // the pose being shown (the robot alone: 36 values)
   const lastRow = new Float64Array(sim.model.nq); // a clip's last pose, while it starts over
+  let handSpecs = null;
+  let handSpecLoading = null;
+  let handHook = null;
+  let bodyQposMap = null;
+  let puppetRow = null;
   let frameId = 0;
   let last = performance.now();
   let stats = { wall: 0, sim: 0 };
 
   let disposed = false;
+  let policySeq = 0;
+  let worldSeq = 0;
+  let placeSeq = 0;
+  let opChain = Promise.resolve();
+  const enqueueOp = (fn) => {
+    const run = opChain.then(fn, fn);
+    opChain = run.catch(() => {});
+    return run;
+  };
+
+  function toSimQpos(srcRow) {
+    if (!bodyQposMap) return srcRow;
+    if (srcRow.length === sim.model.nq) {
+      puppetRow.set(srcRow);
+      return puppetRow;
+    }
+    puppetRow.set(sim.data.qpos);
+    for (let i = 0; i < 7; i++) puppetRow[i] = srcRow[i];
+    for (let i = 0; i < bodyQposMap.length; i++) {
+      const [srcIdx, dstIdx] = bodyQposMap[i];
+      puppetRow[dstIdx] = srcRow[srcIdx];
+    }
+    return puppetRow;
+  }
+
+  function cancelBlend(result = false) {
+    if (!blend) return;
+    const active = blend;
+    blend = null;
+    active.resolve?.(result);
+  }
 
   async function frame(now) {
     try {
@@ -172,15 +246,38 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
         frameId = requestAnimationFrame(frame);
         return;
       }
-      if (clip) {
+      if (blend) {
+        if (playing) blend.elapsed += wall * speed;
+        const u = blend.duration > 0 ? Math.min(1, blend.elapsed / blend.duration) : 1;
+        const w = u * u * (3 - 2 * u);
+        const rawTo = typeof blend.target === 'function' ? blend.target(now) : blend.target;
+        const toQ = bodyQposMap && rawTo.length !== blend.out.length ? toSimQpos(rawTo) : rawTo;
+        const count = Math.min(blend.from.length, toQ.length, blend.out.length);
+        blendQpos(blend.from, toQ, w, blend.out, count);
+        sim.puppet(count === blend.out.length ? blend.out : blend.out.subarray(0, count));
+        if (u >= 1) {
+          const done = blend;
+          blend = null;
+          if (done.release) sim.releasePuppet({ resetPolicy: true, syncPrevious: done.syncPrevious });
+          done.resolve?.(true);
+        }
+      } else if (clip) {
         // Same clock as the web's skeleton (wall time x speed), so both stay in step.
-        if (playing) clipTime = clip.loop ? (clipTime + wall * speed) % clip.duration : Math.min(clipTime + wall * speed, clip.duration);
+        if (playing && clip.autoAdvance) {
+          clipTime = clip.loop ? (clipTime + wall * speed) % clip.duration : Math.min(clipTime + wall * speed, clip.duration);
+        }
         // Started over (by its own clock or by seek() from the page's): ease in from the last pose
         // instead of jumping to the first (sampleLoopStart).
         if (clip.loop && clipTime < clip.shown - clip.duration / 2) clip.wrapped = true;
         if (clipTime >= LOOP_BLEND_S) clip.wrapped = false;
         clip.shown = clipTime;
-        sim.puppet(clip.wrapped ? sampleLoopStart(clip.motion, clipTime, row, lastRow) : sampleMotion(clip.motion, clipTime, row));
+        if (clip.wrapped) sampleLoopStart(clip.motion, clipTime, row, lastRow);
+        else sampleMotion(clip.motion, clipTime, row);
+        if (clip.offset) {
+          row[0] += clip.offset[0];
+          row[1] += clip.offset[1];
+        }
+        sim.puppet(toSimQpos(row));
         if (clip.motion.hands) copyMotionHands(clip.motion, clipTime, now);
       } else if (playing) {
         const before = sim.data.time;
@@ -231,15 +328,89 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
   const KINEMATICS = 'g1_kinematics.xml';
   const kinematicModel = () => (kinematic ??= sim.createModel(KINEMATICS, [KINEMATICS]));
 
+  function ensureDex3() {
+    if (dex3) return Promise.resolve(dex3);
+    if (!dex3Loading) {
+      dex3Loading = import('./dex3.js')
+        .then(async ({ createDex3Hands, hands, inspireHands }) => {
+          if (disposed) return null;
+          handSpecs ??= { hands, inspireHands };
+          if (handHook?.active) {
+            const spec = !handHook.jointMap.has('left_hand_ring_0_joint') ? hands : inspireHands;
+            handHook = createHandActuatorHook(sim.mujoco, sim.model, spec);
+            fingerSolver = createFingerSolver(spec);
+            return null;
+          }
+          fingerSolver ??= createFingerSolver(inspireHands);
+          const rig = await createDex3Hands(view, sim, inspireHands);
+          if (disposed) {
+            rig.show(false);
+            return null;
+          }
+          dex3 = rig;
+          view.onFrame = () => dex3.update();
+          if (handHook?.active) {
+            dex3.show(false);
+            return null;
+          }
+          return dex3;
+        })
+        .finally(() => {
+          dex3Loading = null;
+        });
+    }
+    return dex3Loading;
+  }
+
+  function refreshHandHook() {
+    const initialSpec = handSpecs ? handSpecs.inspireHands : null;
+    handHook = createHandActuatorHook(sim.mujoco, sim.model, initialSpec);
+    if (handHook.active) {
+      dex3?.show(false);
+      if (handSpecs) {
+        const spec = !handHook.jointMap.has('left_hand_ring_0_joint') ? handSpecs.hands : handSpecs.inspireHands;
+        if (spec !== initialSpec) handHook = createHandActuatorHook(sim.mujoco, sim.model, spec);
+        fingerSolver = createFingerSolver(spec);
+      }
+      const km = kinematicModel();
+      if (sim.model.nq !== km.nq) {
+        const OBJ_JOINT = sim.mujoco.mjtObj.mjOBJ_JOINT.value;
+        const map = [];
+        for (let j = 1; j < km.njnt; j++) {
+          const name = sim.mujoco.mj_id2name(km, OBJ_JOINT, j);
+          if (!name) continue;
+          const dstJid = sim.mujoco.mj_name2id(sim.model, OBJ_JOINT, name);
+          if (dstJid < 0) continue;
+          const srcIdx = km.jnt_qposadr[j];
+          const dstIdx = sim.model.jnt_qposadr[dstJid];
+          if (srcIdx >= 0 && dstIdx >= 0) map.push([srcIdx, dstIdx]);
+        }
+        bodyQposMap = map;
+        puppetRow = new Float64Array(sim.model.nq);
+      } else {
+        bodyQposMap = null;
+        puppetRow = null;
+      }
+    } else {
+      bodyQposMap = null;
+      puppetRow = null;
+      if (dex3 && handSpecs) fingerSolver = createFingerSolver(handSpecs.inspireHands);
+    }
+  }
+  refreshHandHook();
+
   // Loads another model into the Simulation. Whatever was built from the old one goes: the
   // retargeter and the policy, and the drawn robot is rebuilt.
   function swapScene(sceneFile, keyName) {
+    cancelBlend();
     sim.policy?.dispose();
     clip = null;
     baseScene = sceneFile;
     sim.load(place ? placeFile(sceneFile) : sceneFile, keyName);
+    refreshHandHook();
     if (world) sim.applyWorld(conditions ?? middleValues(world)); // a new model starts from its own values
     view.rebuild();
+    if (isCustomScenePath(baseScene)) dex3?.show(false);
   }
 
   // The world the robot is in (physics/worlds), null for the plain scene; and the last policy's
@@ -271,13 +442,22 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
 
   // After a new model: the last policy again, on it.
   async function restorePolicy() {
-    if (!lastPolicy) return;
+    if (!lastPolicy || disposed) return;
+    if (lastPolicy.meta?.nu && sim.model.nu !== lastPolicy.meta.nu) return;
     const { loadOrt } = await import('./ort.js');
-    sim.policy = await createPolicy(await loadOrt(), sim, lastPolicy.bytes, lastPolicy.meta, { motion: lastPolicy.motion });
+    if (disposed) return;
+    const policy = await createPolicy(await loadOrt(), sim, lastPolicy.bytes, lastPolicy.meta, { motion: lastPolicy.motion });
+    if (disposed) {
+      policy.dispose();
+      return;
+    }
+    sim.policy?.dispose();
+    sim.policy = policy;
   }
 
   // Ends a clip or a camera copy and returns to the physical robot, standing.
   function stop() {
+    cancelBlend();
     clip = null;
     reset();
   }
@@ -285,6 +465,7 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
   // With a clip playing: back to its start. Otherwise the physical robot standing again (and
   // the next mimic() starts from the stand pose).
   function reset() {
+    cancelBlend();
     if (clip) return void (clipTime = 0);
     sim.reset();
     dex3?.show(false);
@@ -298,37 +479,86 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
   }
 
   function copyMotionHands(motion, t, now) {
+    if (!Array.isArray(motion.hands) || motion.hands.length === 0) return;
     const idx = Math.min(motion.hands.length - 1, Math.max(0, Math.floor(t * motion.fps)));
     const h = motion.hands[idx];
     copyFingers(
       {
         t: now / 1000,
         hands: h && {
-          left: h.left?.map(([x, y, z]) => ({ x, y: -y, z: -z })) ?? null,
-          right: h.right?.map(([x, y, z]) => ({ x, y: -y, z: -z })) ?? null,
+          left: toHandPoints(h.left),
+          right: toHandPoints(h.right),
         },
       },
       false,
     );
   }
 
-  // The person's fingers onto the drawn 5-finger Inspire hands (models/inspire/hands.json). A hand
+  // The person's fingers onto physical finger actuators (when active on Dex3/Inspire MJCFs) or
+  // onto the drawn 5-finger Inspire hands (models/inspire/hands.json) on 29-DoF models. A hand
   // the camera stopped seeing for FINGERS_HOLD_S opens back through its filters, instead of staying
   // frozen in a fist.
+  const isValidHand = (person) =>
+    Array.isArray(person) &&
+    person.length >= 21 &&
+    person.every((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y) && Number.isFinite(p.z));
+
   function copyFingers(pose, mirrored = mirror) {
+    if (handHook?.active) {
+      dex3?.show(false);
+      if (!fingerSolver) {
+        handSpecLoading ??= import('./dex3.js').then(({ hands, inspireHands }) => {
+          handSpecs = { hands, inspireHands };
+          if (handHook?.active) {
+            const spec = !handHook.jointMap.has('left_hand_ring_0_joint') ? hands : inspireHands;
+            handHook = createHandActuatorHook(sim.mujoco, sim.model, spec);
+            fingerSolver = createFingerSolver(spec);
+          }
+        });
+        return;
+      }
+      let written = 0;
+      for (const robotSide of ['left', 'right']) {
+        const person = pose.hands?.[mirrored ? (robotSide === 'left' ? 'right' : 'left') : robotSide];
+        let angles = null;
+        if (isValidHand(person)) {
+          lastHandAt[robotSide] = pose.t;
+          // Robot axes, as pose.js and retarget.js put the body's points (mirrored like them).
+          const points = person.map((p) => new Vector3(-p.z, mirrored ? -p.x : p.x, -p.y));
+          angles = fingerSolver.solve(robotSide, points);
+          for (const [joint, value] of angles) {
+            if (!fingerFilters.has(joint)) fingerFilters.set(joint, new OneEuroFilter(FINGER_FILTER));
+            angles.set(joint, fingerFilters.get(joint).filter(value, pose.t));
+          }
+        } else if (pose.t - lastHandAt[robotSide] > FINGERS_HOLD_S) {
+          angles = new Map();
+          for (const [joint, f] of fingerFilters) if (joint.startsWith(robotSide)) angles.set(joint, f.filter(0, pose.t));
+        }
+        if (!angles || angles.size === 0) continue;
+        if (sim.puppeted) {
+          written += handHook.applyQpos(sim.data.qpos, robotSide, angles);
+          handHook.applyCtrl(sim.data, robotSide, angles);
+        } else {
+          handHook.applyCtrl(sim.data, robotSide, angles);
+        }
+      }
+      if (sim.puppeted && written > 0) sim.mujoco.mj_forward(sim.model, sim.data);
+      return;
+    }
+
     if (!dex3) {
-      dex3Loading ??= import('./dex3.js').then(async ({ createDex3Hands, inspireHands }) => {
-        fingerSolver = createFingerSolver(inspireHands);
-        dex3 = await createDex3Hands(view, sim, inspireHands);
-        view.onFrame = () => dex3.update();
-        dex3.show(!!tracker || !!clip?.motion.hands || !!(sim.policy?.isImitation && lastPolicy?.motion?.hands)); // still copying when the meshes arrived
-      });
+      ensureDex3()
+        .then((rig) => {
+          if (!rig || disposed) return;
+          rig.show(!handHook?.active && (!!tracker || !!clip?.motion.hands || !!(sim.policy?.isImitation && lastPolicy?.motion?.hands))); // still copying when the meshes arrived
+        })
+        .catch(() => {});
       return;
     }
     dex3.show(true);
     for (const robotSide of ['left', 'right']) {
       const person = pose.hands?.[mirrored ? (robotSide === 'left' ? 'right' : 'left') : robotSide];
-      if (person) {
+      if (isValidHand(person)) {
         lastHandAt[robotSide] = pose.t;
         // Robot axes, as pose.js and retarget.js put the body's points (mirrored like them).
         const points = person.map((p) => new Vector3(-p.z, mirrored ? -p.x : p.x, -p.y));
@@ -368,8 +598,12 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
      * @param options.plantFeet  the pelvis path re-made so the foot on the floor does not slide
      *   (motion.js plantFeet): 'auto' (default) does it unless the clip's feet do not explain its
      *   travel (a run seen from the side); true or false force it.
+     * @param options.time  initial playback time (s), clamped to [0, duration] (default 0)
+     * @param options.autoAdvance  advance clipTime inside createSimView's frame loop (default true);
+     *   set false when an external controller drives clipTime via seek() every frame
      */
-    playClip(motion, { loop = true, plantFeet = 'auto' } = {}) {
+    playClip(motion, { loop = true, plantFeet = 'auto', offset = [0, 0], time = 0, autoAdvance = true } = {}) {
+      cancelBlend();
       if (isCustomScenePath(baseScene) && motion.robot === 'unitree_g1') {
         swapScene(worldScene(world), 'home');
       }
@@ -378,9 +612,60 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
       if (motion.robot !== 'unitree_g1' || motion.qpos[0]?.length !== robotValues) {
         throw new Error(`This RobotMotion is not for the ${robotValues}-value G1 (robot: ${motion.robot}).`);
       }
-      clip = { motion: getSmoothedMotion(sim.mujoco, kinematicModel(), motion, plantFeet), duration: motionDuration(motion), loop, shown: 0, wrapped: false };
-      clipTime = 0;
-      if (!motion.hands) dex3?.show(false);
+      const duration = motionDuration(motion);
+      const startTime = Math.min(Math.max(time, 0), duration ?? 0);
+      clip = {
+        motion: getSmoothedMotion(sim.mujoco, kinematicModel(), motion, plantFeet),
+        duration,
+        loop,
+        autoAdvance,
+        offset: [offset[0] || 0, offset[1] || 0],
+        shown: startTime,
+        wrapped: false,
+      };
+      clipTime = startTime;
+      if (!motion.hands) {
+        dex3?.show(false);
+        if (handHook?.active) {
+          const zeros = new Map();
+          for (const joint of handHook.jointMap.keys()) zeros.set(joint, 0);
+          handHook.applyQpos(sim.data.qpos, null, zeros);
+          handHook.applyCtrl(sim.data, null, zeros);
+          sim.mujoco.mj_forward(sim.model, sim.data);
+        }
+      }
+    },
+    smoothClip: (motion, plantFeet = 'auto') => getSmoothedMotion(sim.mujoco, kinematicModel(), motion, plantFeet),
+    setClipOffset(dx = 0, dy = 0) {
+      if (clip) clip.offset = [dx, dy];
+    },
+    blendPose(target, { duration = 0.45, from = null, release = false, syncPrevious = false } = {}) {
+      cancelBlend();
+      clip = null;
+      const out = sim.model.nq === row.length ? row : new Float64Array(sim.model.nq);
+      const fromQ = from
+        ? Float64Array.from(bodyQposMap && from.length !== sim.model.nq ? toSimQpos(from) : from)
+        : Float64Array.from(sim.data.qpos);
+      if (duration <= 0) {
+        const rawTo = typeof target === 'function' ? target(performance.now()) : target;
+        const toQ = bodyQposMap
+          ? toSimQpos(rawTo)
+          : rawTo.length > sim.model.nq
+            ? (rawTo.subarray ? rawTo.subarray(0, sim.model.nq) : rawTo.slice(0, sim.model.nq))
+            : rawTo;
+        sim.puppet(toQ);
+        if (release) sim.releasePuppet({ resetPolicy: true, syncPrevious });
+        return Promise.resolve(true);
+      }
+      return new Promise((resolve) => {
+        blend = { from: fromQ, target, out, duration, elapsed: 0, release, syncPrevious, resolve };
+      });
+    },
+    cancelBlend: () => cancelBlend(false),
+    releasePuppet: (opts) => {
+      cancelBlend();
+      clip = null;
+      sim.releasePuppet(opts);
     },
     /**
      * The RobotMotion of a PoseClip (a recorded or uploaded one), computed here, in slices so the
@@ -395,7 +680,21 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
      * 0 otherwise. For syncing anything drawn beside the robot (the person's skeleton).
      */
     clipTime: () => (clip ? clipTime : sim.policy?.time?.(sim) ?? 0),
-    seek: (seconds) => (clipTime = Math.min(Math.max(seconds, 0), clip?.duration ?? 0)),
+    seek(seconds) {
+      if (!clip) return 0;
+      clipTime = Math.min(Math.max(seconds, 0), clip.duration ?? 0);
+      if (!clip.autoAdvance) clip.shown = clipTime;
+      if (!playing) {
+        clip.shown = clipTime;
+        sampleMotion(clip.motion, clipTime, row);
+        if (clip.offset) {
+          row[0] += clip.offset[0];
+          row[1] += clip.offset[1];
+        }
+        sim.puppet(toSimQpos(row));
+      }
+      return clipTime;
+    },
     stop,
     /**
      * Gives the robot a trained policy (training/policies/): from then on it balances itself, and
@@ -411,40 +710,71 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
      * few KB of JavaScript).
      */
     async loadPolicy(onnx, meta, { motion, reset = true } = {}) {
+      const seq = ++policySeq;
+      if (disposed) return { cancelled: true };
       const bytes = typeof onnx === 'string' ? await fetchCachedOnnxBytes(onnx) : new Uint8Array(onnx);
+      if (disposed || seq !== policySeq) return { cancelled: true };
       if (typeof meta === 'string') meta = await fetchCachedJson(meta);
+      if (disposed || seq !== policySeq) return { cancelled: true };
       if (typeof motion === 'string') motion = await fetchCachedJson(motion);
-      // The policy's scene ('unitree_g1/scene_mjx.xml' -> 'scene_mjx.xml'; 'unitree_h1/scene.xml'
-      // and 'luigi_lab3/scene.xml' stay in their subfolder), or the current world's version of it for the G1.
+      if (disposed || seq !== policySeq) return { cancelled: true };
       const isCustomRobot = meta.robot !== 'unitree_g1';
-      const sceneFile = isCustomRobot ? meta.mjcf : world ? worldScene(world) : meta.mjcf.slice(meta.mjcf.indexOf('/') + 1);
-      if (isCustomRobot) await ensureModelFiles(sim.files, sceneFile);
+      if (isCustomRobot) {
+        await ensureModelFiles(sim.files, meta.mjcf);
+        if (disposed || seq !== policySeq) return { cancelled: true };
+      }
       const { loadOrt } = await import('./ort.js');
+      if (disposed || seq !== policySeq) return { cancelled: true };
       const ort = await loadOrt();
-      const previous = { sceneFile: baseScene, keyName: sim.keyName };
-      const sceneChanged = baseScene !== sceneFile;
-      if (sceneChanged) swapScene(sceneFile, 'home');
-      if (isCustomRobot) dex3?.show(false);
-      // Only set targetHeight when OrbitControls is active; on the landing page (controls.enabled === false)
-      // directCamera() drives targetHeight (~1.52 m) for its shift-lens projection, so overwriting it to 0.75
-      // before view.render() made the robot jump vertically to half height during checkpoint transitions.
-      if (view.controls.enabled) {
-        view.targetHeight = meta.robot === 'luigi_lab3' || meta.robot === 'luigi_lab4' ? 0.12 : meta.robot === 'factory_cell' ? 0.35 : 0.75;
-      }
-      try {
-        const policy = await createPolicy(ort, sim, bytes, meta, { motion });
-        if (!sceneChanged && (clip || sim.puppeted)) stop();
-        sim.policy?.dispose();
-        sim.policy = policy;
-        lastPolicy = { bytes, meta, motion };
-        if (sceneChanged || reset) sim.reset();
-      } catch (error) {
-        if (baseScene !== previous.sceneFile) swapScene(previous.sceneFile, previous.keyName);
-        throw error;
-      }
+      if (disposed || seq !== policySeq) return { cancelled: true };
+
+      return enqueueOp(async () => {
+        if (disposed || seq !== policySeq) return { cancelled: true };
+        // The policy's scene ('unitree_g1/scene_mjx.xml' -> 'scene_mjx.xml'; 'unitree_h1/scene.xml'
+        // and 'luigi_lab3/scene.xml' stay in their subfolder), or the current world's version of it for the G1.
+        const sceneFile = isCustomRobot ? meta.mjcf : world ? worldScene(world) : meta.mjcf.slice(meta.mjcf.indexOf('/') + 1);
+        const previous = { sceneFile: baseScene, keyName: sim.keyName };
+        const sceneChanged = baseScene !== sceneFile;
+        if (sceneChanged) swapScene(sceneFile, 'home');
+        if (isCustomRobot) dex3?.show(false);
+        // Only set targetHeight when OrbitControls is active; on the landing page (controls.enabled === false)
+        // directCamera() drives targetHeight (~1.52 m) for its shift-lens projection, so overwriting it to 0.75
+        // before view.render() made the robot jump vertically to half height during checkpoint transitions.
+        if (view.controls.enabled) {
+          view.targetHeight = meta.robot === 'luigi_lab3' || meta.robot === 'luigi_lab4' ? 0.12 : meta.robot === 'factory_cell' ? 0.35 : 0.75;
+        }
+        try {
+          const policy = await createPolicy(ort, sim, bytes, meta, { motion });
+          if (disposed || seq !== policySeq) {
+            policy.dispose();
+            return { cancelled: true };
+          }
+          if (!sceneChanged && (clip || sim.puppeted)) {
+            if (reset) stop();
+            else {
+              cancelBlend();
+              clip = null;
+              sim.releasePuppet({ resetPolicy: false });
+            }
+          }
+          if (!sceneChanged && !reset && !sim.puppeted) {
+            policy.setPrevious?.(sim.data.ctrl);
+          }
+          sim.policy?.dispose();
+          sim.policy = policy;
+          lastPolicy = { bytes, meta, motion };
+          if (sceneChanged || reset) sim.reset();
+          return { cancelled: false };
+        } catch (error) {
+          if (disposed || seq !== policySeq) return { cancelled: true };
+          if (baseScene !== previous.sceneFile) swapScene(previous.sceneFile, previous.keyName);
+          throw error;
+        }
+      });
     },
     /** Takes the policy off and goes back to the stiff standing hold. */
     clearPolicy: () => {
+      ++policySeq;
       world = null;
       lastPolicy = null;
       swapScene('scene.xml', 'stand');
@@ -457,15 +787,21 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
     async setWorld(next) {
       world = next;
       conditions = null; // a new world starts from its own middle values
-      const targetScene = isCustomScenePath(baseScene) ? baseScene : worldScene(next);
-      if (baseScene !== targetScene) {
-        swapScene(targetScene, 'home');
-        await restorePolicy();
-      } else {
-        stop();
-        sim.applyWorld(middleValues(next));
-      }
-      sim.reset();
+      const seq = ++worldSeq;
+      return enqueueOp(async () => {
+        if (disposed || seq !== worldSeq) return { cancelled: true };
+        const targetScene = isCustomScenePath(baseScene) ? baseScene : worldScene(next);
+        if (baseScene !== targetScene) {
+          swapScene(targetScene, 'home');
+          await restorePolicy();
+        } else {
+          stop();
+          sim.applyWorld(middleValues(next));
+        }
+        if (disposed || seq !== worldSeq) return { cancelled: true };
+        sim.reset();
+        return { cancelled: false };
+      });
     },
     /** The world the robot is in, or null. */
     world: () => world,
@@ -495,9 +831,15 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
      */
     async setScene(next) {
       place = next;
-      swapScene(baseScene, sim.keyName);
-      await restorePolicy();
-      sim.reset();
+      const seq = ++placeSeq;
+      return enqueueOp(async () => {
+        if (disposed || seq !== placeSeq) return { cancelled: true };
+        swapScene(baseScene, sim.keyName);
+        await restorePolicy();
+        if (disposed || seq !== placeSeq) return { cancelled: true };
+        sim.reset();
+        return { cancelled: false };
+      });
     },
     /** The place the robot is in, or null. */
     scene: () => place,
@@ -507,43 +849,61 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
      * with a movable object is loaded yet, loads `HELD_OBJECT_SCENE` first.
      */
     async holdObject({ wet = false } = {}) {
-      if (!place || !place.objects?.some((o) => o.movable)) {
-        place = HELD_OBJECT_SCENE;
-        swapScene(baseScene, sim.keyName);
-        await restorePolicy();
-      } else if (clip || sim.puppeted) {
-        stop();
-      }
-      const ok = sim.holdObject({ wet });
-      if (ok && !baseScene.startsWith('unitree_h1/')) {
-        if (!dex3) {
-          const { createDex3Hands, inspireHands } = await import('./dex3.js');
-          fingerSolver ??= createFingerSolver(inspireHands);
-          dex3 = await createDex3Hands(view, sim, inspireHands);
-          view.onFrame = () => dex3.update();
+      return enqueueOp(async () => {
+        if (disposed) return false;
+        if (!place || !place.objects?.some((o) => o.movable)) {
+          place = HELD_OBJECT_SCENE;
+          swapScene(baseScene, sim.keyName);
+          await restorePolicy();
+          if (disposed) return false;
+        } else if (clip || sim.puppeted) {
+          stop();
         }
-        dex3.show(true);
-        const grip = new Map([
-          ['right_hand_thumb_0_joint', 0.45],
-          ['right_hand_thumb_1_joint', 0.55],
-          ['right_hand_thumb_2_joint', 0.45],
-          ['right_hand_index_0_joint', 0.95],
-          ['right_hand_index_1_joint', 0.85],
-          ['right_hand_middle_0_joint', 0.95],
-          ['right_hand_middle_1_joint', 0.85],
-          ['right_hand_ring_0_joint', 0.95],
-          ['right_hand_ring_1_joint', 0.85],
-          ['right_hand_pinky_0_joint', 0.95],
-          ['right_hand_pinky_1_joint', 0.85],
-        ]);
-        dex3.setFingers('right', grip);
-      }
-      return ok;
+        const ok = sim.holdObject({ wet });
+        if (ok && !baseScene.startsWith('unitree_h1/')) {
+          const grip = new Map([
+            ['right_hand_thumb_0_joint', 0.45],
+            ['right_hand_thumb_1_joint', 0.55],
+            ['right_hand_thumb_2_joint', 0.45],
+            ['right_hand_index_0_joint', 0.95],
+            ['right_hand_index_1_joint', 0.85],
+            ['right_hand_middle_0_joint', 0.95],
+            ['right_hand_middle_1_joint', 0.85],
+            ['right_hand_ring_0_joint', 0.95],
+            ['right_hand_ring_1_joint', 0.85],
+            ['right_hand_pinky_0_joint', 0.95],
+            ['right_hand_pinky_1_joint', 0.85],
+          ]);
+          if (handHook?.active) {
+            dex3?.show(false);
+            handHook.applyCtrl(sim.data, 'right', grip);
+          } else {
+            const rig = await ensureDex3();
+            if (disposed) return ok;
+            if (handHook?.active) {
+              dex3?.show(false);
+              handHook.applyCtrl(sim.data, 'right', grip);
+            } else if (rig) {
+              rig.show(true);
+              rig.setFingers('right', grip);
+            }
+          }
+        }
+        return ok;
+      });
     },
     /** Releases the held object (and opens the right hand) so it falls under gravity. */
     dropObject() {
       sim.dropObject();
-      if (dex3) dex3.setFingers('right', new Map());
+      if (handHook?.active) {
+        const openAngles = new Map();
+        for (const [joint, info] of handHook.jointMap) {
+          if (info.side === 'right') openAngles.set(joint, 0);
+        }
+        handHook.applyCtrl(sim.data, 'right', openAngles);
+      } else if (dex3) {
+        dex3.setFingers('right', new Map());
+      }
     },
     /** Current hand-object grasp state: { active, wet, slipped }. */
     graspState: () => sim.graspState(),
@@ -562,6 +922,7 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
      */
     mimic(pose) {
       if (!pose?.visible) return { tracked: false, residual: 0, airborne: false, fixes: [] };
+      cancelBlend();
       clip = null;
       tracker ??= createPoseTracker({ smooth: false }); // data/live already filtered the points
       retargeter ??= createRetargeter(sim.mujoco, kinematicModel(), { mirror, live: true });
@@ -573,17 +934,25 @@ export async function createSimView(canvas, { onProgress, onStats, mirror = true
         clearance = { model, clear: model.createLive() };
       }
       const points = tracker.update(pose.world, pose.landmarks, pose.t);
-      const { qpos, tracked, residual, mirroredArm } = retargeter.solve(points, { travelYaw: rootTracker.travelYaw(), hands: pose.hands });
+      const { qpos, tracked, residual, mirroredArm, upperBodyOnly } = retargeter.solve(points, { travelYaw: rootTracker.travelYaw(), hands: pose.hands });
       // The path is made from the filtered pose, the one drawn: made from the raw one, the planted
       // foot would slide by whatever the filter holds back.
       // Leveled before the path: root.js puts the leveled feet back on the floor.
-      if (tracked) sim.puppet(rootTracker.update(clearance.clear(leveler.level(smoother.filter(qpos, pose.t), pose.t), pose.t), pose));
+      if (tracked) sim.puppet(toSimQpos(rootTracker.update(clearance.clear(leveler.level(smoother.filter(qpos, pose.t), pose.t), pose.t), pose)));
       if (tracked) copyFingers(pose);
       const fixes = [...(mirroredArm ? ['mirrored arm'] : []), ...clearance.clear.opened()];
-      return { tracked, residual, airborne: rootTracker.airborne(), fixes };
+      return { tracked, residual, airborne: rootTracker.airborne(), fixes, upperBodyOnly };
+    },
+    cancelPending() {
+      ++policySeq;
+      return opChain;
     },
     dispose() {
       disposed = true;
+      ++policySeq;
+      ++worldSeq;
+      ++placeSeq;
+      cancelBlend();
       cancelAnimationFrame(frameId);
       sim.policy?.dispose();
       view.dispose();

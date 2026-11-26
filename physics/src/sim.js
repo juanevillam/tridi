@@ -198,6 +198,14 @@ export class Simulation {
     return idOf(this.mujoco, this.model, type, name);
   }
 
+  // Returns a Float64Array copy of a named MuJoCo keyframe qpos (falling back to this.keyId).
+  keyQpos(name = this.keyName) {
+    const { mujoco, model } = this;
+    let kid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_KEY.value, name);
+    if (kid < 0) kid = this.keyId;
+    return Float64Array.from(model.key_qpos.subarray(kid * model.nq, (kid + 1) * model.nq));
+  }
+
   // Back to the physical robot standing in its keyframe, leaving puppet mode.
   reset() {
     const { mujoco, model, data } = this;
@@ -227,12 +235,29 @@ export class Simulation {
   }
 
   // Puppet mode: the robot is placed exactly at `qpos` (a RobotMotion row) with no dynamics, so
-  // it shows a reference motion instead of reacting to physics. Only reset() leaves it.
+  // it shows a reference motion instead of reacting to physics. reset() or releasePuppet() leaves it.
   puppet(qpos) {
     const { mujoco, model, data } = this;
     this.puppeted = true;
     data.qpos.set(qpos);
     data.qvel.fill(0);
+    mujoco.mj_forward(model, data);
+    this.simTarget = data.time;
+  }
+
+  // Leaves puppet mode at the current pose with zero velocity without resetting to the origin.
+  releasePuppet({ resetPolicy = true, syncPrevious = false } = {}) {
+    const { mujoco, model, data } = this;
+    this.puppeted = false;
+    this.steps = 0;
+    this.grasp = null;
+    this.lastPushNewtons = 0;
+    this.lastPushEnd = -10;
+    data.qvel.fill(0);
+    this.holdCurrentPose();
+    if (resetPolicy) this.policy?.reset(this);
+    if (syncPrevious) this.policy?.setPrevious?.(data.ctrl);
+    this.endPush();
     mujoco.mj_forward(model, data);
     this.simTarget = data.time;
   }

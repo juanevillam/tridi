@@ -4,7 +4,7 @@
 // robot look buggy even when it did not fall.
 // Run: npm run check
 import { readdirSync, readFileSync } from 'node:fs';
-import { CLEAR_M, FEET_APART_M } from '../src/clearance.js';
+import { CLEAR_M, FEET_APART_M, HAND_PAST_WRIST } from '../src/clearance.js';
 import { createRobotPoseFilter } from '../src/filters.js';
 import { LOOP_BLEND_S, sampleLoopStart, sampleMotion, smoothForDisplay } from '../src/motion.js';
 import { createPoseTracker } from '../src/pose.js';
@@ -149,7 +149,7 @@ console.log('hands out of the legs, feet apart (clearance.js)');
         for (const side of ['left', 'right']) {
           const elbow = at(body(`${side}_elbow_link`));
           const wrist = at(body(`${side}_wrist_yaw_link`));
-          const hand = wrist.map((v, i) => v + 0.6 * (v - elbow[i]));
+          const hand = wrist.map((v, i) => v + HAND_PAST_WRIST * (v - elbow[i]));
           for (const leg of ['left', 'right']) {
             const [a, b] = [at(body(`${leg}_hip_pitch_link`)), at(body(`${leg}_knee_link`))];
             worst = Math.min(worst, toSegment(wrist, a, b), toSegment(hand, a, b));

@@ -20,15 +20,13 @@ html.is-landing.lenis body {
 }
 
 .landing {
-  --fg: var(--ink);
-  --fg-2: var(--ink-soft);
-  --dim: var(--muted);
-  --gutter: clamp(var(--s-4), 3.4vw, var(--s-7));
-  /* Where the film's frame starts: the top bar ends at ~70 px, and 34 px of air keep the viewfinder
-     corners and chapter cards well clear of the bar. */
-  --hud-top: 104px;
-  /* Every chapter's card starts at the exact same vertical height below the top corners. */
-  --card-top: calc(var(--hud-top) + var(--s-2));
+  --nav-top: 12px;
+  --frame-gap: calc(var(--nav-top) * 2); /* 24 px: exact 2x topbar top inset */
+  --frame-x: max(var(--frame-gap), calc((100vw - 1680px) / 2));
+  /* 12 px above topbar, 24 px (2x) between topbar & top corners, 24 px below bottom corners & sides. */
+  --hud-top: calc(var(--nav-top) + var(--topbar-h) + var(--frame-gap));
+  /* Every chapter's card starts cleanly inside the top corners at the same vertical height. */
+  --card-top: calc(var(--hud-top) + 18px);
   --card-width: min(36vw, 500px);
   position: relative;
   color: var(--fg);
@@ -113,11 +111,12 @@ html.is-landing.lenis body {
   inset: 0;
   z-index: 0;
   pointer-events: none;
+  opacity: calc(1 - var(--gym-wash, 0));
   background:
     /* Darker since the landing's street is lit and full of shops: the words sit over a busy picture. */
     linear-gradient(90deg, rgb(8 9 11 / calc(0.78 * var(--wash-left))), rgb(8 9 11 / calc(0.42 * var(--wash-left))) 34%, transparent 56%),
     linear-gradient(270deg, rgb(8 9 11 / calc(0.78 * var(--wash-right))), rgb(8 9 11 / calc(0.42 * var(--wash-right))) 34%, transparent 56%),
-    linear-gradient(transparent 30%, rgb(8 9 11 / calc(0.82 * var(--wash-floor))) 66%); /* phones: the hero's title starts at a third of the screen */
+    linear-gradient(transparent 40%, rgb(8 9 11 / calc(0.84 * var(--wash-floor))) 74%); /* phones: consistent dark floor across Hero, Capture, Gym, Policy */
 }
 
 /* The film's frame: viewfinder corners and the simulation's own readout (home.js updateReadout),
@@ -138,38 +137,37 @@ html.is-landing.lenis body {
 
 .film.ready ~ .film-hud.is-closing {
   opacity: 0;
-  visibility: hidden;
   pointer-events: none;
 }
 
 .corner {
   position: absolute;
-  width: 18px;
-  height: 18px;
-  border: 0 solid rgb(241 243 238 / 0.4);
+  width: 14px;
+  height: 14px;
+  border: 0 solid rgb(241 243 238 / 0.36);
 }
 
 .corner.tl {
   top: var(--hud-top);
-  left: 16px;
+  left: var(--frame-x);
   border-width: 1px 0 0 1px;
 }
 
 .corner.tr {
   top: var(--hud-top);
-  right: 16px;
+  right: var(--frame-x);
   border-width: 1px 1px 0 0;
 }
 
 .corner.bl {
-  bottom: 16px;
-  left: 16px;
+  bottom: var(--frame-gap);
+  left: var(--frame-x);
   border-width: 0 0 1px 1px;
 }
 
 .corner.br {
-  right: 16px;
-  bottom: 16px;
+  right: var(--frame-x);
+  bottom: var(--frame-gap);
   border-width: 0 1px 1px 0;
 }
 
@@ -178,17 +176,20 @@ html.is-landing.lenis body {
   right: var(--gutter);
   bottom: 32px; /* single unified readout chip in the bottom-right corner */
   display: inline-flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 10px 14px;
   padding: 10px 16px;
   border: 1px solid var(--line);
-  border-radius: var(--r-2);
-  background: rgb(8 9 11 / 0.78);
-  backdrop-filter: blur(14px);
+  border-radius: var(--r-card);
+  background: rgb(10 12 16 / 0.78);
+  backdrop-filter: var(--lg-blur);
+  -webkit-backdrop-filter: var(--lg-blur);
+  box-shadow: var(--lg-rim), 0 14px 32px -18px rgb(0 0 0 / 0.78);
   font: 500 11px/1 var(--mono);
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  white-space: nowrap;
   color: var(--fg-2);
   text-shadow: 0 1px 8px rgb(0 0 0 / 0.6);
   pointer-events: none;
@@ -213,6 +214,19 @@ html.is-landing.lenis body {
   border-right: 1px solid var(--line);
   color: var(--fg);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sim-readout [data-sim='time'] {
+  display: inline-block;
+  min-width: 4.5ch; /* holds 0,0..999,9 without horizontal jitter */
+  text-align: right;
+}
+
+.sim-readout [data-sim='contacts'] {
+  display: inline-block;
+  min-width: 2ch;
+  text-align: right;
 }
 
 .landing .sim-readout[data-state='push'] .sim-live-pill {
@@ -274,18 +288,18 @@ html.is-landing.lenis body {
   position: absolute;
   right: 0;
   bottom: calc(100% + 12px);
-  width: min(320px, 82vw);
+  width: min(296px, 82vw);
   padding: 12px 14px;
   border: 1px solid var(--line-strong);
-  border-radius: var(--r-2);
-  background: rgb(8 9 11 / 0.94);
-  backdrop-filter: blur(14px);
-  box-shadow: 0 16px 36px -12px rgb(0 0 0 / 0.85);
+  border-radius: var(--r-card);
+  background: rgb(10 12 16 / 0.96);
+  box-shadow: 0 20px 44px -14px rgb(0 0 0 / 0.85);
   color: var(--fg);
   font: 400 12px/1.45 var(--display);
   letter-spacing: 0;
   text-transform: none;
   text-align: left;
+  white-space: normal;
   opacity: 0;
   visibility: hidden;
   transform: translateY(4px);
@@ -302,158 +316,124 @@ html.is-landing.lenis body {
 }
 
 .boot {
-  position: absolute;
+  position: fixed;
   right: var(--gutter);
-  bottom: 40px;
+  bottom: 32px; /* matches .sim-readout slot so boot hands off cleanly to live telemetry */
+  z-index: 15;
   display: grid;
-  gap: 4px;
-  width: min(320px, 80vw);
-  font: 500 11px/1.5 var(--mono);
+  gap: 10px;
+  width: min(320px, calc(100vw - var(--gutter) * 2));
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: rgb(10 12 16 / 0.84);
+  box-shadow: var(--lg-rim), 0 20px 48px -20px rgb(0 0 0 / 0.82);
+  font: 500 11px/1.35 var(--mono);
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  text-align: left;
   color: var(--fg-2);
-  transition: opacity 0.4s;
+  pointer-events: none;
+  transition: opacity 0.35s ease, visibility 0.35s ease;
 }
 
-.boot .loader {
-  margin-bottom: 8px;
+.boot-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }
 
-.boot b {
-  font-weight: 500;
+.boot-meta {
+  display: grid;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+.boot-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--fg-2);
+}
+
+.boot-files {
+  flex: none;
+  min-width: 5ch;
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
   color: var(--signal);
 }
 
+.boot-line {
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .boot-track {
-  height: 1px;
-  margin-top: 8px;
+  height: 2px;
+  border-radius: 999px;
   background: var(--line);
+  overflow: hidden;
 }
 
 .boot-bar {
   display: block;
   height: 100%;
   width: 0;
+  border-radius: inherit;
   background: var(--signal);
-  transition: width 0.2s;
+  transition: width 0.2s ease;
 }
 
-.film.ready .boot {
+.film.ready ~ .boot {
   opacity: 0;
-}
-
-/* ---- Buttons ---- */
-
-.landing .btn,
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--s-3);
-  min-height: 48px;
-  padding: 0 var(--s-5);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-1);
-  background: rgb(8 9 11 / 0.35);
-  backdrop-filter: blur(10px);
-  color: var(--fg);
-  font: 600 13px/1 var(--display);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  text-decoration: none;
-  cursor: pointer;
-  transform: none;
-  transition: background-color 0.22s ease, color 0.22s ease, border-color 0.22s ease, box-shadow 0.28s ease, transform 0.15s ease;
-}
-
-.landing .btn:hover:not(:disabled),
-.btn:hover:not(:disabled) {
-  border-color: var(--fg);
-  background-color: rgb(241 243 238 / 0.08);
-  color: var(--fg);
-  box-shadow: none;
-  transform: none;
-}
-
-.landing .btn:active:not(:disabled),
-.btn:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-.landing .btn-small,
-.btn-small {
-  min-height: 38px;
-  padding: 0 var(--s-4);
-  font-size: 12px;
-}
-
-.landing .btn-signal,
-.btn-signal {
-  border-color: var(--signal);
-  background: var(--signal);
-  color: var(--on-signal);
-}
-
-.landing .btn-signal:hover:not(:disabled),
-.btn-signal:hover:not(:disabled) {
-  border-color: #d4ff4d;
-  background-color: #d4ff4d;
-  color: var(--on-signal);
-  box-shadow: 0 0 32px -6px var(--signal-glow);
-  transform: none;
-}
-
-.landing .btn-signal:active:not(:disabled),
-.btn-signal:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-.btn:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.btn kbd {
-  padding: 3px 6px;
-  border: 1px solid rgb(8 9 11 / 0.35);
-  border-radius: var(--r-1);
-  font: 500 10px/1 var(--mono);
-}
-
-.btn.kick {
-  animation: kick 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-@keyframes kick {
-  20% {
-    transform: scale(0.94);
-    box-shadow: 0 0 0 0 rgb(200 255 46 / 0.7);
-  }
-  100% {
-    transform: none;
-    box-shadow: 0 0 0 28px rgb(200 255 46 / 0);
-  }
+  visibility: hidden;
 }
 
 /* ---- Top bar (matches .app-topbar geometry across Studio screens) ---- */
 
 .topbar {
   position: fixed;
-  inset: 14px max(20px, calc((100vw - 1680px) / 2)) auto;
-  z-index: 20;
+  inset: var(--nav-top) var(--frame-x) auto;
+  z-index: 30;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 12px 18px;
-  padding: 10px 14px 10px 16px;
+  min-height: var(--topbar-h);
+  padding: 10px 14px;
+  border-radius: var(--r-card);
+}
+
+/* Glass surface lives on ::before so .topbar never traps position:fixed mobile drawer and never flickers on close. */
+.topbar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
   border: 1px solid var(--line);
-  border-radius: var(--r-2);
-  background: rgb(12 14 18 / 0.78);
-  backdrop-filter: blur(16px) saturate(1.4);
-  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  border-radius: inherit;
+  background: rgb(10 12 16 / 0.78);
+  backdrop-filter: var(--lg-blur);
+  -webkit-backdrop-filter: var(--lg-blur);
   box-shadow:
-    inset 0 0.75px 0 rgb(255 255 255 / 0.14),
-    0 14px 32px -18px rgb(0 0 0 / 0.75);
-  transition: background-color 0.3s;
+    var(--lg-rim),
+    0 14px 32px -18px rgb(0 0 0 / 0.78);
+  transform: translateZ(0);
+  pointer-events: none;
+  transition: background-color var(--dur-quick) var(--ease);
+}
+
+.landing .nav-mobile-footer,
+.landing .nav-mobile-cta {
+  display: none;
 }
 
 .topbar-right {
@@ -464,10 +444,39 @@ html.is-landing.lenis body {
   margin-left: auto;
 }
 
+.topbar-desktop-cta {
+  border-color: rgb(241 243 238 / 0.24);
+  background: rgb(241 243 238 / 0.08);
+  color: var(--fg);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .topbar-desktop-cta:hover {
+    border-color: var(--fg);
+    background: rgb(241 243 238 / 0.14);
+    color: var(--fg);
+  }
+}
+
+.hero-push {
+  position: relative;
+  min-height: 50px;
+  padding: 0 28px;
+  font-size: 13.5px;
+  box-shadow: 0 0 28px -8px var(--signal-glow);
+}
+
+.hero-steps b {
+  padding-right: 8px;
+  border-right: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-2) !important;
+}
+
 /* Past the hero the chapters' words scroll under the bar (home.js): a denser ground keeps the
    12 px nav readable even over a full white glyph before the blur. */
-.topbar.solid {
-  background: rgb(8 9 11 / 0.82);
+.topbar.solid::before {
+  background: rgb(8 9 11 / 0.86);
 }
 
 /* Mark and word in em, so the footer's big wordmark is the header's exactly, only scaled. */
@@ -516,11 +525,6 @@ html.is-landing.lenis body {
   flex: none;
 }
 
-.nav-drop {
-  position: relative;
-}
-
-.nav-drop-btn,
 .topnav > .nav-direct {
   position: relative;
   display: inline-flex;
@@ -537,198 +541,54 @@ html.is-landing.lenis body {
   text-transform: uppercase;
   text-decoration: none;
   cursor: pointer;
-  transition: color 0.2s, background-color 0.2s, border-color 0.2s;
+  transition: color 120ms ease, background-color 120ms ease;
 }
 
-.landing .nav-drop-btn:hover:not(:disabled),
-.nav-drop-btn:hover,
-.nav-drop-btn:focus-visible,
-.nav-drop:hover .nav-drop-btn,
-.nav-drop.open .nav-drop-btn,
-.topnav > .nav-direct:hover,
+@media (hover: hover) and (pointer: fine) {
+  .topnav > .nav-direct:hover {
+    border-color: transparent;
+    color: var(--fg);
+    background: rgb(241 243 238 / 0.08);
+    box-shadow: none;
+    transform: none;
+  }
+}
+
 .topnav > .nav-direct:focus-visible {
+  border-color: transparent;
   color: var(--fg);
-  background: rgb(241 243 238 / 0.06);
+  background: rgb(241 243 238 / 0.08);
   box-shadow: none;
   transform: none;
 }
 
-.nav-drop:hover:not(.dismissed) .nav-drop-btn,
-.nav-drop.open .nav-drop-btn {
-  border-color: var(--line);
-  color: var(--signal);
-}
-
-.nav-chev {
-  width: 11px;
-  height: 11px;
-  opacity: 0.7;
-  transition: transform 0.26s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
-}
-
-.nav-drop:hover:not(.dismissed) .nav-chev,
-.nav-drop.open .nav-chev {
-  transform: rotate(180deg);
-  opacity: 1;
-}
-
-.nav-drop-panel {
-  position: absolute;
-  top: calc(100% + 10px);
-  left: 50%;
-  z-index: 40;
-  display: grid;
-  gap: 5px;
-  width: 348px;
-  padding: 10px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-2);
-  background: rgb(12 14 18 / 0.95);
-  backdrop-filter: blur(20px) saturate(1.6);
-  box-shadow:
-    inset 0 0.75px 0 rgb(255 255 255 / 0.16),
-    0 24px 48px -12px rgb(0 0 0 / 0.88);
-  opacity: 0;
-  visibility: hidden;
-  transform: translateX(-50%) translateY(-8px) scale(0.975);
-  transform-origin: top center;
-  pointer-events: none;
-  transition:
-    opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.26s cubic-bezier(0.16, 1, 0.3, 1),
-    visibility 0.24s;
-}
-
-.nav-drop-panel.nav-drop-studio {
-  width: 384px;
-}
-
-/* Invisible hover bridge across the 10px gap so moving the pointer from the button into the menu never drops :hover */
-.nav-drop-panel::before {
-  content: '';
-  position: absolute;
-  top: -14px;
-  left: 0;
-  right: 0;
-  height: 14px;
+.topnav > .nav-direct.active,
+.topnav > .nav-direct[aria-current='true'] {
+  color: var(--fg);
 }
 
 @media (min-width: 1001px) {
-  .nav-drop:hover:not(.dismissed) .nav-drop-panel,
-  .nav-drop:focus-within:not(.dismissed) .nav-drop-panel,
-  .nav-drop.open .nav-drop-panel {
-    opacity: 1;
-    visibility: visible;
-    transform: translateX(-50%) translateY(0) scale(1);
-    pointer-events: auto;
+  .topnav > .nav-direct::after {
+    content: '';
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: 3px;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--signal);
+    opacity: 0;
+    transform: scaleX(0);
+    transform-origin: center;
+    pointer-events: none;
+    transition: transform 220ms var(--ease), opacity 180ms ease;
   }
-}
 
-.nav-drop-item {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 11px;
-  padding: 9px 10px;
-  border: 1px solid rgb(241 243 238 / 0.06);
-  border-radius: var(--r-1);
-  background: rgb(241 243 238 / 0.025);
-  color: var(--fg);
-  text-decoration: none;
-  text-transform: none;
-  letter-spacing: 0;
-  transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.15s ease;
-}
-
-.nav-drop-item:active {
-  transform: scale(0.985);
-}
-
-.nav-drop-item:hover,
-.nav-drop-item:focus-visible,
-.nav-drop-item.active {
-  border-color: rgb(200 255 46 / 0.38);
-  background: rgb(200 255 46 / 0.08);
-}
-
-.nav-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  border: 1px solid rgb(200 255 46 / 0.28);
-  border-radius: 8px;
-  background: rgb(200 255 46 / 0.08);
-  color: var(--signal);
-  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
-}
-
-.nav-chip.nav-chip-icon svg {
-  width: 16px;
-  height: 16px;
-  stroke: currentColor;
-  stroke-width: 1.75;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  fill: none;
-}
-
-.nav-drop-item:hover .nav-chip,
-.nav-drop-item.active .nav-chip {
-  border-color: var(--signal);
-  background: var(--signal);
-  color: var(--on-signal);
-}
-
-.nav-item-body {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-
-.nav-item-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.nav-drop-item b {
-  font: 600 13.5px/1.2 var(--display);
-  letter-spacing: -0.015em;
-  color: var(--fg);
-}
-
-.nav-drop-item:hover b,
-.nav-drop-item.active b {
-  color: var(--signal);
-}
-
-.nav-item-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 6.5px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgb(8 9 11 / 0.6);
-  font: 600 7.5px/1 var(--mono);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: var(--fg-2);
-}
-
-.nav-drop-item:hover .nav-item-badge,
-.nav-drop-item.active .nav-item-badge {
-  border-color: rgb(200 255 46 / 0.35);
-  color: var(--signal);
-}
-
-.nav-item-body > span {
-  font: 400 11.5px/1.35 var(--display);
-  color: var(--fg-2);
+  .topnav > .nav-direct.active::after,
+  .topnav > .nav-direct[aria-current='true']::after {
+    opacity: 1;
+    transform: scaleX(1);
+  }
 }
 
 .nav-mobile-btn {
@@ -850,6 +710,8 @@ html.is-landing.lenis body {
 .hero-caption {
   left: var(--gutter);
   bottom: clamp(40px, 9vh, 96px);
+  width: var(--card-width);
+  max-width: calc(100vw - var(--gutter) * 2);
 }
 
 .eyebrow {
@@ -871,8 +733,9 @@ html.is-landing.lenis body {
 }
 
 .hero-caption h1 {
-  max-width: none;
-  white-space: nowrap;
+  width: max-content;
+  max-width: min(62vw, calc(100vw - var(--gutter) * 2));
+  white-space: normal;
   font-size: clamp(34px, 4.7vw, 76px);
   line-height: 0.94;
   text-shadow: 0 2px 30px rgb(0 0 0 / 0.35);
@@ -886,11 +749,12 @@ html.is-landing.lenis body {
 }
 
 .hero-lede {
-  max-width: 34em;
-  min-height: 3em;
+  max-width: 58ch;
+  min-height: 0;
   margin-top: 20px !important;
   font-size: clamp(16px, 1.2vw, 18px);
   line-height: 1.5;
+  text-wrap: pretty;
   color: var(--fg) !important;
   text-shadow: 0 1px 16px rgb(0 0 0 / 0.5);
 }
@@ -899,7 +763,7 @@ html.is-landing.lenis body {
 .hero-steps {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   margin-top: 20px !important;
 }
 
@@ -907,15 +771,16 @@ html.is-landing.lenis body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 148px;
-  gap: 10px;
-  padding: 8px 12px 8px 10px;
+  min-width: 0;
+  gap: 8px;
+  padding: 8px 10px 8px 9px;
   border: 1px solid var(--line);
   border-radius: var(--r-1);
   background: rgb(8 9 11 / 0.55);
-  font: 500 12px/1 var(--mono);
+  font: 500 11px/1 var(--mono);
   letter-spacing: 0.02em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .hero-steps b {
@@ -1029,15 +894,17 @@ html.is-landing.lenis body {
 .capture-media {
   position: absolute;
   left: var(--gutter);
-  bottom: clamp(32px, 7vh, 72px);
-  width: min(40vw, 640px);
+  bottom: clamp(32px, 6.5vh, 64px);
+  /* Aligns left edge and column width with .capture-caption while capping height on short laptops. */
+  width: min(var(--card-width), calc(44svh * 16 / 9));
 }
 
 .landing .frame {
   position: relative;
   overflow: hidden;
-  border-radius: var(--r-2);
-  background: #000;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-card);
+  background: var(--bg);
 }
 
 .landing .frame figcaption {
@@ -1054,6 +921,7 @@ html.is-landing.lenis body {
 .frame-video {
   aspect-ratio: 16 / 9;
   transform-origin: 0% 100%;
+  box-shadow: 0 24px 60px -24px rgb(0 0 0 / 0.8);
 }
 
 .frame-video video {
@@ -1077,13 +945,13 @@ html.is-landing.lenis body {
 .landing .frame.frame-skeleton,
 .frame-skeleton {
   position: absolute;
-  right: -18%;
+  right: -14%;
   bottom: -6%;
-  width: 46%;
+  width: 42%;
   aspect-ratio: 1;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-strong);
   background: var(--scene);
-  box-shadow: 0 30px 60px -20px rgb(0 0 0 / 0.8);
+  box-shadow: 0 24px 56px -18px rgb(0 0 0 / 0.85);
 }
 
 .frame-skeleton canvas {
@@ -1106,30 +974,44 @@ html.is-landing.lenis body {
   height: 400svh; /* the panel sticks for three full screens, one per stage (home.js gymStage) */
 }
 
-/* Gym and Policy: their words sit on a dark card, since the street behind them is busy. No
-   backdrop blur: one this size filters the whole film under it again every frame. */
-/* A lime edge on top marks a live readout, as on an instrument. */
+/* Clean dark surface without curved accent top border (matches Studio cards) */
 .panel {
-  padding: 20px 24px;
+  padding: 22px 24px;
   border: 1px solid var(--line);
-  border-top: 2px solid var(--signal);
-  border-radius: var(--r-2);
-  background: rgb(8 9 11 / 0.78);
-  box-shadow: 0 30px 80px -30px rgb(0 0 0 / 0.8);
+  border-radius: var(--r-card);
+  background: rgb(10 12 16 / 0.84);
+  box-shadow: var(--lg-rim), 0 30px 80px -30px rgb(0 0 0 / 0.82);
 }
 
-/* One title size for every chapter card (Capture, Gym, Policy). */
+/* Standardized header rhythm across Tridi Capture, Tridi Gym, and Tridi Policy */
+.panel .product {
+  margin: 0 0 8px !important;
+  font: 600 11px/1.2 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--signal);
+}
+
 .panel h2 {
-  font-size: clamp(22px, 2.2vw, 32px);
+  max-width: none;
+  margin: 0;
+  font-size: clamp(22px, 2.2vw, 30px);
+  line-height: 1.04;
+}
+
+.panel p {
+  max-width: none;
 }
 
 /* Every card's first line under the title: same size, same gap. */
 .panel h2 + p,
-.capture-caption p,
+.capture-caption p:not(.product),
+.gym-lede,
 .policy-lede {
   margin-top: 10px !important;
   font-size: 14px;
-  line-height: 1.45;
+  line-height: 1.48;
+  color: var(--ink-body);
 }
 
 .gym-caption {
@@ -1142,17 +1024,17 @@ html.is-landing.lenis body {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
 /* Space pushes here too (home.js pushGym): the button says so, as the hero's does. */
 .gym-push {
+  position: relative;
   flex: none;
-  min-width: 156px;
 }
 
 .gym-force {
-  flex: 0 1 196px;
+  flex: 1 1 196px;
   display: grid;
   gap: 4px;
   min-width: 140px;
@@ -1169,8 +1051,11 @@ html.is-landing.lenis body {
 }
 
 .gym-force-head b {
+  min-width: 5ch;
+  text-align: right;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
   color: var(--signal);
 }
 
@@ -1178,7 +1063,7 @@ html.is-landing.lenis body {
   position: relative;
   display: flex;
   align-items: center;
-  height: 12px;
+  height: 20px;
 }
 
 .gym-force-zone {
@@ -1190,7 +1075,7 @@ html.is-landing.lenis body {
   border-radius: 2px;
   background: rgb(200 255 46 / 0.35);
   pointer-events: none;
-  transition: width 0.35s ease;
+  transition: width 0.3s var(--ease);
 }
 
 .gym-force-slider {
@@ -1203,35 +1088,20 @@ html.is-landing.lenis body {
 }
 
 .gym-force-cap {
-  font: 500 9.5px/1.15 var(--mono);
+  font: 500 10px/1.2 var(--mono);
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: #6fcf8a;
+  font-variant-numeric: tabular-nums;
+  color: var(--ok);
   white-space: nowrap;
 }
 
 .gym-force-cap[data-over='true'] {
-  color: #f59e0b;
+  color: #fbbf24;
 }
 
-.gym-hint {
-  margin-top: var(--s-2) !important;
-  font: 500 10px/1.4 var(--mono);
-  text-transform: uppercase;
-  color: var(--dim) !important;
-}
-
-.gym-hint kbd {
-  margin-right: var(--s-1);
-  padding: 2px 6px;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-1);
-  font: inherit;
-  color: var(--fg);
-}
-
-/* The steps: a big count of the stage on screen, what a step is, the 0 to 1 B scale with
-   the four checkpoints on it, and the four as buttons (home.js showGymStage). */
+/* The steps: a big count of the stage on screen, the 10M..300M scale with
+   the three checkpoints on it, and the three as buttons (home.js showGymStage). */
 .steps-meter {
   display: grid;
   gap: 12px;
@@ -1240,17 +1110,26 @@ html.is-landing.lenis body {
   border-top: 1px solid var(--line);
 }
 
+.steps-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
 .steps-now {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   margin: 0 !important;
+  flex: none;
 }
 
 .steps-now b {
-  min-width: 3.6ch;
+  min-width: 4.5ch; /* holds 10 M..300 M without horizontal CLS */
   white-space: nowrap;
-  font: 500 clamp(38px, 3.8vw, 56px)/0.9 var(--display);
+  font: 500 clamp(34px, 3.2vw, 46px)/0.9 var(--display);
   letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
   color: var(--signal);
@@ -1258,6 +1137,7 @@ html.is-landing.lenis body {
 
 .steps-now span {
   font: 500 11px/1.25 var(--mono);
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--fg-2);
 }
@@ -1290,7 +1170,7 @@ html.is-landing.lenis body {
   width: 0;
   border-radius: var(--r-1);
   background: var(--signal);
-  transition: width 0.9s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: width 0.6s var(--ease);
 }
 
 .axis-tick {
@@ -1302,7 +1182,7 @@ html.is-landing.lenis body {
   border: 2px solid var(--fg-2);
   background: var(--bg);
   transform: translateX(-50%) rotate(45deg); /* a keypoint, like the logo's joints */
-  transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .axis-tick.past,
@@ -1315,39 +1195,46 @@ html.is-landing.lenis body {
   box-shadow: 0 0 0 4px rgb(200 255 46 / 0.25);
 }
 
-/* The three checkpoints as a segmented control. */
+/* The three checkpoints as a borderless segmented control (zero nested borders inside .panel). */
 .axis-stops {
   display: grid;
-  grid-template-columns: repeat(3, 1fr); /* one per GYM_STAGES entry (home.js) */
-  gap: 4px; /* no box around the stops: the card is the only box (one card, not one inside another) */
+  grid-template-columns: repeat(3, minmax(0, 1fr)); /* one per GYM_STAGES entry (home.js) */
+  gap: 6px;
 }
 
 .landing .axis-stop,
 .axis-stop {
   display: grid;
   justify-items: start;
-  gap: 5px;
+  gap: 4px;
   min-width: 0;
   min-height: 0;
-  padding: 10px 8px;
-  border: 1px solid transparent;
+  padding: 9px 10px;
+  border: 0;
   border-radius: var(--r-2);
-  background: none;
+  background: rgb(241 243 238 / 0.04);
   color: var(--fg-2);
   text-align: left;
   cursor: pointer;
   transform: none;
   box-shadow: none;
-  transition: background-color 0.22s ease, color 0.22s ease, border-color 0.22s ease, transform 0.15s ease;
+  transition: background-color 150ms ease, color 150ms ease, transform var(--dur-micro) var(--ease);
 }
 
-.landing .axis-stop:hover:not(:disabled),
-.axis-stop:hover {
-  border-color: var(--line);
-  background-color: rgb(241 243 238 / 0.07);
-  color: var(--fg);
-  box-shadow: none;
-  transform: none;
+@media (hover: hover) and (pointer: fine) {
+  .landing .axis-stop:hover:not(:disabled):not(.on),
+  .axis-stop:hover:not(.on) {
+    background-color: rgb(241 243 238 / 0.09);
+    color: var(--fg);
+    box-shadow: none;
+    transform: none;
+  }
+}
+
+.landing .axis-stop:focus-visible,
+.axis-stop:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
 }
 
 .landing .axis-stop:active:not(:disabled),
@@ -1356,12 +1243,9 @@ html.is-landing.lenis body {
 }
 
 .landing .axis-stop.on,
-.landing .axis-stop.on:hover:not(:disabled),
-.axis-stop.on,
-.axis-stop.on:hover {
-  border-color: var(--signal);
+.axis-stop.on {
   background-color: var(--signal);
-  color: var(--bg);
+  color: var(--on-signal);
   box-shadow: none;
   transform: none;
 }
@@ -1370,12 +1254,13 @@ html.is-landing.lenis body {
   white-space: nowrap;
   font: 500 10px/1 var(--mono);
   letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
   text-transform: uppercase;
-  opacity: 0.8;
+  opacity: 0.82;
 }
 
 .axis-verdict {
-  font: 500 15px/1.1 var(--display);
+  font: 600 14.5px/1.1 var(--display);
   white-space: nowrap;
 }
 
@@ -1387,9 +1272,10 @@ html.is-landing.lenis body {
 
 .stage-text {
   display: block;
-  min-height: 2.8em;
-  font-size: 15px;
+  min-height: 1.4em;
+  font-size: 14px;
   line-height: 1.4;
+  color: var(--ink-body);
 }
 
 .stage-numbers {
@@ -1402,7 +1288,9 @@ html.is-landing.lenis body {
 
 .stage-numbers > span {
   font: 500 11px/1.4 var(--mono);
+  letter-spacing: 0.04em;
   text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
   color: var(--fg-2);
 }
 
@@ -1414,18 +1302,65 @@ html.is-landing.lenis body {
 
 .stage-numbers b {
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
   color: var(--fg);
 }
 
 .gym-status {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  margin-top: 16px !important;
-  font: 500 11px/1.5 var(--mono);
+  justify-content: flex-end;
+  min-width: 0;
+  margin: 0 !important;
+  font: 500 10.5px/1.35 var(--mono);
+  letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   text-transform: uppercase;
   color: var(--signal) !important;
+}
+
+.gym-status-body {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gym-status [data-gym='up'] {
+  display: inline-block;
+  min-width: 4.5ch; /* prevents horizontal jitter as 9.9 s -> 10.0 s */
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tridi Gym Dark Smoked-Slate Lab Chamber (#131922): calm studio focus without white flash */
+.landing.is-gym-chamber .gym-caption.panel {
+  background: rgb(14 19 27 / 0.86);
+  border-color: rgb(200 220 255 / 0.16);
+  box-shadow: var(--lg-rim), 0 24px 56px -22px rgb(4 8 14 / 0.55);
+}
+
+.landing.is-gym-chamber .gym-caption .axis-label {
+  opacity: 1;
+}
+
+.landing.is-gym-chamber .gym-caption .axis-stop.on .axis-label {
+  color: var(--on-signal);
+  opacity: 1;
+}
+
+.landing.is-gym-chamber .topbar::before {
+  border-color: rgb(200 220 255 / 0.14);
+  box-shadow: var(--lg-rim), 0 12px 28px -14px rgb(4 8 14 / 0.42);
+}
+
+.landing.is-gym-chamber .topbar.solid::before {
+  background: rgb(12 16 24 / 0.88);
+  border-color: rgb(200 220 255 / 0.16);
+}
+
+.landing.is-gym-chamber .corner {
+  border-color: rgb(200 255 46 / 0.24);
 }
 
 /* Policy: the whole robot the network moves, the numbers beside it */
@@ -1435,14 +1370,14 @@ html.is-landing.lenis body {
 }
 
 .policy-caption {
-  right: var(--gutter);
+  left: var(--gutter);
+  right: auto;
   top: var(--card-top); /* as every chapter's card */
   width: var(--card-width);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   box-sizing: border-box;
-  padding: 20px 22px 22px;
 }
 
 .specs {
@@ -1450,22 +1385,38 @@ html.is-landing.lenis body {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   width: 100%;
   gap: 8px;
-  margin-top: 12px !important;
+  margin-top: 14px !important;
+}
+
+.specs li.spec-sep {
+  display: none;
 }
 
 .specs li {
   display: grid;
-  gap: 3px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-1);
-  background: rgb(241 243 238 / 0.03);
+  gap: 4px;
+  padding: 12px 14px;
+  border: 0; /* zero nested borders inside .panel */
+  border-radius: var(--r-2);
+  background: rgb(241 243 238 / 0.04);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .specs li:hover {
+    background-color: rgb(241 243 238 / 0.09);
+  }
+
+  .specs li:hover span {
+    color: var(--fg);
+  }
 }
 
 .specs b {
-  font: 500 clamp(20px, 2vw, 27px)/1 var(--display);
+  font: 600 clamp(20px, 1.9vw, 26px)/1 var(--display);
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
   color: var(--signal);
 }
 
@@ -1473,589 +1424,178 @@ html.is-landing.lenis body {
   font-size: 12.5px;
   line-height: 1.3;
   color: var(--fg-2);
+  transition: color 150ms ease;
 }
 
-.policy-note {
-  width: 100%;
-  margin-top: 12px !important;
-  padding-top: 10px;
-  border-top: 1px solid var(--line);
-  font-size: 12.5px;
-  line-height: 1.4;
-}
-
-/* The way into what the policy delivers (#/delivery): stays on phones, where the note above hides. */
+/* The way into what the policy delivers (#/delivery): natural pill width, stays on phones. */
 .policy-data {
   align-self: flex-start;
   box-sizing: border-box;
   max-width: 100%;
-  min-width: 210px;
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
-/* Closing: the manifesto and action cards lock on screen while the footer scrolls into view as a parallax curtain. */
+/* Compact closing layout: keeps manifesto + CTAs + footer inside one viewport with zero excess vertical gap. */
+.landing .closing {
+  min-height: 100svh;
+  padding: calc(var(--card-top) + 12px) 0 0;
+}
 
-.closing {
+.landing .closing-sticky {
   position: relative;
-  min-height: 148svh;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 14vh var(--gutter) 0;
+  top: auto;
+  min-height: 0;
+  padding: 0 var(--gutter);
 }
 
-.closing-sticky {
-  position: sticky;
-  top: var(--card-top);
-  z-index: 1;
-  padding-bottom: 4vh;
-}
-
-.closing-inner {
-  width: 100%;
-  max-width: 1240px;
-  margin: 0 auto;
-}
-
-/* Two lines, one sentence each (strings.js): sized so the longer one fits the 1200 px column. */
-.manifesto {
-  font-size: clamp(34px, 4.9vw, 68px) !important;
-  line-height: 1.0 !important;
-  letter-spacing: -0.035em;
-  white-space: nowrap;
-}
-
-.manifesto .w {
-  display: inline-block;
-  overflow: hidden;
-  vertical-align: top;
-}
-
-.manifesto .w > span {
-  display: inline-block;
-}
-
-.closing-text {
-  max-width: 48em;
-  margin-top: 18px !important;
-  font-size: clamp(19px, 1.65vw, 24px);
-  line-height: 1.45;
-  color: var(--fg) !important;
-}
-
-/* ---- 3 Verticals Section (One Physics Engine, Every Physical Machine) ---- */
-
-.verticals-block {
-  display: grid;
-  gap: 24px;
-  margin-top: clamp(44px, 6vh, 64px);
-  padding-top: clamp(32px, 4vh, 44px);
-  border-top: 1px solid var(--line-dark);
-}
-
-.verticals-head {
-  display: grid;
-  gap: 10px;
-  max-width: 56em;
-}
-
-.verticals-kicker {
-  margin: 0 !important;
-  font: 600 11px/1.2 var(--mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--signal) !important;
-}
-
-.verticals-title {
-  margin: 0;
-  font: 600 clamp(24px, 2.6vw, 36px)/1.05 var(--display);
-  letter-spacing: -0.03em;
-  color: var(--fg);
-}
-
-.verticals-lede {
-  margin: 0 !important;
-  max-width: 64ch;
-  font: 400 15.5px/1.55 var(--display);
-  color: var(--fg-2) !important;
-}
-
-.verticals-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: start;
-  gap: 14px;
-}
-
-@media (max-width: 1040px) {
-  .verticals-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.vertical-card {
-  display: grid;
-  align-content: start;
-  gap: 12px;
-  padding: 22px;
-  border: 1px solid var(--line-dark);
-  border-radius: var(--r-2);
-  background: rgb(18 20 23 / 0.72);
-  backdrop-filter: blur(16px);
-  box-shadow: inset 0 0.75px 0 rgb(255 255 255 / 0.12);
-  transition: border-color 0.22s ease, background-color 0.22s ease;
-}
-
-.vertical-card:hover {
-  border-color: rgb(200 255 46 / 0.45);
-  background: rgb(22 25 29 / 0.85);
-}
-
-.vertical-badge {
-  justify-self: start;
-  padding: 4px 9px;
-  border: 1px solid rgb(200 255 46 / 0.35);
-  border-radius: 999px;
-  background: rgb(200 255 46 / 0.08);
-  font: 600 10px/1 var(--mono);
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: var(--signal);
-}
-
-.vertical-card h4 {
-  margin: 2px 0 0;
-  font: 600 clamp(19px, 1.5vw, 22px)/1.15 var(--display);
-  letter-spacing: -0.025em;
-  color: var(--fg);
-}
-
-.vertical-io {
-  margin: 0 !important;
-  padding: 7px 10px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-1);
-  background: rgb(8 9 11 / 0.65);
-  font: 500 11px/1.35 var(--mono);
-  color: var(--fg);
-}
-
-.vertical-body {
-  margin: 0 !important;
-  font: 400 14px/1.55 var(--display);
-  color: var(--fg-2) !important;
-}
-
-.vertical-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.vertical-cta {
-  display: inline-flex;
-  align-items: center;
-  min-height: 34px;
-  padding: 0 12px;
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  background: rgb(241 243 238 / 0.04);
-  color: var(--fg);
-  font: 500 12px/1 var(--display);
-  white-space: nowrap;
-  text-decoration: none;
-  transition: background-color 0.2s, border-color 0.2s, color 0.2s, transform 0.15s;
-}
-
-.vertical-cta:active {
-  transform: scale(0.97);
-}
-
-.vertical-cta.primary {
-  border-color: var(--signal);
-  color: var(--signal);
-}
-
-.vertical-cta.primary:hover,
-.vertical-cta.primary:focus-visible {
-  background: var(--signal);
-  color: var(--on-signal);
-}
-
-.vertical-cta:not(.primary):hover,
-.vertical-cta:not(.primary):focus-visible {
-  border-color: var(--fg);
-  background: rgb(241 243 238 / 0.1);
-}
-
-/* Where we are: three static status cards (Today, Training, What's next). */
-.progress-track {
-  --dot: 10px;
-  position: relative;
-  margin-top: 48px;
-}
-
-.landing .milestones {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.landing .milestones li {
-  position: relative;
-  display: grid;
-  align-content: start;
-  justify-items: start;
-  text-align: left;
-  gap: 10px;
-  padding: 20px;
-  border: 1px solid var(--line-dark);
-  border-radius: var(--r-2);
-  background: rgb(241 243 238 / 0.03);
-}
-
-.dot {
-  width: var(--dot);
-  height: var(--dot);
-  margin-bottom: 4px;
-  border: 2px solid var(--fg-2);
-  background: var(--scene);
-}
-
-.done .dot {
-  border-color: var(--signal);
-  background: var(--signal);
-}
-
-.now .dot {
-  border-color: var(--signal);
-  animation: milestone 1.6s ease-out infinite;
-}
-
-@keyframes milestone {
-  0% {
-    box-shadow: 0 0 0 0 rgb(200 255 46 / 0.6);
-  }
-  100% {
-    box-shadow: 0 0 0 14px rgb(200 255 46 / 0);
-  }
-}
-
-.when {
-  font: 500 11px/1 var(--mono);
-  text-transform: uppercase;
-  color: var(--dim);
-}
-
-.done .when,
-.now .when {
-  color: var(--signal);
-}
-
-.landing .milestones b {
-  max-width: 24ch;
-  font: 500 clamp(18px, 1.5vw, 22px)/1.2 var(--display);
-  letter-spacing: -0.02em;
-}
-
-.next b {
-  color: var(--fg-2);
-}
-
-.proof {
-  font: 500 11px/1.4 var(--mono);
-  text-transform: uppercase;
-  color: var(--dim);
-}
-
-.tries {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  align-items: stretch;
-  gap: 14px;
-  margin-top: 28px;
-}
-
-@media (max-width: 1160px) {
-  .tries {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-/* The 5 Studio tools: each card has an icon + domain badge, large screen name, short 1-line sub, and CTA pill. */
-.try {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 11px;
-  min-height: 214px;
-  padding: 22px;
-  border: 1px solid var(--line-dark);
-  border-radius: var(--r-2);
-  background: rgb(18 20 23 / 0.78);
-  backdrop-filter: blur(14px);
-  color: var(--fg);
-  text-decoration: none;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  transition: border-color 0.22s ease, background-color 0.22s ease, transform 0.15s ease;
-}
-
-.try:active {
-  transform: scale(0.98);
-}
-
-.try:hover,
-.try:focus-visible {
-  border-color: var(--signal);
-  background-color: rgb(200 255 46 / 0.08);
-}
-
-.try-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.try-icon {
-  width: 30px;
-  height: 30px;
-  stroke: var(--signal);
-  stroke-width: 1.75;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  fill: none;
-  flex: none;
-}
-
-.try-tag {
-  padding: 4px 8px;
-  border: 1px solid rgb(200 255 46 / 0.28);
-  border-radius: 999px;
-  background: rgb(200 255 46 / 0.07);
-  font: 600 9.5px/1 var(--mono);
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  color: var(--signal);
-}
-
-.try b {
-  margin-top: 2px;
-  font: 600 clamp(21px, 1.75vw, 25px)/1.12 var(--display);
-  letter-spacing: -0.025em;
-  color: var(--fg);
-}
-
-.try-sub {
-  font: 400 14px/1.45 var(--display);
-  color: var(--fg-2);
-}
-
-.try-go {
-  align-self: flex-start;
-  margin-top: auto;
-  padding: 8px 15px;
-  border: 1px solid var(--signal);
-  border-radius: 999px;
-  font: 500 13px/1 var(--display);
-  white-space: nowrap;
-  color: var(--signal);
-  transition: background 0.22s ease, color 0.22s ease;
-}
-
-.try:hover .try-go,
-.try:focus-visible .try-go {
-  background: var(--signal);
-  color: var(--on-signal);
-}
-
-.try.unavailable {
-  opacity: 0.5;
-  cursor: default;
-  transform: none;
-  background: none;
-  border-color: var(--line-dark);
-}
-
-/* Not a link yet (uploading a video, coming soon): its label stays quiet on hover. */
-.try.unavailable .try-go {
-  border-color: var(--line-dark);
-  background: none;
-  color: var(--muted);
-}
-
-
-.footer {
-  position: relative;
-  z-index: 2;
-  width: 100%;
-  max-width: 1240px;
-  margin: clamp(56px, 9vh, 96px) auto 0;
-  padding: 24px 36px 26px;
-  border-top: 1px solid var(--line-dark);
-  border-radius: 0;
-  background: linear-gradient(180deg, rgb(8 9 11 / 0.96), rgb(8 9 11 / 1));
-}
-
-.foot-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 24px 48px;
-}
-
-.foot-brand-col {
-  display: grid;
-  align-content: end;
-  gap: 8px;
-}
-
-.footer .wordmark {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.33em;
-  margin-right: 0;
-  font: 700 clamp(26px, 2.4vw, 32px) / 1 var(--display);
-  color: var(--fg);
-  text-decoration: none;
-}
-
-.footer .wordmark.big {
-  font-size: clamp(44px, 5.8vw, 72px);
-  line-height: 0.92;
-}
-
-.foot-rights {
-  margin: 0 !important;
-  font: 500 12px/1.4 var(--mono);
-  color: var(--dim) !important;
-}
-
-.foot-columns {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 28px 48px;
-}
-
-.foot-col {
-  display: grid;
-  align-content: start;
-  gap: 9px;
-}
-
-.foot-col h4 {
-  margin: 0 0 4px;
-  font: 600 10.5px/1.2 var(--mono);
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: var(--signal);
-}
-
-.foot-col a {
-  color: var(--fg-2);
-  font: 400 13.5px/1.35 var(--display);
-  text-decoration: none;
-  transition: color 0.16s ease;
-}
-
-.foot-col a:hover,
-.foot-col a:focus-visible {
-  color: var(--fg);
-}
-
-@media (max-width: 960px) {
-  .foot-bar {
-    grid-template-columns: 1fr;
-  }
-  .foot-columns {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-/* ---- Small tablets & phones: mobile accordion drawer ---- */
+/* ---- Small tablets & phones: fullscreen dark-glass drawer (zero CLS, zero nested surfaces) ---- */
 
 @media (max-width: 1000px) {
   .topbar {
+    inset: 0 0 auto 0;
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px var(--gutter);
+    border-radius: 0;
   }
 
-  .topbar .lang-switch {
-    margin-left: auto;
+  .topbar::before {
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    background: rgb(10 12 16 / 0.78);
+    box-shadow: none;
+  }
+
+  .topbar-desktop-cta {
+    display: none !important;
+  }
+
+  .topbar-desktop-lang {
+    display: none;
+    position: relative;
+    z-index: 35;
+  }
+
+  .topbar.menu-open .topbar-desktop-lang {
+    display: inline-flex;
   }
 
   .nav-mobile-btn {
     display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    padding: 0;
+    border-radius: 50%;
+    position: relative;
+    z-index: 35;
+  }
+
+  .topbar .wordmark {
+    position: relative;
+    z-index: 35;
   }
 
   .topnav {
-    display: none;
-    order: 10;
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 8px;
+    gap: 0;
     width: 100%;
-    max-height: calc(100svh - 88px);
+    height: 100dvh;
+    margin: 0;
+    padding: calc(var(--topbar-h) + 8px) 0 var(--s-6);
     overflow-y: auto;
-    margin: 8px 0 0;
-    padding: 12px 4px 6px;
-    border-right: 0;
-    border-top: 1px solid var(--line);
+    overflow-x: hidden;
+    background: var(--bg);
+    border: 0;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 200ms ease, visibility 200ms ease;
   }
 
   .topbar.menu-open .topnav {
-    display: flex;
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
   }
 
   .topnav-sep {
     display: none;
   }
 
-  .nav-drop-btn,
+  .landing .nav-drop-btn,
   .topnav > .nav-direct {
     justify-content: space-between;
     width: 100%;
-    min-height: 40px;
-    padding: 0 12px;
-    background: rgb(241 243 238 / 0.04);
+    min-height: 48px;
+    padding: 0 calc(var(--gutter) + 12px) 0 calc(var(--gutter) + 2px);
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    background: transparent;
+    font-size: 13px;
   }
 
-  .nav-drop-panel,
-  .nav-drop-panel.nav-drop-wide {
-    position: static;
-    display: none;
-    grid-template-columns: 1fr;
-    width: 100%;
-    margin-top: 6px;
-    padding: 10px;
+  .topnav > .nav-direct::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 3px;
+    height: 22px;
+    border-radius: 0 3px 3px 0;
+    background: var(--signal);
+    opacity: 0;
+    transform: translateY(-50%) scaleY(0);
+    transition: transform 220ms var(--ease), opacity 180ms ease;
+    pointer-events: none;
+  }
+
+  .topnav > .nav-direct.active,
+  .topnav > .nav-direct[aria-current='true'] {
+    color: var(--signal);
+  }
+
+  .topnav > .nav-direct.active::after,
+  .topnav > .nav-direct[aria-current='true']::after {
     opacity: 1;
-    visibility: visible;
-    transform: none;
-    pointer-events: auto;
-    box-shadow: none;
+    transform: translateY(-50%) scaleY(1);
   }
 
-  .nav-drop.open .nav-drop-panel {
-    display: grid;
+  .landing .nav-drop-head {
+    padding: 10px calc(var(--gutter) + 12px) 8px calc(var(--gutter) + 14px);
   }
 
-  .nav-drop-col + .nav-drop-col {
-    margin-top: 8px;
-    padding-top: 10px;
-    padding-left: 0;
-    border-left: 0;
-    border-top: 1px solid var(--line);
+  .landing .nav-drop-item {
+    padding: 11px calc(var(--gutter) + 12px) 11px calc(var(--gutter) + 14px);
+  }
+
+  .landing .nav-mobile-footer {
+    display: flex;
+    align-items: center;
+    margin-top: auto;
+    padding: 16px var(--gutter) 0;
+  }
+
+  .landing .nav-mobile-cta {
+    display: inline-flex;
+    width: 100%;
+    min-height: 52px;
+    height: 52px;
+    padding: 0 28px;
+    font-size: 13.5px;
+    box-shadow: 0 0 28px -8px var(--signal-glow);
   }
 }
 
@@ -2065,17 +1605,27 @@ html.is-landing.lenis body {
    .only-narrow, style.css). The panels become tiles, chips and rows instead of cards. */
 
 @media (max-width: 860px) {
+  html.is-landing {
+    scroll-snap-type: y mandatory;
+  }
+
+  .chapter {
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+
   .landing {
     font-size: 15px;
   }
 
   /* The loading readout moves up, under the top bar: low, it sat on the hero's title. */
   .boot {
-    top: 72px;
+    top: calc(var(--topbar-h) + 12px);
     right: var(--gutter);
     bottom: auto;
     left: var(--gutter);
     width: auto;
+    padding: 12px 14px;
   }
 
   .film-hud,
@@ -2086,19 +1636,12 @@ html.is-landing.lenis body {
   }
 
   .topbar {
-    inset: var(--s-2) var(--s-3) auto;
-    padding: 6px 6px 6px var(--s-3);
+    inset: 0 0 auto 0;
+    padding: 10px var(--gutter);
   }
 
   .wordmark {
     font-size: 21px;
-  }
-
-  .topbar .btn-small {
-    min-width: 88px;
-    min-height: 34px;
-    height: 34px;
-    padding: 0 var(--s-3);
   }
 
   .hero-caption,
@@ -2113,16 +1656,23 @@ html.is-landing.lenis body {
     transform: none;
   }
 
-  .caption h2 {
-    font-size: 30px;
+  /* Standardized chapter card header size across Capture, Gym, and Policy on mobile */
+  .caption h2,
+  .panel h2,
+  .capture-caption h2,
+  .gym-caption h2,
+  .policy-caption h2 {
+    font-size: 24px;
+    line-height: 1.06;
   }
 
-  .product {
-    margin-bottom: var(--s-2) !important;
+  .product,
+  .panel .product {
+    margin-bottom: 6px !important;
     font-size: 11px;
   }
 
-  /* Hero: the title and the push, nothing else. */
+  /* Hero: confident 2-line title + short lede + Push CTA. */
   .hero-caption {
     bottom: var(--s-6);
   }
@@ -2133,64 +1683,101 @@ html.is-landing.lenis body {
   }
 
   .hero-caption h1 {
+    width: auto;
+    max-width: none;
     white-space: normal;
-    font-size: 42px;
+    font-size: clamp(26px, 7.6vw, 38px);
+    letter-spacing: -0.035em;
+    line-height: 1.02;
+  }
+
+  html[data-lang='en'] .hero-caption h1 {
+    font-size: clamp(30px, 8.6vw, 42px);
+  }
+
+  .hero-caption h1 em {
+    display: block;
   }
 
   .hero-lede {
     min-height: 0;
     margin-top: var(--s-3) !important;
-    font-size: 15px;
+    font-size: 14.5px;
   }
 
-  /* The three steps stay: they say what the product does in one glance. */
+  /* Compact 1-row step strip on mobile Hero so the lower block feels grounded above Push it. */
   .hero-steps {
-    flex-wrap: wrap;
-    gap: var(--s-1);
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
     margin-top: var(--s-3) !important;
+    width: 100%;
   }
 
   .hero-steps li {
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: center;
     gap: 6px;
-    padding: 6px 8px;
-    font-size: 10px;
+    padding: 7px 6px;
+    font-size: 9.5px;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .hero-steps b {
+    padding-right: 6px;
   }
 
   .cta-row {
-    margin-top: var(--s-5);
+    margin-top: var(--s-4);
   }
 
   .cta-row .hero-push {
     flex: 1;
-    min-height: 52px; /* a thumb-sized button */
+    min-height: 52px; /* matches .nav-mobile-cta height & bottom position */
+    height: 52px;
   }
 
-  .btn kbd {
-    display: none; /* no space bar on a phone */
+  /* Capture: video + 3D skeleton directly above the Tridi Capture card at the bottom (matches Gym/Policy bottom). */
+  .capture .sticky {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: calc(var(--topbar-h) + 12px) var(--gutter) var(--s-5);
+    box-sizing: border-box;
   }
 
-  /* Capture: the video and the skeleton side by side at the top, as two small tiles. */
   .capture-media {
-    top: 68px;
-    right: var(--gutter);
-    bottom: auto;
-    left: var(--gutter);
+    position: static;
+    order: 1;
     display: grid;
     grid-template-columns: 16fr 9fr;
     gap: var(--s-2);
+    width: 100%;
+  }
+
+  .capture-caption {
+    position: static;
+    order: 2;
     width: auto;
+    padding: 14px 16px;
   }
 
   .landing .frame {
-    border-radius: var(--r-1);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--r-card);
   }
 
   .landing .frame.frame-skeleton,
   .frame-skeleton {
     position: static;
     width: auto;
+    height: 100%;
     aspect-ratio: auto;
+    border-color: var(--line-strong);
     box-shadow: none;
   }
 
@@ -2200,72 +1787,73 @@ html.is-landing.lenis body {
     font-size: 9px;
   }
 
-  .capture-caption p:not(.product) {
-    margin-top: var(--s-2) !important;
-    font-size: 14px;
+  .capture-caption,
+  .gym-caption,
+  .policy-caption {
+    text-align: left;
   }
 
-  /* Gym: the step count, the four checkpoints as chips and one line about the one on screen. */
+  .capture-caption p:not(.product) {
+    margin-top: 6px !important;
+    font-size: 13.5px;
+  }
+
+  /* Gym on mobile: compact vertical rhythm — Push it left + Force slider right in one row. */
   .panel {
     padding: var(--s-4);
-    border-radius: var(--r-1);
+    border-radius: var(--r-card);
   }
 
-  .gym-hint,
+  .gym-lede,
+  .stage-numbers,
   .axis-track,
-  .axis-label {
+  .gym-force-cap {
     display: none;
   }
 
-  .gym-caption h2 {
-    font-size: 24px;
-  }
-
   .steps-meter {
-    margin-top: var(--s-3) !important;
-  }
-
-  .gym-lede {
-    margin: var(--s-2) 0 0 !important;
-    font-size: 13px;
-    color: var(--fg-2) !important;
-  }
-
-  .stage-numbers {
-    flex-wrap: nowrap;
-    margin-top: var(--s-1);
-  }
-
-  .stage-numbers span {
-    padding: 4px 6px;
-    font-size: 9px;
-    white-space: nowrap;
-  }
-
-  .steps-meter {
-    gap: var(--s-2);
+    gap: 8px;
+    margin-top: 10px !important;
     padding-top: 0;
     border-top: 0;
   }
 
+  .steps-row {
+    gap: 8px;
+  }
+
+  .steps-now {
+    gap: 8px;
+  }
+
   .steps-now b {
-    font-size: 40px;
+    min-width: 4.2ch;
+    font-size: 32px;
+  }
+
+  .steps-now span {
+    font-size: 9.5px;
   }
 
   .axis-stops {
-    gap: 2px;
-    padding: 2px;
-    border-radius: var(--r-1);
+    gap: 6px;
   }
 
+  .landing .axis-stop,
   .axis-stop {
-    justify-items: center;
-    padding: var(--s-2) 0;
-    border-radius: var(--r-1);
+    justify-items: start;
+    padding: 7px 8px;
+    border-radius: var(--r-2);
+    text-align: left;
+  }
+
+  .axis-label {
+    display: block;
+    font-size: 9px;
   }
 
   .axis-verdict {
-    font-size: 13px;
+    font-size: 12.5px;
   }
 
   .stage-detail {
@@ -2275,191 +1863,128 @@ html.is-landing.lenis body {
   }
 
   .stage-text {
-    font-size: 14px;
-    color: var(--fg-2);
+    min-height: 1.35em;
+    font-size: 13px;
+    color: var(--ink-body);
   }
 
   .gym-status {
-    margin-top: var(--s-3) !important;
-    font-size: 10px;
+    font-size: 9.5px;
   }
 
-  /* Policy: four numbers in a 2 x 2 grid of tiles. */
-  .policy-note {
-    display: none;
+  .gym-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
   }
 
+  .gym-push {
+    flex: none;
+    width: auto;
+    min-height: 40px;
+    padding: 0 16px;
+  }
+
+  .gym-force {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Policy: 4-column horizontal telemetry strip (zero dead right-side space, ultra compact). */
   .policy-lede {
-    margin-top: var(--s-2) !important;
-    font-size: 14px;
+    margin-top: 6px !important;
+    font-size: 13.5px;
   }
 
-  .specs {
-    grid-template-columns: 1fr 1fr;
-    gap: var(--s-2);
-    margin-top: var(--s-3) !important;
+  .landing .specs {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-sizing: border-box;
+    gap: 0;
+    padding: 10px 8px;
+    margin-top: 10px;
+    border-radius: var(--r-2);
+    background: rgb(241 243 238 / 0.04);
+    overflow: hidden;
   }
 
   .specs li {
     display: grid;
     grid-template-columns: 1fr;
-    gap: var(--s-1);
-    padding: var(--s-3);
-    border: 1px solid var(--line);
-    border-radius: var(--r-1);
+    place-items: center;
+    flex: 0 0 auto;
+    gap: 3px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    text-align: center;
+  }
+
+  .specs li.spec-sep {
+    display: block;
+    width: 1px;
+    height: 24px;
+    padding: 0;
+    background: var(--line);
+    flex: none;
   }
 
   .specs b {
-    font-size: 26px;
+    font-size: clamp(12px, 3.25vw, 14.5px);
+    letter-spacing: -0.025em;
+    white-space: nowrap;
+    text-align: center;
   }
 
   .specs span {
-    font: 500 10px/1.3 var(--mono);
+    font: 500 8.5px/1.2 var(--mono);
+    letter-spacing: 0.03em;
     text-transform: uppercase;
+    white-space: nowrap;
+    text-align: center;
     color: var(--fg-2);
   }
 
-  /* Closing: the manifesto, then the ways to try it as a plain list of rows. */
-  .closing {
-    padding-top: 22vh;
+  .policy-data {
+    width: 100%;
+    min-height: 42px;
+    margin-top: 10px;
   }
 
-  .manifesto {
-    white-space: normal;
-    font-size: 40px !important;
+  .landing .closing {
+    min-height: 100svh;
+    padding: calc(var(--topbar-h) + 28px) 0 0;
+    text-align: left;
   }
 
-  .closing-text {
-    margin-top: var(--s-4) !important;
-    font-size: 15px;
-  }
-
-  .tries {
-    grid-template-columns: 1fr;
-    gap: 0;
-    margin-top: var(--s-6);
-    border-top: 1px solid var(--line);
-  }
-
-  .try {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-rows: auto auto auto;
-    align-items: center;
-    gap: 4px var(--s-3);
-    min-height: 60px;
-    padding: var(--s-3) 0;
-    border: 0;
-    border-bottom: 1px solid var(--line);
-    border-radius: 0;
-    background: none;
-    backdrop-filter: none;
-  }
-
-  .try:hover,
-  .try:focus-visible {
-    transform: none;
-    background: none;
-  }
-
-  .try-head {
-    grid-column: 1;
+  .landing .closing-sticky {
+    position: relative;
+    top: auto;
+    min-height: auto;
     justify-content: flex-start;
-  }
-
-  .try-icon {
-    width: 18px;
-    height: 18px;
-  }
-
-  .try-tag {
-    grid-column: 1;
-    padding: 0;
-    border: 0;
-    background: none;
-    font-size: 9.5px;
-  }
-
-  .try b {
-    grid-column: 1;
-    font-size: 17px;
-  }
-
-  .try .try-sub {
-    display: block;
-    grid-column: 1;
-    font-size: 13px;
-    color: var(--fg-2);
-  }
-
-  .try-go {
-    grid-column: 2;
-    grid-row: 1 / span 3;
-    align-self: center;
-    margin: 0;
-    padding: 0;
-    border: 0;
-    font-size: 0; /* the words go; the arrow stays */
-  }
-
-  .try-go::after {
-    content: '→';
-    font-size: 20px;
-  }
-
-  .try.unavailable .try-go::after {
-    content: '';
-  }
-
-  /* Where we are: three stacked status cards on phones. */
-  .progress-track {
-    margin-top: var(--s-7);
-  }
-
-  .landing .milestones {
-    grid-template-columns: 1fr;
-    gap: var(--s-3);
-  }
-
-  .landing .milestones li {
-    padding: var(--s-4);
-  }
-
-  .landing .milestones b {
-    font-size: 17px;
-  }
-
-  .footer {
-    gap: var(--s-4);
-    margin-top: var(--s-5);
-    padding: 18px 20px 24px;
-  }
-
-  .footer > p {
-    display: none;
-  }
-
-  .wordmark.big {
-    font-size: 72px;
+    padding: 0 var(--gutter);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .topbar {
+  .topbar,
+  .specs li,
+  .specs span {
     transition: none;
   }
 
   .live-dot,
-  .now .dot,
-  .scroll-cue span {
+  .now .dot {
     animation: none;
   }
 }
 
-/* Phones: every chapter is one screen, with no scroll-driven stretches (they felt stuck under a
-   finger), and arrows move between chapters, and through the Gym's stages (home.js step). */
+/* Floating phone arrows removed so content is never covered on mobile. */
 .phone-arrows {
-  display: none;
+  display: none !important;
 }
 
 @media (max-width: 860px) {
@@ -2467,32 +1992,5 @@ html.is-landing.lenis body {
   .gym,
   .policy {
     height: 100svh;
-  }
-
-  .phone-arrows {
-    position: fixed;
-    right: 14px;
-    bottom: calc(14px + env(safe-area-inset-bottom));
-    z-index: 30;
-    display: grid;
-    gap: 8px;
-  }
-
-  .phone-arrows button {
-    display: grid;
-    place-items: center;
-    width: 48px;
-    height: 48px;
-    padding: 0;
-    border: 1px solid var(--line);
-    border-radius: 50%;
-    background: rgb(8 9 11 / 0.72);
-    backdrop-filter: blur(8px);
-    color: var(--signal);
-    font: 600 20px/1 var(--display);
-  }
-
-  .phone-arrows button:disabled {
-    opacity: 0.25;
   }
 }

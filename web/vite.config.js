@@ -49,8 +49,11 @@ function localPidAnalyzePlugin() {
 }
 
 export default defineConfig({
-  // Relative asset paths so dist/ works from any host and any subfolder, not only the domain root.
-  base: './',
+  // Root-relative asset paths so clean History API routes (e.g. /simulations/luigi_lab4) resolve
+  // /assets/, /media/, and /models/ from root, and Vite serves index.html in SPA mode (matching
+  // Cloudflare Pages native no-404.html SPA fallback without a _redirects infinite loop).
+  base: '/',
+  appType: 'spa',
   plugins: [localPidAnalyzePlugin()],
   resolve: {
     // tridi-physics and tridi-live are links to ../physics and ../data/live, and npm does not

@@ -15,6 +15,9 @@
  * @typedef {object} PoseFrame
  * @property {number} t
  * @property {Joint[]} joints  33 entries in MediaPipe Pose order
+ * @property {Point3D[]} [spine]  4 SMPL-X vertebrae [3, 6, 9, 12] in contract space, anchored to smoothed pelvis (PoseClip v2)
+ * @property {Point3D} [smplx_global_orient]  axis-angle root orientation in contract space (PoseClip v2)
+ * @property {number[]} [smplx_body_pose]  63 floats (21x3 parent-relative axis-angle rotvecs for SMPL-X 1..21, PoseClip v2)
  * @property {{ left: Point3D[] | null, right: Point3D[] | null }} [hands]  21 points per seen hand (PoseClip v2)
  * @property {{ left: number, right: number }} [hands_conf]  detector confidence per hand (0 when unseen)
  * @property {{ left_foot: boolean, right_foot: boolean }} [contacts]  planted feet per frame (PoseClip v2)

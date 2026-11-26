@@ -10,6 +10,9 @@ const POLICIES = new URL('../../training/policies/', import.meta.url);
 const FRAME_S = 1 / 60;
 // A fall: pelvis below 0.5 m, the training's own threshold (training/env.py FALL_HEIGHT).
 const FALL_HEIGHT = 0.5;
+// Uprightness guard: 1.0 deg (0.01745 rad) — prior 300M g1-stand drifted to ~6.0 deg waist_roll / torso lean by t=10..20 s.
+const MAX_TILT_DEG = 1.0;
+const deg = (rad) => (rad * 180) / Math.PI;
 // training/README.md measured for g1-stand (v2, 40 M steps), over 5 starts of 20 s: it stands all
 // 20 s and holds the four shoves (front, left, back, right) up to 250 N, the web button's force.
 const STAND_SECONDS = 20;
@@ -29,8 +32,14 @@ async function policy(name) {
   return createPolicy(ort, sim, new Uint8Array(readFileSync(new URL(`${name}.onnx`, POLICIES))), meta);
 }
 
+function torsoLateralRad(torsoId) {
+  // R[2,1] = world +Z dot torso +Y (sin of torso lateral roll in its own heading frame, yaw-invariant).
+  const s = sim.data.xmat[9 * torsoId + 7];
+  return Math.asin(Math.max(-1, Math.min(1, s)));
+}
+
 // Runs the robot for `seconds` and returns when it fell (s), or null if it stayed up.
-async function run(seconds, { pushAt, angle = 0, newtons } = {}) {
+async function run(seconds, { pushAt, angle = 0, newtons, onFrame } = {}) {
   sim.reset();
   let pushed = false;
   for (let t = 0; t < seconds; t += FRAME_S) {
@@ -39,6 +48,7 @@ async function run(seconds, { pushAt, angle = 0, newtons } = {}) {
       pushed = true;
     }
     await sim.advance(FRAME_S);
+    onFrame?.(t);
     if (sim.bodyPosition('pelvis')[2] < FALL_HEIGHT) return t;
   }
   return null;
@@ -50,9 +60,20 @@ for (const name of Object.keys(ids)) ids[name] = await policy(name);
 console.log('the trained policy (g1-stand)');
 sim.policy = ids['g1-stand'];
 {
-  const fell = await run(STAND_SECONDS);
+  const waistRollAdr = sim.model.jnt_qposadr[sim.id('JOINT', 'waist_roll_joint')];
+  const torsoId = sim.id('BODY', 'torso_link');
+  let maxWaistRoll = 0;
+  let maxTorsoLat = 0;
+  const fell = await run(STAND_SECONDS, {
+    onFrame() {
+      maxWaistRoll = Math.max(maxWaistRoll, Math.abs(sim.data.qpos[waistRollAdr]));
+      maxTorsoLat = Math.max(maxTorsoLat, Math.abs(torsoLateralRad(torsoId)));
+    },
+  });
   expect(fell === null, `stands ${STAND_SECONDS} s with no pushes${fell === null ? '' : ` (fell at ${fell.toFixed(1)} s)`}`);
   expect(Math.abs(sim.bodyPosition('pelvis')[2] - 0.78) < 0.05, `pelvis at ${sim.bodyPosition('pelvis')[2].toFixed(2)} m, standing height`);
+  expect(deg(maxWaistRoll) < MAX_TILT_DEG, `waist_roll stays upright 0..${STAND_SECONDS} s (max ${deg(maxWaistRoll).toFixed(2)} deg, limit ${MAX_TILT_DEG})`);
+  expect(deg(maxTorsoLat) < MAX_TILT_DEG, `torso lateral tilt stays upright 0..${STAND_SECONDS} s (max ${deg(maxTorsoLat).toFixed(2)} deg, limit ${MAX_TILT_DEG})`);
 }
 for (const [newtons, atLeast] of [[150, 4], [250, 4]]) {
   const held = [];

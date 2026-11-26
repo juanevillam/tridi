@@ -84,6 +84,9 @@ Lo produce la captura 2.0 (`data/capture2/to_poseclip.py`, fusionando GVHMR y Wi
     {
       "t": 0.0,
       "joints": [[x, y, z, visibility], ...],  // 33 entradas
+      "spine": [[x, y, z], ...],               // opcional; 4 vértebras SMPL-X [3, 6, 9, 12] (spine1, spine2, spine3, neck) en el espacio del contrato, ancladas al punto medio de caderas suavizado
+      "smplx_global_orient": [rx, ry, rz],     // opcional; orientación global de la pelvis (axis-angle) en el espacio del contrato
+      "smplx_body_pose": [...],                // opcional; 63 flotantes (21 × 3 rotvecs locales padre-relativos para articulaciones SMPL-X 1..21, con muñecas WiLoR en índices 19, 20 cuando se vieron)
       "hands": {                           // opcional; 21 puntos por mano vista, en el mismo espacio que joints
         "left": null,                      // null si no se vio o no coincidió con la muñeca del sujeto
         "right": [[x, y, z], ...]          // 0 muñeca, 1-4 pulgar, 5-8 índice, 9-12 mayor, 13-16 anular, 17-20 meñique

@@ -100,11 +100,21 @@ class Stance:
     rate: float = 0.005  # per unit of squared action change: 0.005 is what g1-stand learned with (0.5 % of its reward); 0.02 is the usual share
     calm_s: float = 1.0  # a push's recovery takes 1.0-1.8 s (measured on g1-stand); the first second is free
     capture: float = 0.0  # bonus for placing the support / stepping foot under the Capture Point p + tau * v (0.25 in stand v2)
+    waist_roll: float = 0.0  # per rad^2 of waist_roll_joint deviation when calm: 10.0 costs 0.11/step at 6 deg without clamping total reward
+    waist_yaw: float = 0.0  # per rad^2 of waist_yaw_joint deviation when calm: 2.0 centers the 9 deg twist seen in stand-300m
+    torso_upright: float = 0.0  # bonus weight for torso_link verticality (exp(-tilt^2/0.01)): 0.25 loses 0.17/step at 6 deg torso lean
 
 
 # Stand v2 default reward preset (--reward v2): Capture-Point stepping recovery during a shove +
 # quiet two-foot planted stance when calm.
 STANCE_V2 = Stance(turn=0.3, feet=0.5, planted=0.1, rate=0.02, calm_s=1.0, capture=0.05)
+
+# Stand straight preset (--reward straight): keeps STANCE_V2 push recovery + low rate=0.005 while
+# centering waist_roll/waist_yaw and keeping torso_link upright.
+STANCE_STRAIGHT = Stance(
+    turn=0.3, feet=0.5, planted=0.1, rate=0.005, calm_s=1.0, capture=0.05,
+    waist_roll=10.0, waist_yaw=2.0, torso_upright=0.25,
+)
 
 
 # A foot is planted when its ankle is within this of where it rests when standing: a tap lifts it
@@ -161,6 +171,10 @@ class G1Env:
         self.fall_height = FALL_HEIGHT * self.stand_height / STAND_HEIGHT
         self.ctrl_low, self.ctrl_high = self.model.actuator_ctrlrange.T.copy()
         self.torso = self.model.body(torso).id
+        wr_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, "waist_roll_joint")
+        wy_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, "waist_yaw_joint")
+        self.waist_roll_qadr = int(self.model.jnt_qposadr[wr_id]) if wr_id >= 0 else None
+        self.waist_yaw_qadr = int(self.model.jnt_qposadr[wy_id]) if wy_id >= 0 else None
         self.prev_ctrl = self.default.copy()
         self.steps = 0
         self.next_push = 0
@@ -315,6 +329,16 @@ class G1Env:
             dt = self.decimation * self.model.opt.timestep
             speed2 = np.sum((self.data.xpos[self.feet, :2] - self.prev_feet) ** 2) / dt**2
             terms["feet"] = -w.feet * speed2 * float(calm)
+        if w.torso_upright:
+            # Tighter than pelvis upright (0.01 = (0.1 rad)^2 vs 0.04): catches upper-body lean even when pelvis is flat.
+            tg = gravity_in_body(self.data.xquat[self.torso])
+            terms["torso_upright"] = w.torso_upright * float(np.exp(-(tg[0] ** 2 + tg[1] ** 2) / 0.01))
+        if w.waist_roll and self.waist_roll_qadr is not None:
+            wr_err = float(qpos[self.waist_roll_qadr] - self.home_qpos[self.waist_roll_qadr])
+            terms["waist_roll"] = -w.waist_roll * (wr_err ** 2) * float(calm)
+        if w.waist_yaw and self.waist_yaw_qadr is not None:
+            wy_err = float(qpos[self.waist_yaw_qadr] - self.home_qpos[self.waist_yaw_qadr])
+            terms["waist_yaw"] = -w.waist_yaw * (wy_err ** 2) * float(calm)
         total = max(sum(terms.values()), 0.0)
         return float(total), terms
 

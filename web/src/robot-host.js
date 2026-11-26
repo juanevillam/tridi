@@ -14,6 +14,8 @@ canvas.setAttribute('aria-label', '3D MuJoCo physics simulation viewport');
 
 let ready = null;
 let view = null;
+let activeAttachment = 0;
+let attachQueue = Promise.resolve();
 let progress = { done: 0, total: 1, compiling: false };
 const listeners = new Set();
 const notify = () => listeners.forEach((listener) => listener(progress));
@@ -59,37 +61,53 @@ export function onRobotProgress(listener) {
  */
 export function attachRobot(pane) {
   pane.prepend(canvas);
+  const token = ++activeAttachment;
   let attached = true;
-  const handed = loadRobot().then(async (loaded) => {
-    if (!attached) return null;
-    const onSims = /^#\/(simulations|simulaciones)(\/|$)/.test(location.hash);
-    if (!onSims) {
-      clearStageProps(loaded);
-      if (loaded.scene?.()) {
-        await loaded.setScene(null);
-      }
-      if (loaded.world?.() && loaded.world().id !== 'plano') {
-        await loaded.setWorld(WORLDS.find((world) => world.id === 'plano'));
-      }
-      if (loaded.sim?.policy?.robot && loaded.sim.policy.robot !== 'unitree_g1') {
-        try {
-          const { onnx, json } = policyUrls(FINAL_LEVEL);
-          await loaded.loadPolicy(onnx, json);
-        } catch (error) {
-          console.error(error);
+  const stillActive = () => attached && token === activeAttachment;
+  view?.cancelPending?.();
+  const handed = (attachQueue = attachQueue
+    .catch(() => {})
+    .then(() => loadRobot())
+    .then(async (loaded) => {
+      if (!stillActive()) return null;
+      await loaded.cancelPending?.();
+      if (!stillActive()) return null;
+      const onSims = /^\/(simulations|simulaciones)(\/|$)/.test(location.pathname) || /^#\/(simulations|simulaciones)(\/|$)/.test(location.hash);
+      if (!onSims) {
+        clearStageProps(loaded);
+        if (loaded.scene?.()) {
+          await loaded.setScene(null);
+          if (!stillActive()) return null;
+        }
+        if (loaded.world?.() && loaded.world().id !== 'plano') {
+          await loaded.setWorld(WORLDS.find((world) => world.id === 'plano'));
+          if (!stillActive()) return null;
+        }
+        const nonG1Policy = Boolean(loaded.sim?.policy?.robot && loaded.sim.policy.robot !== 'unitree_g1');
+        const customScene = /^(unitree_h1|luigi_lab3|luigi_lab4|factory_cell)\//.test(loaded.sim?.sceneFile ?? '');
+        // Restore FINAL_LEVEL whenever sim.policy is missing (even if G1 nq >= 36) so the robot never lacks balance control.
+        const missingPolicy = !loaded.sim?.policy;
+        const nonFinalPolicy = Boolean(loaded.sim?.policy?.id && loaded.sim.policy.id !== FINAL_LEVEL);
+        if (nonG1Policy || customScene || missingPolicy || nonFinalPolicy) {
+          try {
+            const { onnx, json } = policyUrls(FINAL_LEVEL);
+            await loaded.loadPolicy(onnx, json);
+          } catch (error) {
+            console.error(error);
+          }
+          if (!stillActive()) return null;
         }
       }
-      if (!attached) return null;
-    }
-    loaded.stop(); // ends a clip or a camera copy and stands the robot up
-    loaded.setSpeed(1);
-    loaded.play();
-    return loaded;
-  });
+      loaded.stop(); // ends a clip or a camera copy and stands the robot up
+      loaded.setSpeed(1);
+      loaded.play();
+      return loaded;
+    }));
   return {
     ready: handed,
     detach() {
       attached = false;
+      view?.cancelPending?.();
       if (canvas.parentNode === pane) canvas.remove();
     },
   };

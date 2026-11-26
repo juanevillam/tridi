@@ -3,14 +3,16 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// MediaPipe Pose bones between the 33 landmarks plus 8 derived anatomical trunk landmarks:
-// 33 pelvis root, 34 lumbar spine (L3), 35 thoracic spine (T8), 36 sternum / neck base (C7),
-// 37-38 left/right clavicles, 39-40 left/right ribcage flanks. The face has no individual bones:
-// pose() draws a head and a neck from the sternum (36) in their place.
-const TOTAL_BODY_JOINTS = 41;
+// MediaPipe Pose bones between the 33 landmarks plus 9 anatomical trunk landmarks:
+// 33 pelvis root, 34 lumbar spine (L3 / SMPL-X 3), 35 thoracic spine (T8 / SMPL-X 6),
+// 36 sternum / spine3 (SMPL-X 9), 37-38 left/right clavicles, 39-40 left/right ribcage flanks,
+// 41 neck base (SMPL-X 12 when frame.spine is present, hidden otherwise). The face has no
+// individual bones: pose() draws a head and a neck in their place.
+const TOTAL_BODY_JOINTS = 42;
 const BONES = [
   [23, 33], [33, 24], // pelvic girdle
   [33, 34], [34, 35], [35, 36], // articulated spine (sacrum -> lumbar -> thoracic -> sternum)
+  [36, 41], // chest (SMPL-X 9) -> neck base (SMPL-X 12)
   [11, 37], [37, 36], [36, 38], [38, 12], // clavicles and shoulder girdle
   [23, 39], [39, 11], [24, 40], [40, 12], // lateral torso flanks
   [35, 39], [35, 40], [34, 23], [34, 24], // ribcage and Iliac braces
@@ -72,6 +74,55 @@ const TRAIL_WIDTH_M = 0.04; // a ribbon: a one-pixel line vanished in the landin
  */
 export const SCENE_THEME = { background: 0x2b3034, ground: 0x363c40, gridMajor: 0x5b6368, gridMinor: 0x454c51 }; // --scene in style.css
 
+/**
+ * Builds the 42 body joints (`33` MediaPipe + `9` trunk landmarks `33..41`).
+ * Uses real SMPL-X vertebrae `[3, 6, 9, 12]` when `frame.spine` is present (`34, 35, 36, 41`),
+ * and falls back to `mix()` interpolation with joint `41` hidden (`visibility = 0`) otherwise.
+ * @param {import('./contract.js').PoseFrame} frame
+ * @param {number} [hipBiasY=0]
+ */
+export function buildBodyJoints(frame, hipBiasY = 0) {
+  const rawJoints = frame.joints;
+  const lHip = [rawJoints[23][0], rawJoints[23][1] - 0.5 * hipBiasY, rawJoints[23][2], rawJoints[23][3]];
+  const rHip = [rawJoints[24][0], rawJoints[24][1] + 0.5 * hipBiasY, rawJoints[24][2], rawJoints[24][3]];
+  const lSh = rawJoints[11];
+  const rSh = rawJoints[12];
+  const trunkVis = Math.min(lHip[3], rHip[3], lSh[3], rSh[3]);
+  const mix = (p, qPt, t, v = trunkVis) => [
+    p[0] + (qPt[0] - p[0]) * t,
+    p[1] + (qPt[1] - p[1]) * t,
+    p[2] + (qPt[2] - p[2]) * t,
+    v,
+  ];
+  const pelvis = mix(lHip, rHip, 0.5, Math.min(lHip[3], rHip[3])); // 33: pelvis root / sacrum
+  const hasSpine =
+    Array.isArray(frame.spine) &&
+    frame.spine.length === 4 &&
+    frame.spine.every((p) => Array.isArray(p) && p.length >= 3 && Number.isFinite(p[0]) && Number.isFinite(p[1]) && Number.isFinite(p[2]));
+  let lumbar;
+  let thoracic;
+  let sternum;
+  let neckBase;
+  if (hasSpine) {
+    lumbar = [frame.spine[0][0], frame.spine[0][1], frame.spine[0][2], trunkVis]; // 34: SMPL-X 3 (spine1)
+    thoracic = [frame.spine[1][0], frame.spine[1][1], frame.spine[1][2], trunkVis]; // 35: SMPL-X 6 (spine2)
+    sternum = [frame.spine[2][0], frame.spine[2][1], frame.spine[2][2], trunkVis]; // 36: SMPL-X 9 (spine3)
+    neckBase = [frame.spine[3][0], frame.spine[3][1], frame.spine[3][2], trunkVis]; // 41: SMPL-X 12 (neck)
+  } else {
+    sternum = mix(lSh, rSh, 0.5, Math.min(lSh[3], rSh[3])); // 36: sternum / neck base (C7)
+    lumbar = mix(pelvis, sternum, 0.33); // 34: lumbar spine (L3)
+    thoracic = mix(pelvis, sternum, 0.67); // 35: thoracic spine (T8)
+    neckBase = [0, 0, 0, 0]; // 41: hidden when frame.spine is absent
+  }
+  const lClavicle = mix(sternum, lSh, 0.5, Math.min(lSh[3], rSh[3])); // 37: left clavicle
+  const rClavicle = mix(sternum, rSh, 0.5, Math.min(lSh[3], rSh[3])); // 38: right clavicle
+  const lRib = mix(lHip, lSh, 0.55, Math.min(lHip[3], lSh[3])); // 39: left ribcage flank
+  const rRib = mix(rHip, rSh, 0.55, Math.min(rHip[3], rSh[3])); // 40: right ribcage flank
+  const joints = rawJoints.map((pt, idx) => (idx === 23 ? lHip : idx === 24 ? rHip : pt));
+  joints.push(pelvis, lumbar, thoracic, sternum, lClavicle, rClavicle, lRib, rRib, neckBase);
+  return { joints, hasSpine };
+}
+
 export class SkeletonView {
   constructor(canvas) {
     this.canvas = canvas;
@@ -131,11 +182,10 @@ export class SkeletonView {
     this.body.add(this.bones, this.joints, this.handBones, this.handJoints, this.head, this.neck);
 
     this.camera = new THREE.PerspectiveCamera(40, 1, 0.05, 100);
-    // Distance ~3.14 m so the 1.70 m human skeleton fills the exact same vertical frame proportion (~73%)
-    // as the 1.32 m G1 robot at ~2.49 m in Viewer.
-    this.camera.position.set(2.55, 1.45, 1.75);
+    // Matched 1:1 vertical baseline & elevation (~10 deg) to the G1 robot pane (stage.js).
+    this.camera.position.set(2.62, 1.42, 1.8);
     this.controls = new OrbitControls(this.camera, renderer.domElement);
-    this.controls.target.set(0, 0.9, 0);
+    this.controls.target.set(0, 0.85, 0);
     this.controls.enableDamping = true;
     this.controls.maxPolarAngle = Math.PI / 2 - 0.05;
     this.controls.minDistance = 0.8;
@@ -225,32 +275,12 @@ export class SkeletonView {
     return this.clip.frames[this.indexAt(time)];
   }
 
-  pose({ joints: rawJoints, hands }) {
+  pose(frame) {
+    const { hands } = frame;
     const { a, b, dir, m, q, s } = this.tmp;
     const fineLeft = !!hands?.left;
     const fineRight = !!hands?.right;
-    const hipBias = this.hipBiasY || 0;
-    const lHip = [rawJoints[23][0], rawJoints[23][1] - 0.5 * hipBias, rawJoints[23][2], rawJoints[23][3]];
-    const rHip = [rawJoints[24][0], rawJoints[24][1] + 0.5 * hipBias, rawJoints[24][2], rawJoints[24][3]];
-    const lSh = rawJoints[11];
-    const rSh = rawJoints[12];
-    const trunkVis = Math.min(lHip[3], rHip[3], lSh[3], rSh[3]);
-    const mix = (p, qPt, t, v = trunkVis) => [
-      p[0] + (qPt[0] - p[0]) * t,
-      p[1] + (qPt[1] - p[1]) * t,
-      p[2] + (qPt[2] - p[2]) * t,
-      v,
-    ];
-    const pelvis = mix(lHip, rHip, 0.5, Math.min(lHip[3], rHip[3])); // 33: pelvis root / sacrum
-    const sternum = mix(lSh, rSh, 0.5, Math.min(lSh[3], rSh[3])); // 36: sternum / neck base (C7)
-    const lumbar = mix(pelvis, sternum, 0.33); // 34: lumbar spine (L3)
-    const thoracic = mix(pelvis, sternum, 0.67); // 35: thoracic spine (T8)
-    const lClavicle = mix(sternum, lSh, 0.5, Math.min(lSh[3], rSh[3])); // 37: left clavicle
-    const rClavicle = mix(sternum, rSh, 0.5, Math.min(lSh[3], rSh[3])); // 38: right clavicle
-    const lRib = mix(lHip, lSh, 0.55, Math.min(lHip[3], lSh[3])); // 39: left ribcage flank
-    const rRib = mix(rHip, rSh, 0.55, Math.min(rHip[3], rSh[3])); // 40: right ribcage flank
-    const joints = rawJoints.map((pt, idx) => (idx === 23 ? lHip : idx === 24 ? rHip : pt));
-    joints.push(pelvis, lumbar, thoracic, sternum, lClavicle, rClavicle, lRib, rRib);
+    const { joints, hasSpine } = buildBodyJoints(frame, this.hipBiasY || 0);
 
     const coarseHidden = (i) => (fineLeft && COARSE_HAND_POINTS.left.has(i)) || (fineRight && COARSE_HAND_POINTS.right.has(i));
     const drawn = (i) => !coarseHidden(i) && (ARM_POINTS.has(i) || joints[i][3] >= MIN_VISIBILITY);
@@ -303,7 +333,8 @@ export class SkeletonView {
       a.fromArray(joints[EARS[0]]).add(b.fromArray(joints[EARS[1]])).multiplyScalar(0.5);
       a.lerp(b.fromArray(joints[NOSE]), HEAD_FORWARD);
       head.position.copy(a);
-      b.fromArray(joints[SHOULDERS[0]]).add(dir.fromArray(joints[SHOULDERS[1]])).multiplyScalar(0.5);
+      if (hasSpine && joints[41][3] >= MIN_VISIBILITY) b.fromArray(joints[41]);
+      else b.fromArray(joints[SHOULDERS[0]]).add(dir.fromArray(joints[SHOULDERS[1]])).multiplyScalar(0.5);
       dir.subVectors(a, b);
       const length = Math.max(0, dir.length() - HEAD_RADIUS);
       neck.quaternion.setFromUnitVectors(this.up, dir.normalize());

@@ -90,6 +90,8 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
     obs[3] = -2 * (x * z - w * y);
     obs[4] = -2 * (y * z + w * x);
     obs[5] = -(1 - 2 * (x * x + y * y));
+    // Note: assumes 1:1 <worldbody>-to-<actuator> joint ordering (`7 + i`, `6 + i`); future nu > 29
+    // policies (e.g., Dex3 43-DoF / Inspire 51-DoF) must keep joint/actuator order aligned or map via actuator_trnid.
     for (let i = 0; i < nu; i++) {
       obs[6 + i] = qpos[7 + i] - standing[i];
       obs[6 + nu + i] = qvel[6 + i] * JOINT_VEL_SCALE;
@@ -117,6 +119,7 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
     ];
     const toBody = (v, k) => R[k] * v[0] + R[3 + k] * v[1] + R[6 + k] * v[2]; // (R^T v)[k]
     let at = standObs;
+    // Note: assumes 1:1 joint-to-actuator ordering (`next.q[7 + i]`, `q[7 + i]`) for any future nu > 29 policy.
     const next = reference.sample(t + CONTROL_DT);
     for (let i = 0; i < nu; i++) obs[at++] = next.q[7 + i] - standing[i];
     for (let k = 0; k < 3; k++) obs[at++] = toBody(next.rootVel, k);
@@ -153,7 +156,8 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
     const [qw, qx, qy, qz] = [qpos[3], qpos[4], qpos[5], qpos[6]];
     const bodyYaw = Math.atan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy * qy + qz * qz));
     // On luigi_lab4, qpos[9] is the SG90 neck servo angle (-pi/2..+pi/2 rad) rotating the HC-SR04 turret
-    const neckAngle = m.nq >= 10 ? qpos[9] : 0;
+    const neckAngle = m.nq >= 10 && Number.isFinite(qpos[9]) ? qpos[9] : 0;
+    const neckDeg = (neckAngle * 180) / Math.PI;
     const yaw = bodyYaw + neckAngle;
     const mountOffset = m.nq >= 10 ? 0.180 : 0.155;
     const sx = rx + mountOffset * Math.cos(bodyYaw);
@@ -215,7 +219,7 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
     const leftClearM = rays[4] + rays[5] + rays[6];
     const rightClearM = rays[0] + rays[1] + rays[2];
     const irProx = Math.max(12, Math.min(255, Math.round(18 + 235 * Math.pow(Math.max(0, 1 - centerMinM / 0.58), 2))));
-    return { sx, sy, sz, yaw, rays, distCm, irProx, leftClearM, rightClearM };
+    return { sx, sy, sz, yaw, rays, distCm, irProx, leftClearM, rightClearM, neckDeg };
   }
 
   // Starts the clip over at its end, or a moment after a fall. True if it did (sim.reset() was called).
@@ -678,18 +682,19 @@ export async function createPolicy(ort, sim, onnx, meta, { motion } = {}) {
       if (mimic && sim._inAdvance && !sim.pushUntil) {
         // Blend the clean reference joints with the ONNX reflex residual: 6% residual when upright
         // so full-amplitude human motion is preserved without 50 Hz motor chatter, while keeping
-        // the waist (joints 12..14 on G1) upright and velocity-damped against forward lean.
+        // the waist (joints 12..14 on G1, regardless of nu=29/43/51) upright and velocity-damped.
+        // Note: `next.q[7 + i]` / `data.qvel[6 + i]` assume 1:1 joint-to-actuator order in future nu > 29 MJCFs.
         const next = reference.sample(t + CONTROL_DT);
         const reflex = Math.min(0.22, Math.max(0.05, (1 - upright - 0.04) / 0.25));
         for (let i = 0; i < nu; i++) {
           const refJ = next.q[7 + i];
           const jv = data.qvel[6 + i] || 0;
           let target;
-          if (nu === 29 && i === 12) {
+          if (meta.robot === 'unitree_g1' && i === 12) {
             target = 0.85 * refJ - 0.08 * jv;
-          } else if (nu === 29 && i === 13) {
+          } else if (meta.robot === 'unitree_g1' && i === 13) {
             target = 0.45 * refJ - 0.12 * jv;
-          } else if (nu === 29 && i === 14) {
+          } else if (meta.robot === 'unitree_g1' && i === 14) {
             target = Math.min(0.08, 0.55 * refJ) - 0.02 - 0.12 * jv;
           } else {
             target = (1 - reflex) * refJ + reflex * ctrl[i];

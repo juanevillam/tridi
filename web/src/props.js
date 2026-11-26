@@ -235,11 +235,10 @@ export async function syncSitChair(view, show) {
     const copy = template.clone();
     copy.name = 'tridi-sit-bench';
     const s = template.userData.size;
-    // In chair.glb (after loadModel's z-up turn), the backrest is at +y and seat height is 0.511 of total z.
-    // Rotating +90 deg around Z puts the backrest at -x (behind the robot) and seat at z = 0.43 m.
+    // Aligned 1:1 with SIT_CHAIR_SCENE MuJoCo collision boxes (seat z = 0.42 m, backrest at x = -0.46 m).
     copy.scale.set(0.52 / s.x, 0.50 / s.y, 0.84 / s.z);
     copy.rotation.z = Math.PI / 2;
-    copy.position.set(-0.25, -0.03, 0.42);
+    copy.position.set(-0.26, -0.03, 0.42);
     world.add(copy);
   } catch (err) {
     console.error(err);

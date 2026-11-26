@@ -30,7 +30,9 @@ export async function createDex3Hands(viewer, sim, handSpec = hands) {
   const geometries = new Map(
     await Promise.all(
       [...names].map(async (mesh) => {
-        const geometry = loader.parse(await (await fetch(urlOf(mesh))).arrayBuffer());
+        const res = await fetch(urlOf(mesh));
+        if (!res.ok) throw new Error(`Dex3 STL ${mesh}: HTTP ${res.status}`);
+        const geometry = loader.parse(await res.arrayBuffer());
         return [mesh, geometry];
       }),
     ),
@@ -67,20 +69,29 @@ export async function createDex3Hands(viewer, sim, handSpec = hands) {
       joints.set(b.joint, { group: turn, axis: new THREE.Vector3(...b.axis) });
     }
     viewer.world.add(root);
-    rigs[side] = { root, joints, material, wrist: `${side}_wrist_yaw_link` };
+    rigs[side] = { root, joints, material, wrist: `${side}_wrist_yaw_link`, wristId: -1 };
   }
 
   let shown = false;
+  let hasWrists = false; // false when the active MuJoCo model is not G1 (no wrist_yaw_link bodies)
   let geomsSeen = null; // the viewer's geoms the rubber hands were looked up in (a new model rebuilds them)
   let rubber = [];
 
   // The rubber hand geoms in the drawn robot, and the robot's own color for the Dex3 hands.
   function findRubberHands() {
     geomsSeen = viewer.geoms;
-    const { model } = sim;
+    const { mujoco, model } = sim;
+    const OBJ_BODY = mujoco.mjtObj.mjOBJ_BODY.value;
     rubber = [];
+    hasWrists = true;
     for (const rig of Object.values(rigs)) {
-      const wrist = sim.id('BODY', rig.wrist);
+      const wrist = mujoco.mj_name2id(model, OBJ_BODY, rig.wrist);
+      if (wrist < 0) {
+        rig.wristId = -1;
+        hasWrists = false;
+        continue;
+      }
+      rig.wristId = wrist;
       for (const { id, object } of viewer.geoms) {
         if (model.geom_bodyid[id] !== wrist) continue;
         if (model.geom_pos[3 * id] > RUBBER_HAND_X) rubber.push(object);
@@ -91,10 +102,11 @@ export async function createDex3Hands(viewer, sim, handSpec = hands) {
 
   return {
     show(on) {
-      shown = on;
       if (geomsSeen !== viewer.geoms) findRubberHands();
-      for (const object of rubber) object.visible = !on;
-      for (const rig of Object.values(rigs)) rig.root.visible = on;
+      const active = Boolean(on && hasWrists);
+      shown = active;
+      for (const object of rubber) object.visible = !active;
+      for (const rig of Object.values(rigs)) rig.root.visible = active;
     },
     /** The finger joints of one side (joint name -> angle, rad); a missing joint stays as it was. */
     setFingers(side, angles) {
@@ -106,9 +118,11 @@ export async function createDex3Hands(viewer, sim, handSpec = hands) {
     update() {
       if (!shown) return;
       if (geomsSeen !== viewer.geoms) this.show(true); // the robot was redrawn (another model)
+      if (!shown || !hasWrists) return;
       const { xpos, xquat } = sim.data;
       for (const rig of Object.values(rigs)) {
-        const id = sim.id('BODY', rig.wrist);
+        const id = rig.wristId;
+        if (id < 0) continue;
         rig.root.position.set(xpos[3 * id], xpos[3 * id + 1], xpos[3 * id + 2]);
         rig.root.quaternion.set(xquat[4 * id + 1], xquat[4 * id + 2], xquat[4 * id + 3], xquat[4 * id]);
       }

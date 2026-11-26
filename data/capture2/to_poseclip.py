@@ -338,6 +338,14 @@ def build_poseclip_v2(npz: Path, hands_npz: Path | None = None, raw: bool = Fals
         fused_all = world_body_all
     fused_turned = turn_y(fused_all, angle)
 
+    # Anchor SMPL-X vertebrae [3, 6, 9, 12] (spine1, spine2, spine3, neck) to smoothed pelvis.
+    raw_hip_mid = (fused_turned[:, 1] + fused_turned[:, 2]) / 2
+    rel_spine = fused_turned[:, [3, 6, 9, 12]] - raw_hip_mid[:, None]
+    if not raw:
+        rel_spine = smooth_points(rel_spine, fps)
+    pos_hip_mid = (pos[:, 23] + pos[:, 24]) / 2
+    spine = (pos_hip_mid[:, None] + rel_spine).astype(np.float32)
+
     n = len(pos)
     hand_joints = np.zeros((n, 2, 21, 3), dtype=np.float32)
     for side_idx, side in enumerate(("left", "right")):
@@ -373,6 +381,7 @@ def build_poseclip_v2(npz: Path, hands_npz: Path | None = None, raw: bool = Fals
         "hand_joints": hand_joints,
         "hand_conf": hand_conf,
         "foot_contact": foot_contact,
+        "spine": spine,
         "smplx_betas": smplx_betas,
         "smplx_transl": smplx_transl,
         "smplx_global_orient": smplx_go,
@@ -388,8 +397,8 @@ def poseclip(npz: Path, raw: bool = False, hands_npz: Path | None = None) -> tup
     return res["points"], res["fps"]
 
 
-def write(data: dict, video: str, out_dir: Path) -> Path:
-    """Saves PoseClip v2 clip_<video>-gvhmr.json and .npz; returns the JSON path."""
+def write(data: dict, video: str, out_dir: Path, json_only: bool = False) -> Path:
+    """Saves PoseClip v2 clip_<video>-gvhmr.json (and .npz unless json_only); returns the JSON path."""
     out_dir.mkdir(parents=True, exist_ok=True)
     clip_id = f"clip_{video}-gvhmr"
     points = data["points"]
@@ -398,6 +407,9 @@ def write(data: dict, video: str, out_dir: Path) -> Path:
     hand_conf = data["hand_conf"]
     foot_contact = data["foot_contact"]
     has_hands = data["has_hands"]
+    spine = data.get("spine")
+    smplx_go = data.get("smplx_global_orient")
+    smplx_bp = data.get("smplx_body_pose")
 
     n = len(points)
     t = np.arange(n) / fps
@@ -416,6 +428,12 @@ def write(data: dict, video: str, out_dir: Path) -> Path:
             "joints": joints[i].round(4).tolist(),
             "contacts": {"left_foot": bool(foot_contact[i, 0]), "right_foot": bool(foot_contact[i, 1])},
         }
+        if spine is not None:
+            frame["spine"] = spine[i].round(4).tolist()
+        if smplx_go is not None:
+            frame["smplx_global_orient"] = smplx_go[i].round(4).tolist()
+        if smplx_bp is not None:
+            frame["smplx_body_pose"] = smplx_bp[i].round(4).tolist()
         if has_hands:
             l_conf, r_conf = float(hand_conf[i, 0]), float(hand_conf[i, 1])
             frame["hands"] = {
@@ -451,24 +469,25 @@ def write(data: dict, video: str, out_dir: Path) -> Path:
     }
     path = out_dir / f"{clip_id}.json"
     path.write_text(json.dumps(clip, separators=(",", ":")))
-    meta = {k: v for k, v in clip.items() if k != "frames"}
-    np.savez_compressed(
-        out_dir / f"{clip_id}.npz",
-        joints=joints.astype(np.float32),
-        t=t.astype(np.float32),
-        valid=np.ones(n, bool),
-        frame_index=np.arange(n),
-        meta=json.dumps(meta),
-        smplx_betas=data["smplx_betas"],
-        smplx_transl=data["smplx_transl"],
-        smplx_global_orient=data["smplx_global_orient"],
-        smplx_body_pose=data["smplx_body_pose"],
-        smplx_left_hand_pose=data["smplx_left_hand_pose"],
-        smplx_right_hand_pose=data["smplx_right_hand_pose"],
-        hand_joints=hand_joints,
-        hand_conf=hand_conf,
-        foot_contact=foot_contact,
-    )
+    if not json_only:
+        meta = {k: v for k, v in clip.items() if k != "frames"}
+        np.savez_compressed(
+            out_dir / f"{clip_id}.npz",
+            joints=joints.astype(np.float32),
+            t=t.astype(np.float32),
+            valid=np.ones(n, bool),
+            frame_index=np.arange(n),
+            meta=json.dumps(meta),
+            smplx_betas=data["smplx_betas"],
+            smplx_transl=data["smplx_transl"],
+            smplx_global_orient=data["smplx_global_orient"],
+            smplx_body_pose=data["smplx_body_pose"],
+            smplx_left_hand_pose=data["smplx_left_hand_pose"],
+            smplx_right_hand_pose=data["smplx_right_hand_pose"],
+            hand_joints=hand_joints,
+            hand_conf=hand_conf,
+            foot_contact=foot_contact,
+        )
     return path
 
 
@@ -478,12 +497,13 @@ def main() -> None:
     p.add_argument("--hands", type=Path, help="explicit .wilor.npz (default: auto-detected next to .gvhmr.npz or in hands/)")
     p.add_argument("--out-dir", type=Path, help="default: clips/ next to the .npz")
     p.add_argument("--raw", action="store_true", help="no smoothing (GVHMR as it comes)")
+    p.add_argument("--json-only", action="store_true", help="write only .json (skip .npz)")
     args = p.parse_args()
     for npz in args.npz:
         video = npz.name.split(".")[0]
         hands_npz = find_hands_npz(npz, args.hands)
         data = build_poseclip_v2(npz, hands_npz=hands_npz, raw=args.raw)
-        path = write(data, video, args.out_dir or npz.parent / "clips")
+        path = write(data, video, args.out_dir or npz.parent / "clips", json_only=args.json_only)
         hands_note = ""
         if data["has_hands"]:
             lr = (data["hand_conf"][:, 0] > 0).mean()

@@ -25,6 +25,7 @@ export const { T, t, A, L, X, S } = dict({
   noWind: { es: 'sin viento', en: 'no wind' },
   pause: { es: 'Pausa', en: 'Pause' },
   play: { es: 'Reproducir', en: 'Play' },
+  resetView: { es: 'Centrar vista', en: 'Reset view' },
   modeLearnedWide: {
     es: 'Con física el robot lo hace solo, con sus motores, resistiendo empujones. Sin física lo repite como un títere.',
     en: 'With physics the robot does it on its own, with its motors, resisting pushes. Without physics it replays it like a puppet.',

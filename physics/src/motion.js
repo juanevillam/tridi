@@ -26,6 +26,19 @@ const HEADING_WINDOW_S = 3;
 const DECIMALS = 5;
 
 const round = (v) => Math.round(v * 10 ** DECIMALS) / 10 ** DECIMALS;
+// Zero-allocation element-wise finiteness check before trusting optional SMPL-X frame arrays.
+const allFinite = (arr, n) => {
+  if (!(Array.isArray(arr) || ArrayBuffer.isView(arr)) || arr.length < n) return false;
+  for (let i = 0; i < n; i++) if (!Number.isFinite(arr[i])) return false;
+  return true;
+};
+// Validate and convert a 21-point [x, y, z] tuple array (contract space) to MediaPipe-axis objects.
+export const toHandPoints = (arr) =>
+  Array.isArray(arr) &&
+  arr.length >= 21 &&
+  arr.every((p) => Array.isArray(p) && p.length >= 3 && Number.isFinite(p[0]) && Number.isFinite(p[1]) && Number.isFinite(p[2]))
+    ? arr.map(([x, y, z]) => ({ x, y: -y, z: -z }))
+    : null;
 
 /**
  * @param mujoco  the loaded @mujoco/mujoco module
@@ -97,10 +110,16 @@ function* retargetSteps(mujoco, model, clip, { mirror = false } = {}) {
       // The tracker and the solver read MediaPipe's own axes (y down, z away from the camera).
       const world = frame.joints.map(([x, y, z, visibility]) => ({ x, y: -y, z: -z, visibility }));
       const hands = frame.hands && {
-        left: frame.hands.left?.map(([x, y, z]) => ({ x, y: -y, z: -z })) ?? null,
-        right: frame.hands.right?.map(([x, y, z]) => ({ x, y: -y, z: -z })) ?? null,
+        left: toHandPoints(frame.hands.left),
+        right: toHandPoints(frame.hands.right),
       };
-      const result = retargeter.solve(tracker.update(world, world, frame.t), { travelYaw: travelHeading(frames, hips, i), hands });
+      const smplx = allFinite(frame.smplx_body_pose, 63)
+        ? {
+            globalOrient: allFinite(frame.smplx_global_orient, 3) ? frame.smplx_global_orient : null,
+            bodyPose: frame.smplx_body_pose,
+          }
+        : undefined;
+      const result = retargeter.solve(tracker.update(world, world, frame.t), { travelYaw: travelHeading(frames, hips, i), hands, smplx });
       const qpos = Array.from(result.qpos, round);
       qpos[0] = round(scale * (hips[i][0] - hips[0][0]));
       qpos[1] = round(scale * (hips[i][1] - hips[0][1]));

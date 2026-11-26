@@ -25,12 +25,11 @@ export const PHONE_BATCH_MS = 50;
 // server's 64 KB per batch.
 const PENDING_MAX = 30;
 
-// The camera image the Mac shows under the skeleton (docs/contrato.md): 15 fps is every other frame
-// and reads as video; 480 px on the long side fills half a laptop screen; JPEG at 60 % is ~15 to
-// 25 KB. Together ~300 KB/s through the tunnel, while the phone still runs MediaPipe at 30 fps.
-export const IMAGE_FPS = 15;
-const IMAGE_LONG_SIDE = 480;
-const IMAGE_QUALITY = 0.6;
+// Optional low-bandwidth preview cap: 2 fps at 240 px (~6 KB/s) so tunnel bandwidth stays tiny
+// if a caller enables image previews; phone.js sends pose-only (~1 KB/frame) by default.
+export const IMAGE_FPS = 2;
+const IMAGE_LONG_SIDE = 240;
+const IMAGE_QUALITY = 0.45;
 
 // Only the newest frames of a batch keep their image: 4 frames hold 2 images at 15 fps, a normal
 // batch. A batch that piled up behind a slow upload sends its older frames without images: the Mac
@@ -119,6 +118,12 @@ export function toFrame(pose, t = performance.now() / 1000, jpeg = null) {
       right: pose.hands.right ? pose.hands.right.map((p) => [mm(p.x), mm(p.y), mm(p.z)]) : null,
     };
   }
+  if (pose?.handLandmarks && (pose.handLandmarks.left || pose.handLandmarks.right)) {
+    frame.hand_image = {
+      left: pose.handLandmarks.left ? pose.handLandmarks.left.map((p) => [tenThousandth(p.x), tenThousandth(p.y)]) : null,
+      right: pose.handLandmarks.right ? pose.handLandmarks.right.map((p) => [tenThousandth(p.x), tenThousandth(p.y)]) : null,
+    };
+  }
   if (jpeg) frame.jpeg = jpeg;
   return frame;
 }
@@ -161,7 +166,21 @@ export function toPose(frame) {
         right: frame.hands.right ? frame.hands.right.map(([x, y, z]) => ({ x, y, z })) : null,
       }
     : undefined;
-  return { landmarks, world: frame.world.map(([x, y, z]) => ({ x, y, z })), visible, t: frame.t, ...(hands ? { hands } : {}) };
+  const handLandmarks =
+    frame.hand_image && (frame.hand_image.left || frame.hand_image.right)
+      ? {
+          left: frame.hand_image.left ? frame.hand_image.left.map(([x, y]) => ({ x, y })) : null,
+          right: frame.hand_image.right ? frame.hand_image.right.map(([x, y]) => ({ x, y })) : null,
+        }
+      : undefined;
+  return {
+    landmarks,
+    world: frame.world.map(([x, y, z]) => ({ x, y, z })),
+    visible,
+    t: frame.t,
+    ...(hands ? { hands } : {}),
+    ...(handLandmarks ? { handLandmarks } : {}),
+  };
 }
 
 /**

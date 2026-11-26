@@ -1,7 +1,6 @@
-// Sube un video (W5 and W6): pick a file, upload it in chunks, follow the server through its
-// stages and let the user pick another person on the first frame. When the movement is ready it
-// goes straight to training (training.js), and the screen follows it to its delivery.
-// The server API is data/live's client (docs/contrato.md); this screen only draws it.
+// Sube un video (#/upload): browser-first local MediaPipe capture (works 24/7 with zero server /
+// Mac tunnel dependency) + optional GPU server mode for high-accuracy 3D (GVHMR + WiLoR), .zip
+// batches, multi-person chooser, and RL policy training.
 import { chooseSubject, fetchClip, firstFrameUrl, UploadError, uploadVideo, watchJob } from '../../../data/live/src/upload.js';
 import { appHeaderHTML, mountAppHeader } from '../header.js';
 import { createVideoOverlay } from '../video-overlay.js';
@@ -12,8 +11,6 @@ import { A, T } from './strings/upload.js';
 
 export { title } from './strings/upload.js';
 
-// The server's limits (docs/contrato.md): checked here first so nobody waits for an upload
-// that will be refused.
 const MAX_BYTES = 60 * 1024 * 1024;
 const MAX_SECONDS = 30;
 const VIDEO_TYPES = /\.(mp4|mov|m4v|webm|zip)$/i;
@@ -26,11 +23,9 @@ const STAGES = [
 ];
 const STAGE_ORDER = { waiting: 1, tracking: 1, pose3d: 2, done: 3, failed: 3 };
 
-// The current upload survives leaving the screen: the server keeps working, and coming back
-// shows where it is. { jobId, filename, job, error, clips }
+// Survives leaving the screen while a server job is running.
 let session = null;
 
-// Markup: the server's own message (escaped; it comes in Spanish) or ours in every language.
 const describeError = (error) => (error instanceof UploadError ? escapeHtml(error.message) : T('lost'));
 
 function videoSeconds(file) {
@@ -41,14 +36,14 @@ function videoSeconds(file) {
       URL.revokeObjectURL(probe.src);
       resolve(probe.duration);
     };
-    probe.onerror = () => resolve(null); // unknown format here; the server decides
+    probe.onerror = () => resolve(null);
     probe.src = URL.createObjectURL(file);
   });
 }
 
 export function mount(root, { api }) {
   root.innerHTML = `
-    <section class="page upload" data-step="checking">
+    <section class="page upload" data-step="pick">
       ${appHeaderHTML({ current: 'upload' })}
       <div class="upload-grid">
         <section class="pane example-pane">
@@ -58,6 +53,13 @@ export function mount(root, { api }) {
           <div data-show="checking"><p class="lead">${T('connecting')}</p></div>
 
           <div data-show="pick">
+            <div class="upload-mode-bar">
+              <div class="upload-mode-toggle" role="group" ${A({ 'aria-label': 'modeAria' })}>
+                <button type="button" class="upload-mode-btn" data-engine="local" aria-pressed="true">${T('modeLocal')}</button>
+                <button type="button" class="upload-mode-btn" data-engine="server" aria-pressed="false" disabled>${T('modeServer')}</button>
+              </div>
+              <p class="upload-server-hint">${T('serverStatusOff')}</p>
+            </div>
             <p class="lead">${T('pickLead')}</p>
             <ul class="tips">
               <li>${T('tipSide')}</li>
@@ -73,7 +75,8 @@ export function mount(root, { api }) {
           </div>
 
           <div data-show="uploading">
-            <h2>${T('uploading')}</h2>
+            <h2 class="upload-heading">${T('uploading')}</h2>
+            <p class="note upload-sub" aria-live="polite"></p>
             <div class="track big"><div class="bar upload-bar"></div></div>
             <p class="upload-percent">0 %</p>
             <button class="cancel" type="button">${T('cancel')}</button>
@@ -96,9 +99,10 @@ export function mount(root, { api }) {
             <p class="lead done-text"></p>
             ${trainBoxHTML()}
             <div class="row">
-              <a class="button primary see-clip" href="#/simulations">${T('seeSim')}</a>
+              <a class="button primary see-clip" href="/simulations">${T('seeSim')}</a>
+              <button class="upload-gpu-btn" type="button" hidden>${T('sendToServer')}</button>
               <button class="again" type="button">${T('again')}</button>
-              <a class="button" href="#/">${T('home')}</a>
+              <a class="button" href="/">${T('home')}</a>
             </div>
           </div>
 
@@ -113,8 +117,8 @@ export function mount(root, { api }) {
             <p class="lead"><span class="only-wide">${T('offWide')}</span><span class="only-narrow">${T('offNarrow')}</span></p>
             <div class="row">
               <button class="primary retry" type="button">${T('retry')}</button>
-              <a class="button" href="#/live">${T('useCamera')}</a>
-              <a class="button" href="#/delivery">${T('seeDelivery')}</a>
+              <a class="button" href="/live">${T('useCamera')}</a>
+              <a class="button" href="/delivery">${T('seeDelivery')}</a>
             </div>
             <p class="note server-url"></p>
           </div>
@@ -126,7 +130,8 @@ export function mount(root, { api }) {
   const page = $('.upload');
   const trainBox = mountTrainBox($('.train-box'), api);
   const show = (step) => (page.dataset.step = step);
-  // The example: the walk the robot learned from, playing with its skeleton over it.
+
+  // Example walk with skeleton overlay in the left pane.
   const example = createVideoOverlay($('.example-pane'));
   example.show('clip_2026-10-23_caminar-perfil_01').catch(console.error);
   let exampleTime = 0;
@@ -137,8 +142,25 @@ export function mount(root, { api }) {
     example.sync(exampleTime, true, 1);
     exampleFrame = requestAnimationFrame(tick);
   });
+
   let gone = false;
   let abort = null;
+  let engine = 'local'; // 'local' (24/7 browser MediaPipe) | 'server' (optional GPU server)
+  let lastLocalFile = null;
+
+  const engineBtns = [...root.querySelectorAll('.upload-mode-btn')];
+  const serverBtn = root.querySelector('[data-engine="server"]');
+  const gpuBtn = $('.upload-gpu-btn');
+
+  function setEngine(next) {
+    engine = next;
+    for (const b of engineBtns) b.setAttribute('aria-pressed', String(b.dataset.engine === next));
+  }
+  for (const b of engineBtns) {
+    b.onclick = () => {
+      if (!b.disabled) setEngine(b.dataset.engine);
+    };
+  }
 
   // Picking a file.
   const input = $('input[type=file]');
@@ -158,24 +180,95 @@ export function mount(root, { api }) {
   for (const button of root.querySelectorAll('.again')) {
     button.onclick = () => {
       session = null;
+      lastLocalFile = null;
+      gpuBtn.hidden = true;
       input.value = '';
       $('.pick-error').innerHTML = '';
       show('pick');
     };
   }
   $('.cancel').onclick = () => abort?.abort();
+  gpuBtn.onclick = () => {
+    if (lastLocalFile && api.ok) startServer(lastLocalFile);
+  };
 
   async function start(file) {
     const refuse = (markup) => ($('.pick-error').innerHTML = markup);
+    refuse('');
     if (!VIDEO_TYPES.test(file.name)) return refuse(T('notVideo'));
     if (file.size > MAX_BYTES) return refuse(T('tooBig', { mb: Math.round(file.size / 1024 / 1024), max: MAX_BYTES / 1024 / 1024 }));
-    if (!/\.zip$/i.test(file.name)) {
+    const isZip = /\.zip$/i.test(file.name);
+    if (!isZip) {
       const seconds = await videoSeconds(file);
       if (seconds > MAX_SECONDS) return refuse(T('tooLong', { seconds: Math.round(seconds), max: MAX_SECONDS }));
     }
 
-    session = { filename: file.name, jobId: null, job: null, clips: [] };
+    if (isZip) {
+      if (!api.ok) return refuse(T('zipNeedsServer'));
+      return startServer(file);
+    }
+
+    if (engine === 'server' && api.ok) {
+      return startServer(file);
+    }
+    return startLocal(file);
+  }
+
+  async function startLocal(file) {
+    lastLocalFile = file;
+    session = null;
+    abort?.abort();
+    abort = new AbortController();
+    $('.upload-heading').innerHTML = T('watching');
+    $('.upload-sub').innerHTML = T('localLoading');
+    $('.upload-bar').style.width = '0%';
+    $('.upload-percent').textContent = '0 %';
     show('uploading');
+
+    try {
+      const { extractPoseClipFromVideo } = await import('tridi-live');
+      const clip = await extractPoseClipFromVideo(file, {
+        signal: abort.signal,
+        onProgress: ({ stage, progress }) => {
+          if (gone) return;
+          if (stage === 'model') {
+            $('.upload-sub').innerHTML = T('localLoading');
+          } else {
+            const pct = Math.round(100 * progress);
+            $('.upload-sub').innerHTML = T('localExtracting');
+            $('.upload-bar').style.width = `${pct}%`;
+            $('.upload-percent').textContent = `${pct} %`;
+          }
+        },
+      });
+      if (gone) return;
+      const name = file.name.replace(/\.[^.]+$/, '');
+      addUserClip(clip, name);
+      $('.done-text').innerHTML = T('doneLocal');
+      $('.see-clip').href = `/simulations/${encodeURIComponent(clip.id)}`;
+      gpuBtn.hidden = !api.ok;
+      const item = { clip: clip.id, data: clip };
+      if (api.ok) trainBox.show(item);
+      show('done');
+    } catch (error) {
+      if (abort.signal.aborted || error?.name === 'AbortError') {
+        if (!gone) show('pick');
+        return;
+      }
+      console.error(error);
+      fail(T('nobody'));
+    }
+  }
+
+  async function startServer(file) {
+    session = { filename: file.name, jobId: null, job: null, clips: [] };
+    gpuBtn.hidden = true;
+    $('.upload-heading').innerHTML = T('uploading');
+    $('.upload-sub').innerHTML = '';
+    $('.upload-bar').style.width = '0%';
+    $('.upload-percent').textContent = '0 %';
+    show('uploading');
+    abort?.abort();
     abort = new AbortController();
     try {
       session.jobId = await uploadVideo(api.url, file, {
@@ -203,7 +296,6 @@ export function mount(root, { api }) {
     show('error');
   }
 
-  // Following the job until it ends; called again after picking another person.
   async function follow() {
     abort?.abort();
     abort = new AbortController();
@@ -229,21 +321,15 @@ export function mount(root, { api }) {
     session.clips.forEach((clip, i) => addUserClip(clip, session.clips.length > 1 ? `${name} (${i + 1})` : name));
     if (gone) return;
     $('.done-text').innerHTML = session.clips.length > 1 ? T('doneMany', { n: session.clips.length }) : T('doneOne');
-    // Straight to training, no button to press. The first movement only: the server trains one at
-    // a time with 3 waiting (docs/contrato.md), and a .zip of several would fill its queue. A clip
-    // that cannot be trained (too little of the body seen) shows why instead; coming back to this
-    // screen does not start it twice (startTraining keeps one run per clip).
     const item = { clip: session.clips[0].id, data: session.clips[0] };
-    $('.see-clip').href = `#/simulations/${encodeURIComponent(session.clips[0].id)}`;
+    $('.see-clip').href = `/simulations/${encodeURIComponent(session.clips[0].id)}`;
     trainBox.show(item);
     if (!cannotTrain(item, api)) startTraining(item, api);
     show('done');
-    // The chooser stays useful for 10 minutes after "done" (the server keeps the video that long).
     render(job);
   }
 
   function render(job) {
-    // The least advanced video sets the step shown; a .zip brings several.
     const videos = job.videos;
     const step = Math.min(...videos.map((v) => STAGE_ORDER[v.stage] ?? 1));
     root.querySelectorAll('.stages li').forEach((li, i) => {
@@ -261,7 +347,6 @@ export function mount(root, { api }) {
     drawChooser(job);
   }
 
-  // People on the first frame: the selected one highlighted, a click picks another (W5.3).
   let chooserFor = null;
   function drawChooser(job) {
     const n = job.videos.findIndex((v) => v.people?.length && v.frame_size);
@@ -295,9 +380,6 @@ export function mount(root, { api }) {
     };
   }
 
-  // Where to start: no server, an upload in progress from before, or a fresh pick.
-  // Off: says which server it tried, and can ask again (the tunnel may just have been slow).
-  // api.url is final once the server was looked for (data/serve.sh publishes where it is).
   const showServer = () =>
     ($('.server-url').innerHTML = api.url ? T('server', { url: escapeHtml(api.url) }) : T('serverOff'));
   $('.retry').onclick = async () => {
@@ -307,25 +389,31 @@ export function mount(root, { api }) {
     $('.retry').disabled = false;
     $('.retry').innerHTML = T('retry');
     showServer();
-    if (!gone && ok) show('pick');
+    if (!gone && ok) {
+      serverBtn.disabled = false;
+      $('.upload-server-hint').innerHTML = T('serverStatusOn');
+      show('pick');
+    }
   };
 
+  // Never block #/upload on server check: local browser mode is ready immediately.
+  // Enable the optional GPU server toggle if/when the tunnel server responds.
   api.checked.then((ok) => {
     if (gone) return;
     showServer();
-    if (!ok) return show('off');
-    if (session?.error) return fail(session.error);
-    if (session?.jobId) return follow();
-    show('pick');
+    serverBtn.disabled = !ok;
+    $('.upload-server-hint').innerHTML = ok ? T('serverStatusOn') : T('serverStatusOff');
+    if (ok && session?.error) return fail(session.error);
+    if (ok && session?.jobId) return follow();
   });
 
   const unHeader = mountAppHeader(root);
   return () => {
     unHeader();
     gone = true;
-    abort?.abort(); // stops polling; the server keeps processing
+    abort?.abort();
     cancelAnimationFrame(exampleFrame);
     example.dispose();
-    trainBox.dispose(); // the training goes on (training.js); coming back shows it again
+    trainBox.dispose();
   };
 }

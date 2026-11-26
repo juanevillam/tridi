@@ -30,6 +30,9 @@ const placeholders = (text) => [...String(text).matchAll(/\{(\w+)\}/g)].map((m) 
 // 1. Check all dict({...}) modules by importing the pure string modules and parsing inline dict({...}).
 const STRING_MODULES = [
   '../src/landing/strings.js',
+  '../src/landing/industrial/strings.js',
+  '../src/landing/rovers/strings.js',
+  '../src/strings-navigation.js',
   '../src/strings-stage.js',
   '../src/strings-training.js',
   '../src/screens/strings/assembler.js',
@@ -39,6 +42,7 @@ const STRING_MODULES = [
   '../src/screens/strings/net.js',
   '../src/screens/strings/phone.js',
   '../src/screens/strings/upload.js',
+  '../src/screens/strings/verticals.js',
 ];
 
 const dictByModule = new Map();

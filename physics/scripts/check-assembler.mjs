@@ -103,6 +103,7 @@ sim.reset();
 for (let i = 0; i < 45; i++) await sim.advance(1 / 60);
 assert(sim.data.qpos[0] > 0.05, `luigi-lab4.onnx policy did not advance robot (x=${sim.data.qpos[0].toFixed(3)} m)`);
 assert(Boolean(sim.sensorReadout) && sim.sensorReadout.distCm > 0, 'luigi-lab4.onnx policy did not populate sensorReadout');
+assert(Number.isFinite(sim.sensorReadout?.neckDeg), 'luigi-lab4.onnx policy did not populate finite sensorReadout.neckDeg');
 console.log(`J-4 luigi-lab4.onnx: drove x=${sim.data.qpos[0].toFixed(3)} m at 50 Hz (obs_dim=${lab4Meta.obs_dim}, nu=${lab4Meta.nu})`);
 sim.policy = null;
 lab4Policy.dispose();

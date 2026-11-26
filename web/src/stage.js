@@ -13,7 +13,7 @@
 // it: the robot then does the clip itself, with physics, from its first pose, and the skeleton
 // follows the robot's clock (view.clipTime) instead of the other way around.
 import * as THREE from 'three';
-import { SCENES, WORLDS } from 'tridi-physics';
+import { SCENES, SIT_CHAIR_SCENE, WORLDS } from 'tridi-physics';
 
 import { savedMotion } from './motions.js';
 import { FINAL_LEVEL, IMITATIONS, imitationOf, policyUrls } from './policies.js';
@@ -31,6 +31,7 @@ export const ICONS = {
   play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>',
   pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" fill="currentColor"/></svg>',
   restart: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12a7 7 0 1 0 2.1-5M5 4v4h4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  camera: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V6a2 2 0 0 1 2-2h3M15 4h3a2 2 0 0 1 2 2v3M20 15v3a2 2 0 0 1-2 2h-3M9 20H6a2 2 0 0 1-2-2v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>',
 };
 // The speed button cycles through these (1 = real time).
 const SPEEDS = [1, 0.5, 0.25];
@@ -43,6 +44,7 @@ const MAX_FRAME_S = 1 / 30;
  * @param root  element holding the stage markup of screens/simulations.js
  */
 export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
+  let disposed = false;
   const $ = (id) => root.querySelector(`#${id}`);
   const skeleton = new SkeletonView($('human'));
   const label = root.querySelector('.robot-pane .pane-label');
@@ -256,6 +258,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
 
   // After any change (checkpoint, world, place): the puppet replay unless the clip moves with physics.
   function resume() {
+    if (disposed) return;
     if (isCustomRobot()) {
       copying = false;
       setRobotLabel();
@@ -272,10 +275,12 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
 
   // With physics, a clip with an imitation policy is shown with it.
   function physicsFor(clip) {
+    if (disposed) return;
     if (isCustomRobot()) return resume();
     const imitation = imitationFor(clip);
     if (physics && imitation && (level !== imitation.id || loadedClipId !== clip?.id)) {
-      $('policy').value = imitation.id;
+      const policyEl = $('policy');
+      if (policyEl) policyEl.value = imitation.id;
       return loadLevel(imitation.id);
     }
     resume();
@@ -284,12 +289,14 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
   // What the world looks like (looks/): redone after every change of world or place.
   let look = null;
   function refreshLook() {
+    if (disposed) return;
     look?.undo();
     look = robot.view ? dressWorld(robot.view) : null;
   }
 
   /** The robot pane's caption: `markup` (from T()) while something loads, else what the robot does. */
   function setRobotLabel(markup) {
+    if (disposed || !label) return;
     if (markup) return void (label.innerHTML = markup);
     const world = robot.view?.world();
     const place = robot.view?.scene();
@@ -308,6 +315,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
   let last = performance.now();
   let lastDodgeStage = -1;
   let frameId = requestAnimationFrame(function frame(now) {
+    if (disposed) return;
     const wall = Math.min(MAX_FRAME_S, Math.max(0, (now - last) / 1000));
     last = now;
     // Imitating, the robot's physics sets the time and the skeleton follows it. Otherwise the
@@ -315,7 +323,8 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     if (imitating() && !isCustomRobot() && robot.view) skeleton.time = robot.view.clipTime();
     else if (playing) skeleton.advance(wall * speed);
     if (copying && robot.view) robot.view.seek(skeleton.time);
-    look?.update(wall);
+    // Pause visual wind / environment animation whenever simulation is paused.
+    if (playing) look?.update(wall * speed);
     // Project 3D component callout tags onto .robot-pane for ALL models on every frame using live MuJoCo body pose & rotation
     if (robot.view?.viewer?.camera && robot.view?.sim) {
       const viewer = robot.view.viewer;
@@ -364,6 +373,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
 
     if ((robotModel === 'luigi_lab3' || robotModel === 'luigi_lab4') && robot.view?.sim?.sensorReadout) {
       const sr = robot.view.sim.sensorReadout;
+      const neckDeg = Number.isFinite(sr.neckDeg) ? sr.neckDeg : 0;
       const elHc = $('sim-hcsr04');
       const elApds = $('sim-apds');
       const elWh = $('sim-wheels');
@@ -373,7 +383,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       if (elHc) elHc.textContent = `${sr.distCm} cm`;
       if (elApds) {
         elApds.textContent = robotModel === 'luigi_lab4'
-          ? `${sr.neckDeg >= 0 ? '+' : ''}${sr.neckDeg.toFixed(1)}°`
+          ? `${neckDeg >= 0 ? '+' : ''}${neckDeg.toFixed(1)}°`
           : `${sr.irProx} / 255`;
       }
       if (elWh) {
@@ -383,7 +393,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       const tagHc = factoryOverlay.querySelector('#fio-rover-hc');
       if (tagHc) {
         tagHc.textContent = robotModel === 'luigi_lab4'
-          ? `${sr.distCm} cm · ${sr.neckDeg >= 0 ? '+' : ''}${sr.neckDeg.toFixed(0)}°`
+          ? `${sr.distCm} cm · ${neckDeg >= 0 ? '+' : ''}${neckDeg.toFixed(0)}°`
           : `${sr.distCm} cm`;
       }
       const tagWh = factoryOverlay.querySelector('#fio-rover-wh');
@@ -520,6 +530,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
   });
 
   function syncRobotDependentUI() {
+    if (disposed) return;
     const custom = isCustomRobot();
     const isRover = robotModel === 'luigi_lab3' || robotModel === 'luigi_lab4';
     const isCell = robotModel === 'factory_cell';
@@ -532,11 +543,12 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     if (label) label.hidden = custom;
     if ($('arduino-box')) $('arduino-box').hidden = !isRover;
     if ($('factory-fault-box')) $('factory-fault-box').hidden = !isCell;
-    if ($('grasp-box')) $('grasp-box').hidden = custom || currentPlace !== 'cocina';
-    if ($('world-field')) $('world-field').hidden = isCell;
+    const noPhys = !custom && !withPhysics();
+    if ($('grasp-box')) $('grasp-box').hidden = custom || noPhys || currentPlace !== 'cocina';
+    if ($('world-field')) $('world-field').hidden = isCell || noPhys;
     const tuneEl = root.querySelector('.tune');
-    if (tuneEl) tuneEl.hidden = isCell;
-    if ($('place-field')) $('place-field').hidden = custom;
+    if (tuneEl) tuneEl.hidden = isCell || noPhys;
+    if ($('place-field')) $('place-field').hidden = custom || noPhys;
     if ($('policy-field')) $('policy-field').hidden = true;
     if ($('physics-mode-group')) $('physics-mode-group').hidden = custom;
     if ($('physics-mode-note')) $('physics-mode-note').hidden = custom;
@@ -604,22 +616,24 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
   // Shows the current clip on the robot. Its RobotMotion comes from the saved ones if there is one;
   // otherwise it is computed in slices, with its progress on the label, so the page keeps working.
   async function copyCurrent() {
+    if (disposed) return;
     const view = robot.view;
     if (!view || !current || isCustomRobot()) return;
     const { clip } = current;
     if (!motions.has(clip.id)) {
       const saved = await savedMotion(clip.id);
+      if (disposed) return;
       if (saved) motions.set(clip.id, saved);
       else {
         setRobotLabel(T('computing'));
         const computed = await view.retarget(clip, {
-          onProgress: (done) => current?.clip === clip && setRobotLabel(T('computingPct', { pct: Math.round(100 * done) })),
+          onProgress: (done) => !disposed && current?.clip === clip && setRobotLabel(T('computingPct', { pct: Math.round(100 * done) })),
         });
-        if (!computed) return; // the user left the screen
+        if (disposed || !computed) return; // the user left the screen
         motions.set(clip.id, computed.motion);
       }
     }
-    if (current?.clip !== clip) return; // the user chose another clip meanwhile
+    if (disposed || current?.clip !== clip) return; // the user chose another clip meanwhile
     motion = motions.get(clip.id);
     if (motion?.qpos?.length && robot.view) {
       const dx = Math.abs(motion.qpos.at(-1)[0] - motion.qpos[0][0]);
@@ -639,11 +653,14 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
 
   // Loads a training checkpoint. It ends the clip (the robot goes physical), so the clip resumes after.
   async function loadLevel(id) {
+    if (disposed) return;
     const view = robot.view;
     if (!view) return;
     const seq = ++loadSeq;
-    $('policy').disabled = true;
-    root.querySelector('.push').disabled = true;
+    const policyEl = $('policy');
+    const pushEl = root.querySelector('.push');
+    if (policyEl) policyEl.disabled = true;
+    if (pushEl) pushEl.disabled = true;
     setRobotLabel(T('loadingPolicy'));
     try {
       const { onnx, json } = policyUrls(id);
@@ -662,9 +679,9 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
         (motions.get(motionId) ??
           (await savedMotion(motionId)) ??
           (imitation.motion ? await savedMotion(imitation.motion) : null));
-      if (seq !== loadSeq) return;
+      if (disposed || seq !== loadSeq) return;
       await view.loadPolicy(onnx, json, imitation && !isCustom ? { motion: learned } : {});
-      if (seq !== loadSeq) return;
+      if (disposed || seq !== loadSeq) return;
       const [px, py] = view.sim.bodyPosition('pelvis');
       if (imitation?.robot === 'factory_cell') {
         view.viewer.targetHeight = 0.42;
@@ -685,11 +702,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
         view.viewer.camera.position.set(px + 2.1, 1.55, -py + 1.85);
         view.viewer.controls.update();
       } else {
-        view.viewer.targetHeight = 0.75;
-        view.viewer.controls.minDistance = 0.65;
-        view.viewer.controls.target.set(px, 0.75, -py);
-        view.viewer.camera.position.set(px + 2.05, 1.25, -py - 1.35);
-        view.viewer.controls.update();
+        alignCameraToClip(current?.clip);
       }
       if (learned?.qpos?.length) {
         const dx = Math.abs(learned.qpos.at(-1)[0] - learned.qpos[0][0]);
@@ -706,20 +719,24 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       refreshLook();
       if (imitation) skeleton.time = 0; // the robot starts the clip from its first pose
     } catch (error) {
-      if (seq !== loadSeq) return;
+      if (disposed || seq !== loadSeq) return;
       console.error(error);
-      $('policy').value = level;
+      const pEl = $('policy');
+      if (pEl) pEl.value = level;
       setRobotLabel(T('policyFailed'));
     } finally {
-      if (seq === loadSeq) {
-        $('policy').disabled = false;
-        root.querySelector('.push').disabled = !robot.view; // never before the robot is there
+      if (!disposed && seq === loadSeq) {
+        const pEl = $('policy');
+        const pBtn = root.querySelector('.push');
+        if (pEl) pEl.disabled = false;
+        if (pBtn) pBtn.disabled = !robot.view; // never before the robot is there
       }
     }
-    if (seq !== loadSeq) return;
+    if (disposed || seq !== loadSeq) return;
     // The user may have picked another clip while it loaded: an imitation is only for its own clip.
     if (imitating() && robotModel !== 'unitree_h1' && !isCustomRobot() && !matchesImitation(imitationOf(level), current?.clip.id)) {
-      $('policy').value = FINAL_LEVEL;
+      const pEl = $('policy');
+      if (pEl) pEl.value = FINAL_LEVEL;
       return loadLevel(FINAL_LEVEL);
     }
     copying = false;
@@ -728,24 +745,35 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
 
   // Another world: a world on the stones scene reloads the model (a moment), and the clip resumes after.
   async function setWorld(id) {
+    if (disposed) return;
     const view = robot.view;
     if (!view) return;
-    $('world').disabled = true;
-    root.querySelector('.push').disabled = true;
+    const worldEl = $('world');
+    const pushEl = root.querySelector('.push');
+    if (worldEl) worldEl.disabled = true;
+    if (pushEl) pushEl.disabled = true;
     setRobotLabel(T('changingWorld'));
     try {
       await view.setWorld(WORLDS.find((world) => world.id === id));
+      if (disposed) return;
       await dressPlace(view); // a new world rebuilds the drawn geoms: dress the place again
+      if (disposed) return;
       syncSitChair(view, current?.clip?.id === 'clip_sentarse-02-gvhmr');
       syncWashSink(view, current?.clip?.id === 'clip_lavar-04-gvhmr');
       refreshLook();
     } catch (error) {
+      if (disposed) return;
       console.error(error);
       setRobotLabel(T('worldFailed'));
     } finally {
-      $('world').disabled = false;
-      root.querySelector('.push').disabled = !robot.view; // never before the robot is there
+      if (!disposed) {
+        const wEl = $('world');
+        const pBtn = root.querySelector('.push');
+        if (wEl) wEl.disabled = false;
+        if (pBtn) pBtn.disabled = !robot.view; // never before the robot is there
+      }
     }
+    if (disposed) return;
     copying = false;
     syncSliders(); // the new world's own values
     resume();
@@ -754,32 +782,44 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
   // Another place (a kitchen, a warehouse, a sidewalk): its furniture is solid and its loose objects
   // can be knocked over. It rebuilds the model (a moment), and the clip resumes after.
   async function setPlace(id) {
+    if (disposed) return;
     const view = robot.view;
     if (!view) return;
-    $('place').disabled = true;
-    root.querySelector('.push').disabled = true;
+    const placeEl = $('place');
+    const pushEl = root.querySelector('.push');
+    if (placeEl) placeEl.disabled = true;
+    if (pushEl) pushEl.disabled = true;
     setRobotLabel(T('buildingPlace'));
     try {
-      await view.setScene(SCENES.find((scene) => scene.id === id) ?? null);
+      const targetScene = id === 'silla' ? SIT_CHAIR_SCENE : (SCENES.find((scene) => scene.id === id) ?? null);
+      await view.setScene(targetScene);
+      if (disposed) return;
       await dressPlace(view); // real models over the place's boxes and cylinders
+      if (disposed) return;
       syncSitChair(view, current?.clip?.id === 'clip_sentarse-02-gvhmr');
       syncWashSink(view, current?.clip?.id === 'clip_lavar-04-gvhmr');
-      setFloor(view, id); // and its floor: tiles, concrete or sidewalk
+      setFloor(view, id === 'silla' ? '' : id); // and its floor: tiles, concrete or sidewalk
       refreshLook();
     } catch (error) {
+      if (disposed) return;
       console.error(error);
       setRobotLabel(T('placeFailed'));
     } finally {
-      $('place').disabled = false;
-      root.querySelector('.push').disabled = !robot.view; // never before the robot is there
+      if (!disposed) {
+        const plEl = $('place');
+        const pBtn = root.querySelector('.push');
+        if (plEl) plEl.disabled = false;
+        if (pBtn) pBtn.disabled = !robot.view; // never before the robot is there
+      }
     }
+    if (disposed) return;
     syncRobotDependentUI();
     copying = false;
     resume();
   }
 
   robot.ready.then(async (view) => {
-    if (!view) return;
+    if (disposed || !view) return;
     view.setSpeed(speed);
     if (!playing) view.pause();
     if (isCustomRobot()) {
@@ -788,14 +828,18 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     }
     refreshLook();
     await loadLevel(FINAL_LEVEL); // standing with its policy: physics from the first frame
+    if (disposed) return;
     if (current) {
       const targetPlace = current.clip.id === 'clip_lavar-04-gvhmr' ? 'cocina' : '';
-      if ($('place') && targetPlace === 'cocina' && $('place').value !== 'cocina') {
-        $('place').value = 'cocina';
+      const placeEl = $('place');
+      if (placeEl && targetPlace === 'cocina' && placeEl.value !== 'cocina') {
+        placeEl.value = 'cocina';
         autoPlaced = true;
         await setPlace('cocina');
+        if (disposed) return;
       }
       await physicsFor(current.clip);
+      if (disposed) return;
     }
     copyCurrent(); // the puppet reference, ready for the "sin física" mode
   });
@@ -806,7 +850,8 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       if ($('robot-model') && nextRobot) {
         $('robot-model').value = nextRobot;
         $('robot-model').dispatchEvent(new Event('change'));
-        history.replaceState(null, '', `#/simulations/${nextRobot}`);
+        const nextPath = nextRobot === 'unitree_g1' ? '/simulations' : `/simulations/${nextRobot}`;
+        if (location.pathname !== nextPath) history.replaceState(null, '', `${nextPath}${location.search}`);
       }
     };
   });
@@ -816,8 +861,8 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
   if ($('robot-model')) {
     $('robot-model').onchange = async (event) => {
       robotModel = event.target.value;
-      const nextHash = robotModel === 'unitree_g1' ? '#/simulations' : `#/simulations/${robotModel}`;
-      if (location.hash !== nextHash) history.replaceState(null, '', nextHash);
+      const nextPath = robotModel === 'unitree_g1' ? '/simulations' : `/simulations/${robotModel}`;
+      if (location.pathname !== nextPath) history.replaceState(null, '', `${nextPath}${location.search}`);
       if (robotModel === 'unitree_h1' || isCustomRobot()) {
         const customIm = IMITATIONS.find((im) => im.robot === robotModel);
         if (customIm) {
@@ -844,6 +889,8 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
 
   // Live Arduino UNO WebSerial bridge + gesture command buttons (robot_gestos.ino @ 9600 baud).
   let serialWriter = null;
+  let serialReader = null;
+  let serialPort = null;
   let onnxPatrolTimer = null;
   let lastHwDistCm = 999;
   const CMD_SPECS = {
@@ -953,7 +1000,13 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       }
       try {
         const port = await navigator.serial.requestPort();
+        if (disposed) return;
         await port.open({ baudRate: 9600 });
+        if (disposed) {
+          port.close().catch(() => {});
+          return;
+        }
+        serialPort = port;
         if (robot.view?.sim) {
           robot.view.sim._usbLocked = true;
           robot.view.sim._serialCmd = null;
@@ -965,31 +1018,41 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
           st.innerHTML = `<span class="t" lang="es">Conectado a 9600 baud. Pasa la mano frente al APDS-9960 o acerca un objeto al HC-SR04.</span><span class="t" lang="en">Connected at 9600 baud. Wave your hand over the APDS-9960 or bring an object near the HC-SR04.</span>`;
         }
         if (port.writable) serialWriter = port.writable.getWriter();
-        const reader = port.readable.getReader();
+        const reader = port.readable?.getReader() ?? null;
+        serialReader = reader;
+        if (!reader) return;
         const decoder = new TextDecoder();
         let buf = '';
         (async () => {
-          while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            buf += decoder.decode(value, { stream: true });
-            const lines = buf.split(/\r?\n/);
-            buf = lines.pop() ?? '';
-            for (const line of lines) {
-              const gMatch = line.match(/Gesto\s*->\s*([FBLRS])/);
-              if (gMatch) applyArduinoCmd(gMatch[1], true);
-              const dMatch = line.match(/Dist:\s*(\d+)\s*cm\s*\|\s*Accion:\s*([FBLRS])/);
-              if (dMatch) {
-                const dist = Number(dMatch[1]);
-                const act = dMatch[2];
-                const safe = line.includes('SEGURIDAD');
-                applyArduinoCmd(act, true, dist, safe);
+          try {
+            while (!disposed) {
+              const { value, done } = await reader.read();
+              if (done || disposed) break;
+              buf += decoder.decode(value, { stream: true });
+              const lines = buf.split(/\r?\n/);
+              buf = lines.pop() ?? '';
+              for (const line of lines) {
+                const gMatch = line.match(/Gesto\s*->\s*([FBLRS])/);
+                if (gMatch) applyArduinoCmd(gMatch[1], true);
+                const dMatch = line.match(/Dist:\s*(\d+)\s*cm\s*\|\s*Accion:\s*([FBLRS])/);
+                if (dMatch) {
+                  const dist = Number(dMatch[1]);
+                  const act = dMatch[2];
+                  const safe = line.includes('SEGURIDAD');
+                  applyArduinoCmd(act, true, dist, safe);
+                }
               }
+            }
+          } finally {
+            try {
+              reader.releaseLock();
+            } catch {
+              // ignore if already released
             }
           }
         })().catch((err) => console.warn('Serial read ended:', err));
       } catch (err) {
-        if (st) st.textContent = `No se pudo abrir el puerto USB: ${err.message}`;
+        if (!disposed && st) st.textContent = `No se pudo abrir el puerto USB: ${err.message}`;
       }
     };
   }
@@ -1009,10 +1072,12 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
   };
   if ($('hold-dry')) {
     $('hold-dry').onclick = async () => {
-      if (!robot.view) return;
+      if (disposed || !robot.view) return;
       copying = false;
       await robot.view.holdObject({ wet: false });
+      if (disposed || !robot.view) return;
       await dressPlace(robot.view);
+      if (disposed) return;
       refreshLook();
       setRobotLabel();
       setGraspStatus('graspHoldingDry', $('hold-dry'));
@@ -1020,10 +1085,12 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
   }
   if ($('hold-wet')) {
     $('hold-wet').onclick = async () => {
-      if (!robot.view) return;
+      if (disposed || !robot.view) return;
       copying = false;
       await robot.view.holdObject({ wet: true });
+      if (disposed || !robot.view) return;
       await dressPlace(robot.view);
+      if (disposed) return;
       refreshLook();
       setRobotLabel();
       setGraspStatus('graspHoldingWet', $('hold-wet'));
@@ -1049,6 +1116,7 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
     else out.innerHTML = `×${decimal(value, 2)}`;
   };
   function syncSliders() {
+    if (disposed) return;
     const view = robot.view;
     if (!view) return;
     const current = view.conditions();
@@ -1065,7 +1133,9 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       showValue(slider.dataset.condition, value);
     };
   }
-  robot.ready.then(syncSliders);
+  robot.ready.then(() => {
+    if (!disposed) syncSliders();
+  });
   let autoPlaced = false;
   $('place').onchange = (event) => {
     autoPlaced = false;
@@ -1111,11 +1181,44 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       } else resume();
     };
   }
+  // Aligns BOTH human skeleton and G1 robot cameras to the same vertical baseline & video viewpoint
+  // (profile clips viewed from the side, front-facing clips viewed from the front).
+  function alignCameraToClip(clip) {
+    const id = clip?.id ?? '';
+    const isFront = id.includes('frente') || id.includes('saludar') || id.includes('dedos') || id.includes('jacks') || id.includes('bailar');
+    // Human skeleton (1.70 m, target y = 0.85 m, dist ~3.18 m, ~10 deg elevation)
+    const skelTarget = skeleton.controls.target;
+    skelTarget.y = 0.85;
+    if (isFront) {
+      skeleton.camera.position.set(skelTarget.x, 1.42, skelTarget.z + 3.15);
+    } else {
+      skeleton.camera.position.set(skelTarget.x + 2.62, 1.42, skelTarget.z + 1.8);
+    }
+    skeleton.controls.update();
+
+    const view = robot.view;
+    if (!view || isCustomRobot()) return;
+    const [px, py] = view.sim.bodyPosition('pelvis');
+    // Unitree G1 (1.32 m, target y = 0.68 m, dist ~2.46 m, ~10 deg elevation — exact 1:1 vertical match)
+    view.viewer.targetHeight = 0.68;
+    view.viewer.controls.minDistance = 0.65;
+    view.viewer.controls.target.set(px, 0.68, -py);
+    if (isFront) {
+      view.viewer.camera.position.set(px + 2.42, 1.12, -py);
+    } else {
+      view.viewer.camera.position.set(px + 2.02, 1.12, -py - 1.38);
+    }
+    view.viewer.controls.update();
+  }
+
   $('reset').onclick = () => {
     skeleton.time = 0;
     if (!withPhysics() && motion && !imitating()) startMotion();
     else robot.view?.reset(); // the policy puts the robot back in its first pose (standing or the clip's)
   };
+  if ($('reset-view')) {
+    $('reset-view').onclick = () => alignCameraToClip(current?.clip);
+  }
 
   // An imitation option is only for the clip it learned; leaving that clip goes back to standing.
   function offerImitations(clip) {
@@ -1228,13 +1331,19 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
         robot.view._streetAlongX = clip.id.includes('frente') || clip.id === 'clip_caminar-01-gvhmr';
         syncSitChair(robot.view, clip.id === 'clip_sentarse-02-gvhmr');
         syncWashSink(robot.view, clip.id === 'clip_lavar-04-gvhmr');
+        alignCameraToClip(clip);
       }
       offerImitations(clip);
-      const targetPlace = clip.id === 'clip_lavar-04-gvhmr' ? 'cocina' : '';
-      if (robot.view && $('place') && (targetPlace === 'cocina' || autoPlaced) && $('place').value !== targetPlace) {
-        $('place').value = targetPlace;
+      const targetPlace =
+        clip.id === 'clip_lavar-04-gvhmr' ? 'cocina'
+        : clip.id === 'clip_sentarse-02-gvhmr' ? 'silla'
+        : '';
+      const activeSceneId = robot.view?.scene?.()?.id ?? '';
+      if (robot.view && $('place') && (targetPlace !== '' || autoPlaced) && activeSceneId !== targetPlace) {
+        $('place').value = targetPlace === 'silla' ? '' : targetPlace;
         autoPlaced = targetPlace !== '';
         setPlace(targetPlace).then(() => {
+          if (disposed) return;
           physicsFor(clip);
           if (!motion) copyCurrent();
         });
@@ -1244,13 +1353,26 @@ export function mountStage(root, { initialRobot = 'unitree_g1' } = {}) {
       if (!motion) copyCurrent();
     },
     dispose() {
+      disposed = true;
+      ++loadSeq;
       stopOnnxPatrolStream();
+      serialReader?.cancel().catch(() => {});
+      serialReader = null;
+      try {
+        serialWriter?.releaseLock();
+      } catch {
+        // ignore if already released
+      }
+      serialWriter = null;
+      serialPort?.close().catch(() => {});
+      serialPort = null;
       cancelAnimationFrame(frameId);
       skeleton.dispose();
       overlay.dispose();
       const view = robot.view;
       // The app shares one robot: the next screen starts on flat, empty ground with the Unitree G1.
       if (view) {
+        view.cancelPending?.();
         look?.undo();
         look = null;
         clearStageProps(view); // removes chair, sink, and custom floor so nothing leaks to landing/#live

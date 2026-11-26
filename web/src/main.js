@@ -11,7 +11,13 @@ import { startRouter } from './router.js';
 import { createStore } from './state.js';
 
 document.getElementById('app-loading').insertAdjacentHTML('afterbegin', loader('small'));
-loadRobot();
+// Keep /camera/:id (and legacy /#/camera/:id or camara) isolated from MuJoCo WASM + ONNX downloads.
+const initialRoutePath = location.hash.startsWith('#/')
+  ? location.hash.replace(/^#\/?/, '').split('?')[0]
+  : location.pathname.replace(/^\/+/, '');
+if (!/^(camera|camara)(\/|$)/.test(initialRoutePath)) {
+  loadRobot();
+}
 
 // The video server check starts now, so "Subir" is settled by the time anyone scrolls to it.
 const api = createApi();

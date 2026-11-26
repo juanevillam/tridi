@@ -72,39 +72,23 @@ export class CameraError extends Error {}
  *   (hip-centered, MediaPipe axes), `visible` false when no body or the upper body (shoulders, elbows, wrists) is too occluded, `camera` where
  *   the hips are from the camera ([x, y, z] m, MediaPipe camera axes; cameraTranslation) or null;
  *   `hands` ({ left, right }: the person's hands, 21 world points each in meters around the hand's
- *   center, MediaPipe axes, or null) only with options.hands; null if no body.
- * @returns { startRecording, stopRecording, isRecording, fps, timing, stop }
+ *   center, MediaPipe axes, or null) only with options.hands; `handLandmarks` ({ left, right }:
+ *   21 normalized 2D landmarks per detected hand, or null) when options.hands is active; null if no body.
+ * @returns { startRecording, stopRecording, isRecording, fps, timing, setHands, stop }
  */
-export async function createLiveCapture(video, { model = DEFAULT_MODEL, facingMode = 'user', stream, smooth = true, hands = false, onProgress, onPose } = {}) {
-  onProgress?.({ stage: 'model', done: false });
-  const vision = await FilesetResolver.forVisionTasks(WASM_URL);
-  const landmarker = await PoseLandmarker.createFromOptions(vision, {
-    baseOptions: { modelAssetPath: MODEL_URL(model), delegate: 'GPU' },
-    runningMode: 'VIDEO',
-    numPoses: 1,
-  });
-  const handLandmarker = hands
-    ? await HandLandmarker.createFromOptions(vision, {
-      baseOptions: { modelAssetPath: HAND_MODEL_URL, delegate: 'GPU' },
-      runningMode: 'VIDEO',
-      numHands: 2,
-    })
-    : null;
-  onProgress?.({ stage: 'model', done: true });
-
+export async function createLiveCapture(video, { model = DEFAULT_MODEL, facingMode = 'user', stream, constraints, maxFps = 0, smooth = true, hands = false, onProgress, onPose } = {}) {
+  // Request camera permission IMMEDIATELY on user gesture before downloading MediaPipe WASM/models
+  // so mobile/desktop permission prompts appear instantly and the live video preview shows while
+  // the models load in parallel.
   onProgress?.({ stage: 'camera', done: false });
-  // Browsers only expose the camera on secure pages (HTTPS, or localhost): the phone page opened
-  // over plain http on a LAN address has no navigator.mediaDevices at all.
   if (!stream && !navigator.mediaDevices?.getUserMedia) {
-    landmarker.close();
-    handLandmarker?.close();
     throw new CameraError('El navegador no deja usar la cámara en esta dirección: hace falta abrir la página por HTTPS.');
   }
+  const videoConstraints = { ...(constraints ?? CAMERA), facingMode };
+  let activeStream = stream;
   try {
-    stream ??= await navigator.mediaDevices.getUserMedia({ video: { ...CAMERA, facingMode }, audio: false });
+    activeStream ??= await navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: false });
   } catch (e) {
-    landmarker.close();
-    handLandmarker?.close();
     const denied = e?.name === 'NotAllowedError' || e?.name === 'SecurityError';
     throw new CameraError(
       denied
@@ -112,17 +96,49 @@ export async function createLiveCapture(video, { model = DEFAULT_MODEL, facingMo
         : 'No se encontró una cámara disponible.',
     );
   }
-  video.srcObject = stream;
+  video.srcObject = activeStream;
   video.muted = true;
   video.playsInline = true;
   await video.play();
   onProgress?.({ stage: 'camera', done: true });
+
+  onProgress?.({ stage: 'model', done: false });
+  let vision;
+  let landmarker;
+  let handLandmarker = null;
+  try {
+    vision = await FilesetResolver.forVisionTasks(WASM_URL);
+    [landmarker, handLandmarker] = await Promise.all([
+      PoseLandmarker.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: MODEL_URL(model), delegate: 'GPU' },
+        runningMode: 'VIDEO',
+        numPoses: 1,
+      }),
+      hands
+        ? HandLandmarker.createFromOptions(vision, {
+          baseOptions: { modelAssetPath: HAND_MODEL_URL, delegate: 'GPU' },
+          runningMode: 'VIDEO',
+          numHands: 2,
+        })
+        : Promise.resolve(null),
+    ]);
+  } catch (e) {
+    if (!stream) activeStream.getTracks().forEach((t) => t.stop());
+    video.srcObject = null;
+    throw e;
+  }
+  onProgress?.({ stage: 'model', done: true });
+  stream = activeStream;
+  const minFrameMs = maxFps > 0 ? 1000 / maxFps : 0;
+  let lastInferAt = -Infinity;
 
   let samples = null; // non-null while recording
   let recordStart = 0;
   let lastVideoTime = -1;
   let frameId = 0;
   let running = true;
+  let handsDesired = Boolean(hands);
+  let handLoading = null;
   let handSeenAt = -Infinity; // when the hand model last found a hand (s)
   let handFrame = 0;
   let lastHands; // the hand model's last answer, reused on the frames it skips while tracking
@@ -137,10 +153,11 @@ export async function createLiveCapture(video, { model = DEFAULT_MODEL, facingMo
 
   function frame() {
     if (!running) return;
-    // Only new camera frames: the display refreshes faster than most webcams deliver.
-    if (video.readyState >= 2 && video.currentTime !== lastVideoTime) {
+    // Only new camera frames, throttled cleanly when maxFps is set (e.g. mobile capture).
+    const now = performance.now();
+    if (video.readyState >= 2 && video.currentTime !== lastVideoTime && now - lastInferAt >= minFrameMs) {
       lastVideoTime = video.currentTime;
-      const now = performance.now();
+      lastInferAt = now;
       times.push(now);
       while (times[0] < now - 1000) times.shift();
       const res = landmarker.detectForVideo(video, now);
@@ -163,22 +180,35 @@ export async function createLiveCapture(video, { model = DEFAULT_MODEL, facingMo
         const visible = isSeen((i) => vis[i]);
         const w = video.videoWidth;
         const h = video.videoHeight;
-        let handsSeen;
-        if (handLandmarker) {
+        let matchedHands;
+        if (handsDesired && handLandmarker) {
           const tracking = now / 1000 - handSeenAt < HAND_RECENT_S;
           const run = handFrame++ % (tracking ? HAND_TRACK_EVERY : HAND_PROBE_EVERY) === 0;
           if (run) {
             const start = performance.now();
-            handsSeen = matchHands(handLandmarker.detectForVideo(video, now), landmarks, w / h);
+            matchedHands = matchHands(handLandmarker.detectForVideo(video, now), landmarks, w / h);
             average('hands', performance.now() - start);
-            if (handsSeen.left || handsSeen.right) handSeenAt = now / 1000;
-            lastHands = handsSeen;
+            if (matchedHands.world.left || matchedHands.world.right || matchedHands.image.left || matchedHands.image.right) {
+              handSeenAt = now / 1000;
+            }
+            lastHands = matchedHands;
           } else if (tracking) {
-            handsSeen = lastHands;
+            matchedHands = lastHands;
           }
           average('handRuns', run ? 1 : 0);
         }
-        onPose?.({ landmarks, world, visible, t: now / 1000, camera: cameraTranslation(world, landmarks, w, h), hands: handsSeen });
+        const handsSeen = matchedHands?.world;
+        const handLandmarksSeen =
+          matchedHands?.image && (matchedHands.image.left || matchedHands.image.right) ? matchedHands.image : null;
+        onPose?.({
+          landmarks,
+          world,
+          visible,
+          t: now / 1000,
+          camera: cameraTranslation(world, landmarks, w, h),
+          hands: handsSeen,
+          handLandmarks: handLandmarksSeen,
+        });
         samples?.push({
           t: (now - recordStart) / 1000,
           world: world.map((p) => [p.x, p.y, p.z]),
@@ -220,36 +250,92 @@ export async function createLiveCapture(video, { model = DEFAULT_MODEL, facingMo
      * per run of each model, and handShare, the share of frames the hand model ran on.
      */
     timing: () => ({ pose: cost.pose, hands: cost.hands, handShare: cost.handRuns }),
+    /** Enables or disables the 21-point hand model on the running capture without restarting the camera. */
+    async setHands(enabled) {
+      handsDesired = Boolean(enabled);
+      if (!handsDesired) {
+        handSeenAt = -Infinity;
+        handFrame = 0;
+        lastHands = undefined;
+        if (handLandmarker) {
+          handLandmarker.close();
+          handLandmarker = null;
+        }
+        return false;
+      }
+      if (!running) return false;
+      if (handLandmarker) return true;
+      if (!handLoading) {
+        handLoading = HandLandmarker.createFromOptions(vision, {
+          baseOptions: { modelAssetPath: HAND_MODEL_URL, delegate: 'GPU' },
+          runningMode: 'VIDEO',
+          numHands: 2,
+        }).then(
+          (created) => {
+            handLoading = null;
+            if (!running || !handsDesired) {
+              created.close();
+              return false;
+            }
+            handLandmarker = created;
+            return true;
+          },
+          (error) => {
+            handLoading = null;
+            if (!handLandmarker) handsDesired = false;
+            throw error;
+          },
+        );
+      }
+      return handLoading;
+    },
     /** Turns the camera off and frees the model. */
     stop() {
       running = false;
+      handsDesired = false;
       cancelAnimationFrame(frameId);
       stream.getTracks().forEach((t) => t.stop());
       video.srcObject = null;
       landmarker.close();
       handLandmarker?.close();
+      handLandmarker = null;
     },
   };
 }
 
 /**
- * The hand model's hands given to the pose's wrists: { left, right } of the person, each the hand's
- * 21 world points or null. Each hand goes to its nearest wrist only (two hands together in a clap
- * stay apart), the closest one when two compete. `aspect` (width / height) makes image distances square.
+ * The hand model's hands given to the pose's wrists: `{ world: { left, right }, image: { left, right } }`
+ * of the person, each the hand's 21 points or null. Each hand goes to its nearest wrist only (two
+ * hands together in a clap stay apart), the closest one when two compete. `aspect` (width / height)
+ * makes image distances square.
  */
-function matchHands(result, landmarks, aspect) {
-  const out = { left: null, right: null };
+export function matchHands(result, landmarks, aspect) {
+  const world = { left: null, right: null };
+  const image = { left: null, right: null };
+  if (!result?.landmarks?.length || !landmarks || !(Number.isFinite(aspect) && aspect > 0)) {
+    return { world, image };
+  }
   const best = { left: HAND_TO_WRIST, right: HAND_TO_WRIST };
   result.landmarks.forEach((hand, i) => {
-    const near = [['left', 15], ['right', 16]]
-      .map(([side, wrist]) => ({ side, d: Math.hypot((hand[0].x - landmarks[wrist].x) * aspect, hand[0].y - landmarks[wrist].y) }))
+    if (!hand?.[0] || !Number.isFinite(hand[0].x) || !Number.isFinite(hand[0].y)) return;
+    const candidates = [['left', 15], ['right', 16]].filter(
+      ([, wrist]) => Number.isFinite(landmarks[wrist]?.x) && Number.isFinite(landmarks[wrist]?.y),
+    );
+    if (!candidates.length) return;
+    const near = candidates
+      .map(([side, wrist]) => ({
+        side,
+        d: Math.hypot((hand[0].x - landmarks[wrist].x) * aspect, hand[0].y - landmarks[wrist].y),
+      }))
+      .filter((c) => Number.isFinite(c.d))
       .sort((a, b) => a.d - b.d)[0];
-    if (near.d < best[near.side]) {
+    if (near && near.d < best[near.side]) {
       best[near.side] = near.d;
-      out[near.side] = result.worldLandmarks[i];
+      world[near.side] = result.worldLandmarks?.[i] ?? null;
+      image[near.side] = hand;
     }
   });
-  return out;
+  return { world, image };
 }
 
 /** The frame's points through the One Euro filter, in MediaPipe's own shape ({ x, y, z, visibility }). */
@@ -263,4 +349,136 @@ function smoothed(filter, t, world, landmarks) {
     out.world.map(([x, y, z], i) => ({ ...world[i], x, y, z })),
     out.image.map(([x, y, z], i) => ({ ...landmarks[i], x, y, z })),
   ];
+}
+
+/**
+ * Browser-local video -> PoseClip extraction (zero server / Mac tunnel dependency).
+ * Seeks deterministically through a local <video> file at `fps` (default 25 Hz), runs MediaPipe
+ * PoseLandmarker (and optional HandLandmarker), applies the same facing/bone guards + One Euro
+ * filter as live capture, and builds a contract-valid PoseClip.
+ */
+export async function extractPoseClipFromVideo(file, { model = DEFAULT_MODEL, hands = false, fps = 25, signal, onProgress } = {}) {
+  const throwIfAborted = () => {
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+  };
+  throwIfAborted();
+
+  onProgress?.({ stage: 'model', progress: 0 });
+  const vision = await FilesetResolver.forVisionTasks(WASM_URL);
+  throwIfAborted();
+  const [landmarker, handLandmarker] = await Promise.all([
+    PoseLandmarker.createFromOptions(vision, {
+      baseOptions: { modelAssetPath: MODEL_URL(model), delegate: 'GPU' },
+      runningMode: 'VIDEO',
+      numPoses: 1,
+    }),
+    hands
+      ? HandLandmarker.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: HAND_MODEL_URL, delegate: 'GPU' },
+        runningMode: 'VIDEO',
+        numHands: 2,
+      })
+      : Promise.resolve(null),
+  ]);
+
+  const video = document.createElement('video');
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = 'auto';
+  const objectUrl = URL.createObjectURL(file);
+
+  try {
+    throwIfAborted();
+    await new Promise((resolve, reject) => {
+      video.onloadedmetadata = () => resolve();
+      video.onerror = () => reject(new Error('Could not decode video in browser.'));
+      video.src = objectUrl;
+    });
+
+    const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0;
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    if (!duration || !w || !h) throw new Error('Video has no playable frames.');
+
+    const step = 1 / fps;
+    const totalFrames = Math.max(2, Math.floor(duration * fps));
+    const filter = new PoseFilter();
+    const facing = createFacingGuard();
+    const bones = createBoneGuard();
+    const samples = [];
+
+    const seekTo = (time) => new Promise((resolve, reject) => {
+      if (signal?.aborted) return reject(new DOMException('Aborted', 'AbortError'));
+      const onSeeked = () => {
+        cleanup();
+        resolve();
+      };
+      const onError = () => {
+        cleanup();
+        reject(new Error('Video seek failed.'));
+      };
+      const onAbort = () => {
+        cleanup();
+        reject(new DOMException('Aborted', 'AbortError'));
+      };
+      const cleanup = () => {
+        video.removeEventListener('seeked', onSeeked);
+        video.removeEventListener('error', onError);
+        signal?.removeEventListener('abort', onAbort);
+      };
+      video.addEventListener('seeked', onSeeked, { once: true });
+      video.addEventListener('error', onError, { once: true });
+      signal?.addEventListener('abort', onAbort, { once: true });
+      video.currentTime = Math.min(time, Math.max(0, duration - 0.001));
+    });
+
+    for (let i = 0; i < totalFrames; i++) {
+      throwIfAborted();
+      const t = i * step;
+      await seekTo(t);
+      throwIfAborted();
+      const tsMs = Math.max(1, Math.round(t * 1000) + i);
+      const res = landmarker.detectForVideo(video, tsMs);
+      let landmarks = res.landmarks[0];
+      let world = res.worldLandmarks[0];
+      if (!landmarks || !world) {
+        filter.reset();
+        facing.reset();
+        bones.reset();
+        samples.push({ t, valid: false });
+      } else {
+        ({ world, landmarks } = facing.fix(world, landmarks, t));
+        ({ world } = bones.fix(world, t));
+        [world, landmarks] = smoothed(filter, t, world, landmarks);
+        const vis = landmarks.map((p) => p.visibility ?? 0);
+        const visible = isSeen((k) => vis[k]);
+        let handsSeen = null;
+        if (handLandmarker) {
+          handsSeen = matchHands(handLandmarker.detectForVideo(video, tsMs), landmarks, w / h).world;
+        }
+        samples.push({
+          t,
+          world: world.map((p) => [p.x, p.y, p.z]),
+          image: landmarks.map((p, k) => [p.x * w, p.y * h, vis[k]]),
+          hands:
+            handsSeen && (handsSeen.left || handsSeen.right)
+              ? {
+                  left: handsSeen.left?.map((p) => [p.x, p.y, p.z]) ?? null,
+                  right: handsSeen.right?.map((p) => [p.x, p.y, p.z]) ?? null,
+                }
+              : null,
+          valid: visible,
+        });
+      }
+      onProgress?.({ stage: 'extract', progress: (i + 1) / totalFrames });
+    }
+
+    return buildPoseClip(samples, { width: w, height: h });
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+    video.removeAttribute('src');
+    video.load();
+    landmarker.close();
+    handLandmarker?.close();
+  }
 }

@@ -16,17 +16,46 @@ const KEY = 'tridi-lang';
 const html = typeof document !== 'undefined' ? document.documentElement : { dataset: { lang: 'en' }, lang: 'en' };
 const listeners = new Set();
 
+function readSavedLang() {
+  try {
+    const saved = typeof localStorage !== 'undefined' ? localStorage.getItem(KEY) : null;
+    return LANGS.includes(saved) ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+let savedLang = readSavedLang();
+
+/** Persistent preference (saved choice) used when a URL has no ?lang= override. */
+export const preferredLang = () => savedLang ?? 'en';
+
 /** The language on screen now. index.html's pre-paint script settled it before the first frame. */
 export const lang = () => (LANGS.includes(html.dataset.lang) ? html.dataset.lang : 'en');
 
-export function setLang(next) {
-  if (!LANGS.includes(next) || next === lang()) return;
+export function setLang(next, { persist = true } = {}) {
+  if (!LANGS.includes(next)) return;
+  if (persist) {
+    savedLang = next;
+    try {
+      localStorage.setItem(KEY, next);
+    } catch {
+      // private mode: the choice lasts this visit only
+    }
+    if (typeof location !== 'undefined' && typeof history !== 'undefined') {
+      const params = new URLSearchParams(location.search);
+      if (params.has('lang') && params.get('lang') !== next) {
+        params.set('lang', next);
+        const qs = params.toString();
+        history.replaceState(null, '', `${location.pathname}${qs ? `?${qs}` : ''}${location.hash}`);
+      }
+    }
+  }
+  if (next === lang()) return;
   html.dataset.lang = next;
   html.lang = next;
-  try {
-    localStorage.setItem(KEY, next);
-  } catch {
-    // private mode: the choice lasts this visit only
+  for (const btn of document.querySelectorAll('.lang-menu [data-set-lang]')) {
+    btn.setAttribute('aria-checked', String(btn.dataset.setLang === next));
   }
   for (const element of document.querySelectorAll('[data-i18n-attr]')) applyAttrs(element);
   for (const element of document.querySelectorAll('[data-i18n-text]')) applyText(element);
@@ -107,11 +136,12 @@ const GLOBE_ICON =
 
 /** Globe-only dropdown trigger for a screen's header: clicking opens the language menu. */
 export function langSwitch(className = '') {
+  const current = lang();
   return `<div class="lang-switch ${className}">
     <button type="button" class="lang-trigger" aria-haspopup="menu" aria-expanded="false" aria-label="Language / Idioma" title="Language / Idioma">${GLOBE_ICON}</button>
     <div class="lang-menu" role="menu" aria-label="Language / Idioma">
       ${LANGS.map(
-        (l) => `<button type="button" role="menuitemradio" data-set-lang="${l}" lang="${l}" aria-label="${LANG_NAMES[l]}"><span>${LANG_NAMES[l]}</span><i class="lang-check" aria-hidden="true">✓</i></button>`,
+        (l) => `<button type="button" role="menuitemradio" aria-checked="${l === current}" data-set-lang="${l}" lang="${l}" aria-label="${LANG_NAMES[l]}"><span>${LANG_NAMES[l]}</span><i class="lang-check" aria-hidden="true">✓</i></button>`,
       ).join('')}
     </div>
   </div>`;
@@ -145,7 +175,10 @@ if (typeof document !== 'undefined') {
     closeMenus();
   });
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') closeMenus();
+    if (event.key !== 'Escape') return;
+    const activeSwitch = document.activeElement?.closest?.('.lang-switch.open') ?? null;
+    closeMenus();
+    if (activeSwitch) activeSwitch.querySelector('.lang-trigger')?.focus();
   });
 }
 

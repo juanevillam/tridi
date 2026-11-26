@@ -235,7 +235,9 @@ const LOOKS = { plano: dressSidewalk, piedras: dressRocks, resbaloso: dressWet, 
  */
 export function dressWorld(view, { wind = () => windNow(view) } = {}) {
   const worldId = view.world()?.id ?? 'plano';
-  const look = view.scene() ? null : LOOKS[worldId]?.(view, wind);
+  // Keep the active world look when only the transparent MuJoCo chair collision ('silla') is mounted.
+  const sceneId = view.scene()?.id;
+  const look = sceneId && sceneId !== 'silla' ? null : LOOKS[worldId]?.(view, wind);
   const currents = createCurrents(view, wind);
   return {
     update(dt) {
